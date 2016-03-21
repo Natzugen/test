@@ -26,7 +26,7 @@ public:
 		this->m_iMonsterIndex = -1;
 		this->m_iSkillUnitCount = 0;
 
-		for ( int i=0;i<10;i++)
+		for ( int i=0;i<5;i++)
 		{
 			this->m_iSkillUnitTypeArray[i] = -1;
 			this->m_lpSkillUnitArray[i] = NULL;
@@ -43,10 +43,10 @@ public:
 
 public:
 
-	int m_iMonsterIndex;	// 0
-	int m_iSkillUnitCount;	// 4
-	int m_iSkillUnitTypeArray[10];	// 8
-	TMonsterSkillUnit* m_lpSkillUnitArray[10];	// 1C
+	short m_iMonsterIndex;	// 0
+	short m_iSkillUnitCount;	// 4
+	short m_iSkillUnitTypeArray[5];	// 8
+	TMonsterSkillUnit* m_lpSkillUnitArray[5];	// 1C
 };
 // <size 0x30>
 

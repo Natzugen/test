@@ -1,6 +1,5 @@
 // TRandomPoolMgr.cpp: implementation of the TRandomPoolMgr class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00578150	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -68,7 +67,7 @@ int TRandomPoolMgr::GetRandomValue(enum eRandomPoolSelectType eSelectType)
 
 	if ( eSelectType == eRANDOMPOOL_BY_RANDOM )
 	{
-		int iPos = GetLargeRand()% (DWORD)iPoolSize;
+		int iPos = rand() % iPoolSize;
 		int iCount = 0;
 		
 		for ( std::map<int, int>::iterator iter = this->m_listPool.begin() ; iter != this->m_listPool.end() ; ++iter)

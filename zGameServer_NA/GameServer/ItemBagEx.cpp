@@ -1,5 +1,3 @@
-//GameServer 1.00.77 JPN - Completed
-//GameServer 1.00.90 JPN - Completed
 #include "stdafx.h"
 #include "ItemBagEx.h"
 #include "gObjMonster.h"
@@ -8,6 +6,17 @@
 #include "..\include\readscript.h"
 #include "..\common\winutil.h"
 #include "logproc.h"
+#include "ImperialGuardian.h"
+#include "DoppelGanger.h"
+#include "HalloweenEvent.h"
+#include "SwampEvent.h"
+#include "Raklion.h"
+
+#include "LogToFile.h"
+extern CLogToFile ITEMBAG_DROP_LOG;
+
+// GS-N 0.99.60T 0x0046A030
+//	GS-N	1.00.18	JPN	0x0047CAA0	-	Completed
 
 CItemBagEx::CItemBagEx()
 {
@@ -31,7 +40,7 @@ void CItemBagEx::Init(char* name)
 	this->m_iExItemDropRate = 0;
 	this->m_iBagObjectCount = 0;
 
-	this->LoadItem(gDirPath.GetNewPath(name));
+	this->LoadItem(name);
 }
 
 void CItemBagEx::LoadItem(char* script_file)
@@ -39,11 +48,11 @@ void CItemBagEx::LoadItem(char* script_file)
 	int Token;
 
 	this->m_bLoad = FALSE;
-	SMDFile = fopen(script_file, "r");	//ok
+	SMDFile = fopen(script_file, "r");
 
 	if ( SMDFile == NULL )
 	{
-		LogAdd(lMsg.Get(MSGGET(1, 197)), script_file);
+		ITEMBAG_DROP_LOG.Output(lMsg.Get(MSGGET(1, 197)), script_file);
 		return;
 	}
 
@@ -138,7 +147,7 @@ void CItemBagEx::LoadItem(char* script_file)
 
 					wsprintf(szTemp, "[%s] Eventitemnum = %d,EventItemLevel = %d, EventItemDropRate = %d, ItemDropRate = %d, ExItemDropRate = %d",
 						this->m_sEventName, this->m_iEventItemType, this->m_iEventItemLevel, this->m_iEventItemDropRate, this->m_iItemDropRate, this->m_iExItemDropRate);
-					LogAddTD(szTemp);
+					ITEMBAG_DROP_LOG.Output(szTemp);
 				}
 			}
 			else if ( st == 2 )
@@ -190,8 +199,15 @@ void CItemBagEx::LoadItem(char* script_file)
 		}
 	}
 
+
+	if(this->m_iBagObjectCount <= 0)
+	{
+		MsgBox("There need to be at least one item in %s", script_file);
+		exit(1);
+	}
+
 	fclose(SMDFile);
-	LogAdd(lMsg.Get(MSGGET(1, 198)), script_file);
+	ITEMBAG_DROP_LOG.Output(lMsg.Get(MSGGET(1, 198)), script_file);
 	this->m_bLoad = TRUE;
 }
 
@@ -213,157 +229,6 @@ BYTE CItemBagEx::GetLevel(int n)
 
 	return level;
 }
-
-BOOL CItemBagEx::IsEnableEventItemDrop(int aIndex)
-{
-	int iMapNumber = gObj[aIndex].MapNumber;
-
-	if ( this->DropMapInfo[iMapNumber].m_bIsDrop == FALSE )
-	{
-		return FALSE;
-	}
-
-	int iLevel = gObj[aIndex].Level;
-
-	if  ( iLevel < this->DropMapInfo[iMapNumber].m_MinMonsterLevel || iLevel > this->DropMapInfo[iMapNumber].m_MaxMonsterLevel)
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-
-BOOL CItemBagEx::DropEventItem(int aIndex)
-{
-	if ( this->m_bLoad == FALSE )
-	{
-		return FALSE;
-	}
-
-	if ( this->IsEnableEventItemDrop(aIndex) == FALSE )
-	{
-		return FALSE;
-	}
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if ( (rand()%1000) < this->m_iEventItemDropRate )
-	{
-		int ei;
-		int eil;
-		int x;
-		int y;
-		float dur = 0;
-		dur = 255.0;
-
-		x = lpObj->X;
-		y = lpObj->Y;
-		eil = this->m_iEventItemLevel;
-		ei = this->m_iEventItemType;
-
-		int thdu = gObjMonsterTopHitDamageUser(lpObj);
-		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x ,y, ei, eil, dur, 0, 0, 0, thdu, 0, 0);
-		LogAddTD("[%s][%s] [%s] MonsterEventItemDrop (%d)(%d/%d)", lpObj->AccountID, lpObj->Name, 
-			this->m_sEventName, lpObj->MapNumber, x, y);
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-
-BOOL CItemBagEx::DropItem(int aIndex)
-{
-	if ( this->m_bLoad == FALSE )
-	{
-		return FALSE;
-	}
-
-	float dur;
-	int type;
-	int level;
-	int x;
-	int y;
-	int Option1 = 0;
-	int Option2 = 0;
-	int Option3 = 0;
-	int DropItemNum;
-	int ExOption = 0;
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if ( this->GetBagCount() > 0 )
-	{
-		if ( (rand()%100) < this->m_iItemDropRate )
-		{
-			DropItemNum =  rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
-
-			if ( type == -1 )
-			{
-				return FALSE;
-			}
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-			{
-				Option1 = rand()%2;
-			}
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
-			{
-				Option2 = rand()%2;
-			}
-
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( rand()%5 < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand()%3;
-				}
-			}
-
-			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
-			{
-				ExOption = NewOptionRand(0);
-				Option1 = 1;
-			}
-
-			if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(13,0) || type == ITEMGET(13,1) || type ==ITEMGET(13,2) ||
-				 type == ITEMGET(13,8) || type == ITEMGET(13,9) || type == ITEMGET(13,12) ||
-				 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
-			{
-				level = 0;
-			}
-
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
-			LogAddTD("[%s][%s] [%s] Event ItemDrop : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName, lpObj->MapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
-			return TRUE;
-		}
-	}
-
-	x = lpObj->X;
-	y = lpObj->Y;
-	MapC[lpObj->MapNumber].MoneyItemDrop(this->m_iDropZen, x, y);
-	return TRUE;
-}
-
 
 BYTE CItemBagEx::GetMinLevel(int n)
 {
@@ -400,28 +265,37 @@ BOOL CItemBagEx::PickItem(CItem & objItem, int & nItemIndex)
 			return FALSE;
 
 		if ( this->BagObject[DropItemNum].m_isskill != 0 )
-			objItem.m_Option1 = 1;
+			objItem.m_SkillOption = 1;
 
 		if ( this->BagObject[DropItemNum].m_isluck != 0 )
-			objItem.m_Option2 = 1;
+			objItem.m_LuckOption = 1;
 
-		if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			objItem.m_Option3 = 1;
-
-		if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			objItem.m_NewOption = 1;
-			objItem.m_Option1 = 0;
-			objItem.m_Option2 = 0;
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			objItem.m_Z28Option = rand()%(z28Percent+1);
+			objItem.m_Z28Option = objItem.m_Z28Option / 100;
+		} else {
+			objItem.m_Z28Option = 0;
+		}
+
+		objItem.m_NewOption = 0;
+		int DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				objItem.m_NewOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
 		}
 
 		if ( objItem.m_Type == ITEMGET(12,15) ||
 			 objItem.m_Type == ITEMGET(14,13) ||
 			 objItem.m_Type == ITEMGET(14,14) )
 		{
-			objItem.m_Option1 = 0;
-			objItem.m_Option2 = 0;
-			objItem.m_Option3 = 0;
+			objItem.m_SkillOption = 0;
+			objItem.m_LuckOption = 0;
+			objItem.m_Z28Option = 0;
 			objItem.m_Level = 0;
 		}
 
@@ -444,6 +318,254 @@ BOOL CItemBagEx::PickItem(CItem & objItem, int & nItemIndex)
 	return FALSE;
 }
 
+BOOL CItemBagEx::IsEnableEventItemDrop(int aIndex)
+{
+	int iMapNumber = gObj[aIndex].MapNumber;
+
+	if ( this->DropMapInfo[iMapNumber].m_bIsDrop == FALSE )
+	{
+		return FALSE;
+	}
+
+	int iLevel = gObj[aIndex].Level;
+
+	if  ( iLevel < this->DropMapInfo[iMapNumber].m_MinMonsterLevel || iLevel > this->DropMapInfo[iMapNumber].m_MaxMonsterLevel)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::IsMobIdExist(int aIndex)
+{
+	int iMonsterClass = gObj[aIndex].Class;
+
+	for (int i=0; i<MAX_MAP_NUMBER; i++)
+	{
+		if (iMonsterClass == this->DropMapInfo[i].m_MaxMonsterLevel)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+//Commonserver replacement of Item drop rate
+BOOL CItemBagEx::DropEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	if ( this->IsEnableEventItemDrop(aIndex) == FALSE )
+	{
+		return FALSE;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	int randN = rand()%10000;
+	if ( randN < this->m_iEventItemDropRate )
+	{
+		int ei;
+		int eil;
+		int x;
+		int y;
+		float dur = 0;
+		dur = 255.0;
+
+		x = lpObj->X;
+		y = lpObj->Y;
+		eil = this->m_iEventItemLevel;
+		ei = this->m_iEventItemType;
+
+		int thdu = gObjMonsterTopHitDamageUser(lpObj);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x ,y, ei, eil, dur, 0, 0, 0, thdu, 0, 0);
+		ITEMBAG_DROP_LOG.Output("[%s][%s] Event ItemDrop RND:%d/%d (%d)(%d/%d)", 
+			lpObj->Name,
+			this->m_sEventName, 
+			randN, this->m_iEventItemDropRate,
+			lpObj->MapNumber, x, y
+		);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOL CItemBagEx::DropEventItemByMobId(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	if ( this->IsMobIdExist(aIndex) == FALSE )
+	{
+		return FALSE;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	int randN = rand()%10000;
+	if ( randN < this->m_iEventItemDropRate )
+	{
+		int ei;
+		int eil;
+		int x;
+		int y;
+		float dur = 0;
+		dur = 255.0;
+
+		x = lpObj->X;
+		y = lpObj->Y;
+		eil = this->m_iEventItemLevel;
+		ei = this->m_iEventItemType;
+
+		int thdu = gObjMonsterTopHitDamageUser(lpObj);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x ,y, ei, eil, dur, 0, 0, 0, thdu, 0, 0);
+		ITEMBAG_DROP_LOG.Output("[%s][%s] Event ItemDrop RND:%d/%d (%d)(%d/%d)", 
+			lpObj->Name, 
+			this->m_sEventName, 
+			randN, this->m_iEventItemDropRate, 
+			lpObj->MapNumber, x, y
+		);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOL CItemBagEx::DropStarOfXMasEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[CHRISTMAS] StarOfXMas Event NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[CHRISTMAS] StarOfXMas Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+			/*if ( rand()%5 < 1 )
+			{
+				Option3 = this->BagObject[DropItemNum].m_isoption;
+			}
+			else
+			{
+				Option3 = rand()%this->BagObject[DropItemNum].m_isoption + 1;
+			}*/
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[CHRISTMAS] StarOfXMas Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+
 BOOL CItemBagEx::DropRedRibbonBoxEventItem(int aIndex)
 {
 	if ( this->m_bLoad == FALSE )
@@ -462,85 +584,92 @@ BOOL CItemBagEx::DropRedRibbonBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] REDRIBBONBOX Event NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] REDRIBBONBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iRedRibbonBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iRedRibbonBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX] RIBBONBOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iRedRibbonBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			ExOption = 0;
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX ] REDRIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] REDRIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -555,7 +684,6 @@ BOOL CItemBagEx::DropRedRibbonBoxEventItem(int aIndex)
 
 	return TRUE;
 }
-
 
 BOOL CItemBagEx::DropGreenRibbonBoxEventItem(int aIndex)
 {
@@ -575,92 +703,93 @@ BOOL CItemBagEx::DropGreenRibbonBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] GREENRIBBONBOX Event NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] GREENRIBBONBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iGreenRibbonBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iGreenRibbonBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX] GREENRIBBONBOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iGreenRibbonBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) ||
+			 type == ITEMGET(14,16) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) ||
-				 type == ITEMGET(14,16) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX ] GREENRIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] GREENRIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -697,90 +826,91 @@ BOOL CItemBagEx::DropBlueRibbonBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] BLUERIBBONBOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] BLUERIBBONBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iBlueRibbonBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iBlueRibbonBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX] BLUERIBBONBOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iBlueRibbonBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14)  )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(13,8) ||
-				 type == ITEMGET(13,9) ||
-				 type == ITEMGET(13,12) ||
-				 type == ITEMGET(13,21) )
-			{
-				level = 0;
-			}
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT CHRISTMAS RIBBONBOX ] BLUERIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][CHRISTMAS RIBBONBOX] BLUERIBBONBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -795,8 +925,6 @@ BOOL CItemBagEx::DropBlueRibbonBoxEventItem(int aIndex)
 
 	return TRUE;
 }
-
-
 
 BOOL CItemBagEx::DropPinkChocolateBoxEventItem(int aIndex)
 {
@@ -816,85 +944,92 @@ BOOL CItemBagEx::DropPinkChocolateBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] PINKCHOCOLATEBOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] PINKCHOCOLATEBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iPinkChocolateBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iPinkChocolateBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX] PINKCHOCOLATE BOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iPinkChocolateBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			ExOption = 0;
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX ] PINKCHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] PINKCHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -929,92 +1064,93 @@ BOOL CItemBagEx::DropRedChocolateBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] REDCHOCOLATEBOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] REDCHOCOLATEBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iRedChocolateBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iRedChocolateBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX] REDCHOCOLATEBOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iRedChocolateBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) ||
+			 type == ITEMGET(14,16) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) ||
-				 type == ITEMGET(14,16) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX ] REDCHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] REDCHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -1029,8 +1165,6 @@ BOOL CItemBagEx::DropRedChocolateBoxEventItem(int aIndex)
 
 	return TRUE;
 }
-
-
 
 
 BOOL CItemBagEx::DropBlueChocolateBoxEventItem(int aIndex)
@@ -1051,90 +1185,91 @@ BOOL CItemBagEx::DropBlueChocolateBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] BLUECHOCOLATEBOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] BLUECHOCOLATEBOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iBlueChocolateBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iBlueChocolateBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX] BLUECHOCOLATEBOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iBlueChocolateBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14)  )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(13,8) ||
-				 type == ITEMGET(13,9) ||
-				 type == ITEMGET(13,12) ||
-				 type == ITEMGET(13,21) )
-			{
-				level = 0;
-			}
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT VALENTINE'S DAY CHOCOLATEBOX ] BLUECHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d  Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT][VALENTINE'S DAY CHOCOLATEBOX] BLUECHOCOLATEBOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -1170,85 +1305,92 @@ BOOL CItemBagEx::DropLightPurpleCandyBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] LIGHT PURPLE BOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] LIGHT PURPLE BOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iLightPurpleCandyBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iLightPurpleCandyBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] LIGHT PURPLE BOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iLightPurpleCandyBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			ExOption = 0;
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] LIGHT PURPLE BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] LIGHT PURPLE BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -1283,92 +1425,93 @@ BOOL CItemBagEx::DropVermilionCandyBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] VERMILION BOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] VERMILION BOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iVermilionCandyBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iVermilionCandyBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] VERMILION BOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iVermilionCandyBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14) ||
+			 type == ITEMGET(14,16) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14) ||
-				 type == ITEMGET(14,16) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(14,19) ||
-				 type == ITEMGET(14,28) ||
-				 type == ITEMGET(13,18) )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-			}
+		if ( type == ITEMGET(14,19) ||
+			 type == ITEMGET(14,28) ||
+			 type == ITEMGET(13,18) )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] VERMILION BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] VERMILION BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -1383,8 +1526,6 @@ BOOL CItemBagEx::DropVermilionCandyBoxEventItem(int aIndex)
 
 	return TRUE;
 }
-
-
 
 
 BOOL CItemBagEx::DropDeepBlueCandyBoxEventItem(int aIndex)
@@ -1405,90 +1546,91 @@ BOOL CItemBagEx::DropDeepBlueCandyBoxEventItem(int aIndex)
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] DEEP BLUE BOX NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] DEEP BLUE BOX Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		DropItemRate = rand() % 10000;
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
-		if ( DropItemRate < g_iDeepBlueCandyBoxDropZenRate )
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iDeepBlueCandyBoxDropZen, 
-				lpObj->X, lpObj->Y);
+			Option2 = 0;
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] DEEP BLUE BOX Event ItemDrop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name,
-				g_iDeepBlueCandyBoxDropZen);
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
 		}
-		else
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			DropItemNum = rand() % this->GetBagCount();
-			dur = 0;
-			x = lpObj->X;
-			y = lpObj->Y;
-			level = this->GetLevel(DropItemNum);
-			type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
 
-			if ( type == -1 )
-				return FALSE;
-
-			if ( this->BagObject[DropItemNum].m_isskill != 0 )
-				Option1 = 1;
-
-			if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 			{
-				Option2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					Option2 = 1;
-				}
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 			}
+		}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
-			{
-				if ( (rand()%5) < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand() % 3;
-				}
-			}
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
 
-			if ( this->BagObject[DropItemNum].m_isexitem )
-			{
-				ExOption = NewOptionRand(level);
-				Option2 = 0;
-				Option1 = 1;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(12,15) ||
-				 type == ITEMGET(14,13) ||
-				 type == ITEMGET(14,14)  )
-			{
-				Option1 = 0;
-				Option2 = 0;
-				Option3 = 0;
-				level = 0;
-			}
-
-			if ( type == ITEMGET(13,8) ||
-				 type == ITEMGET(13,9) ||
-				 type == ITEMGET(13,12) ||
-				 type == ITEMGET(13,21) )
-			{
-				level = 0;
-			}
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
 			
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[EVENT WHITE DAY CANDY BOX] DEEP BLUE BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d Ex:[%d,%d,%d,%d,%d,%d,%d]",
-				lpObj->AccountID, lpObj->Name, this->m_sEventName,
-				lpObj->MapNumber, x, y, ItemAttribute[type].Name,
-				type, level, Option1, Option2, Option3, ((ExOption&0x20) >> 5), ((ExOption&0x10) >> 4), ((ExOption&0x08) >> 3), ((ExOption&0x04) >> 2), ((ExOption&0x02) >> 1), (ExOption&0x01), 0);
-		}
+		ITEMBAG_DROP_LOG.Output("[EVENT WHITE DAY CANDY BOX] DEEP BLUE BOX Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
 
 		PMSG_SERVERCMD ServerCmd;
 
@@ -1504,70 +1646,600 @@ BOOL CItemBagEx::DropDeepBlueCandyBoxEventItem(int aIndex)
 	return TRUE;
 }
 
-BOOL CItemBagEx::DropHallowinEventItem(LPOBJ lpObj)
+BOOL CItemBagEx::GreenMysteryBoxEventItem(int aIndex)
 {
 	if ( this->m_bLoad == FALSE )
 		return FALSE;
 
-	int iType;
-	int iLevel;
-	int X;
-	int Y;
-	int iDropItemNum = 0;
-	int iDropItemRate;
-	int iDuration = 0;
-	int iTotalDropRate = 0;
-	int iItemBagCount = this->GetBagCount();
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
 
-	if ( iItemBagCount > 0 )
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
 	{
-		iTotalDropRate = g_iHallowinDayEventJOLBlessDropRate +
-			             g_iHallowinDayEventJOLAngerDropRaTe +
-						 g_iHallowinDayEventJOLScreamDropRate +
-						 g_iHallowinDayEventJOLFoodDropRate +
-						 g_iHallowinDayEventJOLDrinkDropRate +
-						 g_iHallowinDayEventJOLPolymorphRingDropRate;
-
-		iDropItemRate = rand() % iTotalDropRate;
-
-		if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate)  )
-			iDropItemNum = 0;
-		else if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate - g_iHallowinDayEventJOLAngerDropRaTe) )
-			iDropItemNum = 1;
-		else if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate - g_iHallowinDayEventJOLAngerDropRaTe - g_iHallowinDayEventJOLScreamDropRate) )
-			iDropItemNum = 2;
-		else if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate - g_iHallowinDayEventJOLAngerDropRaTe - g_iHallowinDayEventJOLScreamDropRate - g_iHallowinDayEventJOLFoodDropRate) )
-			iDropItemNum = 3;
-		else if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate - g_iHallowinDayEventJOLAngerDropRaTe - g_iHallowinDayEventJOLScreamDropRate - g_iHallowinDayEventJOLFoodDropRate - g_iHallowinDayEventJOLDrinkDropRate) )
-			iDropItemNum = 4;
-		else if ( iDropItemRate >= (iTotalDropRate - g_iHallowinDayEventJOLBlessDropRate - g_iHallowinDayEventJOLAngerDropRaTe - g_iHallowinDayEventJOLScreamDropRate - g_iHallowinDayEventJOLFoodDropRate - g_iHallowinDayEventJOLDrinkDropRate - g_iHallowinDayEventJOLPolymorphRingDropRate) )
-			iDropItemNum = 5;
-
-		X = lpObj->X;
-		Y = lpObj->Y;
-		iLevel = this->GetLevel(iDropItemNum);
-		iType = ItemGetNumberMake(this->BagObject[iDropItemNum].m_type, this->BagObject[iDropItemNum].m_index);
-
-		if ( iType == -1 )
-			return FALSE;
-
-		if ( iType == ITEMGET(13,40) )
+		if (this->GetDropZen() <= 0)
 		{
-			iLevel = 0;
-			iDuration = 100;
+			ITEMBAG_DROP_LOG.Output("[Mystery BOX] Green Mystery Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
 		}
 
-		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, X, Y,
-			iType, iLevel, iDuration, 0, 0, 0, lpObj->m_Index, 0, 0);
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
 
-		LogAddTD("[HallowinDay Event][Pumpkin of Luck] Event Item Drop [%s][%s] : (%d)(%d/%d) Item Attribute : %s(%d) Level : %d Dur : %d",
-			lpObj->AccountID, lpObj->Name, lpObj->MapNumber, X, Y, ItemAttribute[iType].Name, iType, iLevel, iDuration);
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Green Mystery Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Green Mystery Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
 	}
 
 	return TRUE;
 }
 
-BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+BOOL CItemBagEx::RedMysteryBoxEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Mystery BOX] Red Mystery Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Red Mystery Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Red Mystery Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::PurpleMysteryBoxEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Mystery BOX] Purple Mystery Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Purple Mystery Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Mystery BOX] Purple Mystery Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ex:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3, ExOption);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+BOOL CItemBagEx::CherryBlossomBoxEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[CHERRY BLOSSOM EVENT] Cherry Blossom NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[CHERRY BLOSSOM EVENT] Cherry Blossom Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+
+		if (type >= ITEMGET(14,88) && type <= ITEMGET(14,90))
+		{
+			dur = 1;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[CHERRY BLOSSOM EVENT] Cherry Blossom Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+BOOL CItemBagEx::GMBoxEventItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[GM BOX] GM Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[GM BOX] GM Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+		
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[GM BOX] GM Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropSelupanEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
 	if ( this->m_bLoad == FALSE )
 	{
@@ -1583,22 +2255,36 @@ BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE
 	int Option2 = 0;
 	int Option3 = 0;
 	int DropItemNum;
+	int DropItemRate;
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 	int iItemBagCount = this->GetBagCount();
 
-	for(int i=0;i<iItemBagCount;i++)
-	{
-		type = ItemGetNumberMake(this->BagObject[i].m_type, this->BagObject[i].m_index);
+	int itemDrops = rand()%Raklion.SelupanDropItems;
+	itemDrops++;
 
-		LogAdd("[¡ÛKUNDUN EVENT][KUNDUN ITEM BAG LIST] Item:(%s)%d Level:%d-%d op1:%d op2:%d op3:%d expo:%d",
-			ItemAttribute[type].Name, type, this->BagObject[i].m_minLevel, BagObject[i].m_maxLevel,
-			BagObject[i].m_isskill, BagObject[i].m_isluck, BagObject[i].m_isoption, BagObject[i].m_isexitem);
-	}
-
-	if ( this->GetBagCount() > 0 )
+	for(int i=0;i<itemDrops;i++)
 	{
-		if ( true )
+		DropItemRate = rand() % 100;
+		if ( DropItemRate > this->GetItemDropRate() )
+		{
+			if (this->GetDropZen() <= 0)
+			{
+				ITEMBAG_DROP_LOG.Output("[RAKLION EVENT] SELUPAN NO ItemDrop [%s][%s] [RATE:%d/%d]",
+					lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+				continue;
+			}
+
+			MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+				lpObj->X, lpObj->Y);
+
+			ITEMBAG_DROP_LOG.Output("[RAKLION EVENT] SELUPAN Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+			continue;
+		}
+
+		if ( this->GetBagCount() > 0 )
 		{
 			DropItemNum =  rand() % this->GetBagCount();
 			dur = 0;
@@ -1619,7 +2305,7 @@ BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE
 
 			if ( type == -1 )
 			{
-				return FALSE;
+				continue;
 			}
 
 			if ( this->BagObject[DropItemNum].m_isskill != 0 )
@@ -1637,26 +2323,23 @@ BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE
 				}
 			}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
+			if ( this->BagObject[DropItemNum].m_isoption > 0 )
 			{
-				if ( rand()%5 < 1 )
+				int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+				Option3 = rand()%(z28Percent+1);
+				Option3 = Option3 / 100;
+			}
+
+			DropItemRate = (rand() % 1000)+1;
+			if (DropItemRate <= this->GetExItemDropRate())
+			{
+				if ( this->BagObject[DropItemNum].m_isexitem != 0 )
 				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand()%3;
+					ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
 				}
 			}
 
-			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
-			{
-				ExOption = NewOptionRand(0);
-				Option2 = 0;
-				Option1 = 1;
-			}
-
-			if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14) || type == ITEMGET(14,16))	// Chaos, Bless, Soul
+			if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
 			{
 				Option1 = 0;
 				Option2 = 0;
@@ -1664,12 +2347,12 @@ BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE
 				level = 0;
 			}
 
-			if ( type == ITEMGET(13,0) ||
-				 type == ITEMGET(13,1) ||
-				 type == ITEMGET(13,2) ||
-				 type == ITEMGET(13,8) ||
-				 type == ITEMGET(13,9) ||
-				 type == ITEMGET(13,12) ||
+			if (type == ITEMGET(13,0) ||
+				type == ITEMGET(13,1) ||
+				type == ITEMGET(13,2) ||
+				type == ITEMGET(13,8) ||
+				type == ITEMGET(13,9) ||
+				type == ITEMGET(13,12) ||
 				 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
 			{
 				level = 0;
@@ -1677,20 +2360,19 @@ BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE
 
 			ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[¡ÛKundun EVENT] ¡ÚKUNDUN Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			ITEMBAG_DROP_LOG.Output("[RAKLION EVENT] SELUPAN Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
 				lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
-			return TRUE;
 		}
 	}
 
 	return TRUE;
 }
-
-//#if(_GSCS==1)
-BOOL CItemBagEx::DropCastleHuntZoneBossReward(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY) //Identical
+BOOL CItemBagEx::DoubleGoerEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
 	if ( this->m_bLoad == FALSE )
+	{
 		return FALSE;
+	}
 
 	float dur;
 	int type;
@@ -1700,17 +2382,790 @@ BOOL CItemBagEx::DropCastleHuntZoneBossReward(int aIndex, BYTE btMapNumber, BYTE
 	int Option1 = 0;
 	int Option2 = 0;
 	int Option3 = 0;
+	int DropItemRate;
 	int DropItemNum;
 	int ExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > (this->GetItemDropRate() /** g_DoubleGoer.Difficulty*/) )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Double Goer] No Zen Drop!");
+
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Double Goer] Event (%s) ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			this->m_sEventName,
+			lpObj->AccountID, lpObj->Name, 
+			this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
 
 	if ( this->GetBagCount() > 0 )
 	{
-		if ( true )
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= (this->GetExItemDropRate() /** g_DoubleGoer.Difficulty*/))
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Double Goer] Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::ImperialGuardianEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > (this->GetItemDropRate() /** g_ImperialGuardian.Difficulty*/) )
+	{
+		if (this->GetDropZen() <= 0)
+			return FALSE;
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Imperial Guardian] Boss Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= (this->GetExItemDropRate() /** g_ImperialGuardian.Difficulty*/))
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Imperial Guardian] Boss Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropFortunePouchItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[FORTUNE POUCH] NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[FORTUNE POUCH] Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[FORTUNE POUCH] Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+#if (PACK_EDITION>=2)
+BOOL CItemBagEx::DropHalloweenPKEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[HALLOWEEN EVENT] Halloween PK NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[HALLOWEEN EVENT] Halloween PK Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[HALLOWEEN EVENT] Halloween PK Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+#endif
+
+#if (PACK_EDITION>=1)
+BOOL CItemBagEx::DropBlueEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[BLUE EVENT] Rabbit NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[BLUE EVENT] Rabbit Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[BLUE EVENT] Rabbit Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+BOOL CItemBagEx::DropSummerEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[SUMMER EVENT] Fire Flame Ghost NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[SUMMER EVENT] Fire Flame Ghost Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[SUMMER EVENT] Fire Flame Ghost Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+#endif
+
+#if (PACK_EDITION>=3)
+BOOL CItemBagEx::DropSwampEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	int itemDrops = rand()%g_Swamp.MedusaDropItemCount;
+	itemDrops++;
+
+#if (GS_CASTLE==1)
+	if (g_Swamp.Start)
+	{
+		char sbuff[1024]={0};
+		wsprintf(sbuff,lMsg.Get(MSGGET(14, 129)), gObj[aIndex].Name);
+		g_Swamp.GCServerMsgStringSend(sbuff,0);
+	}
+#endif
+
+	for(int i=0;i<itemDrops;i++)
+	{
+		DropItemRate = rand() % 100;
+		if ( DropItemRate > this->GetItemDropRate() )
+		{
+			if (this->GetDropZen() <= 0)
+			{
+				ITEMBAG_DROP_LOG.Output("[SWAMP EVENT] Medusa NO ItemDrop [%s][%s] [RATE:%d/%d]",
+					lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+				continue;
+			}
+
+			MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+				lpObj->X, lpObj->Y);
+
+			ITEMBAG_DROP_LOG.Output("[SWAMP EVENT] Medusa Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+			continue;
+		}
+
+		if ( this->GetBagCount() > 0 )
 		{
 			DropItemNum =  rand() % this->GetBagCount();
 			dur = 0;
-
+				
 			if ( cX == 0 && cY == 0 )
 			{
 				x = lpObj->X;
@@ -1727,7 +3182,7 @@ BOOL CItemBagEx::DropCastleHuntZoneBossReward(int aIndex, BYTE btMapNumber, BYTE
 
 			if ( type == -1 )
 			{
-				return FALSE;
+				continue;
 			}
 
 			if ( this->BagObject[DropItemNum].m_isskill != 0 )
@@ -1745,23 +3200,20 @@ BOOL CItemBagEx::DropCastleHuntZoneBossReward(int aIndex, BYTE btMapNumber, BYTE
 				}
 			}
 
-			if ( this->BagObject[DropItemNum].m_isoption != 0 )
+			if ( this->BagObject[DropItemNum].m_isoption > 0 )
 			{
-				if ( rand()%5 < 1 )
-				{
-					Option3 = 3;
-				}
-				else
-				{
-					Option3 = rand()%3;
-				}
+				int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+				Option3 = rand()%(z28Percent+1);
+				Option3 = Option3 / 100;
 			}
 
-			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			DropItemRate = (rand() % 1000)+1;
+			if (DropItemRate <= this->GetExItemDropRate())
 			{
-				ExOption = NewOptionRand(0);
-				Option2 = 0;
-				Option1 = 1;
+				if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+				{
+					ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+				}
 			}
 
 			if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
@@ -1783,17 +3235,1141 @@ BOOL CItemBagEx::DropCastleHuntZoneBossReward(int aIndex, BYTE btMapNumber, BYTE
 				level = 0;
 			}
 
-			ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+			BYTE cDropX = x;
+			BYTE cDropY = y;
+			if ( !gObjGetRandomItemDropLocation(lpObj->MapNumber, cDropX, cDropY, 4, 4, 10))
+			{
+				cDropX = x;
+				cDropY = y;
+			}
+			ItemSerialCreateSend(lpObj->m_Index, btMapNumber, cDropX, cDropY, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
-			LogAddTD("[Castle HuntZone] ¡ÚCastle HuntZone Boss ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			ITEMBAG_DROP_LOG.Output("[SWAMP EVENT] Medusa Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
 				lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
-
 		}
-		return TRUE;
 	}
+
 	return TRUE;
 }
-//#endif
+#endif
+
+BOOL CItemBagEx::DropXMasEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	GCFireWorks(lpObj->MapNumber,lpObj->X,lpObj->Y);
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[XMAS EVENT] Santa NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[XMAS EVENT] Santa Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[XMAS EVENT] Santa Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+#if (PACK_EDITION>=3)
+BOOL CItemBagEx::DropBossAttackItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int DropItemRate;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[BOSS ATTACK] Boss NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[BOSS ATTACK] Boss Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[BOSS ATTACK] Boss Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+#endif
+
+
+BOOL CItemBagEx::DropS6QuestBox(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[S6Quest Box] Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[S6Quest Box] Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[S6Quest Box] Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropS5E4BoxItem(int aIndex)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[S5E4 Box] Box NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[S5E4 Box] Box ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		x = lpObj->X;
+		y = lpObj->Y;
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+			Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[S5E4 Box] Box ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName,
+			lpObj->MapNumber, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = lpObj->X;
+		ServerCmd.Y = lpObj->Y;
+
+		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	}
+
+	return TRUE;
+}
+
+
+BOOL CItemBagEx::DropRainItemEvent(int map, int x, int y)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float dur;
+	int type;
+	int level;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemRate;
+	int DropItemNum;
+	int ExOption = 0;
+
+	if ( this->GetBagCount() > 0 )
+	{
+		//srand((unsigned)time(NULL));
+		srand(time(0));
+		DropItemNum = rand() % this->GetBagCount();
+		dur = 0;
+		//srand((unsigned)time(NULL));
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+			Option1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption != 0 )
+		{
+			if ( rand()%5 < 1 )
+			{
+				Option3 = this->BagObject[DropItemNum].m_isoption;
+			}
+			else
+			{
+				Option3 = rand()%this->BagObject[DropItemNum].m_isoption + 1;
+			}
+		}
+
+		//srand((unsigned)time(NULL));
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) ||
+			 type == ITEMGET(14,13) ||
+			 type == ITEMGET(14,14)  )
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type == ITEMGET(13,21) )
+		{
+			level = 0;
+		}
+			
+				//MapC[map].MonsterItemDrop(type, level, dur, x, y,
+				//	Option1, Option2, Option3, ExOption, 0, -1, 0, 0,0,0,0,0,0);
+		ItemSerialCreateSend(-1, map, x, y, type, level, dur,
+			Option1, Option2, Option3, 0, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Rain Item Event] Box ItemDrop : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			map, x, y, ItemAttribute[type].Name,
+			type, level, Option1, Option2, Option3);
+
+		PMSG_SERVERCMD ServerCmd;
+
+		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+		ServerCmd.CmdType = 0;
+		ServerCmd.X = x;
+		ServerCmd.Y = y;
+
+		MsgSendDistNear2((LPBYTE)&ServerCmd, sizeof(ServerCmd),map,x,y,15);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropKundunEventItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int DropItemRate;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Kundun EVENT] KUNDUN NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Kundun EVENT] KUNDUN Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		if ( type == ITEMGET(13,0) ||
+			 type == ITEMGET(13,1) ||
+			 type == ITEMGET(13,2) ||
+			 type == ITEMGET(13,8) ||
+			 type == ITEMGET(13,9) ||
+			 type == ITEMGET(13,12) ||
+			 type ==ITEMGET(13,13) )	// Angel, imp, unirioa, dino, r and pendant of ice, poisonm
+		{
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Kundun EVENT] KUNDUN Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropErohimCastleZoneItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int DropItemRate;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[CastleDeepEvent]EROHIM NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[CastleDeepEvent] EROHIM Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[CastleDeepEvent] EROHIM Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropHuntZoneItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+	{
+		return FALSE;
+	}
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int DropItemRate;
+	int ExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() > 0)
+		{
+			int dropZen = rand() % this->GetDropZen();
+
+			MapC[lpObj->MapNumber].MoneyItemDrop(dropZen, lpObj->X, lpObj->Y);
+
+			ITEMBAG_DROP_LOG.Output("[CastleDeepEvent] HUNT ZONE Event ItemDrop [%s][%s] [%d Zen] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, dropZen, DropItemRate, this->GetItemDropRate());
+
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum =  rand() % this->GetBagCount();
+		dur = 0;
+			
+		if ( cX == 0 && cY == 0 )
+		{
+			x = lpObj->X;
+			y = lpObj->Y;
+		}
+		else
+		{
+			x = cX;
+			y = cY;
+		}
+
+		level = this->GetLevel(DropItemNum);
+		type = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( type == -1 )
+		{
+			return FALSE;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isskill != 0 )
+		{
+			Option1 =1;
+		}
+
+		if ( this->BagObject[DropItemNum].m_isluck != 0 )
+		{
+			Option2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				Option2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			Option3 = rand()%(z28Percent+1);
+			Option3 = Option3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				ExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))	// Chaos, Bless, Soul
+		{
+			Option1 = 0;
+			Option2 = 0;
+			Option3 = 0;
+			level = 0;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[CastleDeepEvent] HUNT ZONE Event ItemDrop [%s][%s] [%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
+			lpObj->AccountID, lpObj->Name, this->m_sEventName, btMapNumber, x, y, ItemAttribute[type].Name, type, level, Option1, Option2, Option3);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropHalloweenEventItem(LPOBJ lpObj)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	int iType;
+	int iLevel;
+	int X;
+	int Y;
+	int DropItemNum = 0;
+	int DropItemRate;
+	int iDuration = 0;
+	int iTotalDropRate = 0;
+	int iItemBagCount = this->GetBagCount();
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[HalloweenDay Event][Pumpkin of Luck] NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[HalloweenDay Event][Pumpkin of Luck] Event Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( iItemBagCount > 0 )
+	{
+		iTotalDropRate = g_iHalloweenDayEventJOLBlessDropRate +
+			             g_iHalloweenDayEventJOLAngerDropRaTe +
+						 g_iHalloweenDayEventJOLScreamDropRate +
+						 g_iHalloweenDayEventJOLFoodDropRate +
+						 g_iHalloweenDayEventJOLDrinkDropRate +
+						 g_iHalloweenDayEventJOLPolymorphRingDropRate;
+
+		DropItemRate = rand() % iTotalDropRate;
+
+		if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate)  )
+			DropItemNum = 0;
+		else if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate - g_iHalloweenDayEventJOLAngerDropRaTe) )
+			DropItemNum = 1;
+		else if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate - g_iHalloweenDayEventJOLAngerDropRaTe - g_iHalloweenDayEventJOLScreamDropRate) )
+			DropItemNum = 2;
+		else if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate - g_iHalloweenDayEventJOLAngerDropRaTe - g_iHalloweenDayEventJOLScreamDropRate - g_iHalloweenDayEventJOLFoodDropRate) )
+			DropItemNum = 3;
+		else if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate - g_iHalloweenDayEventJOLAngerDropRaTe - g_iHalloweenDayEventJOLScreamDropRate - g_iHalloweenDayEventJOLFoodDropRate - g_iHalloweenDayEventJOLDrinkDropRate) )
+			DropItemNum = 4;
+		else if ( DropItemRate >= (iTotalDropRate - g_iHalloweenDayEventJOLBlessDropRate - g_iHalloweenDayEventJOLAngerDropRaTe - g_iHalloweenDayEventJOLScreamDropRate - g_iHalloweenDayEventJOLFoodDropRate - g_iHalloweenDayEventJOLDrinkDropRate - g_iHalloweenDayEventJOLPolymorphRingDropRate) )
+			DropItemNum = 5;
+
+		X = lpObj->X;
+		Y = lpObj->Y;
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( iType == -1 )
+			return FALSE;
+
+		if ( iType == ITEMGET(13,40) )
+		{
+			iLevel = 0;
+			iDuration = 100;
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, X, Y,
+			iType, iLevel, iDuration, 0, 0, 0, lpObj->m_Index, 0, 0);
+
+		ITEMBAG_DROP_LOG.Output("[HalloweenDay Event][Pumpkin of Luck] Event Item Drop [%s][%s] : (%d)(%d/%d) Item Attribute : %s(%d) Level : %d Dur : %d",
+			lpObj->AccountID, lpObj->Name, lpObj->MapNumber, X, Y, ItemAttribute[iType].Name, iType, iLevel, iDuration);
+	}
+
+	return TRUE;
+}
+
+BOOL CItemBagEx::DropCrywolfPedestalRewardItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float fDur = 0;
+	int iType = 0;
+	int iLevel = 0;
+	int X = 0;
+	int Y = 0;
+	int iOption1 = 0;
+	int iOption2 = 0;
+	int iOption3 = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
+	int iExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Crywolf] Pedestal Elf Reward NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Pedestal Elf Reward Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand()% this->GetBagCount();
+		fDur = 0;
+
+		if ( cX == 0 && cY == 0 )
+		{
+			X = lpObj->X;
+			Y = lpObj->Y;
+		}
+		else
+		{
+			X = cX;
+			Y = cY;
+		}
+
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( iType == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill )
+			iOption1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck )
+		{
+			iOption2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				iOption2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
+			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Pedestal Elf Reward Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
+			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
+	}
+
+	return TRUE;
+}
 
 BOOL CItemBagEx::DropCrywolfDarkElfItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
@@ -1808,95 +4384,91 @@ BOOL CItemBagEx::DropCrywolfDarkElfItem(int aIndex, BYTE btMapNumber, BYTE cX, B
 	int iOption1 = 0;
 	int iOption2 = 0;
 	int iOption3 = 0;
-	int iDropItemNum = 0;
-	int iDropItemRate = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
 	int iExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Crywolf] Dark Elf NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Dark Elf Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		iDropItemRate = rand() % 10000;
+		DropItemNum = rand()% this->GetBagCount();
+		fDur = 0;
 
-		if ( iDropItemRate < g_iCrywolfMonsterDarkElfDropZenRate ) 
+		if ( cX == 0 && cY == 0 )
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iCrywolfMonsterDarkElfDropZen, cX, cY);
-
-			LogAddTD("[ Crywolf ][Reward] Dark Elf Item Drop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name, g_iCrywolfMonsterDarkElfDropZen);
+			X = lpObj->X;
+			Y = lpObj->Y;
 		}
 		else
 		{
-			iDropItemNum = rand()% this->GetBagCount();
-			fDur = 0;
-
-			if ( cX == 0 && cY == 0 )
-			{
-				X = lpObj->X;
-				Y = lpObj->Y;
-			}
-			else
-			{
-				X = cX;
-				Y = cY;
-			}
-
-			iLevel = this->GetLevel(iDropItemNum);
-			iType = ItemGetNumberMake(this->BagObject[iDropItemNum].m_type, this->BagObject[iDropItemNum].m_index);
-
-			if ( iType == -1 )
-				return FALSE;
-
-			if ( this->BagObject[iDropItemNum].m_isskill )
-				iOption1 = 1;
-
-			if ( this->BagObject[iDropItemNum].m_isluck )
-			{
-				iOption2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					iOption2 = 1;
-				}
-			}
-
-			if ( this->BagObject[iDropItemNum].m_isoption != 0 )
-			{
-				if ( rand()%5 < 1 )
-				{
-					iOption3 = 3;
-				}
-				else
-				{
-					iOption3 = rand()%3;
-				}
-			}
-
-			if ( this->BagObject[iDropItemNum].m_isexitem != 0 )
-			{
-				iExOption = NewOptionRand(0);
-				iOption2 = 0;
-				iOption1 = 1;
-				iLevel = 0;
-			}
-
-			ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
-				iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
-
-			LogAddTD("[ Crywolf ][Reward] Dark Elf Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
-				lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
-				iType, iLevel, iOption1, iOption2, iOption3, iExOption);
-
-			return TRUE;
+			X = cX;
+			Y = cY;
 		}
+
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( iType == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill )
+			iOption1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck )
+		{
+			iOption2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				iOption2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
+			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Dark Elf Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
+			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
 	}
 
 	return TRUE;
-
-
 }
-
-
-
 
 BOOL CItemBagEx::DropCrywolfBossMonsterItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
@@ -1911,114 +4483,33 @@ BOOL CItemBagEx::DropCrywolfBossMonsterItem(int aIndex, BYTE btMapNumber, BYTE c
 	int iOption1 = 0;
 	int iOption2 = 0;
 	int iOption3 = 0;
-	int iDropItemNum = 0;
-	int iDropItemRate = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
 	int iExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
-	if ( this->GetBagCount() > 0 )
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
 	{
-		iDropItemRate = rand() % 10000;
-
-		if ( iDropItemRate < g_iCrywolfBossMonsterDropZenRate ) 
+		if (this->GetDropZen() <= 0)
 		{
-			MapC[lpObj->MapNumber].MoneyItemDrop(g_iCrywolfBossMonsterDropZen, cX, cY);
-
-			LogAddTD("[ Crywolf ][Reward] Boss Monster Item Drop [%s][%s] [%d Zen]",
-				lpObj->AccountID, lpObj->Name, g_iCrywolfBossMonsterDropZen);
+			ITEMBAG_DROP_LOG.Output("[Crywolf] Boss NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
 		}
-		else
-		{
-			iDropItemNum = rand()% this->GetBagCount();
-			fDur = 0;
 
-			if ( cX == 0 && cY == 0 )
-			{
-				X = lpObj->X;
-				Y = lpObj->Y;
-			}
-			else
-			{
-				X = cX;
-				Y = cY;
-			}
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
 
-			iLevel = this->GetLevel(iDropItemNum);
-			iType = ItemGetNumberMake(this->BagObject[iDropItemNum].m_type, this->BagObject[iDropItemNum].m_index);
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Boss Monster Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
 
-			if ( iType == -1 )
-				return FALSE;
-
-			if ( this->BagObject[iDropItemNum].m_isskill )
-				iOption1 = 1;
-
-			if ( this->BagObject[iDropItemNum].m_isluck )
-			{
-				iOption2 = 0;
-
-				if ( (rand()%2) == 0 )
-				{
-					iOption2 = 1;
-				}
-			}
-
-			if ( this->BagObject[iDropItemNum].m_isoption != 0 )
-			{
-				if ( rand()%5 < 1 )
-				{
-					iOption3 = 3;
-				}
-				else
-				{
-					iOption3 = rand()%3;
-				}
-			}
-
-			if ( this->BagObject[iDropItemNum].m_isexitem != 0 )
-			{
-				iExOption = NewOptionRand(0);
-				iOption2 = 0;
-				iOption1 = 1;
-				iLevel = 0;
-			}
-
-			ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
-				iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
-
-			LogAddTD("[ Crywolf ][Reward] Boss Monster Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
-				lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
-				iType, iLevel, iOption1, iOption2, iOption3, iExOption);
-
-			return TRUE;
-		}
+		return TRUE;
 	}
 
-	return TRUE;
-}
-
-
-//#if(_GSCS==0)
-BOOL CItemBagEx::DropKanturuMayaHandItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	if ( this->m_bLoad == FALSE )
-		return FALSE;
-
-	float fDur = 0;
-	int iType = 0;
-	int iLevel = 0;
-	int X = 0;
-	int Y = 0;
-	int iOption1 = 0;
-	int iOption2 = 0;
-	int iOption3 = 0;
-	int iDropItemNum = 0;
-	int iDropItemRate = 0;
-	int iExOption = 0;
-	LPOBJ lpObj = &gObj[aIndex];
-
 	if ( this->GetBagCount() > 0 )
 	{
-		iDropItemNum = rand()% this->GetBagCount();
+		DropItemNum = rand()% this->GetBagCount();
 		fDur = 0;
 
 		if ( cX == 0 && cY == 0 )
@@ -2032,16 +4523,16 @@ BOOL CItemBagEx::DropKanturuMayaHandItem(int aIndex, BYTE btMapNumber, BYTE cX, 
 			Y = cY;
 		}
 
-		iLevel = this->GetLevel(iDropItemNum);
-		iType = ItemGetNumberMake(this->BagObject[iDropItemNum].m_type, this->BagObject[iDropItemNum].m_index);
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
 		if ( iType == -1 )
 			return FALSE;
 
-		if ( this->BagObject[iDropItemNum].m_isskill )
+		if ( this->BagObject[DropItemNum].m_isskill )
 			iOption1 = 1;
 
-		if ( this->BagObject[iDropItemNum].m_isluck )
+		if ( this->BagObject[DropItemNum].m_isluck )
 		{
 			iOption2 = 0;
 
@@ -2051,39 +4542,131 @@ BOOL CItemBagEx::DropKanturuMayaHandItem(int aIndex, BYTE btMapNumber, BYTE cX, 
 			}
 		}
 
-		if ( this->BagObject[iDropItemNum].m_isoption != 0 )
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			if ( rand()%5 < 1 )
-			{
-				iOption3 = 3;
-			}
-			else
-			{
-				iOption3 = rand()%3;
-			}
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
 		}
 
-		if ( this->BagObject[iDropItemNum].m_isexitem != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
 		{
-			iExOption = NewOptionRand(0);
-			iOption2 = 0;
-			iOption1 = 1;
-			iLevel = 0;
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
 		}
 
 		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
 			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
 
-		LogAddTD("[ KANTURU ][ Reward ] MayaHand Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+		ITEMBAG_DROP_LOG.Output("[Crywolf][Reward] Boss Monster Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
 			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
 			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
-
-		return TRUE;
 	}
 
 	return TRUE;
 }
 
+BOOL CItemBagEx::DropKanturuMayaHandItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float fDur = 0;
+	int iType = 0;
+	int iLevel = 0;
+	int X = 0;
+	int Y = 0;
+	int iOption1 = 0;
+	int iOption2 = 0;
+	int iOption3 = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
+	int iExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Kanturu] MayaHand NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Kanturu][Reward] MayaHand Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand()% this->GetBagCount();
+		fDur = 0;
+
+		if ( cX == 0 && cY == 0 )
+		{
+			X = lpObj->X;
+			Y = lpObj->Y;
+		}
+		else
+		{
+			X = cX;
+			Y = cY;
+		}
+
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( iType == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill )
+			iOption1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck )
+		{
+			iOption2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				iOption2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
+			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[Kanturu][Reward] MayaHand Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
+			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
+	}
+
+	return TRUE;
+}
 
 BOOL CItemBagEx::DropKanturuNightmareItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
@@ -2098,14 +4681,33 @@ BOOL CItemBagEx::DropKanturuNightmareItem(int aIndex, BYTE btMapNumber, BYTE cX,
 	int iOption1 = 0;
 	int iOption2 = 0;
 	int iOption3 = 0;
-	int iDropItemNum = 0;
-	int iDropItemRate = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
 	int iExOption = 0;
 	LPOBJ lpObj = &gObj[aIndex];
 
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[Kanturu] Nightmare NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[Kanturu][Reward] Nightmare Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
 	if ( this->GetBagCount() > 0 )
 	{
-		iDropItemNum = rand()% this->GetBagCount();
+		DropItemNum = rand()% this->GetBagCount();
 		fDur = 0;
 
 		if ( cX == 0 && cY == 0 )
@@ -2119,16 +4721,16 @@ BOOL CItemBagEx::DropKanturuNightmareItem(int aIndex, BYTE btMapNumber, BYTE cX,
 			Y = cY;
 		}
 
-		iLevel = this->GetLevel(iDropItemNum);
-		iType = ItemGetNumberMake(this->BagObject[iDropItemNum].m_type, this->BagObject[iDropItemNum].m_index);
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
 
 		if ( iType == -1 )
 			return FALSE;
 
-		if ( this->BagObject[iDropItemNum].m_isskill )
+		if ( this->BagObject[DropItemNum].m_isskill )
 			iOption1 = 1;
 
-		if ( this->BagObject[iDropItemNum].m_isluck )
+		if ( this->BagObject[DropItemNum].m_isluck )
 		{
 			iOption2 = 0;
 
@@ -2138,36 +4740,128 @@ BOOL CItemBagEx::DropKanturuNightmareItem(int aIndex, BYTE btMapNumber, BYTE cX,
 			}
 		}
 
-		if ( this->BagObject[iDropItemNum].m_isoption != 0 )
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
 		{
-			if ( rand()%5 < 1 )
-			{
-				iOption3 = 3;
-			}
-			else
-			{
-				iOption3 = rand()%3;
-			}
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
 		}
 
-		if ( this->BagObject[iDropItemNum].m_isexitem != 0 )
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
 		{
-			iExOption = NewOptionRand(0);
-			iOption2 = 0;
-			iOption1 = 1;
-			iLevel = 0;
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
 		}
 
 		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
 			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
 
-		LogAddTD("[ KANTURU ][ Reward ] Nightmare Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+		ITEMBAG_DROP_LOG.Output("[Kanturu][Reward] Nightmare Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
 			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
 			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
-
-		return TRUE;
 	}
 
 	return TRUE;
 }
-//#endif
+
+BOOL CItemBagEx::DropHellMainItem(int aIndex, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	if ( this->m_bLoad == FALSE )
+		return FALSE;
+
+	float fDur = 0;
+	int iType = 0;
+	int iLevel = 0;
+	int X = 0;
+	int Y = 0;
+	int iOption1 = 0;
+	int iOption2 = 0;
+	int iOption3 = 0;
+	int DropItemNum = 0;
+	int DropItemRate = 0;
+	int iExOption = 0;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	DropItemRate = rand() % 100;
+	if ( DropItemRate > this->GetItemDropRate() )
+	{
+		if (this->GetDropZen() <= 0)
+		{
+			ITEMBAG_DROP_LOG.Output("[HellMain] NO ItemDrop [%s][%s] [RATE:%d/%d]",
+				lpObj->AccountID, lpObj->Name, DropItemRate, this->GetItemDropRate());
+			return FALSE;
+		}
+
+		MapC[lpObj->MapNumber].MoneyItemDrop(this->GetDropZen(), 
+			lpObj->X, lpObj->Y);
+
+		ITEMBAG_DROP_LOG.Output("[HellMain] Item Drop [%s][%s] [%d Zen] [RATE:%d/%d]",
+			lpObj->AccountID, lpObj->Name, this->GetDropZen(), DropItemRate, this->GetItemDropRate());
+
+		return TRUE;
+	}
+
+	if ( this->GetBagCount() > 0 )
+	{
+		DropItemNum = rand()% this->GetBagCount();
+		fDur = 0;
+
+		if ( cX == 0 && cY == 0 )
+		{
+			X = lpObj->X;
+			Y = lpObj->Y;
+		}
+		else
+		{
+			X = cX;
+			Y = cY;
+		}
+
+		iLevel = this->GetLevel(DropItemNum);
+		iType = ItemGetNumberMake(this->BagObject[DropItemNum].m_type, this->BagObject[DropItemNum].m_index);
+
+		if ( iType == -1 )
+			return FALSE;
+
+		if ( this->BagObject[DropItemNum].m_isskill )
+			iOption1 = 1;
+
+		if ( this->BagObject[DropItemNum].m_isluck )
+		{
+			iOption2 = 0;
+
+			if ( (rand()%2) == 0 )
+			{
+				iOption2 = 1;
+			}
+		}
+
+		if ( this->BagObject[DropItemNum].m_isoption > 0 )
+		{
+			int z28Percent = this->BagObject[DropItemNum].m_isoption*100;
+			iOption3 = rand()%(z28Percent+1);
+			iOption3 = iOption3 / 100;
+		}
+
+		DropItemRate = (rand() % 1000)+1;
+		if (DropItemRate <= this->GetExItemDropRate())
+		{
+			if ( this->BagObject[DropItemNum].m_isexitem != 0 )
+			{
+				iExOption = BoxExcOptions(this->BagObject[DropItemNum].m_isexitem);
+			}
+		}
+
+		ItemSerialCreateSend(lpObj->m_Index, btMapNumber, X, Y, iType, iLevel, fDur,
+			iOption1, iOption2, iOption3, lpObj->m_Index, iExOption, 0);
+
+		ITEMBAG_DROP_LOG.Output("[HellMain] Item Drop [%s][%s] : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d ExOp:%d",
+			lpObj->AccountID, lpObj->Name, btMapNumber, X, Y, ItemAttribute[iType].Name,
+			iType, iLevel, iOption1, iOption2, iOption3, iExOption);
+	}
+
+	return TRUE;
+}

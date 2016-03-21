@@ -26,10 +26,10 @@ struct ITEMOPTION_FOR380ITEM
 {
 	BOOL IsLoad;	// 0
 	BYTE m_Type;	// 4
-	BYTE m_Index;	// 5
-	BYTE m_Option1;	// 6
+	WORD m_Index;	// 5
+	BYTE m_SkillOption;	// 6
 	WORD m_Value1;	// 8
-	BYTE m_Option2;	// A
+	BYTE m_LuckOption;	// A
 	WORD m_Value2;	// C
 };
 
@@ -78,27 +78,17 @@ private:
 
 	ITEMOPTION_FOR380ITEM m_itemOption[MAX_ITEMS];	// 4
 	BOOL m_bSystemFor380ItemOption;	// 20004
-	int m_iNeedJewelOfHarmonyCount;	// 20008
-	int m_iNeedJewelOfSuhoCount;	// 2000C
+
+	BYTE m_iNeedJewelOfHarmonyCount;	// 20008
+	BYTE m_iNeedJewelOfSuhoCount;	// 2000C
+
 	int m_iNeedZenFor380Option;	// 20010
-	int m_iRateSuccessRateForMix1;	// 20014
-	int m_iRateSuccessRateForMix2;	// 20018
-	int m_iRateSuccessRateForMix3;	// 2001C
+
+	short m_iRateSuccessRateForMix1;	// 20014
+	short m_iRateSuccessRateForMix2;	// 20018
+	short m_iRateSuccessRateForMix3;	// 2001C
 
 };
-
-
-inline void DebugLog(LPSTR szLog, ...)
-{
-	char szBuffer[512] = "";
-	va_list pArguments;
-
-	va_start(pArguments, szLog);
-	vsprintf(szBuffer, szLog, pArguments);
-	va_end(pArguments);
-
-	OutputDebugString(szBuffer);
-}
 
 extern CItemSystemFor380 g_kItemSystemFor380;
 

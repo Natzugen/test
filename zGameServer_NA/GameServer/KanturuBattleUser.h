@@ -1,6 +1,8 @@
 #ifndef KANTURU_BATTLE_USER_H____
 #define KANTURU_BATTLE_USER_H____
 
+#if (GS_CASTLE==0)
+
 class CKanturuBattleUser
 {
 
@@ -37,10 +39,10 @@ public:
 
 private:
 
-	int m_iIndex;	// 4
+	short m_iIndex;	// 4
 	BOOL m_bIsUse;	// 8
 
 };
 
-
+#endif
 #endif /*KANTURU_BATTLE_USER_H____*/

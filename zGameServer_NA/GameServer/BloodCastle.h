@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #ifndef BLOODCASTLE_H
 #define BLOODCASTLE_H
 
@@ -7,8 +11,6 @@
 
 #include "..\common\zzzitem.h"
 #include "user.h"
-#include "MasterLevelSystem.h"
-#include <list>
 
 #define MAX_BLOOD_CASTLE_LEVEL 8
 #define MAX_BLOOD_CASTLE_SUB_BRIDGE 10
@@ -20,14 +22,7 @@
 #define BC_STATE_PLAYING	2
 #define BC_STATE_PLAYEND	3
 
-//1.01.00
-#define BC_BLOCK_NONE		1000+BC_STATE_NONE
-#define BC_BLOCK_CLOSED		1000+BC_STATE_CLOSED
-#define BC_BLOCK_PLAYING	1000+BC_STATE_PLAYING
-#define BC_BLOCK_PLAYEND	1000+BC_STATE_PLAYEND
-
-#define BC_MAP_RANGE(value) ( ( value == MAP_INDEX_BLOODCASTLE8 ) ? TRUE : ( value < MAP_INDEX_BLOODCASTLE1 ) ? FALSE : ( value > MAP_INDEX_BLOODCASTLE7) ? FALSE : TRUE )
-
+BOOL BC_MAP_RANGE(int Map);
 #define BC_TIME_RANGE(x) ( (((x))<0)?FALSE:(((x))>1)?FALSE:TRUE  )
 #define BC_STATUE_RANGE(x) ( (((x))<0)?FALSE:(((x))>2)?FALSE:TRUE  )
 #define BC_WEAPON_LEVEL_RANGE(x) ( (((x))<0)?FALSE:(((x))>2)?FALSE:TRUE  )
@@ -35,11 +30,6 @@
 #define BC_SUB_BRIDGE_RANGE(x) ( ((x)<0)?FALSE:((x)>MAX_BLOOD_CASTLE_SUB_BRIDGE-1)?FALSE:TRUE  )
 #define BC_CLOACK_LEVEL_RANGE(x)  (  ((x)<0)?FALSE:((x)>MAX_CLOACK_LEVEL-1)?FALSE:TRUE )
 
-struct BLOODCASTLE_START_TIME
-{
-	int m_iHour;	// 0
-	int m_iMinute;	// 4
-};
 
 struct PMSG_SETMAPATTR_COUNT
 {
@@ -50,6 +40,7 @@ struct PMSG_SETMAPATTR_COUNT
 	BYTE btCount;	// 6
 };
 
+
 struct PMSG_SETMAPATTR
 {
 	BYTE btX;	// 0
@@ -58,31 +49,34 @@ struct PMSG_SETMAPATTR
 
 typedef struct _BLOODCASTLE_USER
 {
-	int m_iIndex;	// 0 18
-	int m_iEXP;	// 4 1C
-	int m_iScore;	// 8 20
-	int m_iUserState;	// C 24
+	short m_iIndex;	// 0
+	int m_iEXP;	// 4
+	int m_iScore;	// 8
+	BYTE m_iUserState;	// C
 	bool m_bSendQuitMsg;	// 10
 	bool m_bLiveWhenDoorBreak;	// 11
 
 } BLOODCASTLE_USER, * LPBLOODCASTLE_USER;
 
+
+
+// sizeof ( _BLOODCASTLE_DATA ) == 0x1FC
 typedef struct _BLOODCASTLE_BRIDGE
 {
 	CRITICAL_SECTION m_critUserData;	// 0
 	BLOODCASTLE_USER m_UserData[MAX_BLOOD_CASTLE_SUB_BRIDGE];	// 18
-	int m_nBossMonsterPosNum[MAX_BLOOD_CASTLE_BOSS_MONSTER];	// E0
-	int m_nSaintStatuePosNum;	// 130
-	int m_nCastleDoorPosNum;	// 134
+	short m_nBossMonsterPosNum[MAX_BLOOD_CASTLE_BOSS_MONSTER];	// E0
+	short m_nSaintStatuePosNum;	// 130
+	short m_nCastleDoorPosNum;	// 134
 	int m_iTOTAL_EXP;	// 138
-	int m_iMapNumber;	// 13C
-	int m_iBridgeIndex;	// 140
-	int m_iMISSION_SUCCESS;	// 144
+	BYTE m_iMapNumber;	// 13C
+	//int m_iBridgeIndex;	// 140
+	short m_iMISSION_SUCCESS;	// 144
 	BOOL m_bCASTLE_DOOR_LIVE;	// 148
-	int m_iBC_STATE;	// 14C
+	BYTE m_iBC_STATE;	// 14C
 	int m_iBC_REMAIN_MSEC;	// 150
 	int m_iBC_TICK_COUNT;	// 154
-	int m_iBC_NOTIFY_COUNT;	// 158
+	short m_iBC_NOTIFY_COUNT;	// 158
 	bool m_bBC_MONSTER_KILL_COMPLETE;	// 15C
 	bool m_bBC_BOSS_MONSTER_KILL_COMPLETE;	// 15D
 	bool m_bBC_DOOR_TERMINATE_COMPLETE;	// 15E
@@ -96,52 +90,38 @@ typedef struct _BLOODCASTLE_BRIDGE
 	bool m_bBC_MSG_BEFORE_QUIT;	// 166
 	float m_iCastleStatueHealth;	// 168
 	float m_iCastleDoorHealth;	// 16C
-	int m_iBC_MONSTER_MAX_COUNT;	// 170
-	int m_iBC_MONSTER_KILL_COUNT;	// 174
-	int m_iBC_MONSTER_SUCCESS_MSG_COUNT;	// 178
+	short m_iBC_MONSTER_MAX_COUNT;	// 170
+	short m_iBC_MONSTER_KILL_COUNT;	// 174
+	BYTE m_iBC_MONSTER_SUCCESS_MSG_COUNT;	// 178
 	DWORD m_dwBC_TICK_DOOR_OPEN;	// 17C
-	int m_iBC_BOSS_MONSTER_MAX_COUNT;	// 180
-	int m_iBC_BOSS_MONSTER_KILL_COUNT;	// 184
-	int m_iBC_BOSS_MONSTER_SUCCESS_MSG_COUNT;	// 188
-	DWORD m_nBC_QUESTITEM_SERIAL;	// 18C
-	int m_iBC_QUEST_ITEM_USER_INDEX;	// 190
+	short m_iBC_BOSS_MONSTER_MAX_COUNT;	// 180
+	short m_iBC_BOSS_MONSTER_KILL_COUNT;	// 184
+	short m_iBC_BOSS_MONSTER_SUCCESS_MSG_COUNT;	// 188
+	int m_nBC_QUESTITEM_SERIAL;	// 18C
+	short m_iBC_QUEST_ITEM_USER_INDEX;	// 190
 	BYTE m_btBC_QUEST_ITEM_NUMBER;	// 194
-	int m_iAngelKingPosNum;	// 198
-	int m_iExtraEXP_Kill_Door_Party;	// 19C
-	int m_iExtraEXP_Kill_Door_Index;	// 1A0
+	short m_iAngelKingPosNum;	// 198
+	short m_iExtraEXP_Kill_Door_Party;	// 19C
+	short m_iExtraEXP_Kill_Door_Index;	// 1A0
 	char m_szKill_Door_AccountID[11];	// 1A4
 	char m_szKill_Door_CharName[11];	// 1AF
-	int m_iExtraEXP_Kill_Statue_Party;	// 1BC
-	int m_iExtraEXP_Kill_Statue_Index;	// 1C0
+	short m_iExtraEXP_Kill_Statue_Party;	// 1BC
+	short m_iExtraEXP_Kill_Statue_Index;	// 1C0
 	char m_szKill_Status_CharName[11];	// 1C4
 	char m_szKill_Status_AccountID[11];	// 1CF
-	int m_iExtraEXP_Win_Quest_Party;	// 1DC
-	int m_iExtraEXP_Win_Quest_Index;	// 1E0
+	short m_iExtraEXP_Win_Quest_Party;	// 1DC
+	short m_iExtraEXP_Win_Quest_Index;	// 1E0
 	char m_szWin_Quest_CharName[11];	// 1E4
 	char m_szWin_Quest_AccountID[11];	// 1EF
-	int m_iBC_COMPLETE_USER_INDEX;	// 1FC
-	int m_iBC_DOOR_MONSTER_INDEX; // 200
-
-	int m_BlockInfo;	//1.01.00
-
-	float m_iBC_REWARD_EXP; //208
+	short m_iBC_COMPLETE_USER_INDEX;	// 1FC
 
 } BLOODCASTLE_BRIDGE, * LPBLOODCASTLE_BRIDGE;	
-
-#ifdef __CUSTOMS__
-struct BLOODCASTLE_ITEMREWARD
-{
-	BYTE	CastleLevel;
-	BYTE	ItemCount;
-	WORD	ItemID;
-	BYTE	ItemLevel;
-};
-#endif
 
 class CBloodCastle
 {
 
 public:
+
 	int CheckChoasMixItem(int iIndex);
 	bool BloodCastleChaosMix(int iIndex, int iLEVEL);
 	bool AddExperience(int iIndex, int iEXP);
@@ -183,18 +163,20 @@ public:
 	void SetMonster(int iBridgeIndex);
 	void SetBossMonster(int iBridgeIndex);
 	void SetSaintStatue(int iBridgeIndex);
+	//void __thiscall LoadBossMonster(int, int, int, int, int, int, int, int);
 	int LeaveUserBridge(int iBridgeIndex, int iBridgeSubIndex, int iUserIndex);
 	int EnterUserBridge(int iBridgeIndex, int iUserIndex);
-	int LevelUp(int iIndex, int iAddExp, int iEventType);
 	void CheckUsersOnConnect(int iBridgeIndex);
 	int GetCurrentState(int iBridgeIndex);
 	int GetRemainTime(int iBridgeIndex);
 	int GetCurrentRemainSec(int iBridgeIndex);
+	//int __thiscall GetExcelItemDropRate();
+	//int __thiscall GetNormalItemDropRate();
 	int CheckEnterLevel(int iIndex, int iLevel);
 	bool CheckEnterFreeTicket(int iIndex);
 	int CheckEnterItem(int iIndex);
 	int CheckQuestItem(int iIndex);
-	bool CheckWalk(int iIndex, int iMoveX, int iMoveY);
+	//bool CheckWalk(int iIndex, int iMoveX, int iMoveY);
 	bool CheckCanEnter(int iBridgeIndex);
 	bool CheckCanParty(int iBridgeIndex);
 	bool CheckPlayStart(int iBridgeIndex);
@@ -211,24 +193,13 @@ public:
 	void ChangeMonsterState(int iBridgeIndex, int iIndex);
 	void FixUsersPlayStateWin(int iBridgeIndex);
 	void FixUsersPlayStateFail(int iBridgeIndex);
-	// ---- Season 3 (1.01.00 refixed)
-	int		GetMapNumByBCBridge(int iBridgeIndex);//GetBridgeMapNumber(int iBridgeIndex);
-	int		GetBridgeIndexByMapNum(int iMapNum);//GetBridgeIndex(int iMAP_NUM);
-	int		GetMapNumByBC_CHAOSGEM(int iChaosGem);//GetItemMapNumberFirst(int iMAP_NUM);
-	int		GetMapNumByBC_ULTIMATEWEAPON(int iUltimateWeapon);//GetItemMapNumberSecond(int iMAP_NUM);
-	// ---- 1.01.00
-	int		ChangeUserIndex(int iExUserIndex, int iCurrentUserIndex, int iBridgeIndex);
-	void	SendNoticeMessageToSpecificUser(int iBridgeIndex, int iUserIndex, int iPlayState);
-	int		SetCastleBlockInfo(int iBridgeIndex, int iCastleBlockInfo);
-	int		GetCastleBlockInfo(int iBridgeIndex);
-	int		GetPlayUserCountRightNow(int iBridgeIndex);
-	// ----
 	void Run();
 	void Init(bool bEVENT_ENABLE);
 	void Load(LPSTR filename);
 	void LoadItemDropRate();
 	void SetState(int iBridgeIndex, int iBC_STATE);
-	// ----
+
+
 	CBloodCastle();
 	virtual ~CBloodCastle();
 
@@ -247,21 +218,25 @@ protected:
 	void BlockSector(int iMAP_NUM, int iSTART_X, int iSTART_Y, int iEND_X, int iEND_Y);
 	void ReleaseSector(int iMAP_NUM, int iSTART_X, int iSTART_Y, int iEND_X, int iEND_Y);
 	int GetAliveUserTotalEXP(int iBridgeIndex);
+	
 public:
 
 	BLOODCASTLE_BRIDGE m_BridgeData[MAX_BLOOD_CASTLE_LEVEL];	// 4
-#ifdef __CUSTOMS__
-	BLOODCASTLE_ITEMREWARD m_ItemReward[MAX_BLOOD_CASTLE_LEVEL];
-#endif
 	bool m_bBC_EVENT_ENABLE;	// E04
-	int m_iBC_TIME_MIN_OPEN;	// E08
-	int m_iBC_TIME_MIN_PLAY;	// E0C
-	int m_iBC_TIME_MIN_REST;	// E10
-	int m_iBC_NORMAL_ITEM_DROP;	// E14
-	int m_iBC_EXCEL_ITEM_DROP;	// E18
-	int m_iBC_MONSTER_REGEN;	// E1C
-	std::list<BLOODCASTLE_START_TIME> m_listBloodCastleOpenTime; //season 4.5 add-on
+
+	BYTE m_iBC_TIME_MIN_OPEN;	// E08
+	BYTE m_iBC_TIME_MIN_PLAY;	// E0C
+	BYTE m_iBC_TIME_MIN_REST;	// E10
+
+	short m_iBC_NORMAL_ITEM_DROP;	// E14
+	short m_iBC_EXCEL_ITEM_DROP;	// E18
+	short m_iBC_MONSTER_REGEN;	// E1C
+
+	bool OpenDoorCheck[MAX_BLOOD_CASTLE_LEVEL];
+	
+
 };
+
 
 static struct _BLOOODCASTLE_LEVEL
 {
@@ -299,16 +274,29 @@ static struct _BLOOODCASTLE_LEVEL
 	// Blood Castle 7
 	331, MAX_CHAR_LEVEL, // DK, DW, Elf
 	311, MAX_CHAR_LEVEL, // MG, DL
-
-	//Blood C!stle 8 - with master level from 400
-	//MAX_CHAR_LEVEL, MAX_CHAR_LEVEL+MAX_MASTER_LEVEL-1, // DK, DW, Elf
-	//MAX_CHAR_LEVEL, MAX_CHAR_LEVEL+MAX_MASTER_LEVEL-1 // MG, DL
-
-	//Blood Castle 8 - with master level from 1
-	1, MAX_CHAR_LEVEL+MASTER_MAX_LEVEL-1, // DK, DW, Elf
-	1, MAX_CHAR_LEVEL+MASTER_MAX_LEVEL-1 // MG, DL
+	// Blood Castle 8
+	1, MAX_CHAR_LEVEL, // DK, DW, Elf
+	1, MAX_CHAR_LEVEL // MG, DL
 
 };
+
+/*
+g_sttBLOO>0F 00 00 00 50 00 00 00  ....P...
+006294A0  0A 00 00 00 3C 00 00 00  ....<...
+006294A8  51 00 00 00 82 00 00 00  Q...‚...
+006294B0  3D 00 00 00 6E 00 00 00  =...n...
+006294B8  83 00 00 00 B4 00 00 00  ?...?...
+006294C0  6F 00 00 00 A0 00 00 00  o... ...
+006294C8  B5 00 00 00 E6 00 00 00  µ...?...
+006294D0  A1 00 00 00 D2 00 00 00  ?...?...
+006294D8  E7 00 00 00 18 01 00 00  ?.......
+006294E0  D3 00 00 00 04 01 00 00  ?.......
+006294E8  19 01 00 00 4A 01 00 00  ....J...
+006294F0  05 01 00 00 36 01 00 00  ....6...
+006294F8  4B 01 00 00 90 01 00 00  K...?...
+00629500  37 01 00 00 90 01 00 00  7...?...
+
+*/
 
 extern CBloodCastle g_BloodCastle;
 

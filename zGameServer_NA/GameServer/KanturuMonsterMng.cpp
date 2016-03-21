@@ -1,13 +1,15 @@
 // KanturuMonsterMng.cpp: implementation of the CKanturuMonsterMng class.
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00578BB0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "KanturuMonsterMng.h"
 #include "Gamemain.h"
+
 #include "LogProc.h"
 #include "..\include\ReadScript.h"
 
+#if (GS_CASTLE==0)
 
 CKanturuMonsterMng g_KanturuMonsterMng;
 //////////////////////////////////////////////////////////////////////
@@ -54,7 +56,6 @@ void CKanturuMonsterMng::ResetRegenMonsterObjData()
 	}
 
 	this->m_KanturuMonster.Reset();
-	this->m_iMaxRegenMonsterCount = 0;
 	this->m_iAliveMonsterCount = 0;
 	this->m_iMayaObjIndex = -1;
 }
@@ -63,8 +64,6 @@ void CKanturuMonsterMng::ResetRegenMonsterObjData()
 
 void CKanturuMonsterMng::MonsterDie(int iIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-
 	for ( int iCount=0;iCount<this->m_KanturuMonster.GetCount();iCount++)
 	{
 		if ( this->m_KanturuMonster.m_iObjIndex[iCount] == iIndex )
@@ -82,19 +81,18 @@ BOOL CKanturuMonsterMng::LoadData(LPSTR lpszFileName)
 
 	if ( !lpszFileName || !strcmp(lpszFileName , "") )
 	{
-		MsgBox("[ KANTURU ][ MonsterSetBase ] - File load error : File Name Error");
+		MsgBox("[Kanturu][MonsterSetBase] - File load error : File Name Error");
 		return FALSE;
 	}
 
 	try
 	{
 		
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
-			DWORD dwError = GetLastError();
-			MsgBox("[ KANTURU ][ MonsterSetBase ] - Can't Open %s ", lpszFileName);
+			MsgBox("[Kanturu][MonsterSetBase] - Can't Open %s ", lpszFileName);
 			return FALSE;
 		}
 
@@ -163,7 +161,7 @@ BOOL CKanturuMonsterMng::LoadData(LPSTR lpszFileName)
 					if ( this->m_iMaxMonsterCount < 0 ||
 						 this->m_iMaxMonsterCount >= MAX_KANTURU_MONSTER )
 					{
-						MsgBox("[ KANTURU ][ MonsterSetBase ] - Exceed Max Info Count (%d)",
+						MsgBox("[Kanturu][MonsterSetBase] - Exceed Max Info Count (%d)",
 							this->m_iMaxMonsterCount);
 
 						break;
@@ -186,14 +184,14 @@ BOOL CKanturuMonsterMng::LoadData(LPSTR lpszFileName)
 		}	// while ( true )
 
 		fclose(SMDFile);
-		LogAddC(2, "[ KANTURU ][ MonsterSetBase ] - %s file is Loaded",
+		LogAddTD("[Kanturu][MonsterSetBase] - %s file is Loaded",
 			lpszFileName);
 
 		this->m_bFileDataLoad = TRUE;
 	}	// __try
 	catch ( DWORD)
 	{
-		MsgBox("[ KANTURU ][ MonsterSetBase ] Loading Exception Error (%s) File. ", lpszFileName);
+		MsgBox("[Kanturu][MonsterSetBase] Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
 	return this->m_bFileDataLoad;
@@ -216,8 +214,6 @@ void CKanturuMonsterMng::SetMonsterSetBaseInfo(int iIndex, BYTE btGroup, WORD wT
 
 int CKanturuMonsterMng::SetKanturuMonster(int iGroupNumber)
 {
-	int iMapNumber = 0;
-	WORD wType = 0;
 	LPOBJ lpObj;
 	int iResult;
 	int iRegenCount = 0;
@@ -231,7 +227,7 @@ int CKanturuMonsterMng::SetKanturuMonster(int iGroupNumber)
 
 			if ( iResult < 0 )
 			{
-				LogAddTD("[ KANTURU ][ SetBossMapMonster ] Fail - Type:%d Map[%d]-[%d][%d]",
+				LogAddTD("[Kanturu][SetBossMapMonster] Fail - Type:%d Map[%d]-[%d][%d]",
 					this->m_SetBaseInfo[iCount].wType,
 					this->m_SetBaseInfo[iCount].btMapNumber,
 					this->m_SetBaseInfo[iCount].btX,
@@ -270,7 +266,7 @@ int CKanturuMonsterMng::SetKanturuMonster(int iGroupNumber)
 					lpObj->Dir = this->m_SetBaseInfo[iCount].btDir;
 				}
 
-				if ( gObjSetMonster(iResult, this->m_SetBaseInfo[iCount].wType) == FALSE )
+				if ( gObjSetMonster(iResult, this->m_SetBaseInfo[iCount].wType,"CKanturuMonsterMng::SetKanturuMonster") == FALSE )
 				{
 					gObjDel(iResult);
 					continue;
@@ -280,7 +276,7 @@ int CKanturuMonsterMng::SetKanturuMonster(int iGroupNumber)
 				{
 					this->m_iMayaObjIndex = iResult;
 
-					LogAddTD("[ KANTURU ][ SetBossMapMonster ] %s(Index:%d / ObjIndex:%d) Map:%d-[%d][%d]",
+					LogAddTD("[Kanturu][SetBossMapMonster] %s(Index:%d / ObjIndex:%d) Map:%d-[%d][%d]",
 						gObj[iResult].Name, gObj[iResult].Class, iResult, gObj[iResult].MapNumber,
 						gObj[iResult].X, gObj[iResult].Y);
 
@@ -290,10 +286,9 @@ int CKanturuMonsterMng::SetKanturuMonster(int iGroupNumber)
 				if ( gObj[iResult].Type == OBJ_MONSTER )
 				{
 					this->m_KanturuMonster.AddObj(iResult);
-					this->m_iMaxRegenMonsterCount++;
 					this->m_iAliveMonsterCount++;
 
-					LogAddTD("[ KANTURU ][ SetBossMapMonster ] Count:%d %s(Index:%d / ObjIndex:%d) Map:%d-[%d][%d]",
+					LogAddTD("[Kanturu][SetBossMapMonster] Count:%d %s(Index:%d / ObjIndex:%d) Map:%d-[%d][%d]",
 						this->m_iAliveMonsterCount, gObj[iResult].Name, gObj[iResult].Class, iResult,
 						gObj[iResult].MapNumber,gObj[iResult].X, gObj[iResult].Y);
 				}
@@ -362,3 +357,4 @@ BOOL CKanturuMonsterMng::IsExistAliveMonster()
 
 	return TRUE;
 }
+#endif

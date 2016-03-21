@@ -5,6 +5,8 @@
 #include "stdafx.h"
 #include "CrywolfTanker.h"
 
+#if (GS_CASTLE==1)
+
 CCrywolfTanker g_CrywolfMON_Tanker;
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -23,5 +25,8 @@ CCrywolfTanker::~CCrywolfTanker()
 
 void CCrywolfTanker::CrywolfTankerAct(int iIndex)
 {
+
 	return;
 }
+
+#endif

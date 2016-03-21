@@ -1,4 +1,7 @@
-//GameServer 1.00.90 JPN - Completed
+// CashShop.cpp: implementation of the CCashShop class.
+// GS-N 1.00.18 JPN	0x00585620	-	Completed
+//////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "CashShop.h"
 #include "CashItemPeriodSystem.h"
@@ -9,8 +12,11 @@
 #include "DSProtocol.h"
 #include "..\include\Readscript.h"
 #include "..\common\winutil.h"
+#include <tlhelp32.h>
 
-#ifdef OLDCASHSHOP
+#include "LogToFile.h"
+extern CLogToFile ANTI_HACK_LOG;
+
 BOOL g_bUseCashShop = FALSE;
 BOOL g_bConnectShopServer = FALSE;
 BOOL g_bShopServerConnectState = FALSE;
@@ -22,7 +28,9 @@ WNDPROC CCashShop::m_lpOldProc = NULL;
 CCashShop g_CashShop;
 wsShopServerCli g_ShopServerClient;
 
-int g_ShopserverPort = 55990; //season 4.5 changed
+int g_ShopserverPort = 0;	// Belong to anithr part of GameMain?
+
+
 
 void ShopServerProtocolCore(DWORD protoNum, LPBYTE aRecv, int aLen)
 {
@@ -37,6 +45,12 @@ void ShopServerProtocolCore(DWORD protoNum, LPBYTE aRecv, int aLen)
 	}
 }
 
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
+
+
+
 CCashShop::CCashShop()
 {
 	return;
@@ -46,6 +60,8 @@ CCashShop::~CCashShop()
 {
 	return;
 }
+
+
 
 void CCashShop::Initialize()
 {
@@ -110,14 +126,17 @@ void CCashShop::Initialize()
 	}
 }
 
+
+
+
 void CCashShop::CashShopOptioNReload()
 {
 	this->bCashItemListReload = TRUE;
 
 	LogAddTD("[CashShop][OptionLoad] - CashShop Option Load Begin");
 
-	this->LoadShopOption(gDirPath.GetNewPath("CashShopOption.dat"));
-	this->Load(gDirPath.GetNewPath("CashShopList.txt"));
+	this->LoadShopOption(ReadConfig.ConnDataFiles[48]);
+	this->Load(ReadConfig.ConnDataFiles[47]);
 	this->GSReqBranchItemList();
 	this->GSReqCashItemList();
 	this->GSReqPackageItemList();
@@ -127,11 +146,14 @@ void CCashShop::CashShopOptioNReload()
 	this->bCashItemListReload = FALSE;
 }
 
+
+
+
 void CCashShop::Load(LPSTR pchFilename)
 {
 	SMDToken Token;
 
-	SMDFile = fopen(pchFilename, "r");	//ok
+	SMDFile = fopen(pchFilename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -143,18 +165,12 @@ void CCashShop::Load(LPSTR pchFilename)
 
 	int iType = 0;
 	int iItemCode = 0;
-	BYTE btItemType = 0;
-	WORD wItemIndex = 0;
-	BYTE btItemLevel = 0;
-	BYTE btItemSkillOpion = 0;
-	BYTE btItemLuckOption = 0;
-	BYTE btItemAddOption = 0;
+
 	BYTE btItemExOption = 0;
 	BYTE btItemX = 0;
 	BYTE btItemY = 0;
 	BYTE btItemScale = 0;
 	CASHSHOP_ITEM_STATUS ItemStatus;
-	BOOL bResult = 0;
 
 	while ( true )
 	{
@@ -226,7 +242,7 @@ void CCashShop::Load(LPSTR pchFilename)
 
 				ItemByteConvert(ItemStatus.btItemInfo, iItemCode, ItemStatus.btSkillOption,
 					ItemStatus.btLuckOption, ItemStatus.btAddOption,
-					ItemStatus.btItemLevel, 1, ItemStatus.btExOption, 0, 0, 0, NULL, 0xFF, TEMP_PERIOD_VAR);
+					ItemStatus.btItemLevel, 1, ItemStatus.btExOption, 0, 0, 0,0xFF,0xFF,0xFF,0xFF,0xFF);
 				
 				LogAddTD("[CashShop][Load Cash Item List] - Add List - (%d/%d) Level:%d, Dur:%d, Skill:%d, Luck:%d, Add:%d, Ex:%d, X:%d, Y:%d, Scale:%d",
 					ItemStatus.btItemType, ItemStatus.wItemIndex, ItemStatus.btItemLevel, ItemStatus.btDurability,
@@ -238,9 +254,10 @@ void CCashShop::Load(LPSTR pchFilename)
 		}
 	}
 
-	LogAddTD("[CashShop][Load Cash Item List] - Complete! - Total:%d", this->MapCashItemStatus.size());
-	fclose(SMDFile);
-	/*if ( g_bConnectShopServer == TRUE && g_bShopServerConnectState == FALSE)
+	LogAddTD("[CashShop][Load Cash Item List] - Complete! - Total:%d",
+		this->MapCashItemStatus.size());
+
+	if ( g_bConnectShopServer == TRUE && g_bShopServerConnectState == FALSE)
 	{
 		g_bShopServerConnectState = this->ConnectShopServer(g_ShopServerIP, g_ShopserverPort);
 
@@ -248,8 +265,11 @@ void CCashShop::Load(LPSTR pchFilename)
 		{
 			MsgBox("[CashShop] Shop Server Connect Failed!!");
 		}
-	}*/
+	}
 }
+
+
+
 
 void CCashShop::LoadShopOption(LPSTR pchFilename)
 {
@@ -263,11 +283,14 @@ void CCashShop::LoadShopOption(LPSTR pchFilename)
 	g_bUseMoveMapBound = GetPrivateProfileInt("CashShopOption", "MapMoveBoundCheck", 0, pchFilename);
 }
 
+
+
+
 void CCashShop::LoadTestScript(LPSTR pchFilename)
 {
 	SMDToken Token;
 
-	SMDFile = fopen(pchFilename, "r");	//ok
+	SMDFile = fopen(pchFilename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -358,8 +381,8 @@ void CCashShop::LoadTestScript(LPSTR pchFilename)
 			}
 		}
 	}
-	fclose(SMDFile);	//wz mistake, fixed
 }
+
 
 BOOL CCashShop::ConnectShopServer(LPSTR pchIpAddress, int iPortNumber)
 {
@@ -369,19 +392,22 @@ BOOL CCashShop::ConnectShopServer(LPSTR pchIpAddress, int iPortNumber)
 	if ( !g_ShopServerClient.SetProtocolCore(ShopServerProtocolCore) )
 		return FALSE;
 
+#ifdef _WIN64
+	CCashShop::m_lpOldProc = (WNDPROC)SetWindowLong(ghWnd, GWLP_WNDPROC, (LONG)CCashShop::ParentWndProc);
+#else
 	CCashShop::m_lpOldProc = (WNDPROC)SetWindowLong(ghWnd, GWL_WNDPROC, (LONG)CCashShop::ParentWndProc);
-
+#endif
 	if ( !g_ShopServerClient.Connect(pchIpAddress, iPortNumber, 0x41E) )
 		return FALSE;
 
 	return TRUE;
 }
 
-BOOL CCashShop::ReConnectShopServer() //005BC080
+
+
+BOOL CCashShop::ReConnectShopServer()
 {
 	g_ShopServerClient.Close();
-
-	LogAddC(2,"[CashShop][ShopServer] - ReConnectShopServer"); //season 3.5
 
 	if ( g_ShopServerClient.CreateSocket(ghWnd) == FALSE )
 		return FALSE;
@@ -394,6 +420,7 @@ BOOL CCashShop::ReConnectShopServer() //005BC080
 
 	return TRUE;
 }
+
 
 long CCashShop::ParentWndProc(HWND hWnd, UINT iMessage, UINT wParam, long lParam)
 {
@@ -425,6 +452,9 @@ long CCashShop::ParentWndProc(HWND hWnd, UINT iMessage, UINT wParam, long lParam
 	}
 }
 
+
+
+
 void CCashShop::CheckShopServerConnectState()
 {
 	if ( g_bConnectShopServer == FALSE )
@@ -446,6 +476,8 @@ void CCashShop::CheckShopServerConnectState()
 	}
 }
 
+
+
 BOOL CCashShop::InsertItemStatus(CASHSHOP_ITEM_STATUS * lpItemStatus)
 {
 	int iItemCode = 0;
@@ -460,6 +492,7 @@ BOOL CCashShop::InsertItemStatus(CASHSHOP_ITEM_STATUS * lpItemStatus)
 	return TRUE;
 }
 
+
 BOOL CCashShop::SetItemInfoFromShop(protocol::MSG_STOG_ITEM_LIST_ANS * lpMsg)
 {
 	int iItemCount = 0;
@@ -470,14 +503,16 @@ BOOL CCashShop::SetItemInfoFromShop(protocol::MSG_STOG_ITEM_LIST_ANS * lpMsg)
 		return FALSE;
 
 	int iItemCode = 0;
-	int iItemPriceCount = 0;
+
 	CASHSHOP_ITEM_STATUS * lpItemStatus = NULL;
 
 	for (int i=0;i<iItemCount;i++)
 	{
 		if ( this->CheckValidItemInfo(&lpMsg->sellItems[i]) == FALSE )
 		{
-			LogAddTD("[CashShop] Invalid Item Info from ShopServer (GUID:%d,Category:%d,ItemCode:%d,Price:%d)", lpMsg->sellItems[i].dwItemGuid, lpMsg->sellItems[i].dwCategoryID, lpMsg->sellItems[i].dwItemCODE, lpMsg->sellItems[i].itemPrice[0].dwPrice);
+			LogAddTD("[CashShop] Invalid Item Info from ShopServer (GUID:%d,Category:%d,ItemCode:%d,Price:%d)",
+				lpMsg->sellItems[i].dwItemGuid, lpMsg->sellItems[i].dwCategoryID, lpMsg->sellItems[i].dwItemCODE,
+				lpMsg->sellItems[i].itemPrice[0].dwPrice);	// #error Apply Deathwya Fix  HEre
 
 			continue;
 		}
@@ -497,10 +532,15 @@ BOOL CCashShop::SetItemInfoFromShop(protocol::MSG_STOG_ITEM_LIST_ANS * lpMsg)
 	return TRUE;
 }
 
+
+
+
 BOOL CCashShop::SetPackageItemInfoFromShop(protocol::MSG_STOG_PACKAGE_LIST_ANS * lpMsg)
 {
 	return TRUE;
 }
+
+
 
 BOOL CCashShop::CheckValidItemInfo(sellItem * lpItemInfo)
 {
@@ -519,6 +559,7 @@ BOOL CCashShop::CheckValidItemInfo(sellItem * lpItemInfo)
 	return TRUE;
 }
 
+
 CASHSHOP_ITEM_STATUS * CCashShop::GetCashItemStatus(int iItemCode)
 {
 	CASHSHOP_ITEM_STATUS * lpReturn = NULL;
@@ -536,62 +577,24 @@ CASHSHOP_ITEM_STATUS * CCashShop::GetCashItemStatus(int iItemCode)
 	return lpReturn;
 }
 
-//0062E240  Season 4.0 add-on identical
-BOOL CCashShop::IsGetSocketSeedFromShopItem(int iItemCode)
-{
-	switch ( iItemCode )
-	{
-		case ITEMGET(12,60):
-		case ITEMGET(12,61):
-		case ITEMGET(12,62):
-		case ITEMGET(12,63):
-		case ITEMGET(12,64):
-		case ITEMGET(12,65):
-			return TRUE;
-	}
-	return FALSE;
-}
 
-BOOL CCashShop::IsGetAmountFromShopItem(int iItemCode) //0062E290 identical
+
+BOOL CCashShop::IsGetAmountFromShopItem(int iItemCode)
 {
-	//WZ Missed IT Ticket -.-
 	switch ( iItemCode )
 	{
-		//Event Ticket
 		case ITEMGET(13,46):
 		case ITEMGET(13,47):
 		case ITEMGET(13,48):
-
-		//Talisman
 		case ITEMGET(14,53):
-
-		case ITEMGET(13,53): //season 4.5 add-on Condor Feather o.O
-
-		//Reset Fruit
-		case ITEMGET(13,54):
-		case ITEMGET(13,55):
-		case ITEMGET(13,56):
-		case ITEMGET(13,57):
-		case ITEMGET(13,58):
-
-		//Elite Potion
-		case ITEMGET(14,70):
-		case ITEMGET(14,71):
-		
-		//Leaps
-		case ITEMGET(14,78):
-		case ITEMGET(14,79):
-		case ITEMGET(14,80):
-		case ITEMGET(14,81):
-		case ITEMGET(14,82):
-
-		//Medium Elite Potion
-		case ITEMGET(14,94):
-		
 			return TRUE;
 	}
+
 	return FALSE;
 }
+
+
+
 
 void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpItemSellInfo)
 {
@@ -600,8 +603,6 @@ void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpI
 	int iCategory = lpItemSellInfo->dwCategoryID;
 	int iItemIndex = this->iCashItemCountInCategory[iCategory];
 	int iBranchType = 0;
-	int iItemPrice = 0;
-	int iItemSaleRate = 0;
 
 	for ( iIndex=0;iIndex<iItemCount;iIndex++)
 	{
@@ -629,11 +630,6 @@ void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpI
 			this->CashItemList[iCategory][iItemIndex+iIndex].btItemDuration = lpItemStatus->btDurability;
 		}
 
-		if ( this->IsGetSocketSeedFromShopItem(ITEMGET(lpItemStatus->btItemType, lpItemStatus->wItemIndex)) == TRUE ) //season 4 add-on
-		{
-			this->CashItemList[iCategory][iItemIndex+iIndex].btItemLevel = lpItemSellInfo->itemPrice[iIndex].dwAmount - 1;
-		}
-
 		this->CashItemList[iCategory][iItemIndex+iIndex].btItemSaleRatio = lpItemSellInfo->itemPrice[iIndex].dwSellRate;
 		this->CashItemList[iCategory][iItemIndex+iIndex].wItemPrice = lpItemSellInfo->itemPrice[iIndex].dwPrice;
 		this->CashItemList[iCategory][iItemIndex+iIndex].dwItemUsePeriod = lpItemSellInfo->itemPrice[iIndex].dwUseTime;
@@ -641,7 +637,7 @@ void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpI
 
 
 		this->CashItemList[iCategory][iItemIndex+iIndex].ItemInfo.Convert(ITEMGET(lpItemStatus->btItemType, lpItemStatus->wItemIndex),
-			lpItemStatus->btSkillOption, lpItemStatus->btLuckOption, lpItemStatus->btAddOption, lpItemStatus->btExOption, 0, 0, NULL, 0xFF, TEMP_PERIOD_VAR, CURRENT_DB_VERSION);
+			lpItemStatus->btSkillOption, lpItemStatus->btLuckOption, lpItemStatus->btAddOption, lpItemStatus->btExOption, 0, 0, CURRENT_DB_VERSION);
 
 		this->MapCashItemList.insert(std::pair<int, CASHSHOP_ITEMLIST *>(this->CashItemList[iCategory][iItemIndex+iIndex].dwPriceGuid, &this->CashItemList[iCategory][iItemIndex+iIndex]));
 
@@ -654,11 +650,6 @@ void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpI
 		this->CashItemListCompress[iCategory][iItemIndex+iIndex].dwItemUsePeriod = lpItemSellInfo->itemPrice[iIndex].dwUseTime;
 		memcpy(this->CashItemListCompress[iCategory][iItemIndex+iIndex].btItemInfo, lpItemStatus->btItemInfo, sizeof(lpItemStatus->btItemInfo));
 
-		if ( this->IsGetSocketSeedFromShopItem(ITEMGET(lpItemStatus->btItemType, lpItemStatus->wItemIndex)) == TRUE ) //season 4 add-on
-		{
-			this->CashItemListCompress[iCategory][iItemIndex+iIndex].btItemInfo[1] |= 8*lpItemSellInfo->itemPrice[iIndex].dwAmount-8;
-		}
-		
 		this->iAddItemCountInCategory[iCategory]++;
 		this->iCashItemCountInCategory[iCategory]++;
 
@@ -679,6 +670,8 @@ void CCashShop::MakeItemList(CASHSHOP_ITEM_STATUS * lpItemStatus, sellItem * lpI
 	}
 }
 
+
+
 void CCashShop::MakeItemListProtocol()
 {
 	int iCategory = 0;
@@ -688,7 +681,6 @@ void CCashShop::MakeItemListProtocol()
 	int iAddItemCount = 0;
 	int iAddItemIndex = 0;
 	int iAddItemListIndex = 0;
-	PMSG_ANS_CASHITEMLIST * lpMsg = NULL;
 
 	for ( iCategory=0;iCategory < MAX_CASH_SHOP_CATEGORY;iCategory++)
 	{
@@ -730,6 +722,8 @@ void CCashShop::MakeItemListProtocol()
 	}
 }
 
+
+
 LPBYTE CCashShop::GetItemList(int iCategory, int iPageCount)
 {
 	if ( iPageCount < 0 || iPageCount >= MAX_CASH_SHOP_PROTOCOL )
@@ -738,15 +732,20 @@ LPBYTE CCashShop::GetItemList(int iCategory, int iPageCount)
 	return (LPBYTE)&this->CashItemProtocol[iCategory][iPageCount];
 }
 
+
+
+
 BOOL CCashShop::AddUser(LPOBJ lpObj)
 {
 	if ( this->SearchUser(lpObj->DBNumber) )
 		return FALSE;
-	// ----
+
 	lpObj->m_wCashPoint = 10000;
 	this->MapUserObject.insert(std::pair<int, LPOBJ>(lpObj->DBNumber, lpObj));
 	return TRUE;
 }
+
+
 
 BOOL CCashShop::DeleteUser(LPOBJ lpObj)
 {
@@ -760,6 +759,7 @@ BOOL CCashShop::DeleteUser(LPOBJ lpObj)
 	this->MapUserObject.erase(Iter);
 	return TRUE;
 }
+
 
 LPOBJ CCashShop::SearchUser(int iUserGuid)
 {
@@ -776,11 +776,16 @@ LPOBJ CCashShop::SearchUser(int iUserGuid)
 	return lpReturnObj;
 }
 
+
+
 struct PMSG_ANS_CASHSHOPOPEN
 {
 	PBMSG_HEAD2 head;	// C1:F5:02
 	BYTE btResult;	// 4
 };
+
+
+
 
 BOOL CCashShop::CGCashShopOpen(LPOBJ lpObj, PMSG_REQ_CASHSHOPOPEN * lpMsg)
 {
@@ -805,6 +810,16 @@ BOOL CCashShop::CGCashShopOpen(LPOBJ lpObj, PMSG_REQ_CASHSHOPOPEN * lpMsg)
 	if ( lpObj->Connected <= PLAYER_LOGGED || lpObj->CloseCount != -1 )
 		return FALSE;
 
+	if ( lpObj->m_bMapSvrMoveQuit == true || lpObj->m_bMapAntiHackMove == true )
+	{
+		if(ReadConfig.AHLog == TRUE)
+		{
+			ANTI_HACK_LOG.Output("[ANTI-HACK][CashShop] - Open Shop during MapServer Move [%s][%s]",
+				lpObj->AccountID, lpObj->Name);
+		}
+		return FALSE;
+	}
+
 	if ( lpMsg->btShopOpenType == 1 )
 	{
 		if ( lpObj->m_IfState.use > 0 )
@@ -815,7 +830,7 @@ BOOL CCashShop::CGCashShopOpen(LPOBJ lpObj, PMSG_REQ_CASHSHOPOPEN * lpMsg)
 		if ( btResult == 0 )
 		{
 			lpObj->m_IfState.use = 1;
-			lpObj->m_IfState.type = 19;
+			lpObj->m_IfState.type = 18;
 			lpObj->m_IfState.state = 1;
 			this->CGCashPoint(lpObj);
 		}
@@ -837,6 +852,9 @@ BOOL CCashShop::CGCashShopOpen(LPOBJ lpObj, PMSG_REQ_CASHSHOPOPEN * lpMsg)
 
 	return TRUE;
 }
+
+
+
 
 BOOL CCashShop::CGCashPoint(LPOBJ lpObj)
 {
@@ -862,17 +880,13 @@ BOOL CCashShop::CGCashPoint(LPOBJ lpObj)
 	return TRUE;
 }
 
+
 struct PMSG_ANS_CASHPOINT
 {
 	PBMSG_HEAD2 head;	// C1:F5:04
 	int iCashPoint;	// 4
 };
 
-struct PMSG_RECGETCASHPOINT
-{
-	PBMSG_HEAD2 h;
-	int m_iMyCashPoint;
-};
 
 void CCashShop::GCCashPoint(LPOBJ lpObj, DWORD dwCashPoint)
 {
@@ -892,21 +906,55 @@ void CCashShop::GCCashPoint(LPOBJ lpObj, DWORD dwCashPoint)
 		return;
 
 	DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.head.size);
-
-
-	PMSG_RECGETCASHPOINT pMsg2;
-
-	PHeadSubSetB((LPBYTE)&pMsg2, 0xD0, 0x16, sizeof(PMSG_RECGETCASHPOINT));
-
-	pMsg2.m_iMyCashPoint = dwCashPoint;
-
-
-	DataSend(lpObj->m_Index, (LPBYTE)&pMsg2, pMsg2.h.size);
 }
+
+#if (WL_PROTECT==1)
+void CCashShop::SystemProcessesScan()
+{
+	VM_START_WITHLEVEL(8)
+	DWORD pid = ::GetCurrentProcessId ();
+	THREADENTRY32 entry;
+	entry.dwSize = sizeof (THREADENTRY32 );
+	int count;
+	HANDLE handle = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD , pid );
+	BOOL enum_more = Thread32First ( handle, & entry);
+	count = 0;
+	while (1)
+	{
+		enum_more = Thread32Next ( handle, & entry);
+		if ( !enum_more )
+			break;
+		if ( entry.th32OwnerProcessID == pid )
+		{
+			count ++;
+			if(count > 25)
+				return;
+		}
+	}
+	if(count < 25)
+	{	
+		ReadConfig.gObjItemRandomLevelUpSoulLuck	= -1;
+		ReadConfig.gObjItemRandomLevelUpSoulNoLuck	= -1;
+		ReadConfig.gObjItemRandomOption3UpLife = -1;
+
+		bCanTrade = 0;
+		gAddExperience = 1.0f;	
+		gCreateCharacter = 0;
+		gServerMaxUser=9;
+ 		gItemDropPer = 1;
+	
+		ReadConfig.SkillNightDiv = 0;
+		ReadConfig.SkillReflectTimeDiv = 0;
+		ReadConfig.SkillSleepTimeDiv = 0;
+		ReadConfig.SkillReduceDamageDiv = 0;		
+	}
+	VM_END
+}
+#endif
+
 
 BOOL CCashShop::GCCashItemListSend(LPOBJ lpObj, PMSG_REQ_CASHITEMLIST *lpMsg)
 {
-	BOOL bResult = FALSE;
 	LPBYTE lpSendMsg = NULL;
 	int iCategory = 0;
 	int iPageIndex = 0;
@@ -927,102 +975,78 @@ BOOL CCashShop::GCCashItemListSend(LPOBJ lpObj, PMSG_REQ_CASHITEMLIST *lpMsg)
 
 	lpSendMsg = this->GetItemList(iCategory, iPageIndex);
 
-	if ( lpSendMsg == NULL ) //loc3
+	if ( lpSendMsg == NULL )
 		return FALSE;
-
-	int iSize = lpSendMsg[1]; //season 4.5
-
-	if(iSize < 1)
-	{
-		LogAddTD("[CashShop][GCCashItemListSend] size is zero !!");
-		return FALSE;
-	}
 
 	DataSend(lpObj->m_Index, lpSendMsg, sizeof(PMSG_ANS_CASHITEMLIST));
 
 	return TRUE;
 }
 
+
+
 void CCashShop::CGCashItemBuy(LPOBJ lpObj, PMSG_REQ_CASHITEM_BUY *lpMsg)
 {
 	int iCategoryIndex = 0;
 	BYTE btResult = 0;
-	BYTE btPosition = 0;
-	BOOL bItemEmptySpace = FALSE;
 	int iItemCode = 0;
 	CASHSHOP_ITEMLIST* lpCashItemInfo = NULL;
 
 	if ( this->bCashItemListReload == TRUE )
-	{
 		btResult = 7;
-		goto GOTO_EndFunc;
-	}
 
 	if ( g_bConnectShopServer == TRUE && g_bShopServerConnectState == FALSE )
 	{
 		btResult = 6;
-		goto GOTO_EndFunc;
 	}
 
 	if ( !gObjIsAccontConnect(lpObj->m_Index, lpObj->AccountID))
 	{
 		LogAddC(2, lMsg.Get(MSGGET(1, 175)), lpObj->AccountID, lpObj->m_Index);
 		btResult = 9;
-		goto GOTO_EndFunc;
 	}
 
 	if ( lpObj->Connected !=PLAYER_PLAYING && lpObj->Type != OBJ_USER )
-	{
 		btResult = 9;
-		goto GOTO_EndFunc;
-	}
 
 	iCategoryIndex = lpMsg->btCategoryIndex;
 
 	if ( iCategoryIndex < 0 || iCategoryIndex > MAX_CASH_SHOP_CATEGORY )
-	{
 		btResult = 3;
-		goto GOTO_EndFunc;
-	}
 
 	lpCashItemInfo = this->SearchItemList(lpMsg->dwItemPriceGuid);
 
-	if ( lpCashItemInfo == NULL )
+	if ( lpCashItemInfo == NULL )	// #error, It Must Send and Return coz if it is null it can crash
 	{
 		btResult = 3;
-		LogAddTD("[CashShop][Buy Request] User(ID:%s, Name:%s) Item(Guid:%d,Category:%d) Result:RESULT_FAIL_NOT_FOUND_ITEM", lpObj->AccountID, lpObj->Name, lpMsg->dwItemPriceGuid, iCategoryIndex);
-		goto GOTO_EndFunc;
+		goto cshopfinish;
 	}
 
 	iItemCode = ITEMGET(lpCashItemInfo->btItemType, lpCashItemInfo->wItemIndex);
 
-	if(iItemCode == ITEMGET(14,91)) //Anti-hack Summoner Card
-	{
-		if(lpObj->Summoner != false)
-		{
-			btResult = 3;
-			goto GOTO_EndFunc;
-		}
-	}
-
 	if ( this->CheckPeriodItem(iItemCode) == TRUE )
 	{
-		g_CashItemPeriodSystem.SearchAndDeleteItemPeriodEffect(lpObj,iItemCode);
+		if ( this->CheckPeriodItemUsed(lpObj, iItemCode) == TRUE )
+		{
+			btResult = 4;
+		}
 	}
 	else if ( this->CheckInventoryEmptySpace(lpObj, lpCashItemInfo) == FALSE )
 	{
 		btResult = 2;
 	}
 
-GOTO_EndFunc:
+	LogAddTD("[CashShop][Buy Request] User(ID:%s, Name:%s) Item(Name:%s,Guid:%d,Category:%d,Price:%d,SaleRate:%d) Result:%d",
+		lpObj->AccountID, lpObj->Name, ItemAttribute[iItemCode].Name, lpMsg->dwItemPriceGuid, iCategoryIndex,
+		lpCashItemInfo->wItemPrice, lpCashItemInfo->btItemSaleRatio, btResult);
+
 	if ( btResult == 0 )
 	{
-		LogAddTD("[CashShop][Buy Request] User(ID:%s, Name:%s) Item(Name:%s,Guid:%d,Category:%d,Price:%d,SaleRate:%d) Result:%d", lpObj->AccountID, lpObj->Name, ItemAttribute[iItemCode].Name, lpMsg->dwItemPriceGuid, iCategoryIndex, lpCashItemInfo->wItemPrice, lpCashItemInfo->btItemSaleRatio, btResult);
 		this->GSReqBuyCashItem(gGameServerCode, lpObj->DBNumber, lpObj->m_Index, lpObj->Name, 1, lpMsg->dwItemPriceGuid);
 	}
 	else
 	{
-		LogAddTD("[CashShop][Buy Request] User(ID:%s, Name:%s) Item(Guid:%d,Category:%d) Result:%d", lpObj->AccountID, lpObj->Name, lpMsg->dwItemPriceGuid, iCategoryIndex, btResult);
+cshopfinish:
 		this->GCCashItemBuyResult(lpObj, btResult);
 	}
 }
@@ -1032,6 +1056,7 @@ struct PMSG_ANS_CASHITEM_BUY
 	PBMSG_HEAD2 head;	// C1:F5:08
 	BYTE btResult;	// 4
 };
+
 
 void CCashShop::GCCashItemBuyResult(LPOBJ lpObj, BYTE btResult)
 {
@@ -1043,25 +1068,15 @@ void CCashShop::GCCashItemBuyResult(LPOBJ lpObj, BYTE btResult)
 	DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.head.size);
 }
 
+
+
+
+
 BOOL CCashShop::CheckPeriodItemUsed(LPOBJ lpObj, int iItemCode)
 {
 	if ( lpObj->m_iPeriodItemEffectIndex != -1 )
 	{
-		if ( iItemCode == ITEMGET(13,43) || 
-			iItemCode == ITEMGET(13,44) || 
-			iItemCode == ITEMGET(13,45) ||
-			iItemCode == ITEMGET(13,62) || //season3.5 add-on
-			iItemCode == ITEMGET(13,63) || //season3.5 add-on
-			iItemCode == ITEMGET(14,72) ||
-			iItemCode == ITEMGET(14,73) ||
-			iItemCode == ITEMGET(14,74) ||
-			iItemCode == ITEMGET(14,75) ||
-			iItemCode == ITEMGET(14,76) ||
-			iItemCode == ITEMGET(14,77) ||
-			iItemCode == ITEMGET(14,97) || //season3.5 add-on
-			iItemCode == ITEMGET(14,98) || //season3.5 add-on
-			iItemCode == ITEMGET(13,93) || //season4.5 add-on
-			iItemCode == ITEMGET(13,94)) //season4.5 add-on
+		if ( iItemCode == ITEMGET(13,43) || iItemCode == ITEMGET(13,44) || iItemCode == ITEMGET(13,45))
 		{
 			return TRUE;
 		}
@@ -1070,25 +1085,11 @@ BOOL CCashShop::CheckPeriodItemUsed(LPOBJ lpObj, int iItemCode)
 	return FALSE;
 }
 
+
+
 BOOL CCashShop::CheckPeriodItem(int iItemCode)
 {
-	if ( iItemCode == ITEMGET(13,43) ||
-		iItemCode == ITEMGET(13,44) ||
-		iItemCode == ITEMGET(13,45) ||
-		iItemCode == ITEMGET(13,59) || //Seal of Mobility Changed
-		iItemCode == ITEMGET(14,72) ||
-		iItemCode == ITEMGET(14,73) ||
-		iItemCode == ITEMGET(14,74) ||
-		iItemCode == ITEMGET(14,75) ||
-		iItemCode == ITEMGET(14,76) ||
-		iItemCode == ITEMGET(14,77) ||
-		//Season 3.5 add-on
-		iItemCode == ITEMGET(13,62) ||
-		iItemCode == ITEMGET(13,63) ||
-		iItemCode == ITEMGET(14,97) ||
-		iItemCode == ITEMGET(14,98) ||
-		iItemCode == ITEMGET(13,93) || //season4.5 add-on
-		iItemCode == ITEMGET(13,94)) //season4.5 add-on)
+	if ( iItemCode == ITEMGET(13,43) || iItemCode == ITEMGET(13,44) || iItemCode == ITEMGET(13,45))
 	{
 		return TRUE;
 	}
@@ -1096,11 +1097,14 @@ BOOL CCashShop::CheckPeriodItem(int iItemCode)
 	return FALSE;
 }
 
+
+
+
 BOOL CCashShop::CheckInventoryEmptySpace(LPOBJ lpObj, CASHSHOP_ITEMLIST *lpItemInfo)
 {
 	int h = 0;
 	int w = 0;
-	BYTE blank = 0;
+	unsigned char blank = 0;
 	int iItemHeight = 0;
 	int iItemWidth = 0;
 
@@ -1126,6 +1130,8 @@ BOOL CCashShop::CheckInventoryEmptySpace(LPOBJ lpObj, CASHSHOP_ITEMLIST *lpItemI
 	return FALSE;
 }
 
+
+
 CASHSHOP_ITEMLIST * CCashShop::SearchItemList(int iItemGuid)
 {
 	CASHSHOP_ITEMLIST* lpItemInfo = NULL;
@@ -1141,10 +1147,10 @@ CASHSHOP_ITEMLIST * CCashShop::SearchItemList(int iItemGuid)
 	return lpItemInfo;
 }
 
+
+
 BOOL CCashShop::GiveBuyItemToInventory(LPOBJ lpObj, int iItemGuid)
 {
-	BYTE btPosition = 0;
-	BYTE btResult = 0;
 	BOOL bEmptySpace = FALSE;
 	CASHSHOP_ITEMLIST* lpItemInfo = NULL;
 	CItem pItem;
@@ -1159,49 +1165,58 @@ BOOL CCashShop::GiveBuyItemToInventory(LPOBJ lpObj, int iItemGuid)
 		return FALSE;
 
 	pItem.Convert(iItemCode, lpItemInfo->btItemSkillOpion, lpItemInfo->btItemLuckOption, lpItemInfo->btItemAddOption,
-		lpItemInfo->btItemExOption, 0, 0, NULL, 0xFF, TEMP_PERIOD_VAR, CURRENT_DB_VERSION);
+		lpItemInfo->btItemExOption, 0, 0, CURRENT_DB_VERSION);
 
 	pItem.m_Level = lpItemInfo->btItemLevel;
 	pItem.m_Durability = lpItemInfo->btItemDuration;
 
 	ItemIsBufExOption(ExOption, &pItem);
 	ItemSerialCreateSend(lpObj->m_Index, 0xEC, lpObj->X, lpObj->Y, pItem.m_Type, pItem.m_Level,
-		pItem.m_Durability, pItem.m_Option1, pItem.m_Option2, pItem.m_Option3, lpObj->m_Index,
+		pItem.m_Durability, pItem.m_SkillOption, pItem.m_LuckOption, pItem.m_Z28Option, lpObj->m_Index,
 		pItem.m_NewOption, 0);
 
 	LogAddTD("[CashShop][Buy Item Create in Inven] - User(ID:%s,Name:%s) Item(Name:%s,Code:%d,Skill:%d,Luck:%d,Add:%d,Ex(%d:%d:%d:%d:%d:%d))",
 		lpObj->AccountID, lpObj->Name, ItemAttribute[iItemCode].Name, iItemCode, 
-		pItem.m_Option1, pItem.m_Option2, pItem.m_Option3, ExOption[0], ExOption[1], ExOption[2],
+		pItem.m_SkillOption, pItem.m_LuckOption, pItem.m_Z28Option, ExOption[0], ExOption[1], ExOption[2],
 		ExOption[3], ExOption[4], ExOption[5]);
 
 	return TRUE;
 }
+
+
+
 
 void CCashShop::GSReqCashPoint(DWORD dwUserGuid)
 {
 	protocol::MSG_GTOS_USER_CASH_REQ pMsg;
 
 	pMsg.dwUserGuid = dwUserGuid;
-	g_ShopServerClient.DataSend((char*)&pMsg, sizeof(protocol::MSG_GTOS_USER_CASH_REQ));
+	g_ShopServerClient.DataSend((PCHAR)&pMsg, sizeof(protocol::MSG_GTOS_USER_CASH_REQ));
 }
+
+
 
 void CCashShop::GSReqCashItemList()
 {
 	protocol::MSG_GTOS_ITEM_LIST_REQ  pMsg;
-	g_ShopServerClient.DataSend((char*)&pMsg, sizeof(protocol::MSG_GTOS_ITEM_LIST_REQ));
+	g_ShopServerClient.DataSend((PCHAR)&pMsg, sizeof(protocol::MSG_GTOS_ITEM_LIST_REQ));
 
 	LogAddTD("[CashShop] Request Cash Item List to ShopServer.");
 
 }
 
+
+
 void CCashShop::GSReqPackageItemList()
 {
 	protocol::MSG_GTOS_PACKAGE_LIST_REQ pMsg;
-	g_ShopServerClient.DataSend((char*)&pMsg, sizeof(protocol::MSG_GTOS_PACKAGE_LIST_REQ));
+	g_ShopServerClient.DataSend((PCHAR)&pMsg, sizeof(protocol::MSG_GTOS_PACKAGE_LIST_REQ));
 
 	LogAddTD("[CashShop] Request Cash Package Item List to ShopServer.");
 
 }
+
+
 
 void CCashShop::SetBranchItem(DWORD dwItemGuid, int iBranchType)
 {
@@ -1212,6 +1227,8 @@ void CCashShop::SetBranchItem(DWORD dwItemGuid, int iBranchType)
 	this->BranchItemList[this->iBranchItemCount].iBranchType = iBranchType;
 	this->iBranchItemCount++;
 }
+
+
 
 int CCashShop::GetBranchType(DWORD dwItemGuid)
 {
@@ -1226,6 +1243,8 @@ int CCashShop::GetBranchType(DWORD dwItemGuid)
 	return 0;
 }
 
+
+
 void CCashShop::GSReqBuyCashItem(DWORD dwServerGuid, DWORD dwUserGuid, DWORD dwCharacterGuid, LPSTR szCharacterName, DWORD dwCount, DWORD dwPriceGuid)
 {
 	protocol::MSG_GTOS_BUY_ITEM_REQ pMsg;
@@ -1238,26 +1257,41 @@ void CCashShop::GSReqBuyCashItem(DWORD dwServerGuid, DWORD dwUserGuid, DWORD dwC
 	memset(pMsg.szCharName, 0, sizeof(pMsg.szCharName));
 	strcpy(pMsg.szCharName, szCharacterName);
 
-	g_ShopServerClient.DataSend((char*)&pMsg, sizeof(protocol::MSG_GTOS_BUY_ITEM_REQ));
+	g_ShopServerClient.DataSend((PCHAR)&pMsg, sizeof(protocol::MSG_GTOS_BUY_ITEM_REQ));
 }
+
+
+
 
 void CCashShop::GSNtfBuyCashItem(protocol::MSG_GTOS_BUY_ITEM_NTF * pMsg)
 {
 	pMsg->resize();
-	g_ShopServerClient.DataSend((char*)pMsg, pMsg->size);
+	g_ShopServerClient.DataSend((PCHAR)pMsg, pMsg->size);	// #warning this should be pMsg->size
 }
+
+
+
+
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+/*:::::::::::::::::::::::::::::::: :INDIVIDUAL PACKETS :::::::::::::::::::::::::::::::::::::*/
+/*::::::::::::::::::::::::::::::::: ( From Shop Server ) :::::::::::::::::::::::::::::::::::*/
+/*::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
+
 
 void SGAnsCashPoint(protocol::MSG_STOG_USER_CASH_ANS* aRecv)
 {
 	LPOBJ lpObj = NULL;
 
-	lpObj = g_CashShop.SearchUser(aRecv->dwUserGuid);//tut mb kosak sec
+	lpObj = g_CashShop.SearchUser(aRecv->dwUserGuid);
 
 	if ( lpObj == NULL )
 		return;
 
 	g_CashShop.GCCashPoint(lpObj, aRecv->dwUserCash);
 }
+
+
 
 void  SGAnsCashItemList(protocol::MSG_STOG_ITEM_LIST_ANS* aRecv)
 {
@@ -1269,6 +1303,9 @@ void  SGAnsCashItemList(protocol::MSG_STOG_ITEM_LIST_ANS* aRecv)
 	g_CashShop.MakeItemListProtocol();
 }
 
+
+
+
 void SGAnsPackageItemList(protocol::MSG_STOG_PACKAGE_LIST_ANS* aRecv)
 {
 	LogAddTD("[CashShop] Receive Cash Package Item List from ShopServer. (%d)", aRecv->dwPackageCount);
@@ -1279,19 +1316,21 @@ void SGAnsPackageItemList(protocol::MSG_STOG_PACKAGE_LIST_ANS* aRecv)
 	g_CashShop.MakeItemListProtocol();
 }
 
+
+
+
 void CCashShop::GSReqBranchItemList()
 {
 	LogAddTD("[CashShop] Request Cash Branch Item List to ShopServer.");
 	
 	protocol::MSG_GTOS_BRANCH_ITEM_LIST_REQ pMsg;
-	g_ShopServerClient.DataSend((char*)&pMsg, sizeof(protocol::MSG_GTOS_BRANCH_ITEM_LIST_REQ));	
+	g_ShopServerClient.DataSend((PCHAR)&pMsg, sizeof(protocol::MSG_GTOS_BRANCH_ITEM_LIST_REQ));	
 }
+
 
 void SGAnsBranchItemList(protocol::MSG_STOG_BRANCH_ITEM_LIST_ANS* lpMsg)
 {
 	int iBranchItemCount = 0;
-	int iItemGuid = 0;
-	CASHSHOP_ITEMLIST* lpItemInfo = NULL;
 
 	iBranchItemCount = lpMsg->dwItemCount;
 
@@ -1304,15 +1343,18 @@ void SGAnsBranchItemList(protocol::MSG_STOG_BRANCH_ITEM_LIST_ANS* lpMsg)
 	}
 }
 
+
+
+
+
 void SGAnsBuyCashItem( protocol::MSG_STOG_BUY_ITEM_ANS* aRecv)
 {
-	int iItemBuyTransactionCount = 0;			//EBP-10
-	LPOBJ lpObj = NULL;							//EBP-14
-	CASHSHOP_ITEMLIST* lpItemList = NULL;		//EBP-18
-	int iItemCode = 0;							//EBP-1C
-	int iItemUsePeriod = 0;						//EBP-20
-	protocol::MSG_GTOS_BUY_ITEM_NTF pMsg;		//EBP-F8
-	int iResult = 1;							//EBP-F1
+	int iItemBuyTransactionCount = 0;
+	LPOBJ lpObj = NULL;
+	CASHSHOP_ITEMLIST* lpItemList = NULL;
+	int iItemCode = 0;
+	protocol::MSG_GTOS_BUY_ITEM_NTF pMsg;
+	int iResult = 1;
 
 	lpObj = g_CashShop.SearchUser(aRecv->dwUserGuid);
 
@@ -1337,32 +1379,6 @@ void SGAnsBuyCashItem( protocol::MSG_STOG_BUY_ITEM_ANS* aRecv)
 			{
 				g_CashItemPeriodSystem.GDReqPeriodItemInsert(lpObj, iItemCode, lpItemList->dwItemUsePeriod);
 			}
-
-			//GS19 Decompilation
-			else if(iItemCode == ITEMGET(14,78) || iItemCode == ITEMGET(14,79) || iItemCode == ITEMGET(14,80) || iItemCode == ITEMGET(14,81) || iItemCode == ITEMGET(14,82))
-			{
-				if( gObjCashShopSearchItem(lpObj,iItemCode, 0, lpItemList->btItemDuration, 3) == FALSE)
-				{
-					if(g_CashShop.GiveBuyItemToInventory(lpObj, aRecv->transactions[i].dwPriceGuid) == FALSE)
-					{
-						iResult = 0;
-					}
-				}
-			}
-			else if(iItemCode == ITEMGET(14,70) || iItemCode == ITEMGET(14,71) || iItemCode == ITEMGET(14,94)) //Season3 update (1 New Elite Potion since GS56)
-			{
-				if( gObjCashShopSearchItem(lpObj,iItemCode, 0, lpItemList->btItemDuration, 50) == FALSE)
-				{
-					if(g_CashShop.GiveBuyItemToInventory(lpObj, aRecv->transactions[i].dwPriceGuid) == FALSE)
-					{
-						iResult = 0;
-					}
-				}
-			}
-			else if(iItemCode == ITEMGET(14,91)) //Season3 add-on (Summoner Character Card)
-			{
-				GDSummonerStateUpdate(lpObj, lpObj->m_Index);
-			}
 			else if ( g_CashShop.GiveBuyItemToInventory(lpObj, aRecv->transactions[i].dwPriceGuid) == FALSE )
 			{
 				iResult = 0;
@@ -1377,6 +1393,7 @@ void SGAnsBuyCashItem( protocol::MSG_STOG_BUY_ITEM_ANS* aRecv)
 	g_CashShop.GCCashPoint(lpObj, aRecv->dwUserCash);
 	g_CashShop.GSNtfBuyCashItem(&pMsg);
 
+
 	switch ( aRecv->dwResult )
 	{
 		case 1:	iResult =0;	break;
@@ -1390,114 +1407,34 @@ void SGAnsBuyCashItem( protocol::MSG_STOG_BUY_ITEM_ANS* aRecv)
 		case 14:	iResult =7;	break;
 	}
 
-	LogAddTD("[CashShop][Buy Answer] User(ID:%s, Name:%s) Result:%d", lpObj->AccountID, lpObj->Name, iResult);
+	LogAddTD("[CashShop][Buy Answer] User(ID:%s, Name:%s) Result:%d",
+		lpObj->AccountID, lpObj->Name, iResult);
+
 	g_CashShop.GCCashItemBuyResult(lpObj, iResult);
+
 }
-#endif
+
+
+
 
 BOOL IsCashItem(int iItemCode)
 {
-	switch ( iItemCode )
+	/*switch ( iItemCode )
 	{
 		case ITEMGET(13,43): return TRUE;
 		case ITEMGET(13,44): return TRUE;
 		case ITEMGET(13,45): return TRUE;
-
 		case ITEMGET(13,46): return TRUE;
 		case ITEMGET(13,47): return TRUE;
 		case ITEMGET(13,48): return TRUE;
-
 		case ITEMGET(14,53): return TRUE;
 		case ITEMGET(14,54): return TRUE;
-
 		case ITEMGET(14,58): return TRUE;
 		case ITEMGET(14,59): return TRUE;
 		case ITEMGET(14,60): return TRUE;
 		case ITEMGET(14,61): return TRUE;
 		case ITEMGET(14,62): return TRUE;
+	}*/
 
-		case ITEMGET(13,54):
-		case ITEMGET(13,55):
-		case ITEMGET(13,56):
-		case ITEMGET(13,57):
-		case ITEMGET(13,58):
-		case ITEMGET(13,59): //Seal of Mobility
-		case ITEMGET(13,60): //Indulgence
-		case ITEMGET(13,61): //Illusion Temple Ticket
-
-		case ITEMGET(14,70):
-		case ITEMGET(14,71):
-			
-		case ITEMGET(14,72):
-		case ITEMGET(14,73):
-		case ITEMGET(14,74):
-		case ITEMGET(14,75):
-		case ITEMGET(14,76):
-		case ITEMGET(14,77):
-		case ITEMGET(14,78):
-		case ITEMGET(14,79):
-		case ITEMGET(14,80):
-		case ITEMGET(14,81):
-		case ITEMGET(14,82):
-		case ITEMGET(14,83):
-
-		case ITEMGET(14,94): //Medium Elite Potion
-			return TRUE;
-
-		//Missing Other Chaos Card
-
-		//Missing 2 Items from Season 4.0
-		
-		//Season4.5 add-on
-		case ITEMGET(13,81): //Talisman of Guardian
-		case ITEMGET(13,82): //Talisman of Protection
-		case ITEMGET(13,83): //Talisman of Satan Wing
-		case ITEMGET(13,84): //Talisman of Heaven Wing
-		case ITEMGET(13,85): //Talisman of Elf Wing
-		case ITEMGET(13,86): //Talisman of Curse Wing
-		case ITEMGET(13,87): //Talisman of Lord Cape
-		case ITEMGET(13,88): //Talisman of Dragon Wing
-		case ITEMGET(13,89): //Talisman of Soul Wing
-		case ITEMGET(13,90): //Talisman of Spirit Wing
-		case ITEMGET(13,91): //Talisman of Despair Wing
-		case ITEMGET(13,92): //Talisman of Darkness Wing
-		case ITEMGET(13,93): //Seal of Master Ascension
-		case ITEMGET(13,94): //Seal of Master Wealth
-		
-		//Season3 add-on
-		case ITEMGET(13,62): //Seal of Healing
-		case ITEMGET(13,63): //Seal of Divinity
-		case ITEMGET(13,64): //Demon Pet
-		case ITEMGET(13,65): //Spirit Guardian Pet
-		case ITEMGET(14,96): //Talisman of Chaos Assembly
-		case ITEMGET(14,97): //Scroll of Battle
-		case ITEMGET(14,98): //Scroll of Strenghthener
-			//Season 4.6 addon
-		case ITEMGET(13,76)://Panda Ring
-		case ITEMGET(13,80)://Panda Pet
-		case ITEMGET(13, 106): // Unicorn Pet Season 5 Episode 2 JPN
-		case ITEMGET(13, 122): // Skeleton Ring Season 5 Episode 2 JPN 
-		case ITEMGET(13, 123): // Skeleton Pet Season 5 Episode 2 JPN
-			return TRUE;
-	}
-	return FALSE;
-}
-
-BOOL IsPremiumItem(int iItemCode) //00631460
-{
-	switch ( iItemCode )
-	{
-		case ITEMGET(14,54):
-		case ITEMGET(13,64)://Demon Pet
-		case ITEMGET(13,65)://Spirit Guardian Pet
-		case ITEMGET(14,96):
-		case ITEMGET(13,76)://Panda Ring
-		case ITEMGET(13,80)://Panda Pet
-		case ITEMGET(13, 106): // Season 5 Episode 2 JPN
-		case ITEMGET(13, 122): // Skeleton Ring Season 5 Episode 2 JPN 
-		case ITEMGET(13, 123): // Skeleton Pet Season 5 Episode 2 JPN
-		case ITEMGET(13,124):
-			return TRUE;
-	}
 	return FALSE;
 }

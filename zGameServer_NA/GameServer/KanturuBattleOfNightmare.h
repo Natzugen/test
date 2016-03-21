@@ -9,6 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
 #include "KanturuStateInfo.h"
 
 #define KANTURU_NIGHTMARE_STATE_INFO	6
@@ -56,13 +57,14 @@ public:
 
 private:
 
-	int m_iBattleOfNightmareState;	// 4
+	BYTE m_iBattleOfNightmareState;	// 4
 	BOOL m_bIsSucccess;	// 8
 	BOOL m_bFileDataLoad;	// C
 	CKanturuStateInfo m_StateInfo[KANTURU_NIGHTMARE_STATE_INFO];	// 10
-	int m_StateInfoCount;	// 88
-	int m_iNightmareAIGroupNumber;	// 8C
-	int m_iNightmareObjIndex;	// 90
+	BYTE m_StateInfoCount;	// 88
+	short m_iNightmareAIGroupNumber;	// 8C
+	short m_iNightmareObjIndex;	// 90
 };
 
+#endif
 #endif // !defined(AFX_KANTURUBATTLEOFNIGHTMARE_H__3AA73932_6DB3_404B_92CE_9AD80A1B5DE7__INCLUDED_)

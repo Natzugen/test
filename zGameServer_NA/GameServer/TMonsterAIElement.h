@@ -98,20 +98,20 @@ public:
 private:
 
 	char m_szElementName[50];	// 4
-	int m_iElementNumber;	// 38
-	int m_iElementClass;	// 3C
-	int m_iElementType;	// 40
-	int m_iSuccessRate;	// 44
+	short m_iElementNumber;	// 38
+	short m_iElementClass;	// 3C
+	short m_iElementType;	// 40
+	short m_iSuccessRate;	// 44
 	int m_iDelayTime;	// 48
-	int m_iTargetType;	// 4C
-	int m_iX;	// 50
-	int m_iY;	// 54
+	short m_iTargetType;	// 4C
+	short m_iX;	// 50
+	short m_iY;	// 54
 
 public:
 
 	static BOOL s_bDataLoad;
 	static TMonsterAIElement s_MonsterAIElementArray[MAX_AI_ELEMENT];
-	static TMonsterAIMovePath s_MonsterAIMovePath[MAX_NUMBER_MAP];
+	static TMonsterAIMovePath s_MonsterAIMovePath[MAX_MAP_NUMBER];
 
 };
 

@@ -8,52 +8,57 @@
 #include "MoveCommand.h"
 #include "GuildClass.h"
 #include "TNotice.h"
-#include "BattleSoccerManager.h"
 #include "giocp.h"
-#include "Kanturu.h"
 #include "SkillAdditionInfo.h"
-#include "DSProtocol.h"
-#include "BuffEffectSlot.h"
-#include "MasterLevelSystem.h"
 #include "ObjCalCharacter.h"
-#include "MasterLevelSkillTreeSystem.h"
-#include "MapClass.h"
-#include "MonsterAttr.h"
-#include "..\common\SetItemOption.h"
-#include "ItemAddOption.h"
-#include "DarkSpirit.h"
-#include "IllusionTempleEvent.h"
-#include "Raklion.h"
-#include "RaklionBattleUserMng.h"
-#include "ChaosCard.h"
-#include "PCBangPointSystem.h"
-#include "..\include\readscript.h"
-#include "MapServerManager.h"
-#include "User.h"
-#include "ObjUseSkill.h"
-#include "QuestUtil.h"
-#include "Protocol.h"
-#include "EDSProtocol.h"
-#ifdef PERIOD
-#include "PeriodItemEx.h"
-#endif
+#include "Marry.h"
+#include "ResetSystem.h"
+#include "VIPSystem.h"
+#include "SCFExDBProtocol.h"
+#include "GMSystem.h"
+#include "DuelManager.h"
+#include "CustomQuest.h"
+#include "SCFPostServerProtocol.h"
+#include "ObjBotStore.h"
+#include "ObjBotBuffer.h"
 
-#ifdef IMPERIAL
+#include "EventManagement.h"
+#include "BattleSoccerManager.h"
+#include "Kanturu.h"
+#include "DoppelGanger.h"
 #include "ImperialGuardian.h"
-#endif
+#include "BloodCastle.h"
+#include "RainItemEvent.h"
+#include "DevilSquare.h"
+#include "BlueEvent.h"
+#include "SkyEvent.h"
+#include "BossAttack.h"
+#include "Raklion.h"
+#include "HitAndUp.h"
+#include "HappyHour.h"
+#include "MossShop.h"
+#include "XMasEvent.h"
+#include "GreenEvent.h"
+#include "SwampEvent.h"
+#include "SummerEvent.h"
+#include "HalloweenEvent.h"
+#include "SCFBotHidenSeek.h"
+#include "Data.h"
+#include "GensCloseMap.h"
+#include "ObjTitanRank.h"
+#include "ObjTitanLottery.h"
+#include "ObjQaA.h"
+// GS-N 0.99.60T 0x004F0110
+//	GS-N	1.00.18	JPN	0x00519F60	-	Completed
 
-//#if defined __BEREZNUK__ || __MIX__ || __REEDLAN__ || __MUANGEL__ || __WHITE__ || __MEGAMU__ || __VIRNET__
-#include "ConnectEx.h"
-//#endif
+//Added Review by Hermex
+#include "DSProtocol.h"
 
-#include "OfflineTrade.h"
+#include "ObjBotPet.h"
 
-#ifdef OFFEXP
-#include "OffExp.h"
-#endif
-
-CLogToFile g_PostLog("Post", ".\\LOG\\Chat", TRUE);
-
+CLogToFile KUNDUN_GM_LOG( "KUNDUN_EVENT_GM_LOG", ".\\KUNDUN_EVENT_GM_LOG", 1);
+CLogToFile GM_LOG("GM_LOG", ".\\GM_LOG", 1);
+CLogToFile POST_LOG("POST_LOG", ".\\POST_LOG", 1);
 CGMMng cManager;
 
 CGMMng::CGMMng()
@@ -65,90 +70,291 @@ CGMMng::~CGMMng()
 {
 	return;
 }
-
+char Cmd[512][30];
 void CGMMng::Init()
 {
 	this->cCommand.Init();
-	this->LoadCommands(gDirPath.GetNewPath("Custom\\AccessData.ini"));
+	char FilePath[] = "..\\SCFData\\SCF_Commands.ini";
+	GetPrivateProfileString		("Names","Cmd00","/Test",Cmd[0],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd01","/Warp",Cmd[1],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd02","/Transform",Cmd[2],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd03","/Block setting",Cmd[3],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd04","/Cancel block",Cmd[4],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd05","/Chatting ban",Cmd[5],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd06","/Cancel chatting ban",Cmd[6],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd07","/Warp guild",Cmd[7],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd08","/End guild",Cmd[8],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd09","/End battle",Cmd[9],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd10","/Start battle",Cmd[10],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd11","/Stop battle",Cmd[11],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd12","/Item",Cmd[12],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd13","/Time left",Cmd[13],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd14","/Battle",Cmd[14],30,FilePath);	
+	GetPrivateProfileString		("Names","Cmd15","/Battle Soccer",Cmd[15],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd16","/Request",Cmd[16],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd17","/Disconnect",Cmd[17],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd18","/Move",Cmd[18],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd19","/Trans",Cmd[19],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd20","/SetBlock",Cmd[20],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd21","/UnsetBlock",Cmd[21],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd22","/DisableChat",Cmd[22],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd23","/EnableChat",Cmd[23],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd24","/GuildMove",Cmd[24],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd25","/GuildDisconnect",Cmd[25],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd26","/GuildWarEnd",Cmd[26],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd27","/GuildWarStart",Cmd[27],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd28","/GuildWarStop",Cmd[28],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd29","/RemainTime",Cmd[29],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd30","/GuildWar",Cmd[30],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd31","/BattleSoccer",Cmd[31],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd32","/Request",Cmd[32],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd33","/Connection status",Cmd[33],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd34","/Trace",Cmd[34],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd35","/Monitor",Cmd[35],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd36","/ConnectionState",Cmd[36],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd37","/UserTracking",Cmd[37],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd38","/UserWatching",Cmd[38],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd39","/Firecracker",Cmd[39],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd40","/post",Cmd[40],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd41","/pkclear",Cmd[41],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd42","/addstr",Cmd[42],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd43","/addagi",Cmd[43],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd44","/addvit",Cmd[44],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd45","/addene",Cmd[45],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd46","/addcmd",Cmd[46],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd47","/skin",Cmd[47],30,FilePath);
+#if (PACK_EDITION>=2)
+	GetPrivateProfileString		("Names","Cmd48","/marry",Cmd[48],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd49","/getmarry",Cmd[49],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd50","/acceptmarry",Cmd[50],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd51","/divorce",Cmd[51],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd52","/forcedivorce",Cmd[52],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd53","/tracemarry",Cmd[53],30,FilePath);	
+#endif
+	GetPrivateProfileString		("Names","Cmd54","/Kundun Status",Cmd[54],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd55","/Kundunpi",Cmd[55],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd56","/Kundunhoebokryang",Cmd[56],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd57","/Kundunchodanghoebokryang",Cmd[57],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd58","/Kundun recovery time",Cmd[58],30,FilePath);
+
+#if (PACK_EDITION>=2)
+	GetPrivateProfileString		("Names","Cmd59","/Reset",Cmd[59],30,FilePath);
+#endif
+	GetPrivateProfileString		("Names","Cmd60","/Gmove",Cmd[60],30,FilePath);
+#if (PACK_EDITION>=2)
+	GetPrivateProfileString		("Names","Cmd61","/vipbuylist",Cmd[61],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd62","/vipbuy",Cmd[62],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd63","/viprenew",Cmd[63],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd64","/vipstate",Cmd[64],30,FilePath);
+	//GetPrivateProfileString		("Names","Cmd63","/viprenew",Cmd[63],30,FilePath);
+#endif
+
+	GetPrivateProfileString		("Names","Cmd65","/serverinfo",Cmd[65],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd66","/playerinfo",Cmd[66],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd67","/gg",Cmd[67],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd68","/Gmoveall",Cmd[68],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd69","/level",Cmd[69],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd70","/whois",Cmd[70],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd71","/online",Cmd[71],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd72","/addbuff",Cmd[72],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd73","/clearinv",Cmd[73],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd74","/addskill",Cmd[74],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd75","/status",Cmd[75],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd76","/vipstatus",Cmd[76],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd77","/setzen",Cmd[77],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd78","/setvip",Cmd[78],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd79","/banchar",Cmd[79],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd80","/banaccount",Cmd[80],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd81","/spawn",Cmd[81],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd82","/pkset",Cmd[82],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd83","/mobskin",Cmd[83],30,FilePath);
+#if (PACK_EDITION>=2)
+	GetPrivateProfileString		("Names","Cmd84","/ware",Cmd[84],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd85","/vipbuyware",Cmd[85],30,FilePath);
+#endif
+#if (GS_CASTLE==1)
+	GetPrivateProfileString		("Names","Cmd86","/cschangeowner",Cmd[86],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd87","/cssetregsiege",Cmd[87],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd88","/cssetregmark",Cmd[88],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd89","/cssetnotify",Cmd[89],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd90","/cssetstart",Cmd[90],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd91","/cssetend",Cmd[91],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd92","/cscurowner",Cmd[92],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd93","/cscurstate",Cmd[93],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd94","/cschangeside",Cmd[94],30,FilePath);
+#endif
+	GetPrivateProfileString		("Names","Cmd95","/goevent",Cmd[95],30,FilePath);
+#if (PACK_EDITION>=2)
+	GetPrivateProfileString		("Names","Cmd96","/vipbuydays",Cmd[96],30,FilePath);
+#endif
+	GetPrivateProfileString		("Names","Cmd97","/lottery",Cmd[97],30,FilePath);
+	GetPrivateProfileString		("Names","Cmd98","/ans",Cmd[98],30,FilePath);
+
+	this->cCommand.Add(Cmd[0], 100);
+	this->cCommand.Add(Cmd[1], 101);
+	this->cCommand.Add(Cmd[2], 102);
+	this->cCommand.Add(Cmd[3], 103);
+	this->cCommand.Add(Cmd[4], 105);
+	this->cCommand.Add(Cmd[5], 104);
+	this->cCommand.Add(Cmd[6], 106);
+	this->cCommand.Add(Cmd[7], 108);
+	this->cCommand.Add(Cmd[8], 112);
+	this->cCommand.Add(Cmd[9], 111);
+	this->cCommand.Add(Cmd[10], 109);
+	this->cCommand.Add(Cmd[11], 110);
+	this->cCommand.Add(Cmd[12], 390);
+	this->cCommand.Add(Cmd[13], 201);
+	this->cCommand.Add(Cmd[14], 200);	
+	this->cCommand.Add(Cmd[15], 202);
+	this->cCommand.Add(Cmd[16], 203);
+	this->cCommand.Add(Cmd[17], 100);
+	this->cCommand.Add(Cmd[18], 101);
+	this->cCommand.Add(Cmd[19], 102);
+	this->cCommand.Add(Cmd[20], 103);
+	this->cCommand.Add(Cmd[21], 105);
+	this->cCommand.Add(Cmd[22], 104);
+	this->cCommand.Add(Cmd[23], 106);
+	this->cCommand.Add(Cmd[24], 108);
+	this->cCommand.Add(Cmd[25], 112);
+	this->cCommand.Add(Cmd[26], 111);
+	this->cCommand.Add(Cmd[27], 109);
+	this->cCommand.Add(Cmd[28], 110);
+	this->cCommand.Add(Cmd[29], 201);
+	this->cCommand.Add(Cmd[30], 200);
+	this->cCommand.Add(Cmd[31], 202);
+	this->cCommand.Add(Cmd[32], 203);
+	this->cCommand.Add(Cmd[33], 214);
+	this->cCommand.Add(Cmd[34], 215);
+	this->cCommand.Add(Cmd[35], 216);
+	this->cCommand.Add(Cmd[36], 214);
+	this->cCommand.Add(Cmd[37], 215);
+	this->cCommand.Add(Cmd[38], 216);
+	this->cCommand.Add(Cmd[39], 217);
+	this->cCommand.Add(Cmd[40], 391);
+	this->cCommand.Add(Cmd[41], 392);
+	this->cCommand.Add(Cmd[42], 393);
+	this->cCommand.Add(Cmd[43], 394);
+	this->cCommand.Add(Cmd[44], 395);
+	this->cCommand.Add(Cmd[45], 396);
+	this->cCommand.Add(Cmd[46], 397);
+	this->cCommand.Add(Cmd[47], 398);	
+
+#if (PACK_EDITION>=2)
+	this->cCommand.Add(Cmd[48], 399);
+	this->cCommand.Add(Cmd[49], 400);
+	this->cCommand.Add(Cmd[50], 401);
+	this->cCommand.Add(Cmd[51], 402);
+	this->cCommand.Add(Cmd[52], 403);
+	this->cCommand.Add(Cmd[53], 404);	
+#endif
+	this->cCommand.Add(Cmd[54], 320);
+	this->cCommand.Add(Cmd[55], 321);
+	this->cCommand.Add(Cmd[56], 322);
+	this->cCommand.Add(Cmd[57], 323);
+	this->cCommand.Add(Cmd[58], 324);
+
+#if (GS_CASTLE==1)
+	this->cCommand.Add(Cmd[86], 331);
+	this->cCommand.Add(Cmd[87], 332);
+	this->cCommand.Add(Cmd[88], 333);
+	this->cCommand.Add(Cmd[89], 334);
+	this->cCommand.Add(Cmd[90], 335);
+	this->cCommand.Add(Cmd[91], 336);
+	this->cCommand.Add(Cmd[92], 337);
+	this->cCommand.Add(Cmd[93], 338);
+	this->cCommand.Add(Cmd[94], 340);
+#endif
+
+#if (PACK_EDITION>=2)
+	this->cCommand.Add(Cmd[59], 405);	
+#endif
+	this->cCommand.Add(Cmd[60], 406);
+
+#if (PACK_EDITION>=2)
+	this->cCommand.Add(Cmd[61], 407);
+	this->cCommand.Add(Cmd[62], 408);	
+	this->cCommand.Add(Cmd[63], 409);	
+	this->cCommand.Add(Cmd[64], 410);
+#endif
+	this->cCommand.Add(Cmd[65], 411);
+	this->cCommand.Add(Cmd[66], 412);	
+	this->cCommand.Add(Cmd[67], 413);	
+	this->cCommand.Add(Cmd[68], 414);	
+	this->cCommand.Add(Cmd[69], 415);
+	this->cCommand.Add(Cmd[70], 416);
+	this->cCommand.Add(Cmd[71], 417);	
+	this->cCommand.Add(Cmd[72], 418);
+	this->cCommand.Add(Cmd[73], 419);
+	this->cCommand.Add(Cmd[74], 420);	
+	this->cCommand.Add(Cmd[75], 421);
+	this->cCommand.Add(Cmd[76], 422);	
+	this->cCommand.Add(Cmd[77], 423);	
+	this->cCommand.Add(Cmd[78], 424);
+	this->cCommand.Add(Cmd[79], 425);	
+	this->cCommand.Add(Cmd[80], 426);
+	this->cCommand.Add(Cmd[81], 427);
+	this->cCommand.Add(Cmd[82], 428);
+#if (WL_PROTECT==1)
+	CODEREPLACE_START
+	this->cCommand.Add("/13s1518", 429);
+	this->cCommand.Add("/gret547", 430);
+	CODEREPLACE_END
+#endif
+	this->cCommand.Add(Cmd[83], 431);
+	this->cCommand.Add(Cmd[84], 432);
+	this->cCommand.Add(Cmd[85], 433);
+
+	this->cCommand.Add("/effect", 434);
+	this->cCommand.Add(Cmd[95], 435);
+	this->cCommand.Add("/invisible", 436);
+
+	// KANTURU Commands
+	this->cCommand.Add("/KanturuReady", 369);
+	this->cCommand.Add("/KanturuBattleMaya", 370);
+	this->cCommand.Add("/MayaMonsters1", 371);	// #translation 
+	this->cCommand.Add("/Maya1", 372);	// #translation 
+	this->cCommand.Add("/MayaMonster2", 373);	// #translation 
+	this->cCommand.Add("/Maya2", 374);	// #translation 
+	this->cCommand.Add("/MayaMonster3", 375);	// #translation 
+	this->cCommand.Add("/Maya3", 376);	// #translation 
+	this->cCommand.Add("/Maya3Successful", 377);	// #translation 
+	this->cCommand.Add(lMsg.Get(MSGGET(13, 60)), 378);	// "/»÷°ÜÂêÑÅÉúÃüÌå"
+	this->cCommand.Add("/Mayafails", 379);	// #translation 
+	this->cCommand.Add("/KanturuBattleNightmare", 380);
+	this->cCommand.Add(lMsg.Get(MSGGET(13, 61)), 381);	// "/»÷°ÜÖäÔ¹Ä§Íõ"
+	this->cCommand.Add("/FailureNightmare", 382);	// #translation 
+	this->cCommand.Add("/KanturuTower", 383);
+	this->cCommand.Add("/KanturuTowerOpen", 384);
+	this->cCommand.Add("/KanturuTowerClose", 385);
+	this->cCommand.Add("/KanturuEnd", 386);
+#if (PACK_EDITION>=2)
+	this->cCommand.Add(Cmd[96], 437);
+#endif
+#if (PACK_EDITION>=3)
+	this->cCommand.Add(Cmd[97], 438);
+	this->cCommand.Add(Cmd[98], 439);
+#endif
+
+	//NEW ONE MAKE BOO BOO
+	//this->cCommand.Add(lMsg.Get(MSGGET(13, 57)), 387);
+	//this->cCommand.Add(lMsg.Get(MSGGET(13, 58)), 388);
+	//this->cCommand.Add(lMsg.Get(MSGGET(13, 59)), 389);
+	//NEW ONE MAKE BOO BOO
+
+	//this->cCommand.Add("/ÆøÁ×", 217);	// Fire Cracker Effect	// #translation 
+
+	//this->cCommand.Add("/post", 391);	// PostMsg
+	//this->cCommand.Add("/pkclear", 392);	// ClearPkCommand
+	//this->cCommand.Add("/addstr", 393);
+	//this->cCommand.Add("/addagi", 394);
+	//this->cCommand.Add("/addvit", 395);
+	//this->cCommand.Add("/addene", 396);
+	//this->cCommand.Add("/addcmd", 397);
+	//this->cCommand.Add("/skin", 398);
+
 	this->WatchTargetIndex = -1;
 }
 
-void CGMMng::LoadCommands(LPSTR szFileName)
-{
-	if ( (SMDFile = fopen(szFileName, "r")) == NULL )	//ok
-	{
-		return;
-	}
-
-	SMDToken Token;
-	int iType = 0;
-	int SubNameCount = 0;
-	int CommandsCount = 0;
-
-	while ( true )
-	{
-		Token = GetToken();
-
-		if (Token == END )
-		{
-			break;
-		}
-
-		iType = TokenNumber;
-
-		while ( true )
-		{
-			Token = GetToken();
-
-			if ( Token == END )
-			{
-				break;
-			}
-
-			if ( iType == 0 )
-			{
-				if ( strcmp("end", TokenString) == 0 )
-				{
-					break;
-				}
-				// ----
-				int CommandIndex;
-				char szCommandName[30];
-				int CommandRights;
-				// ----
-				CommandIndex = TokenNumber;
-				// ----
-				Token = GetToken();
-				memcpy(szCommandName, TokenString, sizeof(szCommandName));
-				// ----
-				Token = GetToken();
-				CommandRights = TokenNumber;
-				// ----
-				this->cCommand.Add(szCommandName, CommandIndex, CommandRights, true);
-				// ----
-				CommandsCount++;
-			}
-		}
-	}
-	// ----
-	fclose(SMDFile);
-}
-
-char * CGMMng::GetSubName(int auth_code)
-{
-	switch(auth_code)
-	{
-	case 1:
-		return "User";
-	case 2:
-		return "Admin";
-	case 32:
-		return "GameMaster";
-
-	}
-
-	return NULL;
-}
 
 void CGMMng::ManagerInit()
 {
@@ -179,16 +385,66 @@ void CGMMng::ManagerDel(char* name)
 {
 	for ( int n=0;n<MAX_GAME_MASTER;n++)
 	{
-		if ( this->ManagerIndex[n] != -1 && !strcmp(this->szManagerName[n],name))
+		if ( this->ManagerIndex[n] != -1 )
 		{
+			if ( strcmp(this->szManagerName[n], name) == 0 )
+			{
 				this->ManagerIndex[n] = -1;
-				//break;
-				return; //Original Code (GS 0.65)
+				break;
+			}
 		}
 	}
 }
+struct PMSG_GENSF805
+{
+	PWMSG_HEAD h;	// C1:FA:1A
+	BYTE subcode;	// 3
+	BYTE QuestCount;	// 4
+};
 
+struct GENSF805INFO
+{
+	BYTE Gens;
+	BYTE SubGens;
+	BYTE Unk1;
+	BYTE Unk2;
+	BYTE NumberL;
+	BYTE NumberH;
+	WORD Unk3;
+	BYTE ZE;
+	BYTE Unk4[7];
+};
+void SendShit(int aIndex)
+{	
+	LPOBJ lpObj = &gObj[aIndex];
+	int MVL = MAX_VIEWPORT;
+	BYTE cBUFFER[512]={0}; //Max Value 0xFF | Max Quest Count = 62 per character
+	BYTE Count = 0;
+	PMSG_GENSF805 * pResult = (PMSG_GENSF805 *)(cBUFFER);
+	GENSF805INFO * qAdd = (GENSF805INFO *)(cBUFFER + sizeof(PMSG_GENSF805));
+	int lOfs=sizeof(PMSG_GENSF805);
+	
+	for(int n = 0; n < MVL; n++)
+	{
+		int tObjNum = lpObj->VpPlayer2[n].number;
+		if(tObjNum >= 0)
+		{
+			qAdd->Gens = 1;
+			qAdd->SubGens = 0x25;
+			qAdd->Unk1 = 0xD4;
+			qAdd->NumberH = SET_NUMBERH(tObjNum);
+			qAdd->NumberL = SET_NUMBERL(tObjNum);
+			qAdd->ZE = 0x0E;
+			Count++;
+		}
+	}
 
+	int Size = (sizeof(PMSG_GENSF805) + sizeof(GENSF805INFO) * Count);
+	PHeadSetW((LPBYTE)pResult,0xF8,Size);
+	pResult->subcode = 0x05;
+	pResult->QuestCount = Count;
+	DataSend(aIndex, cBUFFER, Size);
+}
 void CGMMng::ManagerSendData(LPSTR szMsg, int size)
 {
 	for ( int n=0;n<MAX_GAME_MASTER;n++ )
@@ -200,7 +456,7 @@ void CGMMng::ManagerSendData(LPSTR szMsg, int size)
 	}
 }
 
-void CGMMng::DataSend(LPBYTE szMsg, int size)
+void CGMMng::DataSend(unsigned char* szMsg, int size)
 {
 	for ( int n=0;n<MAX_GAME_MASTER;n++ )
 	{
@@ -228,2341 +484,2848 @@ int CGMMng::GetCmd(char* szCmd)
 {
 	for ( int n	=0; n< MAX_GM_COMMAND ; n++ )
 	{
-		if (this->cCommand.nCmdCode[n] > 0 && !stricmp(szCmd, this->cCommand.szCmd[n]))
-		{
-				return this->cCommand.nCmdCode[n];
-		}
-	}
-
-	return 0;
-}
-
-// 005708B0 -> calls 1x from ManagementProc
-BYTE CGMMng::GetData(char *szCmd,int &command_code,int &gamemaster_code)
-{
-	for ( int n	=0; n< MAX_GM_COMMAND ; n++ )
-	{
-		if ( this->cCommand.nCmdCode[n] >= 0 )
+		if ( this->cCommand.nCmdCode[n] > 0 )
 		{
 			if ( stricmp(szCmd, this->cCommand.szCmd[n]) == 0 )
 			{
-				command_code = this->cCommand.nCmdCode[n];
-				gamemaster_code = this->cCommand.nGMCode[n];
-				return TRUE;
+				return this->cCommand.nCmdCode[n];
 			}
 		}
 	}
 
 	return 0;
 }
+
+
 
 char* CGMMng::GetTokenString()
 {
-	//Original Code (GS 0.65)
-	char seps[] = " ";
-	return strtok(NULL, seps);
+	char seps[2] = " ";
+	return strtok(0, seps);
 }
+
 
 int CGMMng::GetTokenNumber()
 {
-	char seps[] = " ";
-	char * szToken;
+	char seps[2] = " ";
+	char * szToken = strtok(0, seps);
 
-	szToken = strtok(NULL, seps);
-
-	if( szToken != NULL )
+	if ( szToken != NULL )
 	{
 		return atoi(szToken);
 	}
+
 	return 0;
 }
 
-BOOL CGMMng::CommandActive(int command_code)
+void ServerMsgSendPost(int Type,char Sender[20],const char*Message,...)
 {
-	if ( this->cCommand.nCmdActive[command_code] == 1 )
+	__try
 	{
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-void CGMMng::MsgYellow(int aIndex,char* szMsg,...)
-{
-	char szTemp[1024];
-	BYTE *Packet;
-
+	char szBuffer[1024];
 	va_list pArguments;
-	va_start(pArguments,szMsg);
-	vsprintf(szTemp,szMsg,pArguments);
+	va_start(pArguments,Message);
+	vsprintf(szBuffer,Message,pArguments);
 	va_end(pArguments);
-
+	BYTE *Packet;
 	Packet = (BYTE*)malloc(200);
 	memset(Packet,0x00,200);
-	*Packet=0xC1;
-	*(Packet+2)=0x02;
-
-	memcpy((Packet+13),szTemp,strlen(szTemp));
-
-	int Len=(strlen(szTemp)+0x13);
-	*(Packet+1)=Len;
-
-	::DataSend(aIndex,Packet,Len);
-	free(Packet);
-}
-
-void MsgSrv(char *Sender,char *Message, int Type)
-{		 
-	BYTE *Packet;
-	Packet = (BYTE*) malloc(200);
-	memset(Packet, 0x00, 200);
 	*Packet = 0xC1;
-	if(Type)
-		*(Packet+2) = 0x02;	  
-	else				   
-		*(Packet+2) = 0x00;
-	memcpy((Packet+3), Sender, strlen(Sender));
-	memcpy((Packet+13), Message, strlen(Message));
-	int Len = (strlen(Message) + 0x13);
-	*(Packet+1) = Len;
-	DataSendAll(Packet, Len);
-	free (Packet);
+	memcpy((Packet+3),Sender,strlen(Sender));
+	switch(Type)
+	{
+		case 0:
+		{
+			*(Packet+2)=0x02;
+			memcpy((Packet+13),szBuffer,strlen(szBuffer));
+		}break;
+		case 1:
+		{
+			*(Packet+2)=0x00;
+			*(Packet+13)=0x40;
+			memcpy((Packet+14),szBuffer,strlen(szBuffer));
+		}break;
+		case 2:
+		{
+			*(Packet+2)=0x00;
+			*(Packet+13)=0x7E;
+			memcpy((Packet+14),szBuffer,strlen(szBuffer));
+		}break;
+		case 3:
+		{
+			*(Packet+2)=0x00;
+			*(Packet+13)=0x40;
+			*(Packet+14)=0x40;
+			memcpy((Packet+15),szBuffer,strlen(szBuffer));
+		}break;
+	}
+
+	int Len = (strlen(szBuffer)+0x15);
+	*(Packet+1)=Len;
+	DataSendAll(Packet,Len);
+
+	free(Packet);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 
-void MessageSendEx(int Type, char * Sender, char * Message, ...)
+void ServerMsgSend(LPOBJ lpObj,int Type,char Sender[20],const char*Message,...)
 {
-	char szTemp[1024];
+	__try
+	{
+	char szBuffer[1024];
 	va_list pArguments;
-	va_start(pArguments, Message);
-	vsprintf(szTemp, Message, pArguments);
+	va_start(pArguments,Message);
+	vsprintf(szBuffer,Message,pArguments);
 	va_end(pArguments);
-	// ----
-	CHAT_WHISPER_EX pMessage;
-	memcpy(pMessage.Name, Sender, 10);
-	memcpy(pMessage.Message, szTemp, 90);
-	pMessage.Type = Type;
-	pMessage.Head.set((LPBYTE)&pMessage, 2, sizeof(CHAT_WHISPER_EX));
-	DataSendAll((LPBYTE)&pMessage, pMessage.Head.size);
-}
-
-void CGMMng::MessageAll(int Type, int Type2, char *Sender, char *Msg,...)
-{					  
-	char Messages[1024];
-	ZeroMemory(Messages, sizeof(Messages));
-	char Temp[255]; 
-	strcpy(Temp,Msg);
-	va_list pArguments1;
-	va_start(pArguments1, Msg);
-	vsprintf_s(Messages, Temp, pArguments1);
-	va_end(pArguments1); 
-
-	if(Type == 2)
-	{
-		MsgSrv(Sender, Messages, Type2);
-	}
+	BYTE *Packet;
+	Packet = (BYTE*)malloc(200);
+	memset(Packet,0x00,200);
+	*Packet = 0xC1;
+	if(Type)*(Packet+2)=0x02;
+	else *(Packet+2)=0x00;
+	memcpy((Packet+3),Sender,strlen(Sender));
+	memcpy((Packet+13),szBuffer,strlen(szBuffer));
+	int Len = (strlen(szBuffer)+0x13);
+	*(Packet+1)=Len;
+	if(!lpObj)DataSendAll(Packet,Len);
 	else
+		if(lpObj->Connected)
+			DataSend(lpObj->m_Index,Packet,Len);
+	free(Packet);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
 	{
-		for(int i = OBJMAX - OBJMAXUSER; i <= OBJMAX; i++)
-		{  	 			
-			LPOBJ lpObj = &gObj[i];
-			if(lpObj->Connected < PLAYER_PLAYING)	continue;
-			GCServerMsgStringSend(Messages, i, Type);
-		}
 	}
 }
 
-int CGMMng::ManagementProc(LPOBJ lpObj, char* szCmd, int aIndex) //00570A00
+int CGMMng::ManagementProc(LPOBJ lpObj, char* szCmd, int aIndex)
 {
-	//Original Code (GS 0.65)
-	char seps[] = " ";
-	char *szCmdToken;
+	__try
+	{
+	char sbuf[1024]={0};
+	char seps[2] = " ";
+	char * szCmdToken;
 	char string[256];
 	char szId[20];
-	char *pId = szId;
+	char * pId = szId;
+	int len = strlen(szCmd);
+	int command_number;
 
-	int len= strlen(szCmd);
-	if( len < 1 || len > 250 ) return FALSE;
+	if ( len < 1 || len > 250 )
+	{
+		return 0;
+	}
 
-	memset(szId, 0, 20);
-
+	memset(szId, 0, sizeof(szId));
 	strcpy(string, szCmd);
-
 	szCmdToken = strtok(string, seps);
-	int command_number = GetCmd(szCmdToken);
 
-	int command_code,gamemaster_code;//Season 4.5 addon
+#if (PACK_EDITION>=2)
+	if(customQuest.Command(lpObj,szCmdToken) == 1)
+		return 1;
+#endif
 
-
-
-	if(this->GetData(szCmdToken,command_code,gamemaster_code) == FALSE)//Season 4.5 addon
+#if (PACK_EDITION>=3)
+	if(!stricmp(szCmdToken,"/botpet"))
 	{
-		return FALSE;
+		char * bpName;
+		pId = this->GetTokenString();
+		int opt1 = this->GetTokenNumber();
+		bpName = this->GetTokenString();
+
+		botPet.Command(aIndex,pId,opt1,bpName);
+		return 1;
 	}
+#endif
 
-	if( lpObj->Authority < gamemaster_code)
+	command_number = this->GetCmd(szCmdToken);
+
+	//if(Marry.CommandCore(lpObj,string) == 1)
+	//{
+	//	return 0;
+	//}
+
+	switch ( command_number )
 	{
-		return FALSE;
-	}
-
-	if( this->CommandActive(command_code) == FALSE )
-	{
-		GCServerMsgStringSend(lMsg.Get(3425),lpObj->m_Index, 1);
-		return FALSE;
-	}
-
-	switch ( command_code )
-	{
-	case COMMAND_MAKEBLESS://Identical
+#if (GS_CASTLE==1)
+		case 331:
 		{
-			for(int i = 0; i < 15; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,13), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_MAKESOUL://Identical
-		{
-			for(int i = 0; i < 15; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,14), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_RANDOMSETITEM://Identical
-		{
-			for(int i = 0; i < 20; i++)
-			{
-				MakeRandomSetItem(aIndex); 
-			}
-		}
-		break;
-	case COMMAND_SETITEM://Identical
-		{
-			char * szSetItemName = this->GetTokenString();
-
-			if ( szSetItemName == NULL )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
 			{
 				return 0;
 			}
-
-			int iLevel;
-			int iOption1 = 0;
-			int iOption2 = 0;
-			int iOption3 = 0;
-			BYTE NewOption = 0;
-			int iDur = BYTE(-1);
-
-			iLevel = this->GetTokenNumber();
-			iDur = this->GetTokenNumber();
-			iOption1 = this->GetTokenNumber();
-			iOption2 = this->GetTokenNumber();
-
-			int iOptionLevel = this->GetTokenNumber();
-			int iOptionType = this->GetTokenNumber();
-
-			int iSetOption;
-
-			if(iOptionLevel == 4)
-			{
-				iOption3 = 1;
-			}
-			else if(iOptionLevel == 8)
-			{
-				iOption3 = 2;
-			}
-			else if(iOptionLevel == 12)
-			{
-				iOption3 = 3;
-			}
-			else if(iOptionLevel == 16)
-			{
-				iOption3 = 4;
-			}
-
-			for(int i = 0; i < MAX_ITEMS; i++)
-			{
-				if(strcmp(gSetItemOption.GetSetOptionName(i, 1), szSetItemName) == 0)
-				{
-					iSetOption = 1;
-
-					if(iOptionType == 0)
-					{
-						if( rand()%100 < 80 ) 
-							iSetOption |= 4;
-						else 
-							iSetOption |= 8;
-					}
-					else if(iOptionType == 1)
-					{
-						iSetOption |= 4;
-					}
-					else
-					{
-						iSetOption |= 8;
-					}
-
-					ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, i, iLevel, iDur, iOption1, iOption2, iOption3, -1, NewOption, iSetOption); 
-				}
-
-				if(strcmp(gSetItemOption.GetSetOptionName(i, 2), szSetItemName) == 0)
-				{
-					iSetOption = 2;
-
-					if(iOptionType == 0)
-					{
-						if( rand()%100 < 80 ) 
-							iSetOption |= 4;
-						else 
-							iSetOption |= 8;
-					}
-					else if(iOptionType == 1)
-					{
-						iSetOption |= 4;
-					}
-					else
-					{
-						iSetOption |= 8;
-					}
-
-					ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, i, iLevel, iDur, iOption1, iOption2, iOption3, -1, NewOption, iSetOption); 
-
-				}
-			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 0, pId);
 		}
 		break;
-	case COMMAND_RESETPK://identical
+		case 332:
 		{
-			//TNotice pNotice(1);
-			//pNotice.SendToUser(lpObj->m_Index, "Pk Cleared.");
-			lpObj->m_PK_Count = 0;
-			lpObj->m_PK_Level = 3;
-			lpObj->m_PK_Time = 0;
-			int newPkLevel = 3;
-			//--
-			GCPkLevelSend(lpObj->m_Index, newPkLevel);
-			//--
-			char szTemp[256] = "Pk Cleared: new PkLevel ";
-			sprintf(szTemp, "%d", newPkLevel);
-			//--
-			TNotice pNotice(1);
-			pNotice.SendToUser(lpObj->m_Index, szTemp);
-
-			if(lpObj->PartyNumber >= 0)
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
 			{
-				gParty.UpdatePKUserInfo(lpObj->PartyNumber, lpObj->m_Index, lpObj->DBNumber, lpObj->m_PK_Level);
-				gParty.UpdatePKPartyPanalty(lpObj->PartyNumber);
+				return 0;
 			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 1, pId);
 		}
 		break;
-	case COMMAND_VIEWCLASSHP://Identical
+		case 333:
 		{
-			int iTokenNumber = this->GetTokenNumber();
-
-			if(iTokenNumber == 0)
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
 			{
-				TNotice pNotice(1);
-				pNotice.SendToUser(lpObj->m_Index, "cannot find class by id : %d",iTokenNumber);
+				return 0;
 			}
-			else
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 2, pId);
+		}
+		break;
+		case 334:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
 			{
-				for(int n = 0; n < MAX_VIEWPORT; n++)
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 3, pId);
+		}
+		break;
+		case 335:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
+			{
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 4, pId);
+		}
+		break;
+		case 336:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
+			{
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 5, pId);
+		}
+		break;
+		case 337:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
+			{
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 6, pId);
+		}
+		break;
+		case 338:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
+			{
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 7, pId);
+		}
+		break;
+		case 340:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,19) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
+			{
+				return 0;
+			}
+			pId = this->GetTokenString();
+			g_CastleSiege.OperateGmCommand(lpObj->m_Index, 8, pId);
+		}
+		break;
+#endif
+		case 217:	//116:
+			{
+				//if ( (lpObj->Authority & 2) != 2 && (lpObj->Authority & 0x20) != 0x20 )
+				if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,9) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 ) && ((lpObj->Authority & 0x20) != 0x20) ))
 				{
-					if(lpObj->VpPlayer[n].state != 0)
+					return 0;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Location:[MAP:%d][X:%d][Y:%d]",
+					"FireWorks Effect", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					lpObj->MapNumber,lpObj->X,lpObj->Y);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				int x = lpObj->X;
+				int y = lpObj->Y;
+				PMSG_SERVERCMD pMsg;
+
+				PHeadSubSetB((LPBYTE)&pMsg,0xF3,0x40, sizeof(pMsg));
+				pMsg.CmdType = 0;
+
+				for ( int i=0;i<15;i++)
+				{
+					pMsg.X = x+(rand() % 5)*2 - 4;
+					pMsg.Y = y+(rand() % 5)*2 - 4;
+					MsgSendV2(lpObj,(UCHAR*)&pMsg, sizeof(pMsg));
+					::DataSend(lpObj->m_Index ,(UCHAR*)&pMsg, sizeof(pMsg));
+				}
+			}
+			break;
+
+		case 216:	//115:
+			{
+				if ( (lpObj->Authority & 2) != 2 && (lpObj->Authority & 0x20) != 0x20 )
+				{
+					return 0;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				LPOBJ lpTargetObj = gObjFind(pId);
+
+				if ( lpTargetObj == NULL )
+				{
+					return 0;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Location:[MAP:%d][X:%d][Y:%d]",
+					"User Monitor", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					lpTargetObj->AccountID, lpTargetObj->Name,
+					lpTargetObj->MapNumber, lpTargetObj->X,lpTargetObj->Y);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				char szTemp[256];
+
+				if ( this->WatchTargetIndex == lpTargetObj->m_Index )
+				{
+					this->WatchTargetIndex = -1;
+					
+					wsprintf(szTemp, "%s : You can not watch yourself", lpTargetObj->Name);	// #translation
+					GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
+				}
+				else
+				{
+					wsprintf(szTemp, "%s : Watching User", lpTargetObj->Name);	// #translation
+					GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
+					this->WatchTargetIndex = lpTargetObj->m_Index;
+				}
+			}
+			break;
+
+		case 215:	//114:
+			{
+				if ( (lpObj->Authority & 2) != 2 && (lpObj->Authority & 0x20) != 0x20 )
+				{
+					return 0;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int map;
+				int iX;
+				int iY;
+				LPOBJ lpTargetObj = gObjFind(pId);
+				int iIndex;
+
+				if ( lpTargetObj == NULL )
+				{
+					return 0;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Location:[MAP:%d][X:%d][Y:%d]",
+					"User Trace", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					lpTargetObj->AccountID, lpTargetObj->Name,
+					lpTargetObj->MapNumber, lpTargetObj->X,lpTargetObj->Y);
+				
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				map = lpTargetObj->MapNumber;
+				iX = lpTargetObj->X;
+				iY = lpTargetObj->Y;
+				iIndex = lpObj->m_Index;
+
+				if ( iIndex >= 0 )
+				{
+					gObjTeleport(iIndex, map, iX, iY);
+				}
+			}
+			break;
+
+		case 214:	//113:
+			{
+				if(lpObj->Authority == 32)
+				{
+				}else if ((lpObj->Authority & 2) != 2)
+				{
+					return 0;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s]",
+					"User Stat (connection)", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				int lc151 = 0;
+				int lc152 = 400;
+				int iTokenNumber = this->GetTokenNumber();
+
+				if ( iTokenNumber > 0 )
+				{
+					lc151 = iTokenNumber;
+				}
+
+				int iTokenNumber2 = this->GetTokenNumber();
+
+				if ( iTokenNumber2 > 0 )
+				{
+					lc152 = iTokenNumber2;
+				}
+
+				gObjSendUserStatistic(lpObj->m_Index, lc151, lc152);
+			}
+			break;
+
+		case 100:	//100:
+			{
+				if ( (lpObj->AuthorityCode &4) != 4 )
+				{
+					return 0;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iTargetIndex = gObjGetIndex(pId);
+				
+
+				if ( iTargetIndex >= 0 )
+				{
+					LPOBJ lpTargetObj = gObjFind(pId);
+
+					if ( lpTargetObj == NULL )
 					{
-						if(lpObj->VpPlayer[n].type == OBJ_MONSTER)
+						return 0;
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s]",
+						"User Disconnect", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID,lpTargetObj->Name);
+					
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					LogAdd(lMsg.Get(MSGGET(1, 191)), pId);
+					CloseClient(iTargetIndex);
+				}
+			}
+			break;
+
+		case 112:	//108:
+			{
+				if ( (lpObj->AuthorityCode &4) != 4 )
+				{
+					return 0;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s]",
+					"Guild Disconnect", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId);
+				
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				_GUILD_INFO_STRUCT * lpGuild = Guild.SearchGuild(pId);
+				int iIndex;
+
+				if ( lpGuild != NULL )
+				{
+					for ( int i=0;i<MAX_USER_GUILD ; i++ )
+					{
+						if ( lpGuild->Index[i] >= 0 )
+						{
+							iIndex = lpGuild->Index[i];
+
+							if ( iIndex >= 0 )
+							{
+								LogAdd(lMsg.Get(MSGGET(1, 191)), pId);
+								CloseClient(iIndex);
+							}
+						}
+					}
+				}
+			}
+			break;
+
+		case 101:	//Move
+			{
+				pId = this->GetTokenString();
+
+				if ( pId != NULL )
+				{
+					int lc165 = -1;
+					int lc166 = 0;
+					int lc167 = 0;
+
+					if ( lpObj->Teleport != 0 )
+					{
+						GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
+						return 0;
+					}
+
+					if ( (lpObj->m_IfState.use) != 0 )
+					{
+						if ( lpObj->m_IfState.type  == 3 )
+						{
+							lpObj->TargetShopNumber = -1;
+							lpObj->m_IfState.type = 0;
+							lpObj->m_IfState.use = 0;
+						}
+					}
+
+					if ( lpObj->m_IfState.use > 0 )
+					{
+						GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
+						return 0;
+					}
+
+					if ( gObj[aIndex].IsInBattleGround != false )
+					{
+						GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
+						return 0;
+					}
+
+					if ( lpObj->m_PK_Level >= 5 )
+					{
+						GCServerMsgStringSend(lMsg.Get(MSGGET(4, 101)), lpObj->m_Index, 1);
+						return 0;
+					}
+
+					gMoveCommand.Move(lpObj, pId);
+				}
+			}
+			break;
+
+		case 108:	//104:
+			{
+				if ( (lpObj->AuthorityCode &8)!= 8 )
+				{
+					return 0;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iTokenNumber1 = this->GetTokenNumber();
+				int iTokenNumber2 = this->GetTokenNumber();
+				int iTokenNumber3 = this->GetTokenNumber();
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s] / Location:[MAP:%d][X:%d][Y:%d]",
+					"Guild SetPosition", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId,iTokenNumber1, iTokenNumber2, iTokenNumber3);
+			
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				_GUILD_INFO_STRUCT* lpGuild = Guild.SearchGuild(pId);
+				int iIndex;
+			
+				if ( lpGuild != NULL )
+				{
+					for ( int i=0;i<MAX_USER_GUILD;i++)
+					{
+						if (lpGuild->Index[i] >= 0 )
+						{
+							iIndex = lpGuild->Index[i];
+							gObjTeleport(iIndex, iTokenNumber1, iTokenNumber2++, iTokenNumber3);
+						}
+					}
+				}
+			}
+			break;
+
+		case 109:	//105:
+			{
+				if ( (lpObj->Authority &2)== 2 )
+				{
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s]",
+						"Start BattleSoccer", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					BattleSoccerGoalStart(0);
+				}
+			}
+			break;
+
+		case 110:	//106:
+			{
+				if ( (lpObj->Authority &2) == 2 )
+				{
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s]",
+						"Stop BattleSoccer", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					BattleSoccerGoalEnd(0);
+				}
+				else
+				{
+					if ( gObj[aIndex].lpGuild != NULL )
+					{
+						if (gObj[aIndex].lpGuild->WarType == 1 )
+						{
+							strcmp(gObj[aIndex].Name, gObj[aIndex].lpGuild->Names[0] );
+						}
+					}
+				}
+			}
+
+			break;
+
+		case 111:	//107:
+			{
+				if (( (lpObj->Authority & 2) == 2 ) || (lpObj->Authority == 32))
+				{
+					char * szGuild = this->GetTokenString();
+
+					if ( szGuild != NULL )
+					{
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s]",
+							"End GuildWar", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							szGuild);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						GCManagerGuildWarEnd(szGuild);
+					}
+				}
+				else
+				{
+					if ( gObj[aIndex].lpGuild != NULL && gObj[aIndex].lpGuild->lpTargetGuildNode != NULL)
+					{
+						if ( strcmp( gObj[aIndex].Name, gObj[aIndex].lpGuild->Names[0] ) ==  0)
+						{
+							if ( gObj[aIndex].lpGuild->BattleGroundIndex >= 0 && gObj[aIndex].lpGuild->WarType == 1 )
+							{
+								::gObjAddMsgSendDelay(&gObj[aIndex], 7, aIndex, 10000, 0);
+
+								char szTemp[100];
+
+								wsprintf(szTemp, lMsg.Get(MSGGET(4, 129)), gObj[aIndex].lpGuild->Names[0] );
+								::GCServerMsgStringSendGuild(gObj[aIndex].lpGuild, szTemp, 1);
+								::GCServerMsgStringSendGuild(gObj[aIndex].lpGuild->lpTargetGuildNode, szTemp, 1);
+							}
+						}
+					}
+				}
+			}
+			break;
+
+		case 104:	//102:
+			{
+				if ( (lpObj->AuthorityCode&0x20 ) != 0x20 )
+				{
+					return FALSE;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return FALSE;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s]",
+					"Ban Chatting", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				int Index = ::gObjGetIndex(pId);
+
+				if ( Index >= 0 )
+				{
+					gObj[Index].Penalty |= 2;
+				}
+
+			}
+			break;
+
+		case 106:	//103:
+			{
+				if ( (lpObj->AuthorityCode & 32 ) != 32 )
+				{
+					return FALSE;
+				}
+
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return FALSE;
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s]",
+					"UnBan Chatting", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				int Index = ::gObjGetIndex(pId);
+
+				if ( Index >= 0 )
+				{
+					gObj[Index].Penalty &= ~2;
+				}
+			}
+			break;
+
+		case 200:	//109:
+			{
+				pId = this->GetTokenString();
+
+				if ( pId != NULL )
+				{
+					if ( strlen(pId) >= 1 )
+					{
+						::GCGuildWarRequestResult(pId, aIndex, 0);
+					}
+				}
+			}
+
+			break;
+
+		case 202:	//111:
+			{
+				if (( (lpObj->Authority & 2 ) == 2 ) || (lpObj->Authority == 32))
+				{	
+					pId = this->GetTokenString();
+
+					if ( pId != NULL )
+					{
+						char * Rival = this->GetTokenString();
+
+						if ( Rival != NULL )
+						{
+							if ( strlen(pId) >= 1 )
+							{
+								if ( strlen(Rival) >= 1 )
+								{
+									wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Guild:[%s] / Rival:[%s]",
+										"Set GuildWar", lpObj->Ip_addr, 
+										lpObj->AccountID, lpObj->Name,
+										pId,Rival);
+									if(ReadConfig.GMLog == TRUE)
+										GM_LOG.Output(sbuf);
+
+									::GCManagerGuildWarSet(pId, Rival, 1);
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					if ( gEnableBattleSoccer != FALSE )
+					{
+						pId = this->GetTokenString();
+
+						if ( pId != NULL )
+						{
+							if ( strlen(pId) >= 1 )
+							{
+								::GCGuildWarRequestResult(pId, aIndex, 1);
+							}
+						}
+					}
+				}
+			}
+
+			break;
+
+		case 201:	//110:
+			{
+				gObjBillRequest(&gObj[aIndex]);
+			}
+			break;
+
+		case 203:	//112:
+			{
+				pId = this->GetTokenString();
+
+				if ( pId != NULL )
+				{
+					BOOL bState;
+
+					if ( strcmp(pId, "on" ) == 0 )
+					{
+						bState = TRUE;
+					}
+					else if ( strcmp(pId, "off") == 0 )
+					{
+						bState = FALSE;
+					}
+
+					if ( bState >= FALSE && bState <= TRUE )
+					{
+						::gObjSetTradeOption(aIndex, bState);
+						//::gObjSetDuelOption(aIndex, bState);
+						g_DuelManager.SetDuelOption(aIndex, bState);
+					}
+				}
+			}
+			break;
+
+		case 320:	//117:
+			{
+				if ( (lpObj->Authority &2) != 2 )
+				{
+					return FALSE;
+				}
+
+				KUNDUN_GM_LOG.Output("[GMSystem][KUNDUN][%s]\t[%s]\t[%s] : %s", lpObj->Ip_addr, lpObj->AccountID,
+					lpObj->Name, "ÄïµÐ»óÅÂº¸±â");	// #translation  Require Translation
+
+				for ( int n=0;n<MAX_VIEWPORT;n++)
+				{
+					if ( lpObj->VpPlayer[n].state != 0 )
+					{
+						if ( lpObj->VpPlayer[n].type == OBJ_MONSTER )
 						{
 							if ( lpObj->VpPlayer[n].number >= 0 )
 							{
 								LPOBJ lpTarget = &gObj[lpObj->VpPlayer[n].number];
 
-								if ( lpTarget->Class == iTokenNumber )
+								if ( lpTarget->Class == 275 )
 								{
 									TNotice pNotice(1);
-									pNotice.SendToUser(lpObj->m_Index, "Info For Viewport class %d :  HP = %7.0f / %7.0f",iTokenNumber, lpTarget->Life, lpTarget->MaxLife);
+
+									pNotice.SendToUser(lpObj->m_Index, "Kundun HP = %7.0f / %7.0f", lpTarget->Life, lpTarget->MaxLife); //Require Translation
+									pNotice.SendToUser(lpObj->m_Index, "Kundun HP time = %d Recover = %d Recovery Time = %d", 
+										giKundunRefillHPSec, giKundunRefillHP, giKundunRefillHPTime);	// Require Translation
+								}
+
+								if ( lpTarget->Class == 338 )
+								{
+									TNotice pNotice(1);
+
+									pNotice.SendToUser(lpObj->m_Index, "Kundun HP = %7.0f / %7.0f", lpTarget->Life, lpTarget->MaxLife); //Require Translation
+									pNotice.SendToUser(lpObj->m_Index, "Kundun HP time = %d Recover = %d Recovery Time = %d", 
+										giKundunRefillHPSec, giKundunRefillHP, giKundunRefillHPTime);	// Require Translation
+								}
+							}
+						}
+					}
+				}
+
+			}
+			break;
+
+		case 321:	//118:
+			{
+				if ( (lpObj->Authority &2 ) != 2 )
+				{
+					return FALSE;
+				}
+
+				KUNDUN_GM_LOG.Output("[GMSystem][KUNDUN][%s]\t[%s]\t[%s] : %s", lpObj->Ip_addr, lpObj->AccountID,
+					lpObj->Name, "BOSS HP CHANGE");	// Require Translation
+
+				int iLife = this->GetTokenNumber();
+
+				for ( int n=0;n<MAX_VIEWPORT;n++)
+				{
+					if ( lpObj->VpPlayer[n].state != FALSE )
+					{
+						if ( lpObj->VpPlayer[n].type == OBJ_MONSTER )
+						{
+							if ( lpObj->VpPlayer[n].number >= 0 )
+							{
+								LPOBJ lpTarget = &gObj[lpObj->VpPlayer[n].number];
+
+								if (lpTarget->Class == 275 || 
+									lpTarget->Class == 338
+									)
+								{
+									if  ( iLife <= 5000 )
+									{
+										iLife = 5000 ;
+									}
+
+									if ( iLife > lpTarget->MaxLife )
+									{
+										iLife = lpTarget->MaxLife;
+									}
+
+									lpTarget->Life = iLife;
+								
+									TNotice pNotice(1);
+
+									pNotice.SendToUser(lpObj->m_Index, "BOSS HP = %7.0f / %7.0f", lpTarget->Life, lpTarget->MaxLife); //Require Translation
 								}
 							}
 						}
 					}
 				}
 			}
-		}
-		break;
-	case COMMAND_NOTICEALL://Identical
-		{
-			TNotice pNotice(0);
-			pNotice.SendToAllUser("%s",this->GetTokenString());
-		}
-		break;
-	case COMMAND_SETPKLEVEL://Identical
-		{
-			int iTokenNumber = this->GetTokenNumber();
+			break;
 
-			if(iTokenNumber == 0)
+		case 322:	//119:
 			{
-				iTokenNumber = 3;
-			}
-
-			if(iTokenNumber == 1)
-			{
-				lpObj->m_PK_Level = 1;
-			}
-			else if(iTokenNumber == 2)
-			{
-				lpObj->m_PK_Level = 2;
-			}
-			else if(iTokenNumber == 3)
-			{
-				lpObj->m_PK_Time = 0;
-				lpObj->m_PK_Level = 3;
-			}
-			else if(iTokenNumber == 4)
-			{
-				lpObj->m_PK_Level = 4;
-				lpObj->m_PK_Count = 1;
-			}
-			else if(iTokenNumber == 5)
-			{
-				lpObj->m_PK_Level = 5;
-				lpObj->m_PK_Count = 2;
-			}
-			else if(iTokenNumber == 6)
-			{
-				lpObj->m_PK_Level = 6;
-				lpObj->m_PK_Count = 3;
-			}
-			else
-			{
-				lpObj->m_PK_Level = 3;
-			}
-
-			if(lpObj->m_PK_Level == 4)
-			{
-				GCServerMsgStringSend(lMsg.Get(1137), lpObj->m_Index, 1);
-			}
-
-			if(lpObj->m_PK_Level <= 6)
-			{
-				GCPkLevelSend(lpObj->m_Index, lpObj->m_PK_Level);
-			}
-
-			if(lpObj->PartyNumber >= 0)
-			{
-				gParty.UpdatePKUserInfo(lpObj->PartyNumber, lpObj->m_Index, lpObj->DBNumber, lpObj->m_PK_Level);
-				gParty.UpdatePKPartyPanalty(lpObj->PartyNumber);
-			}						
-		}
-		break;
-	case COMMAND_MAKEITEMBYNAME://
-		{
-			int iItemType;//5d0
-			int iItemIndex;//5D4
-			int iLevel;//5d8
-			int iOption1 = 0;//5dc
-			int iOption2 = 0;//5e0
-			int iOption3 = 0;//5e4
-			BYTE NewOption = 0;//5e8
-			int iDur = (BYTE)255;//5ec
-
-			char szText[100] = {0};
-			char * szItemName = this->GetTokenString();
-
-			try
-			{
-				if( szItemName == NULL)
-					return 0;
-
-				//memset(szItemName, 0, sizeof(szItemName));
-				//strcpy(szItemName, this->GetTokenString()); //local created automatically
-			}
-			catch(...)
-			{
-				wsprintf(szItemName, "Unknow");
-			}
-
-			int iType;//668
-			int iIndex;//66c
-			int i;
-
-			for( i = 0; i < MAX_ITEMS; i++ )//670
-			{
-				if(strcmp(szItemName, ItemAttribute[i].Name) == 0)
+				if ( (lpObj->Authority &2 ) != 2 )
 				{
-					iType = i / 512;
-					iIndex = i - (iType << 9) ;
-					sprintf(szItemName,"[ %s ] Founded item = %d, %d",ItemAttribute[i].Name,iType,iIndex);//maybe need translation
-					break;
-				}
-			}
-
-			if( i == MAX_ITEMS ) //failure condition
-			{
-				sprintf(szText, "Cannot find item by name");
-				GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-				return FALSE;
-			}
-
-			GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-
-			iItemType = iType;//5d0
-			iItemIndex = iIndex;//5d4
-			iLevel = this->GetTokenNumber();//5d8
-			iDur = this->GetTokenNumber();//5ec
-			iOption1 = this->GetTokenNumber();//5dc
-			iOption2 = this->GetTokenNumber();//5e0
-			int iItemOption3 = this->GetTokenNumber();//674
-
-			if(iItemType == 13 && iItemIndex == 3)
-			{
-				if(iItemOption3 < 8)
-				{
-					iOption3 = iItemOption3;
-				}
-			}
-			else
-			{
-				if(iItemOption3 == 4)
-				{
-					iOption3 = 1;
-				}
-				else if(iItemOption3 == 8)
-				{
-					iOption3 = 2;
-				}
-				else if(iItemOption3 == 12)
-				{
-					iOption3 = 3;
-				}
-				else if (iItemOption3 == 16)
-				{
-					iOption3 = 4;
-				}
-			}
-
-			int EBP678 = this->GetTokenNumber();
-			int EBP67C = this->GetTokenNumber();
-
-			if(EBP678 != 0 )
-			{
-				if( EBP67C == 0)
-				{
-					if((rand()%100) < 80)
-					{
-						EBP678 |= 4;
-					}
-					else
-					{
-						EBP678 |= 8;
-					}
-				}
-				else if (EBP67C == 1)
-				{
-					EBP678 |= 4;
-				}
-				else
-				{
-					EBP678 |= 8;
-				}
-			}
-
-			int EBP680 = this->GetTokenNumber();
-
-			if(EBP680 > 0)
-			{
-				NewOption |= 0x20;
-			}
-
-			int EBP684 = this->GetTokenNumber();
-
-			if(EBP684 > 0)
-			{
-				NewOption |= 0x10;
-			}
-
-			int EBP688 = this->GetTokenNumber();
-
-			if(EBP688 > 0)
-			{
-				NewOption |= 0x08;
-			}
-
-			int EBP68C = this->GetTokenNumber();
-
-			if(EBP68C > 0)
-			{
-				NewOption |= 0x04;
-			}
-
-			int EBP690 = this->GetTokenNumber();
-
-			if(EBP690 > 0)
-			{
-				NewOption |= 0x02;
-			}
-
-			int EBP694 = this->GetTokenNumber();
-
-			if(EBP694 > 0)
-			{
-				NewOption |= 0x01;
-			}
-
-
-			if( iItemType >= 0 && iItemType < 512 &&
-				iItemIndex >= 0 && iItemIndex < 512)
-			{
-				int iItemNumber = ItemGetNumberMake(iItemType,iItemIndex);
-
-				if( iItemNumber == ITEMGET(0,19) ||
-					iItemNumber == ITEMGET(4,18) ||
-					iItemNumber == ITEMGET(5,10) ||
-					iItemNumber == ITEMGET(2,13))
-				{
-					NewOption = 63;
+					return FALSE;
 				}
 
-				if(iItemNumber == ITEMGET(13,4) || iItemNumber ==  ITEMGET(13,5))
-				{
-					PetItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, iItemNumber, iLevel, iDur ,iOption1,  iOption2, iOption3, -1, NewOption, EBP678);
-				}
-				else
-				{
-					ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, iItemNumber, iLevel, iDur ,iOption1,  iOption2, iOption3, -1, NewOption, EBP678);
-				}
-			}
-		}
-		break; 
-	case COMMAND_FINDITEMBYNAME:
-		{
-			char szText[100] = {0};//6fc
-			char szItemName[20] = {0};//710
+				KUNDUN_GM_LOG.Output("[GMSystem][KUNDUN][%s]\t[%s]\t[%s] : %s", lpObj->Ip_addr, lpObj->AccountID,
+					lpObj->Name, "ÄïµÐHPÈ¸º¹·®¼³Á¤");	// Require Translation
 
-			strcpy(szItemName, this->GetTokenString());
-			int i;
-			for( i = 0; i < MAX_ITEMS; i++)//714
-			{
-				if(strcmp(szItemName, ItemAttribute[i].Name) == 0)
-				{
-					int iType = i / 512;//718
-					int iIndex = i - (iType << 9) ;//71c
-					sprintf(szText,"[ %s ] Founded item = %d, %d",ItemAttribute[i].Name,iType,iIndex);
-					break;
-				}
-			}
+				int RefillHP = this->GetTokenNumber();
 
-			if(i == MAX_ITEMS) //failure condition
-			{
-				sprintf(szText, "Cannot find item by name");
-			}
-
-			GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_SETSTATS:
-		{
-			int iClass = lpObj->Class;//720
-			int iStrength = this->GetTokenNumber();//ebp724
-			int iDexterity = this->GetTokenNumber();//ebp728
-			int iVitality = this->GetTokenNumber();//ebp72C
-			int iEnergy = this->GetTokenNumber();//ebp730
-			int iStandartPoints;//ebp734
-			int iAllPoints = iStrength + iDexterity + iVitality + iEnergy;//ebp738
-
-			if(lpObj->Class == CLASS_DARKLORD || lpObj->Class == CLASS_MAGUMSA)
-			{
-				iStandartPoints = 7 * (lpObj->Level -1 ) +
-					DCInfo.DefClass[iClass].Strength +
-					DCInfo.DefClass[iClass].Dexterity +
-					DCInfo.DefClass[iClass].Vitality +
-					DCInfo.DefClass[iClass].Energy;
-			}
-			else
-			{
-				iStandartPoints = 5 * (lpObj->Level -1 ) +
-					DCInfo.DefClass[iClass].Strength +
-					DCInfo.DefClass[iClass].Dexterity +
-					DCInfo.DefClass[iClass].Vitality +
-					DCInfo.DefClass[iClass].Energy; 
-			}
-
-			if( iStrength	< DCInfo.DefClass[iClass].Strength	||
-				iDexterity  < DCInfo.DefClass[iClass].Dexterity ||
-				iVitality	< DCInfo.DefClass[iClass].Vitality	||
-				iEnergy		< DCInfo.DefClass[iClass].Energy)
-			{
-
-				GCServerMsgStringSend("You cannot set stats smaller standart", lpObj->m_Index, 1);
-				return FALSE;
-			}
-
-			if ( iAllPoints > iStandartPoints )
-			{
-				GCServerMsgStringSend("You cannot set stats bigger standart", lpObj->m_Index, 1);
-				return FALSE;
-			}
-
-			lpObj->ChangeUP = 0;
-			lpObj->Experience = 0;
-
-			lpObj->Strength = iStrength;
-			lpObj->Dexterity = iDexterity;
-			lpObj->Vitality = iVitality;
-			lpObj->Energy = iEnergy;
-
-			lpObj->Life = (iVitality - DCInfo.DefClass[iClass].Vitality) * DCInfo.DefClass[iClass].LevelLife + DCInfo.DefClass[iClass].Life;
-			lpObj->MaxLife = (iVitality - DCInfo.DefClass[iClass].Vitality) * DCInfo.DefClass[iClass].LevelLife + DCInfo.DefClass[iClass].MaxLife;
-			lpObj->Mana = (iVitality - DCInfo.DefClass[iClass].Energy) * DCInfo.DefClass[iClass].LevelMana + DCInfo.DefClass[iClass].Mana;
-			lpObj->MaxMana = (iVitality - DCInfo.DefClass[iClass].Energy) * DCInfo.DefClass[iClass].LevelMana + DCInfo.DefClass[iClass].MaxMana;
-
-			lpObj->LevelUpPoint = iStandartPoints - iAllPoints;
-
-			GCServerMsgStringSend("PointsUpdated!!", lpObj->m_Index, 1);
-
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_SETSTATSNULLEXP:
-		{
-			int iClass = lpObj->Class;//73C
-			int iStrength = this->GetTokenNumber();//740
-			int iDexterity = this->GetTokenNumber();//744
-			int iVitality = this->GetTokenNumber();//748
-			int iEnergy = this->GetTokenNumber();//74C
-
-			lpObj->ChangeUP = 0;
-			lpObj->Experience = 0;
-			lpObj->Strength = iStrength;
-			lpObj->Dexterity = iDexterity;
-			lpObj->Vitality = iVitality;
-			lpObj->Energy = iEnergy;
-
-
-			lpObj->Life = (iVitality - DCInfo.DefClass[iClass].Vitality) * DCInfo.DefClass[iClass].LevelLife + DCInfo.DefClass[iClass].Life;
-			lpObj->MaxLife = (iVitality - DCInfo.DefClass[iClass].Vitality) * DCInfo.DefClass[iClass].LevelLife + DCInfo.DefClass[iClass].MaxLife;
-			lpObj->Mana = (iVitality - DCInfo.DefClass[iClass].Energy) * DCInfo.DefClass[iClass].LevelMana + DCInfo.DefClass[iClass].Mana;
-			lpObj->MaxMana = (iVitality - DCInfo.DefClass[iClass].Energy) * DCInfo.DefClass[iClass].LevelMana + DCInfo.DefClass[iClass].MaxMana;
-
-			GCServerMsgStringSend("Modi.Stat Complete", lpObj->m_Index, 1);
-
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_UPDBCLASS:
-		{
-			int iDbClass = lpObj->DbClass;//750
-
-			if(iDbClass == 0)
-			{
-				lpObj->DbClass = 1;
-			}
-			else if(iDbClass == 16)
-			{
-				lpObj->DbClass = 17;
-			}
-			else if(iDbClass == 32)
-			{
-				lpObj->DbClass = 33;
-			}
-			else if(iDbClass == 80)
-			{
-				lpObj->DbClass = 81;
-			}
-			else if (iDbClass == 96)
-			{
-				lpObj->DbClass = 98;
-			}
-
-			GCServerMsgStringSend("DBCLass is modifyed", lpObj->m_Index, 1);
-
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_UPCLASS:
-		{
-			if( lpObj->Level >= 320 )
-			{
-				lpObj->ThirdChangeUp = 1;
-				lpObj->DbClass |= 2;
-				gObjCloseSet(lpObj->m_Index, 1);
-			}
-		}
-		break;
-	case COMMAND_RESETCLASS:
-		{
-			lpObj->ChangeUP = 0;
-			lpObj->ThirdChangeUp = 0;
-
-			switch(lpObj->DbClass)
-			{
-			case 1:
-			case 3:
-				lpObj->DbClass = 0;
-				break;
-			case 17:
-			case 19:
-				lpObj->DbClass = 16;
-				break;
-			case 33:
-			case 35:
-				lpObj->DbClass = 32;
-				break;
-			case 50:
-				lpObj->DbClass = 48;
-				break;
-			case 66:
-				lpObj->DbClass = 64;
-				break;
-			case 81:
-			case 83:
-				lpObj->DbClass = 80;
-				break;
-			case 98:
-				lpObj->DbClass = 96;
-				break;
-			}
-
-
-			GCServerMsgStringSend("Reset class complete", lpObj->m_Index, 1);
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_MAKEITEMS:
-		{
-			int iType = this->GetTokenNumber();//75C
-			int iIndex = this->GetTokenNumber();//760
-			int iItemCount = this->GetTokenNumber();//764
-
-			if(iItemCount <= 0)
-			{
-				iItemCount = 1;
-			}
-			else if(iItemCount > 50)
-			{
-				iItemCount = 50;
-			}
-
-			for(int i = 0; i <iItemCount; i++)//678
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(iType,iIndex), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_SETMONEY:
-		{
-			int iMoney = this->GetTokenNumber();
-			gObj[aIndex].Money = iMoney;
-			GCMoneySend(aIndex, gObj[aIndex].Money);
-		}
-		break;
-	case COMMAND_MODIFYFENDUR:
-		{
-			int iTokenNumber = this->GetTokenNumber();
-
-			MsgOutput(lpObj->m_Index, "[Modify Standart Fenrir dur] %d -> %d", g_iFenrirDefaultMaxDurSmall, iTokenNumber);
-
-			g_iFenrirDefaultMaxDurSmall = iTokenNumber;
-		}
-		break;
-	case COMMAND_MODIFYELFFENDUR: //??
-		{
-			int iTokenNumber = this->GetTokenNumber();
-
-			MsgOutput(lpObj->m_Index, "[Modify Elf Fenrir dur] %d -> %d", g_iFenrirElfMaxDurSmall, iTokenNumber);
-
-			g_iFenrirElfMaxDurSmall = iTokenNumber;
-		}
-		break;
-	case COMMAND_MODIFYSD: //??
-		{
-			int iShield = this->GetTokenNumber();
-
-			MsgOutput(lpObj->m_Index, "[Shield Gage] %d -> %d", lpObj->iShield, iShield);
-
-			if(iShield > (lpObj->iMaxShield + lpObj->iAddShield))
-			{
-				iShield = lpObj->iMaxShield + lpObj->iAddShield;
-			}
-
-			lpObj->iShield = iShield;
-
-			GCReFillSend(lpObj->m_Index, lpObj->Life, -1, 0, lpObj->iShield);
-		}
-		break;
-	case COMMAND_SHOWHPSD: //??
-		{
-			MsgOutput(lpObj->m_Index, "HP:%7.1f/%7.1f , SD:%d/%d", lpObj->Life, lpObj->AddLife + lpObj->MaxLife, lpObj->iShield, lpObj->iMaxShield + lpObj->iAddShield);
-		}
-		break;
-	case COMMAND_SETOPTIONEFFECT: //??
-		{
-			int iEffectType = this->GetTokenNumber();
-			int iEffectValue = this->GetTokenNumber();
-			int iEffectDur = this->GetTokenNumber();
-
-			g_ItemAddOption.SetManualItemEffect(lpObj, iEffectType, iEffectValue, iEffectDur);
-
-			GCReFillSend(lpObj->m_Index, lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			GCManaSend(lpObj->m_Index, lpObj->AddMana + lpObj->MaxMana, -2, 0, lpObj->MaxBP + lpObj->AddBP);
-		}
-		break;
-	case COMMAND_MAKEPRIZE:
-		{
-			for(int i = 0; i < 5; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(12,15), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-			for(int i = 0; i < 5; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,13), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-			for(int i = 0; i < 5; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,14), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_MAKEITEM:
-		{
-			int ItemType;
-			int ItemIndex;
-			int EBP798;
-			int EBP79C = 0;
-			int EBP7A0 = 0;
-			int EBP7A4 = 0;
-			BYTE EBP7A8 = 0;
-			int iDur = (BYTE)-1;//7AC
-			int EBP7B0;
-
-			ItemType  = this->GetTokenNumber();//790
-			ItemIndex  = this->GetTokenNumber();//794
-			EBP798 = this->GetTokenNumber();
-			iDur = this->GetTokenNumber();
-			EBP79C = this->GetTokenNumber();
-			EBP7A0 = this->GetTokenNumber();
-			EBP7B0 = this->GetTokenNumber();
-
-			if(ItemType == 13 && ItemIndex == 3)
-			{
-				if(	EBP7B0 < 8)
-				{
-					EBP7A4 = EBP7B0;
-				}
-			}
-			else
-			{
-				if(EBP7B0 == 4)
-				{
-					EBP7A4 = 1;
-				}
-				else if(EBP7B0 == 8)
-				{
-					EBP7A4 = 2;
-				}
-				else if(EBP7B0 == 12)
-				{
-					EBP7A4 = 3;
-				}
-				else if(EBP7B0 == 16)
-				{
-					EBP7A4 = 4;
-				}
-			}
-
-			int EBP7B4 = this->GetTokenNumber();
-			int EBP7B8 = this->GetTokenNumber();
-
-			if(EBP7B4 != 0 )
-			{
-				if( EBP7B8 == 0)
-				{
-					if((rand()%100) < 80)
-					{
-						EBP7B4 |= 4; 
-					}
-					else
-					{
-						EBP7B4 |= 8; 
-					}
-				}
-				else if (EBP7B8 == 1) 
-				{
-					EBP7B4 |= 4; 
-				}
-				else
-				{
-					EBP7B4 |= 8; 
-				}
-			}
-
-			int EBP7BC = this->GetTokenNumber();
-
-			if(EBP7BC > 0)
-			{
-				EBP7A8 |= 0x20;
-			}
-
-			int EBP7C0 = this->GetTokenNumber();
-
-			if(EBP7C0 > 0)
-			{
-				EBP7A8 |= 0x10;
-			}
-
-			int EBP7C4 = this->GetTokenNumber();
-
-			if(EBP7C4 > 0)
-			{
-				EBP7A8 |= 0x08;
-			}
-
-			int EBP7C8 = this->GetTokenNumber();
-
-			if(EBP7C8 > 0)
-			{
-				EBP7A8 |= 0x04;
-			}
-
-			int EBP7CC = this->GetTokenNumber();
-
-			if(EBP7CC > 0)
-			{
-				EBP7A8 |= 0x02;
-			}
-
-			int EBP7D0 = this->GetTokenNumber();
-
-			if(EBP7D0 > 0)
-			{
-				EBP7A8 |= 0x01;
-			}
-
-			if( ItemType >= 0 && ItemType < 512 &&
-				ItemIndex >= 0 && ItemIndex < 512)
-			{
-				int iItemNumber = ItemGetNumberMake(ItemType,ItemIndex);//7d4
-
-				if( iItemNumber == ITEMGET(0,19) || 
-					iItemNumber == ITEMGET(4,18) || 
-					iItemNumber == ITEMGET(5,10) || 
-					iItemNumber == ITEMGET(2,13))
-				{
-					EBP7A8 = 63;	
-				}
-
-				//for(int i =0;i < 1;i++)
-				//{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, iItemNumber, EBP798, iDur, EBP79C, EBP7A0, EBP7A4, -1, EBP7A8, EBP7B4); 
-				//}
-			}
-		}
-		break;
-	case COMMAND_MAKECHAOS: //??
-		{
-			for(int i = 0; i < 15; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(12,15), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_MAKELIFE: //??
-		{
-			for(int i = 0; i < 15; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,16), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_MAKECREATION: //??
-		{
-			for(int i = 0; i < 15; i++)
-			{
-				ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, ITEMGET(14,22), 0, 0, 0, 0, 0, -1, 0, 0); 
-			}
-		}
-		break;
-	case COMMAND_MONEYZEROSET: //??
-		{
-			gObj[aIndex].Money = 0;
-			GCMoneySend(aIndex, 0);
-		}
-		break;
-	case COMMAND_MASTERLEVEL:
-		{
-			int iTokenNumber = this->GetTokenNumber();
-
-			if(iTokenNumber < 0)
-			{
-				iTokenNumber = 0;
-			}
-			else if(iTokenNumber > 200)
-			{
-				iTokenNumber = 200;
-			}
-
-			if(g_MasterLevelSystem.IsMasterLevelUser(lpObj) == 0 || (lpObj->m_nMasterLevel >= 0 && iTokenNumber == 0))
-			{
-				LogAddTD("Use Test Command [%s][%s] /masterlevel %d -> Fail!!",lpObj->AccountID, lpObj->Name, iTokenNumber);
-				return 0;
-			}
-
-			lpObj->m_nMasterLevel = iTokenNumber;
-
-			lpObj->m_i64MasterLevelExp = g_MasterLevelSystem.GetMasterLevelExpTlbInfo(iTokenNumber);
-			lpObj->m_i64NextMasterLevelExp = g_MasterLevelSystem.GetMasterLevelExpTlbInfo(iTokenNumber+1);
-
-			g_MasterLevelSystem.GCMasterLevelInfo(lpObj);
-
-			LogAddTD("Use Test Command [%s][%s] /masterlevel %d -> Success!!",lpObj->AccountID, lpObj->Name, iTokenNumber);		
-		}
-		break;
-	case COMMAND_MLPOINT:
-		{
-			int iTokenNumber = this->GetTokenNumber();
-
-			if(g_MasterLevelSystem.IsMasterLevelUser(lpObj) == 0)
-			{
-				LogAddTD("Use Test Command [%s][%s] /mlpoint %d -> Fail!!",lpObj->AccountID, lpObj->Name, iTokenNumber);
-				return 0;
-			}
-
-			lpObj->m_iMasterLevelPoint = iTokenNumber;
-			g_MasterLevelSystem.GCMasterLevelInfo(lpObj);
-
-			LogAddTD("Use Test Command [%s][%s] /mlpoint %d -> Success!!",lpObj->AccountID, lpObj->Name, iTokenNumber);
-		}
-		break;
-	case COMMAND_MS_RESET:
-		{
-			for(int i = 0; i < MAX_MAGIC; i++)
-			{
-				if(lpObj->Magic[i].IsMagic() == TRUE)
-				{
-					//					if(g_MasterSkillSystem.CheckMasterLevelSkill(lpObj->Magic[i].m_Skill) != 0)
-					//					{
-					//						lpObj->Magic[i].Clear();
-					//					}
-				}
-			}
-
-			GCServerMsgStringSend("Master Skill Reset", lpObj->m_Index, 1);
-			LogAddTD("Use Test Command [%s][%s] /ms_reset %d",lpObj->AccountID, lpObj->Name, lpObj->m_iMasterLevelPoint);
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_MAKESOCKETOPTION:
-		{
-			int iItemPos = this->GetTokenNumber();
-			BYTE EBP8FC = this->GetTokenNumber();
-			BYTE EBP900 = this->GetTokenNumber();
-			BYTE iSocketSlot = this->GetTokenNumber();
-			gItemSocketOption.SetSocketSlot(&lpObj->pInventory[iItemPos],EBP8FC,EBP900-1,iSocketSlot-1);
-			::GCInventoryItemOneSend(lpObj->m_Index, iItemPos);
-		}
-		break;
-	case COMMAND_REMAKESOCKETOPTION:
-		{
-			int iItemPos= this->GetTokenNumber();
-			BYTE iSocketSlot = this->GetTokenNumber();
-
-			if(iSocketSlot == 0)
-			{
-				for(int i = 0;i < 5;i++)
-				{
-					gItemSocketOption.ClearSocketSlot(&lpObj->pInventory[iItemPos],i);
-				}
-			}
-			else
-			{
-				gItemSocketOption.ClearSocketSlot(&lpObj->pInventory[iItemPos],iSocketSlot-1);
-			}
-
-			::GCInventoryItemOneSend(lpObj->m_Index, iItemPos);
-		}
-		break;
-	case COMMAND_CLEARSOCKETOPTION:
-		{
-			int iItemPos= this->GetTokenNumber();
-			BYTE iSocketSlot = this->GetTokenNumber();
-			gItemSocketOption.MakeSocketSlot(&lpObj->pInventory[iItemPos],iSocketSlot);
-			::GCInventoryItemOneSend(lpObj->m_Index, iItemPos);
-		}
-		break;
-	case COMMAND_FIRECRACK:
-		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, "FIRECRACK.");
-			int x = lpObj->X;
-			int y = lpObj->Y;
-			PMSG_SERVERCMD pMsg;
-
-			PHeadSubSetB((LPBYTE)&pMsg,0xF3,0x40, sizeof(pMsg));
-			pMsg.CmdType = 0;
-
-			for ( int i=0;i<15;i++)
-			{
-				pMsg.X = x+(rand() % 5)*2 - 4;
-				pMsg.Y = y+(rand() % 5)*2 - 4;
-				MsgSendV2(lpObj,(LPBYTE)&pMsg, sizeof(pMsg));
-				::DataSend(lpObj->m_Index ,(LPBYTE)&pMsg, sizeof(pMsg));
-			}
-		}
-		break;
-	case COMMAND_SETWATCHINDEX:
-		{
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			LPOBJ lpTargetObj = gObjFind(pId);
-
-			if ( lpTargetObj == NULL )
-			{
-				return 0;
-			}
-
-			LogAddTD("Use GM Command -> [ %s ]	[ %s ]	[ %s ] / Target : [%s][%s] : %s ",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, lpTargetObj->AccountID,
-				lpTargetObj->Name, "User Watching");
-
-			char szTemp[256];
-
-			if ( this->WatchTargetIndex == lpTargetObj->m_Index )
-			{
-				this->WatchTargetIndex = -1;
-
-				wsprintf(szTemp, "%s : °¨½ÃÇØÁ¦", lpTargetObj->Name);	// #translation
-				GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
-			}
-			else
-			{
-				wsprintf(szTemp, "%s : °¨½Ã½ÃÀÛ", lpTargetObj->Name);	// #translation
-				GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
-				this->WatchTargetIndex = lpTargetObj->m_Index;
-			}
-		}
-		break;
-	case COMMAND_TRACK:
-		{
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			int map;
-			int iX;
-			int iY;
-			LPOBJ lpTargetObj = gObjFind(pId);
-			int iIndex;
-
-			if ( lpTargetObj == NULL )
-			{
-				return 0;
-			}
-
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] / Target : [%s][%s] : %s",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, lpTargetObj->AccountID,
-				lpTargetObj->Name, "User Tracking");
-			map = lpTargetObj->MapNumber;
-			iX = lpTargetObj->X;
-			iY = lpTargetObj->Y;
-			iIndex = lpObj->m_Index;
-
-			if ( iIndex >= 0 )
-			{
-				gObjTeleport(iIndex, map, iX, iY);
-			}
-		}
-		break;
-	case COMMAND_USERSTATS:
-		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, 
-				"User Stat (connection)");
-
-			int lc151 = 0;
-			int lc152 = 400;
-			int iTokenNumber = this->GetTokenNumber();
-
-			if ( iTokenNumber > 0 )
-			{
-				lc151 = iTokenNumber;
-			}
-
-			int iTokenNumber2 = this->GetTokenNumber();
-
-			if ( iTokenNumber2 > 0 )
-			{
-				lc152 = iTokenNumber2;
-			}
-
-			gObjSendUserStatistic(lpObj->m_Index, lc151, lc152);
-		}
-		break;
-	case COMMAND_DISCONNECT:
-		{
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			int iTargetIndex = gObjGetIndex(pId);
-
-			if( iTargetIndex >= 0 )
-			{
-				LPOBJ lpTargetObj = gObjFind(pId);
-
-				if ( lpTargetObj == NULL )
+				if ( RefillHP <= 0 || RefillHP > 5000000 )
 				{
 					return 0;
 				}
 
-				//#if defined __BEREZNUK__ || __MIX__ || __REEDLAN__ || __MUANGEL__ || __WHITE__ || __MEGAMU__ || __VIRNET__
-				if(g_AutoReconnect == 1)
+				giKundunRefillHP = RefillHP;
+
+				TNotice pNotice(0);
+
+				pNotice.SendToUser(lpObj->m_Index, "ÄïµÐ HP ÃÊ´çÈ¸º¹·® = %d È¸º¹·® = %d È¸º¹½Ã°£ = %d", giKundunRefillHPSec, giKundunRefillHP, giKundunRefillHPTime);	// Require Translation
+
+			}
+
+			break;
+
+		case 323:	//120:
+			{
+				if ( (lpObj->Authority &2 ) != 2 )
 				{
-					g_ConnectEx.SendClose(lpTargetObj->m_Index);
+					return FALSE;
 				}
-				//#endif
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] / Target : [%s][%s] : %s",
-					lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, lpTargetObj->AccountID,
-					lpTargetObj->Name, "User Disconnect");
-				LogAdd(lMsg.Get(MSGGET(1, 191)), pId);
-				CloseClient(iTargetIndex);
-			}
-		}
-		break;
-	case COMMAND_ADDBUFF:
-		{
-			pId				= this->GetTokenString();
-			int BuffIndex	= this->GetTokenNumber();
-			int BuffEffect1 = this->GetTokenNumber();
-			int Value1		= this->GetTokenNumber();
-			int BuffEffect2	= this->GetTokenNumber();
-			int Value2		= this->GetTokenNumber();
-			int Duration	= this->GetTokenNumber();
-			// ----
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-			// ----
-			int iTargetIndex = gObjGetIndex(pId);
-			// ----
-			if ( iTargetIndex >= 0 )
-			{
-				LPOBJ lpTargetObj = gObjFind(pId);
-				// ----
-				if ( lpTargetObj == NULL )
-				{
-					return 0;
-				}
-				// ----
-				LogAddTD("[AddBuffCmd] Buff [%d] added for [%s]", BuffIndex, lpTargetObj->Name);
-				gObjAddBuffEffect(lpTargetObj, BuffIndex, BuffEffect1, Value1, BuffEffect2, Value2, Duration);
-			}
-		}
-		break;
-	case COMMAND_CLEARBUFF:
-		{
-			BYTE Packet[] = { 0xC1, 0x05, 0xFE, 0x00, 0x00 };
-			::DataSend(lpObj->m_Index , (LPBYTE)&Packet, sizeof(Packet));
 
-			pId				= this->GetTokenString();
-			int BuffIndex	= this->GetTokenNumber();
-			// ----
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-			// ----
-			int iTargetIndex = gObjGetIndex(pId);
-			// ----
-			if ( iTargetIndex >= 0 )
-			{
-				LPOBJ lpTargetObj = gObjFind(pId);
-				// ----
-				if ( lpTargetObj == NULL )
-				{
-					return 0;
-				}
-				// ----
-				LogAddTD("[ClearBuffCmd] Buff [%d] deleted for [%s]", BuffIndex, lpTargetObj->Name);
-				gObjRemoveBuffEffect(lpTargetObj, BuffIndex);
-			}
-		}
-		break;
-	case COMMAND_GIFTBUFF:
-		{
-			pId				= this->GetTokenString();
-			int BuffEffect1 = this->GetTokenNumber();
-			int Value1		= this->GetTokenNumber();
-			int BuffEffect2	= this->GetTokenNumber();
-			int Value2		= this->GetTokenNumber();
-			int Duration	= this->GetTokenNumber();
-			// ----
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-			// ----
-			int iTargetIndex = gObjGetIndex(pId);
-			// ----
-			if ( iTargetIndex >= 0 )
-			{
-				LPOBJ lpTargetObj = gObjFind(pId);
-				// ----
-				if ( lpTargetObj == NULL )
-				{
-					return 0;
-				}
-				// ----
-				if ( Duration <= 0 )
-				{
-					Duration = 60 * 60;
-				}
-				// ----
-				gObjAddBuffEffect(lpTargetObj, 116, BuffEffect1, Value1, BuffEffect2, Value2, Duration*60);
-			}
-		}
-		break;
-	case COMMAND_GDISCONNECT:
-		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name,
-				"Guild Disconnect");
+				KUNDUN_GM_LOG.Output("[GMSystem][KUNDUN][%s]\t[%s]\t[%s] : %s", lpObj->Ip_addr, lpObj->AccountID,
+					lpObj->Name, "ÄïµÐHPÃÊ´çÈ¸º¹·®¼³Á¤");	// Require Translation
 
-			pId = this->GetTokenString();
+				int RefillHPSec = this->GetTokenNumber();
 
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			_GUILD_INFO_STRUCT * lpGuild = Guild.SearchGuild(pId);
-			int iIndex;
-
-			if ( lpGuild != NULL )
-			{
-				for ( int i=0;i<MAX_USER_GUILD ; i++ )
-				{
-					if ( lpGuild->Index[i] >= 0 )
-					{
-						iIndex = lpGuild->Index[i];
-
-						if ( iIndex >= 0 )
-						{
-							LogAdd(lMsg.Get(MSGGET(1, 191)), pId);
-							CloseClient(iIndex);
-						}
-					}
-				}
-			}
-		}
-		break;
-	case COMMAND_TRANS:
-		{
-			//if(CheckAuthorityCondition(32,lpObj) == 1)//Season 4.5 addon
-			//{
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			int iTokenNumber1 = this->GetTokenNumber();
-			int iTokenNumber2 = this->GetTokenNumber();
-			int iTokenNumber3 = this->GetTokenNumber();
-			int iIndex = gObjGetIndex(pId);
-			LPOBJ lpTargetObj;
-
-			if ( iIndex >= 0 )
-			{
-				lpTargetObj = gObjFind(pId);
-
-				if ( lpTargetObj == NULL )
+				if ( RefillHPSec <= 0 || RefillHPSec > 10000 )
 				{
 					return 0;
 				}
 
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] / Target : [%s][%s] : %s",
-					lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, lpTargetObj->AccountID,
-					lpTargetObj->Name, "User SetPosition");
+				giKundunRefillHPSec = RefillHPSec;
 
-				gObjTeleport(iIndex, iTokenNumber1, iTokenNumber2, iTokenNumber3);
+				TNotice pNotice(0);
+
+				pNotice.SendToUser(lpObj->m_Index, "ÄïµÐ HP ÃÊ´çÈ¸º¹·® = %d È¸º¹·® = %d È¸º¹½Ã°£ = %d",
+					giKundunRefillHPSec, giKundunRefillHP, giKundunRefillHPTime);	// Require Translation
+
 			}
-			//}
-		}
-		break;
-	case COMMAND_WARP:
-	case COMMAND_MOVE:
-		{
-			pId = this->GetTokenString();
 
-			if ( pId != NULL )
+			break;
+
+		case 324:	//121:
 			{
-				int lc165 = -1;
-				int lc166 = 0;
-				int lc167 = 0;
-
-				if ( lpObj->Teleport != 0 )
+				if ( (lpObj->Authority &2 ) != 2 )
 				{
-					GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
+					return FALSE;
+				}
+
+				KUNDUN_GM_LOG.Output("[GMSystem][KUNDUN][%s]\t[%s]\t[%s] : %s", lpObj->Ip_addr, lpObj->AccountID,
+					lpObj->Name, "ÄïµÐHPÈ¸º¹½Ã°£¼³Á¤");	// Require Translation
+
+				int RefillHPTime = this->GetTokenNumber();
+
+				if ( RefillHPTime < 0 || RefillHPTime > 60000 )
+				{
 					return 0;
 				}
 
-				if ( (lpObj->m_IfState.use) != 0 )
-				{
-					if ( lpObj->m_IfState.type  == 3 )
-					{
-						lpObj->TargetShopNumber = -1;
-						lpObj->m_IfState.type = 0;
-						lpObj->m_IfState.use = 0;
-					}
-				}
+				giKundunRefillHPTime = RefillHPTime;
 
-				if ( lpObj->m_IfState.use > 0 )
-				{
-					GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
-					return 0;
-				}
+				TNotice pNotice(0);
 
-				if ( gObj[aIndex].IsInBattleGround != false )
-				{
-					GCServerMsgStringSend(lMsg.Get(MSGGET(6, 68)), lpObj->m_Index, 1);
-					return 0;
-				}
+				pNotice.SendToUser(lpObj->m_Index, "ÄïµÐ HP ÃÊ´çÈ¸º¹·® = %d È¸º¹·® = %d È¸º¹½Ã°£ = %d", giKundunRefillHPSec, giKundunRefillHP, giKundunRefillHPTime);	// Require Translation
 
-				BOOL bPlayerKiller = FALSE; //Season 2.5 add-on
-#ifdef PARTYKILLPKSET
-				if(gObj[aIndex].PartyNumber >= 0) //Season 2.5 add-on
-				{
-					if(gParty.GetPKPartyPenalty(gObj[aIndex].PartyNumber) >= 5)
-					{
-						bPlayerKiller = TRUE;
-					}
-				}
-				else if(gObj[aIndex].m_PK_Level >= 5)
-				{
-					bPlayerKiller = TRUE;
-				}
-#else
-				if( gObj[aIndex].m_PK_Level >= 5 )
-				{
-					bPlayerKiller = TRUE;
-				}
+			}
+			break;
+#if (GS_CASTLE==0)
+		case 369:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 0);
+			break;
+		case 370:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 1);
+			break;
+		case 371:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 2);
+			break;
+		case 372:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 3);
+			break;
+		case 373:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 4);
+			break;
+		case 374:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 5);
+			break;
+		case 375:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 6);
+			break;
+		case 376:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 7);
+			break;
+		case 377:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 8);
+			break;
+		case 378:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 9);
+			break;
+		case 379:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 10);
+			break;
+		case 380:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 11);
+			break;
+		case 381:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 12);
+			break;
+		case 382:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 13);
+			break;
+		case 383:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 14);
+			break;
+		case 384:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 15);
+			break;
+		case 385:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 16);
+			break;
+		case 386:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 17);
+			break;
+		case 387:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 18);
+			break;
+		case 388:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 19);
+			break;
+		case 389:
+			g_Kanturu.OperateGmCommand(lpObj->m_Index, 20);
+			break;
 #endif
-				if ( bPlayerKiller == TRUE )
+		case 390:// /item
+		{
+			if(ReadConfig.CmdItemEnabled == 1)
+			{
+				if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(&gObj[aIndex],2) != TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) != 2 )))
 				{
-					GCServerMsgStringSend(lMsg.Get(MSGGET(4, 101)), lpObj->m_Index, 1);
+					return FALSE;
+				}
+
+				int type, index,ItemLevel,ItemSkill,ItemLuck,ItemOpt,ItemExc,ItemAncient;
+				int dur = 0;
+				type = GetTokenNumber();
+				index = GetTokenNumber();
+				ItemLevel = GetTokenNumber();
+				ItemSkill = GetTokenNumber();
+				ItemLuck = GetTokenNumber();
+				ItemOpt = GetTokenNumber();
+				ItemExc = GetTokenNumber();
+				ItemAncient = GetTokenNumber();
+				dur = GetTokenNumber();
+			
+				if( (type >= 0 && type <= 15) )
+				{
+					int Item = ItemGetNumberMake( type, index);
+
+					if (Item == -1)
+					{
+						GCServerMsgStringSend("Item does not exist!", lpObj->m_Index, 1);
+						return FALSE;	
+					}
+
+					ItemSerialCreateSend(aIndex, gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y, Item,ItemLevel,dur,ItemSkill,ItemLuck,ItemOpt,aIndex,ItemExc,ItemAncient);
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Item:[%s][%d,%d,%d,%d,%d,%d,%d,%d]",
+						"Make Item", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						ItemAttribute[Item].Name,type,index,ItemLevel,ItemSkill,ItemLuck,ItemOpt,ItemExc,ItemAncient);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+				}
+			}
+		}break;
+		case 391:
+		{
+			if(ReadConfig.CmdPostEnabled == 1)
+			{
+				if(lpObj->Level < ReadConfig.CmdPostLevel)
+				{
+					char levelmsg[100];
+					sprintf(levelmsg,lMsg.Get(MSGGET(14, 64)),ReadConfig.CmdPostLevel);
+					GCServerMsgStringSend(levelmsg,aIndex,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdPostMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(ReadConfig.CmdPostAF > 0)
+				{
+					if(lpObj->aFloodPostCmd != 0)
+					{
+						GCServerMsgStringSend("You must wait before use post command again", lpObj->m_Index, 1);
+						return FALSE;	
+					}
+					lpObj->aFloodPostCmd = ReadConfig.CmdPostAF;
+				}
+
+				char * strtmp = (char*)szCmd+strlen(szCmdToken);
+
+				if(strtmp[0] == 0 || strtmp[1] == 0)
+				{
+					return FALSE;
+				}
+
+				lpObj->Money -= ReadConfig.CmdPostMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+
+				if(ReadConfig.SCFPSON == 1)
+				{
+					SCFPostSend(lpObj->m_Index,(char*)szCmd+strlen(szCmdToken)+1);
+				}else
+				{
+					ServerMsgSendPost(ReadConfig.CmdPostColor ,lpObj->Name," [POST] %s",(char*)szCmd+strlen(szCmdToken));
+				}
+				if(ReadConfig.PostLog == TRUE)
+					POST_LOG.Output("[Post] <%s> %s", lpObj->Name, (char*)szCmd+strlen(szCmdToken));
+
+				if (lpObj->AuthorityCode > 0)
+				{
+					if(ReadConfig.GMLog == TRUE)
+					{
+						GM_LOG.Output("[Post][%s][%s] %s", lpObj->AccountID, lpObj->Name, (char*)szCmd+strlen(szCmdToken));
+					}
+				}
+				//
+						
+				//char timeStr[9];
+				//_strtime(timeStr);
+				//char iPostLog[200];
+				//sprintf(iPostLog, "%s [Post] <%s> %s", timeStr, lpObj->Name, (char*)szCmd+strlen(szCmdToken));
+				//LogAddC(iPostLog);
+
+				return TRUE;
+			}else
+			{
+				return TRUE;
+			}
+		}
+		case 392:
+		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,0) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+				if ( pId == NULL )
+				{
 					return 0;
 				}
-
-				gMoveCommand.Move(lpObj, pId);
-			}
-#ifndef ZEONGAMESERVER
-		}
-#endif
-	}
-	break;
-	case COMMAND_GMOVE:
-		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-				lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, 
-				"Guild SetPosition");
-
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return 0;
-			}
-
-			int iTokenNumber1 = this->GetTokenNumber();
-			int iTokenNumber2 = this->GetTokenNumber();
-			int iTokenNumber3 = this->GetTokenNumber();
-			_GUILD_INFO_STRUCT* lpGuild = Guild.SearchGuild(pId);
-			int iIndex;
-
-			if ( lpGuild != NULL )
-			{
-				for ( int i=0;i<MAX_USER_GUILD;i++)
+				int targetIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+				if ( targetIndex >= 0 )
 				{
-					if (lpGuild->Index[i] >= 0 )
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
 					{
-						iIndex = lpGuild->Index[i];
-						gObjTeleport(iIndex, iTokenNumber1, iTokenNumber2++, iTokenNumber3);
+						return 0;
 					}
+					GCPkLevelSend(lpTargetObj->m_Index, 3);
+					char Msg[100] = {0};
+					strcpy(Msg,lMsg.Get(MSGGET(14, 65)));
+					GCServerMsgStringSend(Msg,lpTargetObj->m_Index,1);
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s]",
+						"PK Clear", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						gObj[targetIndex].AccountID,gObj[targetIndex].Name);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
 				}
-			}
-		}
-		break;
-	case COMMAND_WARSTART:
-	case COMMAND_GUILDWARSTART:
-		{
-			if ( (lpObj->Authority &2)== 2 )
+			}else
 			{
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-					lpObj->Ip_addr, lpObj->AccountID, lpObj->Name,
-					"Start BattleSoccer");
-
-				BattleSoccerGoalStart(0);
-			}
-		}
-		break;
-	case COMMAND_WARSTOP:
-	case COMMAND_GUILDWARSTOP:
-		{
-			if ( (lpObj->Authority &2) == 2 )
-			{
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-					lpObj->Ip_addr, lpObj->AccountID, lpObj->Name,
-					"Stop BattleSoccer");
-
-				BattleSoccerGoalEnd(0);
-			}
-			else
-			{
-				if ( gObj[aIndex].lpGuild != NULL )
+				if (ReadConfig.CmdPKClearEnabled == 1)
 				{
-					if (gObj[aIndex].lpGuild->WarType == 1 )
+					int Money = (lpObj->m_PK_Level * ReadConfig.CmdPKClearMoney);
+					if(lpObj->m_PK_Level <= 3) 
 					{
-						if( strcmp( gObj[aIndex].Name, gObj[aIndex].lpGuild->Names[0] ) == 0 )
-						{					
-							if( gObj[aIndex].lpGuild->BattleGroundIndex >= 0 )
-							{
-								//BattleSoccerGoalEnd(gObj[aIndex].lpGuild->BattleGroundIndex);
-								//GCServerMsgStringSend("GuildMaster ¿äÃ»À¸·Î 3ÃÊ ÈÄ °æ±â°¡ ÀÚµ¿À¸·Î Á¾·áµË´Ï´Ù.", aIndex, 0);
-							}
-						}
+						char Msg[100] = {0};
+						strcpy(Msg,lMsg.Get(MSGGET(14, 66)));
+						GCServerMsgStringSend(Msg,aIndex,1);
+						return TRUE;
 					}
-				}
-			}
-		}
-		break;
-	case COMMAND_WAREND:
-	case COMMAND_GUILDWAREND:
-		{
-			if ( (lpObj->Authority & 2) == 2 )
-			{
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s",
-					lpObj->Ip_addr, lpObj->AccountID, lpObj->Name, "End GuildWar");
-
-				char * szGuild = this->GetTokenString();
-
-				if ( szGuild != NULL )
-				{
-					GCManagerGuildWarEnd(szGuild);
-				}
-			}
-			else
-			{
-				if ( gObj[aIndex].lpGuild != NULL && gObj[aIndex].lpGuild->lpTargetGuildNode != NULL)
-				{
-					if ( strcmp( gObj[aIndex].Name, gObj[aIndex].lpGuild->Names[0] ) ==  0)
+					else if(lpObj->Money < Money)
 					{
-						if ( gObj[aIndex].lpGuild->BattleGroundIndex >= 0 && gObj[aIndex].lpGuild->WarType == 1 )
+						GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+						return TRUE;
+					}
+					else if(lpObj->Money >= Money)
+					{
+						lpObj->Money -= Money;
+						GCMoneySend(lpObj->m_Index,lpObj->Money);
+						lpObj->m_PK_Level = 3;
+						GCPkLevelSend(lpObj->m_Index, 3);
+						GCServerMsgStringSend(lMsg.Get(MSGGET(14, 65)),aIndex,1);
+						LogAddTD("[PK Clear][%s][%s] PK clear success.", lpObj->AccountID, lpObj->Name);
+					}
+					return TRUE;
+				}
+			}
+			return FALSE;
+		}
+			break;
+		case 393:
+		{
+			if(ReadConfig.CmdAddEnabled == 1)
+			{
+				int Pontos;
+				Pontos = GetTokenNumber();
+				if(Pontos == NULL)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 68)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->LevelUpPoint < Pontos || Pontos < 1)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 69)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdAddMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(Pontos > ReadConfig.CmdAddMaxNumber)
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 77)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				if((Pontos + lpObj->Strength) > ReadConfig.MaxPoints[lpObj->Class][0])
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 78)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+
+				lpObj->Money -= ReadConfig.CmdAddMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+				lpObj->LevelUpPoint -= Pontos;
+				lpObj->Strength += Pontos;
+				char Msg[100];
+				sprintf(Msg, lMsg.Get(MSGGET(14, 71)), Pontos);
+				GCServerMsgStringSend(Msg,lpObj->m_Index,1);
+				GCServerMsgStringSend(lMsg.Get(MSGGET(14, 70)),lpObj->m_Index,1);
+
+				return TRUE;
+			}
+			return FALSE;
+		}
+			break;
+		case 394:
+		{
+			if(ReadConfig.CmdAddEnabled == 1)
+			{
+				int Pontos;
+				Pontos = GetTokenNumber();
+				if(Pontos == NULL)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 68)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->LevelUpPoint < Pontos || Pontos < 1)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 69)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdAddMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(Pontos > ReadConfig.CmdAddMaxNumber)
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 77)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				if((Pontos + lpObj->Dexterity) > ReadConfig.MaxPoints[lpObj->Class][1])
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 78)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				lpObj->Money -= ReadConfig.CmdAddMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+				lpObj->LevelUpPoint -= Pontos;
+				lpObj->Dexterity += Pontos;
+				char Msg[100];
+				sprintf(Msg, lMsg.Get(MSGGET(14, 72)), Pontos);
+				GCServerMsgStringSend(Msg,lpObj->m_Index,1);
+				GCServerMsgStringSend(lMsg.Get(MSGGET(14, 70)),lpObj->m_Index,1);
+				return TRUE;
+			}
+			return FALSE;
+		}
+			break;
+		case 395:
+		{
+			if(ReadConfig.CmdAddEnabled == 1)
+			{
+				int Pontos;
+				Pontos = GetTokenNumber();
+				if(Pontos == NULL)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 68)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->LevelUpPoint < Pontos || Pontos < 1)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 69)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdAddMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(Pontos > ReadConfig.CmdAddMaxNumber)
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 77)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				if((Pontos + lpObj->Vitality) > ReadConfig.MaxPoints[lpObj->Class][2])
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 78)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				lpObj->Money -= ReadConfig.CmdAddMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+				lpObj->LevelUpPoint -= Pontos;
+				lpObj->Vitality += Pontos;
+				char Msg[100];
+				sprintf(Msg, lMsg.Get(MSGGET(14, 73)), Pontos);
+				GCServerMsgStringSend(Msg,lpObj->m_Index,1);
+				GCServerMsgStringSend(lMsg.Get(MSGGET(14, 70)),lpObj->m_Index,1);
+				return TRUE;
+			}
+			return FALSE;
+		}
+			break;
+		case 396:
+		{
+			if(ReadConfig.CmdAddEnabled == 1)
+			{
+				int Pontos;
+				Pontos = GetTokenNumber();
+				if(Pontos == NULL)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 68)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->LevelUpPoint < Pontos || Pontos < 1)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 69)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdAddMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(Pontos > ReadConfig.CmdAddMaxNumber)
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 77)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				if((Pontos + lpObj->Energy) > ReadConfig.MaxPoints[lpObj->Class][3])
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 78)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				lpObj->Money -= ReadConfig.CmdAddMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+				lpObj->LevelUpPoint -= Pontos;
+				lpObj->Energy += Pontos;
+				char Msg[100];
+				sprintf(Msg, lMsg.Get(MSGGET(14, 74)), Pontos);
+				GCServerMsgStringSend(Msg,lpObj->m_Index,1);
+				GCServerMsgStringSend(lMsg.Get(MSGGET(14, 70)),lpObj->m_Index,1);
+				return TRUE;
+			}
+			return FALSE;
+		}
+			break;
+		case 397:
+		{
+			if(ReadConfig.CmdAddEnabled == 1)
+			{
+				if(lpObj->Class !=4)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 76)),lpObj->m_Index,1);
+					return FALSE;
+				}
+
+				int Pontos;
+				Pontos = GetTokenNumber();
+				if(Pontos == NULL)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 68)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->LevelUpPoint < Pontos || Pontos < 1)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 69)),lpObj->m_Index,1);
+					return FALSE;
+				}
+				if(lpObj->Money < ReadConfig.CmdAddMoney)
+				{
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+					return FALSE;
+				}
+				if(Pontos > ReadConfig.CmdAddMaxNumber)
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 77)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				if((Pontos + lpObj->Leadership) > ReadConfig.MaxPoints[lpObj->Class][4])
+				{
+					char sbuff[1024]={0};
+					wsprintf(sbuff,lMsg.Get(MSGGET(14, 78)),ReadConfig.CmdAddMaxNumber);
+					GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+					return FALSE;
+				}
+				lpObj->Money -= ReadConfig.CmdAddMoney;
+				GCMoneySend(lpObj->m_Index,lpObj->Money);
+				lpObj->LevelUpPoint -= Pontos;
+				lpObj->Leadership += Pontos;
+				char Msg[100];
+				sprintf(Msg, lMsg.Get(MSGGET(14, 75)), Pontos);
+				GCServerMsgStringSend(Msg,lpObj->m_Index,1);
+				GCServerMsgStringSend(lMsg.Get(MSGGET(14, 70)),lpObj->m_Index,1);
+				return TRUE;
+			}
+			return FALSE;
+		}
+			break;
+		case 398:
+		{
+			if (ReadConfig.CmdSkinEnabled == 1)
+			{
+				if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(&gObj[aIndex],3) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) == 2 )))
+				{					
+					pId = this->GetTokenString();
+					if ( pId == NULL )
+					{
+						return 0;
+					}
+					int Mob = this->GetTokenNumber();
+					int targetIndex = gObjGetIndex(pId);
+					LPOBJ lpTargetObj;
+					if ( targetIndex >= 0 )
+					{
+						lpTargetObj = gObjFind(pId);
+						if ( lpTargetObj == NULL )
 						{
-							::gObjAddMsgSendDelay(&gObj[aIndex], 7, aIndex, 10000, 0);
-
-							char szTemp[100];
-
-							wsprintf(szTemp, lMsg.Get(MSGGET(4, 129)), gObj[aIndex].lpGuild->Names[0] );
-							::GCServerMsgStringSendGuild(gObj[aIndex].lpGuild, szTemp, 1);
-							::GCServerMsgStringSendGuild(gObj[aIndex].lpGuild->lpTargetGuildNode, szTemp, 1);
+							return 0;
 						}
+						lpTargetObj->m_Change = Mob;
+						gObjViewportListProtocolCreate(lpTargetObj);	
+
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Skin:%d",
+							"User Skin", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[targetIndex].AccountID,gObj[targetIndex].Name,Mob);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+						return 1;
+					}					
+				}else
+				{
+					if(ReadConfig.CmdSkinOnlyForGM != TRUE)
+					{
+						int Mob;
+						Mob = GetTokenNumber();
+						
+						if(lpObj->Money < ReadConfig.CmdSkinMoney)
+						{
+							GCServerMsgStringSend(lMsg.Get(MSGGET(14, 67)),aIndex,1);
+							return TRUE;
+						}
+						else if(lpObj->Level < ReadConfig.CmdSkinLevel)
+						{
+							GCServerMsgStringSend(lMsg.Get(MSGGET(14, 79)),aIndex,1);
+							return TRUE;
+						}
+						else if(lpObj->Money >= ReadConfig.CmdSkinMoney)
+						{
+							lpObj->Money -= ReadConfig.CmdSkinMoney;
+							GCMoneySend(lpObj->m_Index,lpObj->Money);
+							lpObj->m_Change = Mob;
+							gObjViewportListProtocolCreate(lpObj);		
+
+							LogAddTD("[Skin Command][%s][%s] Success.", lpObj->AccountID, lpObj->Name);
+						}
+						return TRUE;
 					}
 				}
 			}
+			return FALSE;
 		}
 		break;
-	case COMMAND_DISABLECHAT:
+
+		case 431:
 		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s", lpObj->Ip_addr, lpObj->AccountID,
-				lpObj->Name, "Ban Chatting");
-
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
+			if (ReadConfig.CmdSkinEnabled == 1)
 			{
-				return FALSE;
-			}
+				if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(&gObj[aIndex],3) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->Authority &2 ) == 2 )))
+				{					
+					int targetIndex = this->GetTokenNumber();
+					int Mob = this->GetTokenNumber();
+					LPOBJ lpTargetObj;
+					if ( (targetIndex >= 0) && (targetIndex <= OBJ_MAXMONSTER) )
+					{
+						lpTargetObj = &gObj[targetIndex];
 
-			int Index = ::gObjGetIndex(pId);
+						if ( lpTargetObj->Live )
+						{
+							lpTargetObj->m_Change = Mob;
+							gObjViewportListProtocolCreate(lpTargetObj);	
 
-			if ( Index >= 0 )
-			{
-				gObj[Index].Penalty |= 2;
-			}
-
-		}
-		break;
-	case COMMAND_ENABLECHAT:
-		{
-			LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s", lpObj->Ip_addr, lpObj->AccountID,
-				lpObj->Name, "Free Ban-Chatting");
-
-			pId = this->GetTokenString();
-
-			if ( pId == NULL )
-			{
-				return FALSE;
-			}
-
-			int Index = ::gObjGetIndex(pId);
-
-			if ( Index >= 0 )
-			{
-				gObj[Index].Penalty &= ~2;
-			}
-		}
-		break;
-	case COMMAND_GUILDWAR:
-		{
-			pId = this->GetTokenString();
-
-			if ( pId != NULL )
-			{
-				if ( strlen(pId) >= 1 )
-				{
-					::GCGuildWarRequestResult(pId, aIndex, 0);
+							wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Skin:%d",
+								"User Skin", lpObj->Ip_addr, 
+								lpObj->AccountID, lpObj->Name,
+								gObj[targetIndex].AccountID,gObj[targetIndex].Name,Mob);
+							if(ReadConfig.GMLog == TRUE)
+								GM_LOG.Output(sbuf);
+							return 1;
+						}
+					}					
 				}
 			}
 		}
 		break;
-	case COMMAND_BATTLESOCCER:
-		{
-			if ( (lpObj->Authority & 2 ) == 2 )
-			{
-				LogAddTD("Use GM Command -> [ %s ]\t[ %s ]\t[ %s ] : %s", lpObj->Ip_addr, lpObj->AccountID,
-					lpObj->Name, "Set GuildWar");
 
+#if (PACK_EDITION>=2)
+		case 399:
+		{		
+			if(Marry.EnableMarry == TRUE)
+			{
 				pId = this->GetTokenString();
 
-				if ( pId != NULL )
+				if ( pId == NULL )
 				{
-					char * Rival = this->GetTokenString();
+					return 0;
+				}
+				Marry.Propose(lpObj,pId);
+				return TRUE;
+			}
+			return FALSE;
+		}break;
+		case 400:
+		{			
+			Marry.CommandCore(lpObj,0);
+			return TRUE;
+		}break;
+		case 401:
+		{			
+			Marry.CommandCore(lpObj,1);
+			return TRUE;
+		}break;
+		case 402:
+		{			
+			Marry.CommandCore(lpObj,2);
+			return TRUE;
+		}break;
+		case 403:
+		{			
+			Marry.CommandCore(lpObj,3);
+			return TRUE;
+		}break;
+		case 404:
+		{			
+			Marry.CommandCore(lpObj,4);
+			return TRUE;
+		}break;
+		#if (DSGN_RESET_SYSTEM==0)
+		case 405:
+		{			
+			ResetChar.Start(lpObj);
+			return TRUE;
+		}break;
+		#endif	//DSGN_RESET_SYSTEM
+#endif
 
-					if ( Rival != NULL )
+#if (DSGN_RESET_SYSTEM==1)
+		case 405:
+		{			
+			//ResetChar.Start(lpObj);
+			return TRUE;
+		}break;
+#endif	//DSGN_RESET_SYSTEM
+
+		case 406:
+		{
+			if ( (lpObj->AuthorityCode &8) == 8 )
+			{
+				pId = this->GetTokenString();
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				int iTokenNumber1 = this->GetTokenNumber();
+				int iTokenNumber2 = this->GetTokenNumber();
+				int iTokenNumber3 = this->GetTokenNumber();
+				int iIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+				if ( iIndex >= 0 )
+				{
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
 					{
-						if ( strlen(pId) >= 1 )
+						return 0;
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Location:[MAP:%d][X:%d][Y:%d] %d",
+						"User SetPosition", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID,lpTargetObj->Name,
+						iTokenNumber1, iTokenNumber2, iTokenNumber3,USERSTATUS);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					gObjTeleport(iIndex, iTokenNumber1, iTokenNumber2, iTokenNumber3);
+				}
+				return 1;
+			}
+		}break;
+	
+#if (PACK_EDITION>=2)
+		case 407:
+		{		
+			if(lpObj->Vip > 0)
+			{
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				VipSystem.BuyList(lpObj,pId);
+				return TRUE;
+			}
+			return FALSE;
+		}break;
+		case 408:
+		{		
+			if(lpObj->Vip > 0)
+			{
+				int iTokenNumber = this->GetTokenNumber();
+				VipSystem.BuyItem(lpObj,iTokenNumber);
+				return TRUE;
+			}
+			return FALSE;
+		}break;
+		case 409:
+		{		
+			if(lpObj->Vip > 0)
+			{
+				int iTokenNumber = this->GetTokenNumber();
+				if(iTokenNumber > 0)
+				{
+					VipSystem.BuyDays(lpObj,iTokenNumber);
+					return TRUE;
+				}
+			}
+			return FALSE;
+		}break;
+		case 410:
+		{		
+			if(lpObj->Vip > 0)
+			{
+				VipSystem.State(lpObj);
+				return TRUE;
+			}
+			return FALSE;
+		}break;
+#endif
+		case 411:
+		{	
+			char wcTmp[512]={0};
+			wsprintf(wcTmp, "%s: %s - v%s", GSText,ProjectName, VersionName);
+			GCServerMsgStringSend(wcTmp,lpObj->m_Index, 0x01);
+			GCServerMsgStringSend(Creators, lpObj->m_Index, 0x00);
+			GCServerMsgStringSend(EMails, lpObj->m_Index, 0x00);
+			GCServerMsgStringSend(WebPage, lpObj->m_Index, 0x00);
+			return TRUE;
+		}break;
+		case 412:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,17) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				int iIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+				if ( iIndex >= 0 )
+				{
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
+					{
+						return 0;
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s]",
+						"User Player Info", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID,lpTargetObj->Name);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					wsprintf(sbuf,"Character: %s - Level: %d - Class: %d",pId,lpTargetObj->Level,lpTargetObj->DbClass);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+					GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x01);
+					wsprintf(sbuf,"Str:%d - Dex:%d - vit:%d - Ene:%d - Cmd:%d",lpTargetObj->Strength,lpTargetObj->Dexterity,lpTargetObj->Vitality,lpTargetObj->Energy,lpTargetObj->Leadership);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+					GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x01);
+					wsprintf(sbuf,"Zen:%d",lpTargetObj->Money);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+					GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x01);
+				}
+				return 1;
+			}
+		}break;
+		case 413:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,4) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
+				
+				wsprintf(sbuf, "[%s]%s",lpObj->Name,(char*)szCmd+strlen(szCmdToken));
+
+				if(ReadConfig.SCFPSON == FALSE)
+					AllSendServerMsg(sbuf);
+				else
+					SCFAllServerMsgSend(sbuf);
+
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+				return 1;
+			}
+		}break;
+		case 414:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,5) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				int iTokenNumber1 = this->GetTokenNumber();
+				int iTokenNumber2 = this->GetTokenNumber();
+				int iTokenNumber3 = this->GetTokenNumber();
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Location:[MAP:%d][X:%d][Y:%d]",
+					"All User SetPosition", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					iTokenNumber1, iTokenNumber2, iTokenNumber3);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				for(int iIndex=OBJ_STARTUSERINDEX;iIndex<OBJMAX;iIndex++)
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
+					{
+						if(iIndex != lpObj->m_Index)
 						{
-							if ( strlen(Rival) >= 1 )
-							{
-								::GCManagerGuildWarSet(pId, Rival, 1);
-							}
+							gObjTeleport(iIndex, iTokenNumber1, iTokenNumber2, iTokenNumber3);
+							return 1;
 						}
 					}
 				}
 			}
-			else
+			return 0;
+		}break;
+		case 415:
+		{	
+			char wcTmp[256]={0};
+			wsprintf(wcTmp, "Current Level: %d", lpObj->Level);
+			GCServerMsgStringSend(wcTmp,lpObj->m_Index, 0x01);
+			return 1;
+		}break;
+		case 416:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,15) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
 			{
-				if ( gEnableBattleSoccer != FALSE )
-				{
-					pId = this->GetTokenString();
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
 
-					if ( pId != NULL )
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+
+				if ( iIndex >= 0 )
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
 					{
-						if ( strlen(pId) >= 1 )
-						{
-							::GCGuildWarRequestResult(pId, aIndex, 1);
-						}
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s]",
+							"User GetInfo", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[iIndex].AccountID, gObj[iIndex].Name);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						wsprintf(sbuf, "Account: %s / Vault PWD: %d",gObj[iIndex].AccountID , gObj[iIndex].WarehousePW);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+						GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x00);
+						return 1;
 					}
 				}
 			}
-		}
-		break;
-	case COMMAND_RE:
-	case COMMAND_REQUEST:
-		{
-			pId = this->GetTokenString();
-
-			if ( pId != NULL )
+			return 0;
+		}break;
+		
+		case 417:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,16) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
 			{
-				BOOL bState;
-
-				if ( strcmp(pId, "on" ) == 0 )
+				char sbuf[512]={0};
+				int GMs = 0;
+				int Players = 0;
+				
+				for(int iIndex=OBJ_STARTUSERINDEX;iIndex<OBJMAX;iIndex++)
 				{
-					bState = TRUE;
+					if(gObj[iIndex].Connected >= PLAYER_PLAYING )
+					{
+						if(gObj[iIndex].Authority >= 16)
+						{
+							GMs++;
+						}
+						Players++;
+					}	
 				}
-				else if ( strcmp(pId, "off") == 0 )
+
+				wsprintf(sbuf, "Total Players Connected: %d", Players);
+				GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x01);
+				wsprintf(sbuf, "Total GM's Connected: %d", GMs);
+				GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x01);
+				return 1;
+			}
+			return 0;
+		}break;
+		
+		case 418:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,7) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
+				int buffId = this->GetTokenNumber();
+
+				if ( pId == NULL )
 				{
-					bState = FALSE;
+					return 0;
 				}
 
-				if ( bState >= FALSE && bState <= TRUE )
+				int iIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+
+				if ( iIndex >= 0 )
 				{
-					::gObjSetTradeOption(aIndex, bState);
-					::gObjSetDuelOption(aIndex, bState);
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
+					{
+						return 0;
+					}
+					switch(buffId)
+					{
+						case 0:
+						{
+							lpTargetObj->m_WizardSkillDefense = ReadConfig.WizardMagicDefenseBase + (lpObj->Dexterity + lpObj->AddDexterity) / ReadConfig.WizardMagicDefenseDiv1 + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.WizardMagicDefenseDiv2;
+							if (lpTargetObj->m_WizardSkillDefense > ReadConfig.WizardMagicMaximumDefense)
+								lpTargetObj->m_WizardSkillDefense = ReadConfig.WizardMagicMaximumDefense;
+							lpTargetObj->m_WizardSkillDefense += ((lpTargetObj->m_WizardSkillDefense * lpObj->MasterCharacterInfo->IncSoulBarrier)/100.0f);
+
+							lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.WizardMagicDefenseTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.WizardMagicDefenseTimeDiv1;
+							if (lpTargetObj->m_WizardSkillDefenseTime > ReadConfig.WizardMagicDefenseTimeLimit*60)
+								lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.WizardMagicDefenseTimeLimit*60;
+
+							lpTargetObj->m_WizardSkillDefenseTime += lpObj->MasterCharacterInfo->IncSoulBarrierTime;
+
+							lpTargetObj->m_ViewSkillState |= 256;
+							GCMagicAttackNumberSend(lpTargetObj,AT_SKILL_MAGICDEFENSE,lpTargetObj->m_Index,1);
+						}break;
+						case 1:
+						{								
+							lpObj->m_iSkillNPCHelpTime = GetTickCount();
+							lpObj->m_iSkillNPCDefense = lpTargetObj->Level / 5 + 50;
+							lpObj->m_iSkillNPCAttack = lpTargetObj->Level / 3 + 45;
+							lpObj->m_ViewSkillState |= 131072;
+							GCSkillInfoSend(lpTargetObj, 1, 0x03);
+						}break;
+						case 2:
+						{								
+							lpObj->m_SkillAddLifeTime = (lpTargetObj->AddEnergy + lpTargetObj->Energy) / 10 + 60;
+							lpObj->m_SkillAddLife = (lpTargetObj->AddEnergy + lpTargetObj->Energy) /20 + (lpTargetObj->Vitality + lpTargetObj->AddVitality) /100 + 13;
+							lpObj->m_ViewSkillState |= 16;
+							lpObj->AddLife += lpTargetObj->m_SkillAddLife;
+							GCReFillSend(lpTargetObj->m_Index,lpTargetObj->MaxLife + lpTargetObj->AddLife,0xFE,0,lpTargetObj->iMaxShield + lpTargetObj->iAddShield);							
+							GCMagicAttackNumberSend(lpTargetObj,AT_SKILL_KNIGHTADDLIFE,lpTargetObj->m_Index,1);
+						}break;
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s][%s] / Buff:%d",
+						"User AddBuff", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID, lpTargetObj->Name,
+						buffId);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					GCServerMsgStringSend("Buff Added",lpObj->m_Index, 0x01);
+					return 1;
 				}
 			}
-		}
-		break;
-	case COMMAND_SETDEFSTATS:
-		{
-			int iClass = lpObj->Class;
-
-			lpObj->ChangeUP = 0;
-
-			lpObj->Strength = DCInfo.DefClass[iClass].Strength;
-			lpObj->Dexterity = DCInfo.DefClass[iClass].Dexterity;
-			lpObj->Vitality = DCInfo.DefClass[iClass].Vitality;
-			lpObj->Energy = DCInfo.DefClass[iClass].Energy;
-			lpObj->Life = DCInfo.DefClass[iClass].Life;
-			lpObj->MaxLife = DCInfo.DefClass[iClass].MaxLife;
-			lpObj->Mana = DCInfo.DefClass[iClass].Mana;
-			lpObj->MaxMana = DCInfo.DefClass[iClass].MaxMana;
-			lpObj->Leadership = DCInfo.DefClass[iClass].Leadership;
-
-			if(lpObj->Class == CLASS_DARKLORD || lpObj->Class == CLASS_MAGUMSA)
+			return 0;
+		}break;
+		
+		case 419:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,8) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
 			{
-				lpObj->LevelUpPoint = 7 * (lpObj->Level -1 );
-			}
-			else
-			{
-				lpObj->LevelUpPoint = 5 * (lpObj->Level -1 );
-			}
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
+				int Number = this->GetTokenNumber();
 
-			GCServerMsgStringSend("Default char. Complete", lpObj->m_Index, 1);
-			gObjCloseSet(lpObj->m_Index, 1);
-		}
-		break;
-	case COMMAND_SETDSMODE:
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+
+				if ( iIndex >= 0 )
+				{
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
+					{
+						return 0;
+					}
+					switch(Number)
+					{
+						case 0:
+						{
+							DeleteAllItemsLessInv(lpTargetObj->m_Index);
+						}break;
+						case 1:
+						{
+							DeleteAllItems(lpTargetObj->m_Index);
+						}break;
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s]",
+						"Delete Inventory", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID, lpTargetObj->Name);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+					return 1;
+				}
+			}
+			return 0;
+		}break;
+		
+		case 420:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,10) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[512]={0};
+				pId = this->GetTokenString();
+				int Number = this->GetTokenNumber();
+				int AddSkill = this->GetTokenNumber();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+
+				if ( iIndex >= 0 )
+				{
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
+					{
+						return 0;
+					}
+					if(AddSkill == 1)
+					{
+						int iAddSkillPosition = gObjMagicAdd(lpTargetObj,Number,0);
+						if(iAddSkillPosition >= 0)
+						{
+							GCMagicListOneSend(lpTargetObj->m_Index,iAddSkillPosition,Number,0xDC,0,0);
+						}
+						GCServerMsgStringSend("Skill Added",lpObj->m_Index, 0x01);
+					}else
+					{
+						int iDelSkillPosition = gObjMagicDel(lpTargetObj,Number,0);
+						if(iDelSkillPosition >= 0)
+						{
+							GCMagicListOneDelSend(lpTargetObj->m_Index,iDelSkillPosition,Number,0xDC,0,0);
+						}
+						GCServerMsgStringSend("Skill Deleted",lpObj->m_Index, 0x01);						
+					}
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s] / Skill:%d [%d]",
+						"Add/Del Magic", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						lpTargetObj->AccountID, lpTargetObj->Name,
+						Number,AddSkill);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+					return 1;
+				}
+			}
+			return 0;
+		}break;
+		case 421:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,12) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[1024]={0};
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+
+				if ( iIndex >= 0 )
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
+					{
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s]",
+							"User Status", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[iIndex].AccountID, gObj[iIndex].Name);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						wsprintf(sbuf, "User: %s / Char: %s", gObj[iIndex].AccountID, gObj[iIndex].Name);
+						GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x00);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						wsprintf(sbuf, "Map %d / PosX %d / PosY %d / Level %d / Zen %d", gObj[iIndex].MapNumber, gObj[iIndex].X, gObj[iIndex].Y, gObj[iIndex].Level, gObj[iIndex].Money);
+						GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x00);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+						return 1;
+					}
+				}
+			}
+			return 0;
+		}break;
+		case 422:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,14) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				char sbuf[1024]={0};
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+
+				if ( iIndex >= 0 )
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
+					{
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s]",
+							"User VIP Status", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[iIndex].AccountID, gObj[iIndex].Name);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						wsprintf(sbuf, "Account: %s / VIP: %d / VIP Days: %d / VIP Money: %d",gObj[iIndex].AccountID, gObj[iIndex].Vip,gObj[iIndex].VipDays,gObj[iIndex].VipMoney);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+						GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x00);
+						return 1;
+					}
+				}
+			}else
+			{
+				char sbuf[1024]={0};
+				wsprintf(sbuf, "Status: VIP: %d / VIP Days: %d / VIP Money: %d",lpObj->Vip,lpObj->VipDays,lpObj->VipMoney);
+				GCServerMsgStringSend(sbuf,lpObj->m_Index, 0x00);
+			}
+			return 0;
+		}break;
+		case 423:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,15) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+				int Number = this->GetTokenNumber();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+
+				if ( iIndex >= 0 )
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
+					{
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s] / Val:[%d]",
+							"Set Zen", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[iIndex].AccountID, gObj[iIndex].Name,
+							Number);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						gObj[iIndex].Money = Number;
+						CGZenSend(gObj[iIndex].m_Index);
+						GCServerMsgStringSend("Zen added!",lpObj->m_Index, 0x01);
+					}
+				}
+				return 1;
+			}
+			return 0;
+		}break;
+		case 424:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,18) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+				int Vip = this->GetTokenNumber();
+				int Days = this->GetTokenNumber();
+				int Money = this->GetTokenNumber();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+
+				int iIndex = gObjGetIndex(pId);
+
+				if ( iIndex >= 0 )
+				{
+					if(gObj[iIndex].Connected == PLAYER_PLAYING )
+					{
+						wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s] / Val:[%d,%d,%d]",
+							"Vip Set", lpObj->Ip_addr, 
+							lpObj->AccountID, lpObj->Name,
+							gObj[iIndex].AccountID, gObj[iIndex].Name,
+							Vip,Days,Money);
+						if(ReadConfig.GMLog == TRUE)
+							GM_LOG.Output(sbuf);
+
+						gObj[iIndex].Vip = Vip;
+						gObj[iIndex].VipDays = Days;
+						gObj[iIndex].VipMoney = Money;
+						GCServerMsgStringSend("VIP Values Setted!",lpObj->m_Index, 0x01);
+						return 1;
+					}
+				}
+			}
+			return 0;
+		}break;
+		
+		case 425:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,13) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				int Ban = this->GetTokenNumber();
+				
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s] / Action:%d",
+					"Ban/UnBan Char", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId,Ban);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				GJSetStatusBan(pId,0,Ban);
+				if(Ban == 1)
+				{
+					int iIndex = gObjGetIndex(pId);
+					GCServerMsgStringSend("Character Banned!",lpObj->m_Index, 0x01);
+
+					if ( OBJMAX_RANGE(iIndex) != FALSE )
+					{
+						if(gObj[iIndex].Connected == PLAYER_PLAYING )
+						{
+							CloseClient(gObj[iIndex].m_Index);
+						}
+					}
+				}else if(Ban == 0)
+				{
+					GCServerMsgStringSend("Character UnBanned!",lpObj->m_Index, 0x01);
+				}
+
+				return 1;
+			}
+			return 0;
+		}break;
+		
+		case 426:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,13) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				int Ban = this->GetTokenNumber();
+				
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target:[%s] / Action:%d",
+					"Ban/UnBan Account", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					pId,Ban);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				GJSetStatusBan(pId,1,Ban);
+				if(Ban == 1)
+				{
+					int iIndex = gObjGetIndex(pId);
+					GCServerMsgStringSend("Account Banned!",lpObj->m_Index, 0x01);
+
+					if ( OBJMAX_RANGE(iIndex) != FALSE )
+					{
+						if(gObj[iIndex].Connected == PLAYER_PLAYING )
+						{
+							CloseClient(gObj[iIndex].m_Index);
+						}
+					}
+				} else if(Ban == 0) {
+					GCServerMsgStringSend("Account UnBanned!",lpObj->m_Index, 0x01);
+				}
+
+				return 1;
+			}
+			return 0;
+		}break;
+		
+		case 427:
+		{	
+			//if ( (lpObj->AuthorityCode &8) == 8 )
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,11) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				int Monster=this->GetTokenNumber();
+				int Map=this->GetTokenNumber();
+				int X=this->GetTokenNumber();
+				int Y=this->GetTokenNumber();
+				int HowMany=this->GetTokenNumber();
+				int SaveToFile=this->GetTokenNumber();
+				
+				gObjMonsterAddSet(Monster,Map,X,Y,HowMany);
+
+				GCServerMsgStringSend("Monster Spawned",lpObj->m_Index, 0x01);
+				
+				if(SaveToFile == 1)
+				{
+					char sBuf[255]={0};
+					wsprintf(sBuf,"%d %d %d %d %d",Monster,Map,X,Y,HowMany);
+					WriteTxt(FilePathSpawn,sBuf);
+				}
+
+				wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Spawned:[ID:%d][MAP:%d][X:%d][Y:%d] / Saved:%d",
+					"Monster Spawn", lpObj->Ip_addr, 
+					lpObj->AccountID, lpObj->Name,
+					Monster,Map,X,Y,SaveToFile);
+				if(ReadConfig.GMLog == TRUE)
+					GM_LOG.Output(sbuf);
+
+				return 1;
+			}
+			return 0;
+		}break;
+		
+		case 428:
 		{
+			if (((GMSystem.Enabled == TRUE) && (GMSystem.CheckCommand(lpObj,1) == TRUE)) || ((GMSystem.Enabled == FALSE) && ( (lpObj->AuthorityCode &8 ) == 8 )))
+			{
+				pId = this->GetTokenString();
+				int PKLevel=this->GetTokenNumber();
+				if ( pId == NULL )
+				{
+					return 0;
+				}
+				int targetIndex = gObjGetIndex(pId);
+				LPOBJ lpTargetObj;
+				if ( targetIndex >= 0 )
+				{
+					lpTargetObj = gObjFind(pId);
+					if ( lpTargetObj == NULL )
+					{
+						return 0;
+					}
+					lpTargetObj->m_PK_Level = PKLevel;
+					lpTargetObj->m_PK_Time = 0;
+					GCPkLevelSend(lpTargetObj->m_Index, PKLevel);
+
+					wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] / Target : [%s][%s] / Level:[%d]",
+						"PK Set", lpObj->Ip_addr, 
+						lpObj->AccountID, lpObj->Name,
+						gObj[targetIndex].AccountID, gObj[targetIndex].Name,
+						PKLevel);
+					if(ReadConfig.GMLog == TRUE)
+						GM_LOG.Output(sbuf);
+
+					return 1;
+				}
+			}
+			return 0;
+		}break;
+		
+		case 429:
+		{
+			#if (WL_PROTECT==1)
+				int MyCheckVar;   
+				VM_START_WITHLEVEL(14)
+					CHECK_PROTECTION(MyCheckVar, 0x95442743)  	 
+					if (MyCheckVar != 0x95442743)
+					{			
+						int sasa =0;
+						int caca =4;
+						int result = caca/sasa;
+						exit(1);
+					}
+				VM_END
+			#endif
+			return 0;
+		}break;
+		
+		case 430:
+		{
+			#if (WL_PROTECT==1)
+				int MyCheckVar1;
+				VM_START
+				CHECK_REGISTRATION(MyCheckVar1, 0x64673510)  
+				if (MyCheckVar1 != 0x64673510)
+				{				
+					int sasa =0;
+					int caca =4;
+					int result = caca/sasa;
+					exit(1);
+				}
+				VM_END
+			#endif
+			return 0;
+		}break;
+		
+#if (PACK_EDITION>=3)
+		case 432:
+		{
+			if(ReadConfig.WareSystem > 0)
+			{
+				if ( lpObj->m_IfState.use > 0 )
+				{
+					GCServerMsgStringSend (lMsg.Get(MSGGET(14, 116)),lpObj->m_Index,0x01 ) ;
+					return 0;
+				}else
+				{
+					if ( gObj[aIndex].m_ReqWarehouseOpen == false )
+					{
+						int max = ReadConfig.WareExLimit;
+
+						if(ReadConfig.WareSystem == 3)
+						{
+							if(lpObj->WarehouseVipCount < max)
+								max = lpObj->WarehouseVipCount;
+						}
+						else if(ReadConfig.WareSystem == 2 && lpObj->Vip != 1)
+						{
+							GCServerMsgStringSend (lMsg.Get(MSGGET(14, 119)),lpObj->m_Index,0x01 ) ;
+							return 0;
+						}
+
+						if(max < 0)
+							max = 0;
+						else if(max >= 32768)
+							max = 32767;
+
+						int	num = this->GetTokenNumber();
+						if(num < 0)
+							num = 0;
+						else if(num >= 32768)
+							num = 32767;
+						
+						if(num > max)
+						{
+							GCServerMsgStringSend (lMsg.Get(MSGGET(14, 120)),lpObj->m_Index,0x01 ) ;
+							num = max;
+						}
+
+						lpObj->WarehouseExNum = num;
+
+						char sBuf[1024]={0};
+						wsprintf(sBuf, lMsg.Get(MSGGET(14, 117)),lpObj->WarehouseExNum);
+						GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+						return 1;
+					}else
+					{
+						GCServerMsgStringSend (lMsg.Get(MSGGET(14, 116)),lpObj->m_Index,0x01 ) ;
+						return 0;
+					}
+				}
+			}else
+			{
+				GCServerMsgStringSend (lMsg.Get(MSGGET(14, 118)),lpObj->m_Index,0x01 ) ;
+				return 0;
+			}
+		}break;
+		case 433:
+		{	
+			if(ReadConfig.WareSystem > 0)
+			{
+				char sBuf[1024]={0};	
+				if(lpObj->Vip > 0)
+				{
+					int count = this->GetTokenNumber();
+					
+					if(count < 1)
+						count = 1;
+					else if(count >= 32768)
+						count = 32767;	
+
+					if(count + lpObj->WarehouseVipCount > ReadConfig.WareExLimit)
+					{
+						wsprintf(sBuf, lMsg.Get(MSGGET(14, 121)),ReadConfig.WareExLimit,lpObj->WarehouseVipCount,count);
+						GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+						return 0;
+					}
+
+					int value = ReadConfig.WareExVipValue * count;
+					if(lpObj->VipMoney >= value)
+					{
+						lpObj->VipMoney -= value;
+						lpObj->WarehouseVipCount += count;
+						lpObj->AccountExtraInfoModified = 1;
+
+						wsprintf(sBuf, lMsg.Get(MSGGET(14, 122)),count,lpObj->WarehouseVipCount+1);
+						GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+						return 1;
+					}else
+					{
+						wsprintf(sBuf, lMsg.Get(MSGGET(14, 123)),value,count);
+						GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+						return 0;
+					}
+				}
+				return 0;
+			}else
+			{
+				GCServerMsgStringSend (lMsg.Get(MSGGET(14, 118)),lpObj->m_Index,0x01 ) ;
+				return 0;
+			}
+		}break;
+
+#endif	
+
+		//case 434:// /effect
+		//{
+		//	int Number=this->GetTokenNumber();
+		//	int Map=this->GetTokenNumber();
+		//	int X=this->GetTokenNumber();
+		//	int Y=this->GetTokenNumber();
+		//	int MTX=this->GetTokenNumber();
+		//	int MTY=this->GetTokenNumber();
+		//	int MobPos = gObjMonsterAdd(Number,Map,X,Y);
+		//	if(MobPos >= 0)
+		//	{
+		//		int MobID = gObjAddMonster(Map);
+		//		if(MobID >= 0)
+		//		{
+		//			gObjSetPosMonster(MobID, MobPos);
+		//			gObjSetMonster(MobID, Number,"gObjMonsterAddSet");
+		//		}
+		//		gObj[MobID].MTX = MTX;
+		//		gObj[MobID].MTX = MTY;
+		//		FindPathToMoveMonster(lpObj, lpObj->MTX, lpObj->MTY, 5, 1);
+		//	}
+		//	/*int a=this->GetTokenNumber();
+		//	PMSG_TALKRESULT pResult;
+		//	pResult.h.c = 0xC3;
+		//	pResult.h.headcode = 0x30;
+		//	pResult.h.size = sizeof(pResult);
+		//	pResult.result = a;
+		//	::DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+		//	*/
+		//}break;
+
+		//case 434:// /effect
+		//{
+		//	//Test new effects
+		//	int a=this->GetTokenNumber();
+		//	if(a == 0)
+		//	{
+		//		BYTE buff[4] = {0xc1,0x04,0x2B,0x01};
+		//		::DataSend(lpObj->m_Index, buff, sizeof(buff));
+		//	}else if(a==1)
+		//	{
+		//		BYTE buff[0x18] = {0xc1,0x18,0xf8,0x07,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x0e,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xf4,0x01,0x00,0x00};
+		//		::DataSend(lpObj->m_Index, buff, sizeof(buff));
+		//	}else if(a==2)
+		//	{
+		//		BYTE buff[5] = {0xc1,0x05,0xd2,0x11,0x00};
+		//		::DataSend(lpObj->m_Index, buff, sizeof(buff));
+		//	}else if(a==3)
+		//	{
+		//		BYTE buff[4] = {0xc1,0x04,0x0f,0x02};
+		//		::DataSend(lpObj->m_Index, buff, sizeof(buff));
+		//	}
+		//}break;
+#if (DSGN_EFFECT_CMD==1)
+		case 434:// /effect
+		{
+			//Test new effects
+			int on_off=this->GetTokenNumber();
+			int viewId=this->GetTokenNumber();
+
+			char sBuf[100]={0};	
+			wsprintf(sBuf, "Effect: %d",viewId);
+			GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+
+			GCSkillInfoSend(lpObj,on_off,viewId);
+		}break;
+#endif
+#if (PACK_EDITION>=2)
+		case 437:
+		{		
 			int iTokenNumber = this->GetTokenNumber();
-			int iPetItem_Mode = 0;
-
-			if(iTokenNumber == 0)
+			if(iTokenNumber > 0)
 			{
-				iPetItem_Mode = CDarkSpirit::ePetItem_Mode::PetItem_Mode_Normal;
+				VipSystem.BuyDays(lpObj,iTokenNumber);
+				return TRUE;
 			}
-			else if(iTokenNumber == 1)
-			{
-				iPetItem_Mode = CDarkSpirit::ePetItem_Mode::PetItem_Mode_Attack_Random;
-			}
-			else if(iTokenNumber == 2)
-			{
-				iPetItem_Mode = CDarkSpirit::ePetItem_Mode::PetItem_Mode_Attack_WithMaster;
-			}
-			else if(iTokenNumber == 3)
-			{
-				iPetItem_Mode = CDarkSpirit::ePetItem_Mode::PetItem_Mode_Attack_Target;
-			}
-
-			gDarkSpirit[lpObj->m_Index].SetMode((CDarkSpirit::ePetItem_Mode)iPetItem_Mode,-1);
-		}
-		break;
-	case COMMAND_GETINFARROWMP:
-		this->GetInfinityArrowMPConsumption(lpObj);
-		break;
-	case COMMAND_CONTROLINFARRORMP0:
-		this->ControlInfinityArrowMPConsumption0(lpObj, this->GetTokenNumber());
-		break;
-	case COMMAND_CONTROLINFARRORMP1:
-		this->ControlInfinityArrowMPConsumption1(lpObj, this->GetTokenNumber());
-		break;
-	case COMMAND_CONTROLINFARRORMP2:
-		this->ControlInfinityArrowMPConsumption2(lpObj, this->GetTokenNumber());
-		break;
-	case COMMAND_CONTROLINFARRORMP3:
-		this->ControlInfinityArrowMPConsumption3(lpObj, this->GetTokenNumber());
-		break;
-	case COMMAND_SETINFARROWTIME:
-		this->SetInfinityArrowTime(lpObj, this->GetTokenNumber());
-		break;
-	case COMMAND_ADDEXP:
-		{
-			__int64 addexp = this->GetTokenNumber();
-			gObjLevelUp(lpObj, addexp, 0, 0);
-		}
-		break;
-		/*
-		case 366:
-		this->ControlFireScreamDoubleAttackDistance(lpObj, this->GetTokenNumber());
-		break;*/
-	case COMMAND_MAKECHAOSCARD:
-		{
-			CItem pItem;
-			char szItemName[50];
-			memset(szItemName, NULL, sizeof(szItemName));
-			strcpy(szItemName, this->GetTokenString());
-
-			g_ChaosCard.CheckChaosCardInfo(szItemName, &pItem);
-
-			if(pItem.IsItem() == 0)
-			{
-				break;
-			}
-
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y, pItem.m_Type, pItem.m_Level, pItem.m_Durability, pItem.m_Option1, pItem.m_Option2, pItem.m_Option3, lpObj->m_Index, pItem.m_NewOption, 0); 
-		}
-		break;
-	case COMMAND_ADDPCPOINT:
-		{
-#ifdef PCBANG
-			int iAddPoint = this->GetTokenNumber();
-			lpObj->m_PcBangPointSystem.m_dwPcBangPointTick = GetTickCount();
-			lpObj->m_PcBangPointSystem.m_iPcBangAccumulatedPoint += iAddPoint;
-
-			char szTemp[256];
-			wsprintf(szTemp, lMsg.Get(3392), iAddPoint);
-			GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
-
-			g_PCBangPointSystem.EGReqUpdatePcBangResetPointInfo(lpObj->m_Index);
-
-			LogAddTD("[PCBangPointSystem][Add Point] [%s] %d/Total:%d Rule(%d)", 
-				lpObj->AccountID, lpObj->m_PcBangPointSystem.m_sPcBangGainPoint, 
-				lpObj->m_PcBangPointSystem.m_iPcBangAccumulatedPoint, lpObj->m_PcBangPointSystem.m_bPcBangCommonRule);
+			return FALSE;
+		}break;
 #endif
-		}
-		break;
-	case COMMAND_SETPCPOINT:
-		{
-#ifdef PCBANG
-			int iAddPoint = 0;
-			lpObj->m_PcBangPointSystem.m_dwPcBangPointTick = GetTickCount();
-			lpObj->m_PcBangPointSystem.m_iPcBangAccumulatedPoint = iAddPoint;
+#if (PACK_EDITION>=3)
+		case 438:
+		{		
+			int Num1 = this->GetTokenNumber();
+			int Num2 = this->GetTokenNumber();
+			int Num3 = this->GetTokenNumber();
+			int Num4 = this->GetTokenNumber();
 
-			char szTemp[256];
-			wsprintf(szTemp, lMsg.Get(3392), iAddPoint);
-			GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
+			ObjTitanLottery.BuyTicket(aIndex,Num1,Num2,Num3,Num4);
 
-			g_PCBangPointSystem.EGReqUpdatePcBangResetPointInfo(lpObj->m_Index);
+			return FALSE;
+		}break;
+		case 439:
+		{		
+			char * ans;
+			ans = this->GetTokenString();
+			
+			if ( ans != NULL )
+				if(strlen(ans) == 1)
+					ObjQaA.AnswerCmd(aIndex,ans);
 
-			LogAddTD("[PCBangPointSystem][Add Point] [%s] %d/Total:%d Rule(%d)", 
-				lpObj->AccountID, lpObj->m_PcBangPointSystem.m_sPcBangGainPoint, 
-				lpObj->m_PcBangPointSystem.m_iPcBangAccumulatedPoint, lpObj->m_PcBangPointSystem.m_bPcBangCommonRule);
+			return FALSE;
+		}break;
 #endif
-		}
-		break;
-	case COMMAND_HIDEON:
+
+
+		case 436:// /invisible
 		{
-			gObjAddBuffEffect(lpObj, AT_INVISIBILITY, 0, 0, 0, 0, -10);
-			gObjViewportListProtocolDestroy(lpObj);
-		}
-		break;
-	case COMMAND_HIDEOFF:
-		{
-			gObjRemoveBuffEffect(lpObj, AT_INVISIBILITY);
-			gObjViewportListProtocolCreate(lpObj);
-		}
-		break;
-	case COMMAND_ABILITY:
-		this->CmdAbility(lpObj,this->GetTokenString());
-		break;
-	case COMMAND_PARTY:
-		this->CmdParty(lpObj,this->GetTokenString());
-		break;
-	case COMMAND_SUMMONMONSTER:
-		{
-			char * szName = this->GetTokenString();
-			int ct = this->GetTokenNumber();
-			this->CmdSummonMonster(lpObj,szName,ct);
-		}
-		break;
-	case COMMAND_CLEARMONSTER:
-		this->CmdClearMonster(lpObj,this->GetTokenNumber());
-		break;
-	case COMMAND_CLEARITEM:
-		this->CmdClearItem(lpObj,this->GetTokenNumber());
-		break;
-	case COMMAND_CLEARINVEN:
-		this->CmdClearInven(lpObj);
-		break;
-	case COMMAND_SUMMONCHAR:
-		this->CmdSummonChar(lpObj,this->GetTokenString());
-		break;
-	case COMMAND_SKIN:
-		{
-			char * Token = &szCmd[strlen("/skin") + 1];
-			int len = strlen(Token);
-			//--
-			if (len > 0)
-				 this->CmdSkin(lpObj, Token);
-			else
-				 GCServerMsgStringSend("Please enter id or monter name to use /skin", lpObj->m_Index, 1);
-		}
-		break;
-#ifdef __CUSTOMS__
-	case COMMAND_ADDSTR:
-		{
-			int iPoints = this->GetTokenNumber();
-			// ----
-			if( lpObj->Strength + iPoints > g_MaxStat )
+			GCServerMsgStringSend ("Trying to change invisible status...!",lpObj->m_Index,0x01 ) ;
+
+			if ( (lpObj->AuthorityCode &8) != 8 )
 			{
-				GCServerMsgStringSend("You can't add more stats", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( iPoints == 0 )
-			{
-				GCServerMsgStringSend("Error in syntax of command", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( lpObj->LevelUpPoint < iPoints || iPoints < 1 )
-			{
-				GCServerMsgStringSend("Not enough points to add", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			lpObj->Strength		+= iPoints;
-			lpObj->LevelUpPoint -= iPoints;
-			// ----
-			GCReFillSend(aIndex, (int)lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			gObjSetBP(aIndex);
-			GCManaSend(aIndex,(int)lpObj->MaxMana + lpObj->AddMana, 0xFE, 0, lpObj->MaxBP + lpObj->AddBP);
-			gObjCalCharacter(aIndex);
-			UpdateCharInfo(aIndex);
-			// ----
-			return TRUE;
-		}
-		break;
-	case COMMAND_ADDAGI:
-		{
-			int iPoints = this->GetTokenNumber();
-			// ----
-			if( lpObj->Dexterity + iPoints > g_MaxStat )
-			{
-				GCServerMsgStringSend("You can't add more stats", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( iPoints == NULL )
-			{
-				GCServerMsgStringSend("Error in syntax of command", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if(lpObj->LevelUpPoint < iPoints || iPoints < 1)
-			{
-				GCServerMsgStringSend("Not enough points to add", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			lpObj->Dexterity += iPoints;
-			lpObj->LevelUpPoint -= iPoints;
-			// ----
-			GCReFillSend(aIndex, (int)lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			gObjSetBP(aIndex);
-			GCManaSend(aIndex,(int)lpObj->MaxMana + lpObj->AddMana, 0xFE, 0, lpObj->MaxBP + lpObj->AddBP);
-			gObjCalCharacter(aIndex);
-			UpdateCharInfo(aIndex);
-			// ----
-			return TRUE;
-		}
-		break;
-	case COMMAND_ADDVIT:
-		{
-			int iPoints = this->GetTokenNumber();
-			// ----
-			if( iPoints == NULL )
-			{
-				GCServerMsgStringSend("Error in syntax of command", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( lpObj->Vitality + iPoints > g_MaxStat )
-			{
-				GCServerMsgStringSend("You can't add more stats", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if(lpObj->LevelUpPoint < iPoints || iPoints < 1)
-			{
-				GCServerMsgStringSend("Not enough points to add", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			lpObj->Vitality += iPoints;
-			lpObj->MaxLife += lpObj->VitalityToLife * iPoints;
-			lpObj->LevelUpPoint -= iPoints;
-			// ----
-			GCReFillSend(aIndex, (int)lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			gObjSetBP(aIndex);
-			GCManaSend(aIndex,(int)lpObj->MaxMana + lpObj->AddMana, 0xFE, 0, lpObj->MaxBP + lpObj->AddBP);
-			gObjCalCharacter(aIndex);
-			UpdateCharInfo(aIndex);
-			// ----
-			return TRUE;
-		}
-		break;
-	case COMMAND_ADDENE:
-		{
-			int iPoints = this->GetTokenNumber();
-			// ----
-			if( iPoints == NULL )
-			{
-				GCServerMsgStringSend("Error in syntax of command", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( lpObj->Energy + iPoints > g_MaxStat )
-			{
-				GCServerMsgStringSend("You can't add more stats", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if(lpObj->LevelUpPoint < iPoints || iPoints < 1)
-			{
-				GCServerMsgStringSend("Not enough points to add", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			lpObj->Energy += iPoints;
-			lpObj->MaxMana += lpObj->EnergyToMana * iPoints;
-			lpObj->LevelUpPoint -= iPoints;
-			// ----
-			GCReFillSend(aIndex, (int)lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			gObjSetBP(aIndex);
-			GCManaSend(aIndex,(int)lpObj->MaxMana + lpObj->AddMana, 0xFE, 0, lpObj->MaxBP + lpObj->AddBP);
-			gObjCalCharacter(aIndex);
-			UpdateCharInfo(aIndex);
-			// ----
-			return TRUE;
-		}
-		break;
-		// --
-	case COMMAND_ADDCOM:
-		{
-			int iPoints = this->GetTokenNumber();
-			// ----
-			if( lpObj->Class !=  CLASS_DARKLORD )
-			{
-				return FALSE;
-			}
-			// ----
-			if (lpObj->Leadership + iPoints > g_MaxStat)
-			{
-				GCServerMsgStringSend("You can't add more stats", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( iPoints == NULL )
-			{
-				GCServerMsgStringSend("Error in syntax of command", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			if( lpObj->LevelUpPoint < iPoints || iPoints < 1 )
-			{
-				GCServerMsgStringSend("Not enough points to add", lpObj->m_Index, 1);
-				return FALSE;
-			}
-			// ----
-			lpObj->Leadership += iPoints;
-			lpObj->LevelUpPoint -= iPoints;
-			// ----
-			GCReFillSend(aIndex, (int)lpObj->MaxLife + lpObj->AddLife, 0xFE, 0, lpObj->iMaxShield + lpObj->iAddShield);
-			gObjSetBP(aIndex);
-			GCManaSend(aIndex,(int)lpObj->MaxMana + lpObj->AddMana, 0xFE, 0, lpObj->MaxBP + lpObj->AddBP);
-			gObjCalCharacter(aIndex);
-			UpdateCharInfo(aIndex);
-			// ----
-			return TRUE;
-		}
-		break;
-#endif
-		// --
-	case COMMAND_POST:
-		{
-			if ( (lpObj->Penalty&2) == 2 )
-			{
-				return FALSE;
+				return 0;
 			}
 
-			if ( lpObj->ChatLitmitTime > 0 )
+			int ok = this->GetTokenNumber();
+			lpObj->m_Invisible = ok;
+			GCSkillInfoSend(lpObj, ok, eVS_INVISIBLE);
+			GCServerMsgStringSend ("Invisible status changed!",lpObj->m_Index,0x01 ) ;
+		}break;
+
+		case 435:// /goevent
+		{
+			if ( (lpObj->AuthorityCode &8) != 8 )
 			{
-				MsgOutput(lpObj->m_Index, lMsg.Get(MSGGET(4, 223)), lpObj->ChatLitmitTime);
-				return FALSE;
+				return 0;
 			}
 
-			if(lpObj->Level < g_iPostReqLevel)
+			int eventType=this->GetTokenNumber();
+			int eventID=this->GetTokenNumber();
+
+			wsprintf(sbuf,"[GMSystem][%s][%s] GM:[%s][%s] Starting Event [%d][%d]",
+				"Event Start", lpObj->Ip_addr, 
+				lpObj->AccountID, lpObj->Name,
+				eventType,eventID);
+
+			if(ReadConfig.GMLog == TRUE)
+				GM_LOG.Output(sbuf);
+					
+			char sBuf[100]={0};	
+
+			if (eventType == 0)
 			{
-				GCServerMsgStringSend("Your level is small for command", lpObj->m_Index, 1);
-				return FALSE;
+				wsprintf(sBuf, "Starting WZEvent: %d",eventID);
+				GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
+
+				g_EventManager.StartEvent(eventID);
 			}
 
-			if(lpObj->Money < g_iPostCost)
+			else if (eventType == 3)
 			{
-				GCServerMsgStringSend(lMsg.Get(MSGGET(4, 102)), lpObj->m_Index, 1);
-				return FALSE;
-			}
+				wsprintf(sBuf, "Starting WZEvent: %d",eventID);
+				GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
 
-			if(g_bPostFloodProtect == 1)
-			{
-				if(lpObj->m_dwPostTickCount != 0)
+				if(eventID == 0)
 				{
-					if ( 1000 * g_bPostFloodProtectTime >= GetTickCount() - lpObj->m_dwPostTickCount )
+					if(g_DevilSquare.GetState() == DevilSquare_CLOSE)
 					{
-						char szTemp[256];
-						wsprintf(szTemp, "Please wait %d seconds before next post", g_bPostFloodProtectTime - ((GetTickCount() - lpObj->m_dwPostTickCount) / 1000));
-						GCServerMsgStringSend(szTemp, lpObj->m_Index, 1);
-						return FALSE;
+						g_DevilSquare.m_iremainTimeSec = 0;
+						g_DevilSquare.m_iTime = 2;
 					}
 				}
 			}
 
-			lpObj->m_dwPostTickCount = GetTickCount();
+			else if (eventType == 1)
+			{
+				wsprintf(sBuf, "Starting SCFEvent: %d",eventID);
+				GCServerMsgStringSend (sBuf,lpObj->m_Index,0x01 ) ;
 
-			char * Token = &szCmd[strlen("/post")+1];
-			int len = strlen(Token);
-
-			if( len > 0 )
-			{
-				char g_PostPrefix[10];
-				GetPrivateProfileStringA("GameServerInfo", "PostChatPrefix", "[WORLD]", g_PostPrefix, 10, ("../Data/commonserver.cfg"));
-				//--
-				g_PostLog.Output("[%s] [%s] %s", lpObj->AccountID, lpObj->Name, Token);
-				MessageSendEx(g_PostChatColor, lpObj->Name, "%s %s", g_PostPrefix, Token);
-			}
-			else
-			{
-				break;
-			}
-
-			lpObj->Money -= g_iPostCost;
-			GCMoneySend(lpObj->m_Index,lpObj->Money);
-		}
-		break;
-		// --
-	case COMMAND_CHATBLOCK:
-		{
-			char * Account	= this->GetTokenString();
-			int BlockTime	= this->GetTokenNumber();
-			// ----
-			if ( Account == NULL )
-			{
-				return FALSE;
-			}
-			// ----
-			int aIndex = ::gObjGetIndex(Account);
-			// ----
-			if ( aIndex >= 0 )
-			{
-				gObj[aIndex].ChatLitmitTime = BlockTime;
-				char Text[100];
-				sprintf(Text, "%s get %d second(s) of chat block", gObj[aIndex].Name, BlockTime);
-				GCServerMsgStringSend(Text, lpObj->m_Index, 1);
-			}
-			else
-			{
-				char Text[100];
-				sprintf(Text, "%s not connected", gObj[aIndex].Name);
-				GCServerMsgStringSend(Text, lpObj->m_Index, 1);
-			}
-		}
-		break;
-		// --
-	case COMMAND_CHATUNBLOCK:
-		{
-			char * Account	= this->GetTokenString();
-			// ----
-			if ( Account == NULL )
-			{
-				return FALSE;
-			}
-			// ----
-			int aIndex = ::gObjGetIndex(Account);
-			// ----
-			if ( aIndex >= 0 )
-			{
-				gObj[aIndex].ChatLitmitTime = 0;
-				char Text[100];
-				sprintf(Text, "%s chat block has been reseted");
-				GCServerMsgStringSend(Text, lpObj->m_Index, 1);
-			}
-			else
-			{
-				char Text[100];
-				sprintf(Text, "%s not connected", gObj[aIndex].Name);
-				GCServerMsgStringSend(Text, lpObj->m_Index, 1);
-			}
-		}
-		break;
-		// --
-	case COMMAND_OFFTRADE:
-		{
-			//#ifdef __ALIEN__
-			char * OffTradeType = {0};
-
-			OffTradeType = this->GetTokenString();
-
-			if ( OffTradeType == NULL )
-			{
-				return FALSE;
-			}
-
-			if(strcmp(OffTradeType, "zen") == 0 && g_OfflineTrade.EnableZen == true)
-			{
-				g_OfflineTrade.Start(aIndex, 0);
-			}
-			else if(strcmp(OffTradeType, "wcoin") == 0 && g_OfflineTrade.EnableWCoin == true)
-			{
-				g_OfflineTrade.Start(aIndex, 1);
-			}
-			else if(strcmp(OffTradeType, "soul") == 0 && g_OfflineTrade.EnableSoul == true)
-			{
-				g_OfflineTrade.Start(aIndex, 2);
-			}
-			else if(strcmp(OffTradeType, "bless") == 0 && g_OfflineTrade.EnableBless == true)
-			{
-				g_OfflineTrade.Start(aIndex, 3);
-			}
-			else if(strcmp(OffTradeType, "chaos") == 0 && g_OfflineTrade.EnableChaos == true)
-			{
-				g_OfflineTrade.Start(aIndex, 4);
-			}
-			else if(strcmp(OffTradeType, "life") == 0 && g_OfflineTrade.EnableLife == true)
-			{
-				g_OfflineTrade.Start(aIndex, 5);
-			}
-			else if(strcmp(OffTradeType, "creation") == 0 && g_OfflineTrade.EnableCreation == true)
-			{
-				g_OfflineTrade.Start(aIndex, 6);
-			}
-			else
-			{
-				return FALSE;
-			}
-			//#else
-			//			g_OfflineTrade.Start(aIndex);
-			//#endif
-		}
-		break;
-		// --
-	case COMMAND_SETPARTYLEADER:
-		{
-			char * TargetName	= this->GetTokenString();
-			int TargetIndex		= gObjGetIndex(TargetName);
-			// ----
-			if( !gParty.SetLeader(lpObj->m_Index, TargetIndex) )
-			{
-				return false;
-			}
-		}
-		break;
-#ifdef OFFEXP
-	case COMMAND_OFFEXP:
-		{
-			OffExp.OffExpStart(aIndex);
-			return TRUE;
-		}
-		break;
+				switch (eventID)
+				{
+#if(GS_CASTLE_NOEVENTS == 0)
+	#if (PACK_EDITION>=1)
+					case 0:
+					{
+						BlueEvent.StartEvent();
+					}break;
+	#endif
+	#if (PACK_EDITION>=2)
+					case 1:
+					{
+						SkyEvent.StartEvent();					
+					}break;
+	#endif
+	#if (PACK_EDITION>=3)
+					case 2:
+					{
+						BossAttack.StartEvent();						
+					}break;
+	#endif
+	#if (PACK_EDITION>=1)
+					case 3:
+					{
+						HappyHour.StartEvent();
+					}break;
+	#endif					
+	#if (PACK_EDITION>=2)
+					case 4:
+					{
+						HitAndUp.StartEvent();
+					}break;
+	#endif
 #endif
-	case COMMAND_LOREN_MARKET:
-		{
-			gObjMoveGate(lpObj->m_Index, 333);
-		}
-		break;
+					case 5:
+					{
+						Raklion.EventStart();
+					}break;
+			
+#if(GS_CASTLE_NOEVENTS == 0)
+					case 6:
+					{
+						MossShop.StartEvent();
+					}break;
+
+	#if (PACK_EDITION>=2)			
+					case 7:
+					{
+						XMasEvent.StartEvent();
+					}break;
+	#endif
+	#if (PACK_EDITION>=1)			
+					case 8:
+					{
+						GreenEvent.StartEvent();
+					}break;
+	#endif	
+#endif
+
+#if (GS_CASTLE==1)
+#if (PACK_EDITION>=3)			
+					case 9:
+					{
+						g_Swamp.StartEvent();
+					}break;
+#endif
+#endif
+
+#if(GS_CASTLE_NOEVENTS == 0)	
+	#if (PACK_EDITION>=1)
+					case 10:
+					{
+						SummerEvent.StartEvent();
+					}break;
+	#endif
+	#if (PACK_EDITION>=2)			
+					case 11:
+					{
+						HalloweenEvent.StartEvent();
+					}break;
+	#endif
+#endif
+
+#if (PACK_EDITION>=3)	
+					case 12:
+					{
+						BotHider.StartEvent();
+					}break;
+
+					case 13:
+					{
+						GensCloseMap.StartEvent();
+					}break;
+					case 14:
+					{
+						RainItemEvent.StartEvent();
+					}break;
+					case 15:
+					{
+						ObjTitanRank.StartEvent();
+					}break;
+					case 16:
+					{
+						ObjTitanLottery.StartEvent();
+					}break;
+					case 17:
+					{
+						ObjQaA.StartEvent();
+					}break;
+#endif	
+				}
+			}
+		}break;
+
+
+	}
+	return 0;
+	
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return 0;
+	}
 }
-return 0;
-}
+
+
+
+
+
 
 
 void CGMMng::GetInfinityArrowMPConsumption(LPOBJ lpObj)
@@ -2573,12 +3336,16 @@ void CGMMng::GetInfinityArrowMPConsumption(LPOBJ lpObj)
 		g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus2());
 }
 
+					
+
+
 void CGMMng::ControlInfinityArrowMPConsumption0(LPOBJ lpObj, int iValue)
 {
 	g_SkillAdditionInfo.SetInfinityArrowMPConsumptionPlus0(iValue);
 	MsgOutput(lpObj->m_Index, "ÀÎÇÇ´ÏÆ¼ ¾Ö·Î¿ì MP ¼Ò¸ð·® º¯°æ(+0) : %d",iValue);
 
 }	
+
 
 void CGMMng::ControlInfinityArrowMPConsumption1(LPOBJ lpObj, int iValue)
 {
@@ -2594,17 +3361,12 @@ void CGMMng::ControlInfinityArrowMPConsumption2(LPOBJ lpObj, int iValue)
 
 }
 
-void CGMMng::ControlInfinityArrowMPConsumption3(LPOBJ lpObj, int iValue)
-{
-	g_SkillAdditionInfo.SetInfinityArrowMPConsumptionPlus3(iValue);
-	MsgOutput(lpObj->m_Index, "ÀÎÇÇ´ÏÆ¼ ¾Ö·Î¿ì MP ¼Ò¸ð·® º¯°æ(+3) : %d",iValue);
-
-}
 
 void CGMMng::SetInfinityArrowTime(LPOBJ lpObj, int iValue)
 {
 	if ( lpObj->Class == CLASS_ELF && lpObj->Type == OBJ_USER && lpObj->ChangeUP == 1 )
 	{
+		lpObj->m_iMuseElfInfinityArrowSkillTime = iValue;
 		MsgOutput(lpObj->m_Index, "ÀÎÇÇ´ÏÆ¼ ¾Ö·Î¿ì ½Ã°£ °­Á¦ ¼³Á¤ : %dÃÊ", iValue);
 	}
 	else
@@ -2613,507 +3375,11 @@ void CGMMng::SetInfinityArrowTime(LPOBJ lpObj, int iValue)
 	}
 }
 
+
+
 void CGMMng::ControlFireScreamDoubleAttackDistance(LPOBJ lpObj, int iValue)
 {
 	g_SkillAdditionInfo.SetFireScreamExplosionAttackDistance(iValue);
 	MsgOutput(lpObj->m_Index, "ÆÄÀÌ¾î½ºÅ©¸² ´õºíµ¥¹ÌÁö Æø¹ß°Å¸® º¯°æ:%d", iValue);
 }
 
-// #Season 4.5 NEW FUNCS START
-//00577CF0 
-void CGMMng::CmdAbility(LPOBJ lpObj,char *szName)
-{
-	LPOBJ lpTargetObj = 0;
-	int tIndex = -1;
-
-	char szText[256];
-
-	memset(szText,0,sizeof(szText));
-
-	if(szName == NULL)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	tIndex = gObjGetIndex(szName);
-
-	if(tIndex <= 0 )
-	{
-		GCServerMsgStringSend("Result-User Not Found", lpObj->m_Index, 1);
-		return;
-	}
-
-	lpTargetObj = &gObj[tIndex];
-
-	wsprintf(szText, "Result-Ability(%s)", szName);
-
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-
-	int loc68 = 0;
-
-	memset(szText,0,sizeof(szText));
-
-	if(lpTargetObj->Class >= 0 && lpTargetObj->Class <= 5)
-	{
-		char classname[6][20] = {
-			"WIZARD",
-			"KNIGHT",
-			"ELF",
-			"MAGUMSA",
-			"DARKLORD",
-			"SUMMONER"
-		};
-
-		wsprintf(szText, "Class:%s",classname[lpTargetObj->Class] );
-		GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-	}
-
-	memset(szText,0,sizeof(szText));
-
-	wsprintf(szText,"Strength[%d] Dexterity[%d] Vitality[%d] Energy[%d] Leadership[%d]",
-		lpTargetObj->AddStrength+lpTargetObj->Strength,
-		lpTargetObj->AddDexterity+lpTargetObj->Dexterity,
-		lpTargetObj->AddVitality+lpTargetObj->Vitality,
-		lpTargetObj->AddEnergy+lpTargetObj->Energy,
-		lpTargetObj->AddLeadership+lpTargetObj->Leadership);
-
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-}
-
-void CGMMng::CmdParty(LPOBJ lpObj,char *szName)
-{
-	LPOBJ lpTargetObj = 0;
-	int tIndex = -1;
-
-	char szText[256];
-
-	memset(szText,0,sizeof(szText));
-
-	if(szName == NULL)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	tIndex = gObjGetIndex(szName);
-
-	if(tIndex <= 0 )
-	{
-		GCServerMsgStringSend("Result-User Not Found", lpObj->m_Index, 1);
-		return;
-	}
-
-	if(gObj[tIndex].PartyNumber < 0)
-	{
-		GCServerMsgStringSend("Result-Party Not Found", lpObj->m_Index, 1);
-		return;
-	}
-
-	PARTY_STRUCT * lpParty = &gParty.m_PartyS[gObj[tIndex].PartyNumber];//loc68
-
-	if(lpParty == 0)
-	{
-		GCServerMsgStringSend("Result-Invalid Point", lpObj->m_Index, 1);
-		return;
-	}
-
-	GCServerMsgStringSend("Result-Party", lpObj->m_Index, 1);
-
-	int PartyCount = 0;
-	int PartyNumber = -1;//loc70
-
-	for(int i = 0; i < 5;i++)
-	{
-		PartyNumber = lpParty->Number[i];
-
-		if(PartyNumber < 0)
-		{
-			continue;
-		}
-
-		LPOBJ lpPartyObj = &gObj[PartyNumber];
-
-		if(lpPartyObj != NULL)
-		{
-			if(lpPartyObj->Connected >= PLAYER_PLAYING)
-			{
-				PartyCount++;
-
-				strcat(szText, lpPartyObj->Name);
-
-				if(i == 0)
-				{
-					strcat(szText, "(Leader)");
-				}
-
-				if( lpParty->Count > PartyCount)
-				{
-					strcat(szText, ", ");
-				}
-			}
-		}
-	}
-
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-}
-void CGMMng::CmdSkin(LPOBJ lpObj, char *szMonsterName)
- {
-	if (szMonsterName == NULL)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-	
-	int MonsterClass = atoi(szMonsterName);
-	LPMONSTER_ATTRIBUTE lpMonsterAttr = NULL;
-
-	if (MonsterClass != 0)
-	{
-		lpMonsterAttr = gMAttr.GetAttr(MonsterClass);
-	}
-	else
-	{
-		lpMonsterAttr = gMAttr.GetAttr(szMonsterName);
-	}
-	
-	if (lpMonsterAttr == NULL)
-	{
-		GCServerMsgStringSend("Result-Monster Not Found", lpObj->m_Index, 1);
-		return;
-	}
-	
-	if (this->GetType(lpMonsterAttr->m_Index) != OBJ_MONSTER)
-	{
-		GCServerMsgStringSend("Result-Monster Not Found", lpObj->m_Index, 1);
-		return;
-	}
-	lpObj->m_Change = lpMonsterAttr->m_Index;
-	gObjViewportListProtocolCreate(lpObj);
-}
-void CGMMng::CmdSummonMonster(LPOBJ lpObj,char *szMonsterName,int MonsterCount)
-{
-	char szText[256];
-
-	memset(szText,0,sizeof(szText));
-
-	if(MonsterCount < 1)
-	{
-		MonsterCount = 1;
-	}
-
-	if(szMonsterName == NULL)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	if(MonsterCount > 20)
-	{
-		GCServerMsgStringSend("Result-Too Manay Count", lpObj->m_Index, 1);
-		return;
-	}
-
-	BYTE MapAttr = MapC[lpObj->MapNumber].GetAttr(lpObj->X, lpObj->Y);
-
-	if ( (MapAttr &1) == 1 )
-	{
-		GCServerMsgStringSend("Result-Is Safetyzone", lpObj->m_Index, 1);
-		return;
-	}
-
-	int MonsterClass = atoi(szMonsterName);//loc67
-	LPMONSTER_ATTRIBUTE lpMonsterAttr = NULL;//loc68
-
-	if(MonsterClass != 0)
-	{
-		lpMonsterAttr = gMAttr.GetAttr(MonsterClass);
-	}
-	else
-	{
-		lpMonsterAttr = gMAttr.GetAttr(szMonsterName);
-	}
-
-	if(lpMonsterAttr == NULL)
-	{
-		GCServerMsgStringSend("Result-Monster Not Found", lpObj->m_Index, 1);
-		return;
-	}
-
-	if(this->GetType(lpMonsterAttr->m_Index) != OBJ_MONSTER)
-	{
-		GCServerMsgStringSend("Result-Monster Not Found", lpObj->m_Index, 1);
-		return;	
-	}
-
-	for(int i = 0; i < MonsterCount; i++)
-	{
-		BYTE X = lpObj->X;
-		BYTE Y = lpObj->Y;
-
-		int iMonsterIndex = gObjAddMonster(lpObj->MapNumber);
-
-		if ( iMonsterIndex >= 0 )
-		{
-			gObj[iMonsterIndex].m_bGMSummon = 1;//i think its m_bGMSummon
-			gObj[iMonsterIndex].m_PosNum = -1;
-			gObj[iMonsterIndex].X = X;
-			gObj[iMonsterIndex].Y = Y;
-			gObj[iMonsterIndex].MapNumber = lpObj->MapNumber;
-			gObj[iMonsterIndex].TX = gObj[iMonsterIndex].X;
-			gObj[iMonsterIndex].TY = gObj[iMonsterIndex].Y ;
-			gObj[iMonsterIndex].m_OldX = gObj[iMonsterIndex].X;
-			gObj[iMonsterIndex].m_OldY = gObj[iMonsterIndex].Y;
-			gObj[iMonsterIndex].StartX = gObj[iMonsterIndex].X;
-			gObj[iMonsterIndex].StartY = gObj[iMonsterIndex].Y;
-			gObj[iMonsterIndex].Level = lpMonsterAttr->m_Level;
-			gObj[iMonsterIndex].m_Attribute = 60;
-			gObj[iMonsterIndex].MaxRegenTime = 0;
-			gObj[iMonsterIndex].Dir = rand() % 8;
-			gObjSetMonster(iMonsterIndex,lpMonsterAttr->m_Index );
-		}
-	}
-
-	wsprintf(szText, "Result-SummonMonster(%s:%d)", lpMonsterAttr->m_Name, MonsterCount);
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-}
-
-void CGMMng::CmdClearMonster(LPOBJ lpObj,int Dis)
-{
-	char szText[256];
-
-	memset(szText,0,sizeof(szText));
-
-	if(Dis <= 0)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	int MapNumber = lpObj->MapNumber;//loc66
-	int DeletedMonCount = 0;
-
-	for(int i = 0;i<OBJ_MAXMONSTER;i++)
-	{
-		LPOBJ lpMonObj = &gObj[i];//loc69
-
-		if( lpMonObj->MapNumber == MapNumber && 
-			gObj[i].Connected == PLAYER_PLAYING &&
-			gObj[i].Type == OBJ_MONSTER &&
-			lpMonObj->Live != 0 &&
-			lpMonObj->m_State == 2 )
-		{
-			if(gObjCalDistance(lpObj, lpMonObj) <= Dis)
-			{
-				if(lpMonObj->m_bGMSummon == 1)
-				{
-					gObjDel(lpMonObj->m_Index);
-				}
-				else
-				{
-					lpMonObj->Live = 0;
-					lpMonObj->m_State = 4;
-					lpMonObj->RegenTime = GetTickCount();
-					lpMonObj->DieRegen = 1;
-					lpMonObj->PathCount = 0;
-					GCDiePlayerSend( lpMonObj, lpMonObj->m_Index, 0, lpObj->m_Index);
-				}
-
-				DeletedMonCount++;
-			}
-		}
-	}
-
-	wsprintf(szText, "Result-ClearMonster(%d)", DeletedMonCount);
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-}
-
-void CGMMng::CmdClearItem(LPOBJ lpObj,int Dis)
-{
-	char szText[256];
-
-	memset(szText,0,sizeof(szText));
-
-	if(Dis <= 0)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	int MapNumber = lpObj->MapNumber;//loc66
-	MapClass * lpMap = &MapC[MapNumber];//loc67
-
-	int ItemCount = lpMap->GetVisibleItemCount(lpObj,Dis);
-
-	wsprintf(szText, "Result-ClearItem(%d)", ItemCount);
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-
-}
-
-void CGMMng::CmdClearInven(LPOBJ lpObj)
-{
-	char szText[256];
-	memset(szText,0,sizeof(szText));
-
-	int ItemCount = 0;
-
-	for(int i = INVETORY_WEAR_SIZE;i < MAIN_INVENTORY_SIZE ; i++)
-	{
-		if(lpObj->pInventory[i].IsItem() == 1)
-		{
-			gObjInventoryDeleteItem(lpObj->m_Index, i);
-			ItemCount++;
-		}
-	}
-
-	GCItemListSend(lpObj->m_Index);
-
-	wsprintf(szText, "Result-ClearInven(%d)", ItemCount);
-
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-}
-
-void CGMMng::CmdSummonChar(LPOBJ lpObj,char * szName)
-{
-	LPOBJ lpTargetObj = 0;
-	int tIndex = -1;
-
-	char szText[256];
-	memset(szText,0,sizeof(szText));
-
-	if(szName == NULL)
-	{
-		GCServerMsgStringSend("Result-Invalid Argument", lpObj->m_Index, 1);
-		return;
-	}
-
-	tIndex = gObjGetIndex(szName);
-
-	if(tIndex <= 0)
-	{
-		GCServerMsgStringSend("Result-User Not Found", lpObj->m_Index, 1);
-		return;
-	}
-
-	if(gObj[tIndex].Connected != PLAYER_PLAYING)
-	{
-		GCServerMsgStringSend("Result-Disconnect User", lpObj->m_Index, 1);
-		return;
-	}
-
-	int MapNum = lpObj->MapNumber;//loc68
-	int X = lpObj->X + 1;//loc69
-	int Y = lpObj->Y + 1;//loc70
-
-	BYTE MapAttr = MapC[MapNum].GetAttr(X, Y);
-
-	if((MapAttr&4) == 4 || (MapAttr&8) == 8)
-	{
-		GCServerMsgStringSend("Result-Invalid Area", lpObj->m_Index, 1);
-		return;
-	}
-
-	wsprintf(szText, "Result-SummonCharacter(%s)", szName);
-
-	GCServerMsgStringSend(szText, lpObj->m_Index, 1);
-
-	gObjTeleport(tIndex, MapNum,X, Y);
-
-}
-
-int CGMMng::GetType(WORD wClass)
-{
-	WORD Type = 0xFF;
-
-	for(int i = 0; i< OBJ_MAXMONSTER; i++)
-	{
-		LPOBJ lpMonsterObj = &gObj[i];
-
-		if(lpMonsterObj == NULL)
-		{
-			continue;
-		}
-
-		if(lpMonsterObj->Class == wClass)
-		{
-			Type = lpMonsterObj->Type;
-			break;
-		}
-	}
-
-	return Type;
-}
-
-void CGMMng::AddLevelUpPoints(int aIndex, unsigned long ulValue, short sType)
-{
-	LPOBJ lpObj = &gObj[aIndex];
-	CRITICAL_SECTION ChatCrit;
-	// ----
-	switch(sType)
-	{
-	case 0:
-		{
-			if(lpObj->Strength+ulValue > g_iMaxCharStats)
-			{
-				return;
-			}
-			// --
-			lpObj->Strength += ulValue;
-		}
-		break;
-	case 1:
-		{
-			if(lpObj->Dexterity+ulValue > g_iMaxCharStats)
-			{
-				return;
-			}
-			// --
-			lpObj->Dexterity += ulValue;
-		}
-		break;
-	case 2:
-		{
-			if(lpObj->Vitality+ulValue > g_iMaxCharStats)
-			{
-				return;
-			}
-			// --
-			lpObj->Vitality += ulValue;
-
-		}
-		break;
-	case 3:
-		{
-			if(lpObj->Energy+ulValue > g_iMaxCharStats)
-			{
-				return;
-			}
-			// --
-			lpObj->Energy += ulValue;
-		}
-		break;
-	case 4:
-		{
-			if(lpObj->Leadership+ulValue > g_iMaxCharStats)
-			{
-				return;
-			}
-			// --
-			lpObj->Leadership += ulValue;
-		}
-		break;
-	}
-	// ----
-	InitializeCriticalSection(&ChatCrit);
-	EnterCriticalSection(&ChatCrit);
-	// ----
-	lpObj->LevelUpPoint -= ulValue;
-	// ----
-	BYTE lpMsg[5] = {0xC1, 0x05, 0xF3, 0x06, sType};
-	// ----
-	for( int i=0; i < ulValue; i++ )
-		CGLevelUpPointAdd((PMSG_LVPOINTADD*)lpMsg, aIndex);
-	// ----
-	LeaveCriticalSection(&ChatCrit);
-	DeleteCriticalSection(&ChatCrit);
-}

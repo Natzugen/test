@@ -19,10 +19,22 @@ typedef struct MONSTER_POSITION
 	BYTE m_Dir;	// 8
 	BYTE m_W;	// 9
 	BYTE m_H;	// A
-	WORD m_IG_ZoneIndex;	//1.01.00
-	WORD m_IG_RegenTable;
+
+/*	BYTE btType;	// unk0
+	WORD wMonsterIndex; // unk2
+	BYTE btMapNumber;	// unk4
+	BYTE btDistance;	// unk5
+	BYTE btStartX;	// unk6
+	BYTE btStartY;	// unk7
+	BYTE btDirection;	// unk8
+	BYTE btEndX;	// unk9
+	BYTE btEndY;	// unkA*/
 
 } MONSTER_POSITION, * LPMONSTER_POSITION;
+
+void gObjMonsterAddSet(int Number, int Map, int X, int Y, int Count);
+void ReadMonstersAndAdd(char * FilePath);
+
 class CMonsterSetBase
 {
 

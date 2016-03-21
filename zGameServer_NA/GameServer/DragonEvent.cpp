@@ -1,4 +1,9 @@
-// GS-CS	1.00.90	JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
+// GS-N 0.99.60T 45a900
+// GS-N	1.00.18	JPN	0x0046A1F0	-	Completed
 #include "stdafx.h"
 #include "DragonEvent.h"
 #include "GameMain.h"
@@ -10,10 +15,13 @@ CDragonEvent::CDragonEvent()
 	this->Init();
 }
 
+
+
 CDragonEvent::~CDragonEvent()
 {
 	return;
 }
+
 
 void CDragonEvent::Init()
 {
@@ -25,6 +33,9 @@ void CDragonEvent::Init()
 
 void CDragonEvent::Start()
 {
+	char szTemp[256];
+	char map[3];
+
 	if ( this->EventState != 0 )
 	{
 		return;
@@ -32,22 +43,18 @@ void CDragonEvent::Start()
 
 	this->Init();
 
-	char szTemp[256];
+	map[0]=MAP_INDEX_LORENCIA;
+	map[1]=MAP_INDEX_DEVIAS;
+	map[2]=MAP_INDEX_NORIA;
 
 	this->EventState = 1;
-
-	char map[3];
-	map[0] = 3;
-	map[1] = 0;
-
-
-	this->m_MapNumber  = map [rand()%2];
+	this->m_MapNumber  = map [ rand()%3 ];
 
 	strcpy(szTemp, "¡Ù ");
 
 	switch ( this->m_MapNumber  )
 	{
-		case MAP_INDEX_RORENCIA:
+		case MAP_INDEX_LORENCIA:
 			strcat(szTemp, lMsg.Get(MSGGET(7, 208)) );
 			break;
 
@@ -68,12 +75,14 @@ void CDragonEvent::Start()
 	this->EventStartTime  = GetTickCount();
 }
 	
+	
 void CDragonEvent::End()
 {
 	GCMapEventStateSend(this->m_MapNumber, 0, 1 );
 	LogAdd("Event 1 End");
 	this->EventState=0;
 }
+
 
 void CDragonEvent::DragonActive()
 {
@@ -86,7 +95,7 @@ void CDragonEvent::DragonActive()
 
 			switch ( this->m_MapNumber )
 			{
-				case MAP_INDEX_RORENCIA:
+				case MAP_INDEX_LORENCIA:
 					if ( (rand()%3) == 0 )
 					{
 						gMSetBase.GetBoxPosition(this->m_MapNumber, 135, 61, 146, 70, gObj[n].X, gObj[n].Y);
@@ -134,6 +143,10 @@ void CDragonEvent::DragonActive()
 	}
 }
 
+
+
+
+
 void CDragonEvent::Run()
 {
 	if ( this->m_bMenualStart != FALSE )
@@ -170,13 +183,19 @@ void CDragonEvent::Run()
 	}
 }
 
+
+
+
 void CDragonEvent::Start_Menual()
 {
 	this->SetMenualStart(TRUE);
-	LogAddTD("¡Û¡Ü[Event Management] [Start] Dragon Event!");
+	LogAddTD("[Event Management] [Start] Dragon Event!");
 	this->EventState=0;
 	this->Start();
 }
+
+
+			
 
 void CDragonEvent::End_Menual()
 {

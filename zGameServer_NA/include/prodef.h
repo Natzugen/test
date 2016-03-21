@@ -19,38 +19,21 @@
 #define JS_ONLY_VIP_MEMBERS		0x02
 #define JS_BAD_CLIENT_VERSION	0x06
 
-#ifdef SEASON6DOT3_ENG
-#define MAX_CHAT_LEN 89
-#define MAX_CHAT_LEN_OLD 60
-#else
+
+
 #define MAX_CHAT_LEN 60
-#endif
 
 #define SET_NUMBERH(x) ( (BYTE)((DWORD)(x)>>(DWORD)8) )
 #define SET_NUMBERL(x) ( (BYTE)((DWORD)(x) & 0xFF) )
 #define SET_NUMBERHW(x) ( (WORD)((DWORD)(x)>>(DWORD)16) )
 #define SET_NUMBERLW(x) ( (WORD)((DWORD)(x) & 0xFFFF) )
-#define SET_NUMBERHDW(x) ( (DWORD)((unsigned __int64)(x)>>(DWORD)32) )
-#define SET_NUMBERLDW(x) ( (DWORD)((unsigned __int64)(x) & 0xFFFFFFFF) )
+
+#define SET_NUMBERHDW(x) ( (DWORD)((__int64) (x) >> (DWORD)32) )
+#define SET_NUMBERLDW(x) ( (DWORD)((__int64) (x) & 0xFFFFFFFF) )
+
 
 #define MAKE_NUMBERW(x,y)  ( (WORD)(((BYTE)((y)&0xFF)) |   ((BYTE)((x)&0xFF)<<8 ))  )
-#define MAKE_NUMBERQW(x,y) ( (unsigned __int64)(((DWORD)((y)&0xFFFFFFFF)) | ((DWORD)((x)&0xFFFFFFFF)<<32))  )
-
-//#ifndef _QWORD_DEFINED 
-//#define _QWORD_DEFINED 
-//typedef __int64 QWORD, *LPQWORD; 
-//#endif
-
 #define MAKE_NUMBERDW(x,y) ( (DWORD)(((WORD)((y)&0xFFFF)) | ((WORD)((x)&0xFFFF)<<16))  )
-
-//#ifndef _QWORD_DEFINED 
-//#define _QWORD_DEFINED 
-//typedef __int64 QWORD, *LPQWORD; 
-//#endif
-
-#define MAKEQWORD(a, b)      ((__int64)(((DWORD)((__int64)(a) & 0xffffffff)) | ((__int64)((DWORD)((__int64)(b) & 0xffffffff))) << 32))  
-#define LODWORD(h)           ((DWORD)(__int64(h) & __int64(0xffffffff)))   
-#define HIDWORD(h)           ((DWORD)(__int64(h) >> __int64(32)))
 
 /* ------------------------------------------------*
  * ::::::::::::::::::::::::::::::::::::::::::::::::*

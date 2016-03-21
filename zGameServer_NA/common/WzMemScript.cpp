@@ -1,6 +1,16 @@
-// GS-CS 1.00.90 - Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// WzMemScript.cpp
+
+// GS-N 0.99.60T Status : Completed
+//	GS-N	1.00.18	JPN	0x00596280	-	Completed
+
 #include "stdafx.h"
 #include "WzMemScript.h"
+
+
 
 CWzMemScript::CWzMemScript()
 {

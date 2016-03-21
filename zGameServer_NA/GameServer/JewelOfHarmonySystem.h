@@ -15,7 +15,7 @@
 
 #define MAX_JOH_ITEM_TYPE	4
 #define MAX_JOH_ITEM_INDEX	16
-#define MAX_JOH_ITEM_OPTION	14
+#define MAX_JOH_ITEM_OPTION	16
 
 
 
@@ -65,7 +65,7 @@ struct JEWELOFHARMONY_ITEM_OPTION
 	BYTE iRequireLevel;	// 5
 	BYTE iItemEffectValue[MAX_JOH_ITEM_OPTION];	// 6
 	DWORD iZenForRestore[MAX_JOH_ITEM_OPTION];	// 14
-	char szOptionName[256];	// 4C
+	char szOptionName[50];	// 4C
 };
 
 
@@ -114,7 +114,6 @@ public:
 	BYTE GetItemOptionLevel(CItem* pItem);
 	BOOL IsActive(CItem* pItem);
 	BOOL IsStrengthenByJewelOfHarmony(CItem* pItem);
-	BOOL StrengthenItemByJewelOfRise(struct OBJECTSTRUCT * lpObj, int source, int target);	//-> New
 	BOOL StrengthenItemByJewelOfHarmony(struct OBJECTSTRUCT * lpObj, int source, int target);
 	void StrengthenItemByMacro(struct OBJECTSTRUCT * lpObj, BYTE invenrotyTargetPos, BYTE btOptionType,  BYTE btOptionLevel);
 	void SetApplyStrengthenItem(struct OBJECTSTRUCT * lpObj);
@@ -129,12 +128,14 @@ public:
 	BYTE ShowStrengthenOption(CItem* pItem);
 	BOOL IsEnableToTrade(struct OBJECTSTRUCT * lpObj);
 
-public: //season 4 change
+private:
 
 	void _InitOption();
 	BOOL _IsJewelOfHarmonySmeltingItemNor( short type);
 	BOOL _IsJewelOfHarmonySmeltingItemExt(short type);
 	BYTE _GetItemOptionLevel(CItem* pItem);
+
+
 	BYTE _GetItemOptionRequireLevel(CItem* pItem);
 	int _GetItemType(CItem* pItem);
 	int _GetSelectRandomOption(CItem* pItem, int iItemType);
@@ -145,24 +146,31 @@ public: //season 4 change
 private:
 
 	BOOL m_bEnable;	// 4
-	int JEWEL_OF_HARMONY_ITEMINDEX;	// 8
-	int JEWEL_OF_HARMONY_PURITY_ITEMINDEX;	// C
-	int JEWEL_OF_HARMONY_SMELT_NOR_ITEMINDEX;	// 10
-	int JEWEL_OF_HARMONY_SMELT_EXT_ITEMINDEX;	// 14
+
+	short JEWEL_OF_HARMONY_ITEMINDEX;	// 8
+	short JEWEL_OF_HARMONY_PURITY_ITEMINDEX;	// C
+	short JEWEL_OF_HARMONY_SMELT_NOR_ITEMINDEX;	// 10
+	short JEWEL_OF_HARMONY_SMELT_EXT_ITEMINDEX;	// 14
+
 	JEWELOFHARMONY_ITEM_OPTION m_itemOption[MAX_JOH_ITEM_TYPE][MAX_JOH_ITEM_INDEX];	// 18
+	
 	BOOL m_bSystemPrutiyJewel;	// 5318
 	BOOL m_bSystemMixSmeltingStone;	// 531C
 	BOOL m_bSystemRestoreStrengthen;	// 5320
 	BOOL m_bSystemStrengthenItem;	// 5324
 	BOOL m_bSystemSmeltingItem;	// 5328
-	int m_iRatePuritySuccess;	// 532C
+
 	int m_iZenForPurity;	// 5330
-	int m_iRateMixSmeltingStoneNor;	// 5334
-	int m_iRateMixSmeltingStoneExt;	// 5338
 	int m_iZenForMixSmeltingStone;	// 533C
-	int m_iRateStrengthenSuccess;	// 5340
-	int m_iRateSmeltingSuccessNor;	// 5344
-	int m_iRateSmeltingSuccessExt;	// 5348
+
+	BYTE m_iRatePuritySuccess;	// 532C
+	BYTE m_iRateMixSmeltingStoneNor;	// 5334
+	BYTE m_iRateMixSmeltingStoneExt;	// 5338
+
+	BYTE m_iRateStrengthenSuccess;	// 5340
+	BYTE m_iRateSmeltingSuccessNor;	// 5344
+	BYTE m_iRateSmeltingSuccessExt;	// 5348
+
 	std::map<int,int> m_mapEnableMixList;	// 534C
 	TRandomPoolMgr m_kRandomPool;	// 535C
 

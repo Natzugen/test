@@ -30,7 +30,7 @@ public:
 public:
 
 	int m_goalmove;	// 60 - d
-	int m_BallIndex;	// 64 - D
+	short m_BallIndex;	// 64 - D
 	RECT m_GoalLeft;	// 68 - D
 	RECT m_GoalRight;	// 78 - D
 	_GUILD_INFO_STRUCT* m_RedTeam;	// 88 - D

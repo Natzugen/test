@@ -13,11 +13,11 @@
 
 struct _MONSTER_HERD_DATA 
 {
-	int m_iIndex;	// 0
-	int m_iType;	// 4
+	short m_iIndex;	// 0
+	short m_iType;	// 4
 	BYTE m_iX;	// 8
 	BYTE m_iY;	// 9
-	BOOL m_bRegen;	// C
+	BYTE m_bRegen;	// C
 
 	_MONSTER_HERD_DATA()
 	{
@@ -25,7 +25,7 @@ struct _MONSTER_HERD_DATA
 		this->m_iType = -1;
 		this->m_iX = -1;
 		this->m_iY = -1;
-		this->m_bRegen = FALSE;
+		this->m_bRegen = 0;
 	}
 };
 
@@ -41,7 +41,7 @@ public:
 	virtual ~MonsterHerd();
 
   	virtual BOOL SetTotalInfo(int iMapNumber, int iRadius, int iStartX, int iStartY);	// 4
-	virtual BOOL AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst);	// 8
+	virtual BOOL AddMonster(int iMonsterType, BYTE bRegen, BYTE bAttackFirst);	// 8
 	virtual void SetRadius(int iRadius);	// C
 	virtual void SetPosition(BYTE iTX, BYTE iTY);	// 10
 	virtual BOOL Start();	// 14
@@ -64,16 +64,18 @@ public:
 
 public:
 
-	int m_iHerdIndex;	// 4
-	int m_iMapNumber;	// 8
-	int m_iCUR_X;	// C
-	int m_iCUR_Y;	// 10
-	int m_iRADIUS;	// 14
-	BOOL m_bHasInfo;	// 18
-	BOOL m_bHerdActive;	// 1C
+	//short m_iHerdIndex;	// 4
+
+	short m_iMapNumber;	// 8
+	BYTE m_iCUR_X;	// C
+	BYTE m_iCUR_Y;	// 10
+	BYTE m_iRADIUS;	// 14
+	
+	BYTE m_bHasInfo;	// 18
+	BYTE m_bHerdActive;	// 1C
+
 	std::map<int,_MONSTER_HERD_DATA> m_mapMonsterHerd;	// 20
 	CRITICAL_SECTION m_critMonsterHerd;	// 30
-
 };
 
 #endif

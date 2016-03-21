@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 class CKanturuMaya  
 {
 
@@ -25,11 +27,12 @@ public:
 
 private:
 
-	int m_iMayaObjIndex;	// 4
+	short m_iMayaObjIndex;	// 4
 	BOOL m_bMonsterKillCount;	// 8
 	int m_iMayaSkillTime;	// C
-	int m_iIceStormCount;	// 10
+	short m_iIceStormCount;	// 10
 
 };
 
+#endif
 #endif // !defined(AFX_KANTURUMAYA_H__8768002F_4B22_480A_8F6A_10AE05568C27__INCLUDED_)

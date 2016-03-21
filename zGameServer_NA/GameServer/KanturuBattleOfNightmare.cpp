@@ -1,5 +1,5 @@
 // KanturuBattleOfNightmare.cpp: implementation of the CKanturuBattleOfNightmare class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x0057D3F0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -12,6 +12,8 @@
 #include "LogProc.h"
 #include "..\include\ReadScript.h"
 #include "KanturuUtil.h"
+
+#if (GS_CASTLE==0)
 
 static CKanturuUtil KANTURU_UTIL;
 
@@ -53,20 +55,18 @@ BOOL CKanturuBattleOfNightmare::LoadData(LPSTR lpszFileName)
 
 	if ( !lpszFileName || !strcmp(lpszFileName, ""))
 	{
-		MsgBox("[ KANTURU ][ BattleOfNightmare ] - File load error : File Name Error");
+		MsgBox("[Kanturu][BattleOfNightmare] - File load error : File Name Error");
 		return FALSE;
 	}
 
 	try
 	{
 		
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
-			DWORD dwLastError = GetLastError();
-
-			MsgBox("[ KANTURU ][ BattleOfNightmare ] - Can't Open %s ",
+			MsgBox("[Kanturu][BattleOfNightmare] - Can't Open %s ",
 				lpszFileName);
 
 			return FALSE;
@@ -116,7 +116,7 @@ BOOL CKanturuBattleOfNightmare::LoadData(LPSTR lpszFileName)
 
 					if ( this->m_StateInfoCount < 0 || this->m_StateInfoCount >= KANTURU_NIGHTMARE_STATE_INFO )
 					{
-						MsgBox("[ KANTURU ][ BattleOfNightmare ] - Exceed Max State Time (%d)",
+						MsgBox("[Kanturu][BattleOfNightmare] - Exceed Max State Time (%d)",
 							this->m_StateInfoCount);
 
 						break;
@@ -148,7 +148,7 @@ BOOL CKanturuBattleOfNightmare::LoadData(LPSTR lpszFileName)
 
 					if ( iValue < 0 )
 					{
-						MsgBox("[ KANTURU ][ BattleOfNightmare ] - Nightmare Hand AI Group Read Error(%d)",
+						MsgBox("[Kanturu][BattleOfNightmare] - Nightmare Hand AI Group Read Error(%d)",
 							iValue);
 
 						iValue=0;
@@ -171,14 +171,14 @@ BOOL CKanturuBattleOfNightmare::LoadData(LPSTR lpszFileName)
 
 		fclose(SMDFile);
 
-		LogAddC(2, "[ KANTURU ][ BattleOfNightmare ]  %s file is Loaded",
+		LogAddTD("[Kanturu][BattleOfNightmare]  %s file is Loaded",
 			lpszFileName);
 
 		this->m_bFileDataLoad = TRUE;
 	}	// __try
 	catch ( DWORD )
 	{
-		MsgBox("[ KANTURU ][ BattleOfNightmare ] - Loading Exception Error (%s) File. ", lpszFileName);
+		MsgBox("[Kanturu][BattleOfNightmare] - Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
 	return this->m_bFileDataLoad;
@@ -227,7 +227,7 @@ void CKanturuBattleOfNightmare::SetState(int iBattleOfNightmareState)
 	g_KanturuMonsterMng.ResetRegenMonsterObjData();
 	this->m_iNightmareObjIndex = -1;
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] CKanturuBattleOfNightmare::SetState(...)  m_iNightmareObjIndex %d",
+	LogAddTD("[Kanturu][BattleOfNightmare] CKanturuBattleOfNightmare::SetState(...)  m_iNightmareObjIndex %d",
 		this->m_iNightmareObjIndex);
 
 	switch ( iBattleOfNightmareState )
@@ -273,36 +273,36 @@ void CKanturuBattleOfNightmare::SetNextState(int iCurrentState)
 
 void CKanturuBattleOfNightmare::SetState_NONE()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> NONE",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> NONE",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_NONE);
 	TMonsterAIGroup::DelGroupInstance(this->m_iNightmareAIGroupNumber);
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] DelGroupInstance SetState_NONE");
+	LogAddTD("[Kanturu][BattleOfNightmare] DelGroupInstance SetState_NONE");
 }
 
 
 void CKanturuBattleOfNightmare::SetState_IDLE()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> IDLE",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> IDLE",
 		this->m_iBattleOfNightmareState);
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] State(%d) -> IDLE",
+	LogAddTD("[Kanturu][BattleOfNightmare] State(%d) -> IDLE",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_IDLE);
 	this->SetSuccessValue(FALSE);
 	TMonsterAIGroup::DelGroupInstance(this->m_iNightmareAIGroupNumber);
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] DelGroupInstance SetState_IDLE");
+	LogAddTD("[Kanturu][BattleOfNightmare] DelGroupInstance SetState_IDLE");
 	g_KanturuBattleUserMng.MoveAllUser(134);
 }
 
 
 void CKanturuBattleOfNightmare::SetState_NOTIFY()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> NOTIFY",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> NOTIFY",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_NOTIFY);
@@ -311,7 +311,7 @@ void CKanturuBattleOfNightmare::SetState_NOTIFY()
 
 void CKanturuBattleOfNightmare::SetState_START()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> START",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> START",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_START);
@@ -329,7 +329,7 @@ void CKanturuBattleOfNightmare::SetState_START()
 	int iIndex = TMonsterAIGroup::FindGroupLeader(this->m_iNightmareAIGroupNumber);
 	this->m_iNightmareObjIndex = iIndex;
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] CKanturuNightmare Set m_iNightmareObjIndex %d",
+	LogAddTD("[Kanturu][BattleOfNightmare] CKanturuNightmare Set m_iNightmareObjIndex %d",
 		this->m_iNightmareObjIndex);
 }
 
@@ -337,7 +337,7 @@ void CKanturuBattleOfNightmare::SetState_START()
 
 void CKanturuBattleOfNightmare::SetState_END()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> END",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> END",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_END);
@@ -346,17 +346,17 @@ void CKanturuBattleOfNightmare::SetState_END()
 	if ( this->GetSuccessValue() == FALSE )
 	{
 		KANTURU_UTIL.SendMsgKanturuBattleUser(lMsg.Get(MSGGET(13, 36)));
-		LogAddTD("[ KANTURU ][ BattleOfNightmare ] Fail!! TimeOut");
+		LogAddTD("[Kanturu][BattleOfNightmare] Fail!! TimeOut");
 	}
 }
 
 
 void CKanturuBattleOfNightmare::SetState_ENDCYCLE()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfNightmare ] State(%d) -> ENDCYCLE",
+	LogAddC(5, "[Kanturu][BattleOfNightmare] State(%d) -> ENDCYCLE",
 		this->m_iBattleOfNightmareState);
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] State(%d) -> ENDCYCLE",
+	LogAddTD("[Kanturu][BattleOfNightmare] State(%d) -> ENDCYCLE",
 		this->m_iBattleOfNightmareState);
 
 	this->SetBattleOfNightmareState(KANTURU_NIGHTMARE_ENDCYCLE);
@@ -403,7 +403,7 @@ void CKanturuBattleOfNightmare::ProcState_START()
 	{
 		this->SetSuccessValue(TRUE);
 
-		LogAddTD("[ KANTURU ][ BattleOfNightmare ] Success!! Nightmare Die");
+		LogAddTD("[Kanturu][BattleOfNightmare] Success!! Nightmare Die");
 		g_KanturuBattleUserMng.LogBattleWinnerUserInfo(3, this->m_StateInfo[this->m_iBattleOfNightmareState].GetElapsedTime());
 
 		this->SetNextState(this->m_iBattleOfNightmareState);
@@ -423,7 +423,7 @@ void CKanturuBattleOfNightmare::ProcState_ENDCYCLE()
 {
 	TMonsterAIGroup::DelGroupInstance(this->m_iNightmareAIGroupNumber);
 
-	LogAddTD("[ KANTURU ][ BattleOfNightmare ] DelGroupInstance ProcState_ENDCYCLE");
+	LogAddTD("[Kanturu][BattleOfNightmare] DelGroupInstance ProcState_ENDCYCLE");
 }
 
 
@@ -463,9 +463,11 @@ void CKanturuBattleOfNightmare::CheckNightmareBattleUser()
 			g_KanturuBattleUserMng.ResetAllData();
 			this->SetSuccessValue(FALSE);
 
-			LogAddTD("[ KANTURU ][ BattleOfNightmare ] Fail!! All Battle User Die");
+			LogAddTD("[Kanturu][BattleOfNightmare] Fail!! All Battle User Die");
 
 			this->SetState(KANTURU_NIGHTMARE_END);
 		}
 	}
 }
+
+#endif

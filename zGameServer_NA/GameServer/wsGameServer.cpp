@@ -1,5 +1,9 @@
-//	GS-N	1.00.90	JPN	-	Completed
-
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T // 4721AE Status : Completed - Just Disorder on local Variables
+//	GS-N	1.00.18	JPN	0x0048D70	-	Completed
 #include "stdafx.h"
 #include "wsGameServer.h"
 #include "logproc.h"
@@ -8,7 +12,7 @@
 
 
 
-//004AFF30  /> \55            PUSH EBP
+
 CwsGameServer::CwsGameServer()
 {
 	this->m_SendSec=0;

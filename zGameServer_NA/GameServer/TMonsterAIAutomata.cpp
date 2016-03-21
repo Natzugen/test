@@ -1,6 +1,5 @@
 // TMonsterAIAutomata.cpp: implementation of the TMonsterAIAutomata class.
-//	GS-N	1.00.77 JPN	-	Completed
-//	GS-CS	1.00.90 JPN	-	Completed
+//	GS-N	1.00.18 JPN 0x0055BC30	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -62,7 +61,7 @@ BOOL TMonsterAIAutomata::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -170,7 +169,7 @@ BOOL TMonsterAIAutomata::LoadData(LPSTR lpszFileName)
 
 					memcpy(AIState->m_szStateTransitionDesc, szStateTransitionDesc, sizeof(szStateTransitionDesc));
 
-					//LogAddC(2,"[Monster AI Automata] Loaded Transition Desc . [ %s ]", AIState->m_szStateTransitionDesc);
+					LogAddC(2,"[Monster AI Automata] Loaded Transition Desc . [%s]", AIState->m_szStateTransitionDesc);
 
 					TMonsterAIAutomata::s_MonsterAIAutomataArray[iAutomataNumber].m_iAutomataNumber = iAutomataNumber;
 					TMonsterAIAutomata::s_MonsterAIAutomataArray[iAutomataNumber].m_AIStateTransCount[iCurrentState]++;
@@ -263,7 +262,7 @@ TMonsterAIState * TMonsterAIAutomata::RunAutomata(int iIndex)
 	for ( int iPriority=0;iPriority<iMaxStateTransCount;iPriority++)
 	{
 		TMonsterAIState * AIState = &this->m_AIState[iCurrentState][iPriority];
-		BOOL bTransition = MAI_STATE_TRANS_VALUE_;	// If there is an apropiate Value it is set to TRUE
+		BOOL bTransition = FALSE;	// If there is an apropiate Value it is set to TRUE
 
 		// Choose the right action according Transation Type 
 		switch ( AIState->m_iTransitionType )
@@ -349,6 +348,7 @@ TMonsterAIState * TMonsterAIAutomata::RunAutomata(int iIndex)
 						bTransition = TRUE;
 					}
 				}
+				// break;	// #error Apply Deathway fix here
 
 			case MAI_STATE_TRANS_GROUP_HEAL:
 				if ( lpObj->m_iGroupNumber )

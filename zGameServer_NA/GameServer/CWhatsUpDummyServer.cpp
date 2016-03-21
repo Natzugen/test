@@ -1,4 +1,10 @@
-//	GS-CS	1.00.90	JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x0048C960
+//	GS-N	1.00.18	JPN	0x004A7AD0	-	Completed
+
 #include "stdafx.h"
 #include "CWhatsUpDummyServer.h"
 #include "GameServer.h"
@@ -80,7 +86,11 @@ int CWhatsUpDummyServer::Start(HWND hWnd, WORD wPort)
 		return 0;
 	}
 
+#ifdef _WIN64
+	CWhatsUpDummyServer::m_lpOldProc=(WhatsUpDummyServerProc)SetWindowLong(hWnd, GWLP_WNDPROC, (LONG)ParentWndProc  );
+#else
 	CWhatsUpDummyServer::m_lpOldProc=(WNDPROC)SetWindowLong(hWnd, GWL_WNDPROC, (LONG)ParentWndProc  );
+#endif
 	return 1;
 }
 
@@ -136,6 +146,10 @@ LRESULT __cdecl CWhatsUpDummyServer::ParentWndProc(HWND hWnd,
 			}
 			break;
 		default:
+#ifdef _WIN64
+			return CallWindowProcA((WNDPROC)CWhatsUpDummyServer::m_lpOldProc, hWnd, iMessage, wParam, lParam);
+#else
 			return CallWindowProcA(CWhatsUpDummyServer::m_lpOldProc, hWnd, iMessage, wParam, lParam);
+#endif
 	}
 }

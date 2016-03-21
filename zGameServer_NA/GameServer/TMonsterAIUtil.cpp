@@ -1,6 +1,5 @@
 // TMonsterAIUtil.cpp: implementation of the TMonsterAIUtil class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00564930	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -8,8 +7,6 @@
 
 #include "Gamemain.h"
 #include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
-#include "logproc.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -100,19 +97,12 @@ BOOL TMonsterAIUtil::FindPathToMoveMonster(LPOBJ lpObj, int iTargetX, int iTarge
 	PATH_t Path;
 	BOOL bPathFound = FALSE;
 
-#ifndef DOPPEL
-	if ( bPreventOverMoving )
-		bPathFound = MapC[lpObj->MapNumber].PathFinding2(lpObj->X, lpObj->Y, iTargetX, iTargetY, &Path);
-	else
-		bPathFound = MapC[lpObj->MapNumber].PathFinding4(lpObj->X, lpObj->Y, iTargetX, iTargetY, &Path);
-#else
-	if ( bPreventOverMoving == 1 )
+	if ( bPreventOverMoving == 1)
 		bPathFound = MapC[lpObj->MapNumber].PathFinding2(lpObj->X, lpObj->Y, iTargetX, iTargetY, &Path);
 	else if ( bPreventOverMoving == 2 )
 		bPathFound = MapC[lpObj->MapNumber].PathFinding3(lpObj->X, lpObj->Y, iTargetX, iTargetY, &Path);
 	else
 		bPathFound = MapC[lpObj->MapNumber].PathFinding4(lpObj->X, lpObj->Y, iTargetX, iTargetY, &Path);
-#endif
 
 	if (bPathFound )
 	{
@@ -193,15 +183,11 @@ BOOL TMonsterAIUtil::CheckMovingCondition(LPOBJ lpObj)
 	if ( lpObj->m_State != 2 )
 		return FALSE;
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_ICE_ARROW) == 1 || gObjCheckUsedBuffEffect(lpObj, AT_STUN) == 1)
-	{
+	if ( lpObj->m_SkillHarden )
 		return FALSE;
-	}
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_SLEEP) == 1)
-	{
+	if ( lpObj->m_iSkillStunTime > 0 )
 		return FALSE;
-	}
 
 	return TRUE;
 }
@@ -219,8 +205,8 @@ BOOL TMonsterAIUtil::GetXYToPatrol(LPOBJ lpObj)
 	int maxmoverange = lpObj->m_MoveRange*2+1;
 	int searchc=10;
 	lpObj->NextActionTime = 1000;
-	BYTE tpx;
-	BYTE tpy;
+	BYTE tpx=0;
+	BYTE tpy=0;
 
 	while ( searchc-- != 0 )
 	{
@@ -257,10 +243,8 @@ BOOL TMonsterAIUtil::GetXYToEascape(LPOBJ lpObj)
 	int tx;
 	int ty;
 	int searchp = 0;
-	int sn = 0;
 	int searchcount = MAX_ROAD_PATH_TABLE/2-1;
 	BYTE attr;
-	BOOL result = 0;
 	LPOBJ lpTargetObj;
 
 	if ( OBJMAX_RANGE(lpObj->TargetNumber) == FALSE )
@@ -297,7 +281,9 @@ BOOL TMonsterAIUtil::GetXYToEascape(LPOBJ lpObj)
 		ty += dis;
 	}
 
-	searchp = GetPathPacketDirPos( (lpObj->X - tx), (lpObj->Y - tx) ) * 2;
+	//searchp = GetPathPacketDirPos( (lpObj->X - tx), (lpObj->Y - tx) ) * 2;	// #error Change the second tx to ty
+	searchp = GetPathPacketDirPos( (lpObj->X - tx), (lpObj->Y - ty) ) * 2;	// FIX
+
 
 	if ( MapC[lpObj->MapNumber].GetStandAttr(tx, ty) == 0 )
 	{
@@ -347,10 +333,8 @@ BOOL TMonsterAIUtil::GetXYToChase(LPOBJ lpObj)
 	int mtx;	// Monster Target X
 	int mty;
 	int searchp = 0;
-	int sn = 0;
 	int searchcount = MAX_ROAD_PATH_TABLE/2-1;
 	BYTE attr;
-	BOOL result = 0;
 	LPOBJ lpTargetObj;
 
 	if ( OBJMAX_RANGE(lpObj->TargetNumber) == FALSE )
@@ -432,7 +416,7 @@ BOOL TMonsterAIUtil::SendMonsterMoveMsg(LPOBJ lpObj)
 {
 	PMSG_RECVMOVE pMove;
 
-	PHeadSetB((LPBYTE)&pMove, PROTOCOL_MOVE, sizeof(pMove));
+	PHeadSetB((LPBYTE)&pMove, 0xD3, sizeof(pMove));
 	pMove.NumberH = SET_NUMBERH(lpObj->m_Index);
 	pMove.NumberL = SET_NUMBERL(lpObj->m_Index);
 	pMove.X = lpObj->MTX;
@@ -447,6 +431,8 @@ BOOL TMonsterAIUtil::SendMonsterMoveMsg(LPOBJ lpObj)
 
 void TMonsterAIUtil::SendChattingMsg(int iObjIndex, char* lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -461,7 +447,7 @@ void TMonsterAIUtil::SendChattingMsg(int iObjIndex, char* lpszMsg, ...)
 	vsprintf(szBuffer, lpszMsg, pArguments);
 	va_end(pArguments);
 
-	char szChat[MAX_CHAT_LEN] = {0};
+	char szChat[60] = {0};
 	memcpy(szChat, szBuffer, sizeof(szChat)-1);
 
 	for(int i=0;i<MAX_VIEWPORT_MONSTER;i++)
@@ -475,6 +461,9 @@ void TMonsterAIUtil::SendChattingMsg(int iObjIndex, char* lpszMsg, ...)
 				ChatTargetSend(lpObj, szChat, tObjNum);
 			}
 		}
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 

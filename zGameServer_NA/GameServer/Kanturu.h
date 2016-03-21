@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 #include "MapClass.h"
 #include "KanturuStateInfo.h"
 #include "KanturuBattleStanby.h"
@@ -83,24 +85,25 @@ public:
 	void KanturuMonsterDieProc(int iMonIndex, int iKillerIndex);
 	void OperateGmCommand(int iUserIndex, int iCommand);
 	void UserMonsterCountCheck();
+	void SetKanturuTimeAttackEventInfo();
 	int GetKanturuBattleCounter(){return this->m_iKanturuBattleCounter;}
 	int GetKanturuBattleDate(){return this->m_iKanturuBattleDate;}
 
 private:
 
 	BOOL m_bKanturuEnable;	// 4
-	int m_iKanturuState;	// 8
+	BYTE m_iKanturuState;	// 8
 	BOOL m_bIsSucccess;	// C
 	BOOL m_bFileDataLoad;	// 10
 	CKanturuStateInfo m_StateInfo[MAX_KANTURU_STATE_INFO];	// 14
-	int m_StateInfoCount;	// 8C
+	BYTE m_StateInfoCount;	// 8C
 	CKanturuBattleStanby m_BattleStanby;	// 90
 	CKanturuBattleOfMaya m_BattleOfMaya;	// F4
 	CKanturuBattleOfNightmare m_BattleOfNightmare;	// 320
 	CKanturuTowerOfRefinement m_TowerOfRefinement;	// 3B4
 	MapClass m_KanturuMap[2];	// 444
 	BOOL m_bEnableCheckMoonStone;	// A2514
-	int m_iKanturuBattleCounter;	// A2518
+	BYTE m_iKanturuBattleCounter;	// A2518
 	int m_iKanturuBattleDate;	// A251C
 
 };
@@ -108,4 +111,5 @@ private:
 
 extern CKanturu g_Kanturu;
 
+#endif
 #endif // !defined(AFX_KANTURU_H__7040132E_6A41_47FB_82ED_FE28C0EB1CF6__INCLUDED_)

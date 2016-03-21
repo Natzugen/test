@@ -16,7 +16,7 @@ class TSkillElement
 public:
 
 	//TSkillElement();
-//	virtual void ForceSkillElement(int iIndex, int iTargetIndex){return;}	// 0
+	virtual void ForceSkillElement(int iIndex, int iTargetIndex){return;}	// 0
 };
 
 

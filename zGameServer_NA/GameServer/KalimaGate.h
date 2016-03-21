@@ -24,10 +24,10 @@
 
 static struct _KALIMAGATE_LEVEL
 {
-	int iLOWER_BOUND;	// 0
-	int iUPPER_BOUND;	// 4
-	int iLOWER_BOUND_MAGUMSA;	// 8
-	int iUPPER_BOUND_MAGUMSA;	// C
+	short iLOWER_BOUND;	// 0
+	short iUPPER_BOUND;	// 4
+	short iLOWER_BOUND_MAGUMSA;	// 8
+	short iUPPER_BOUND_MAGUMSA;	// C
 
 } g_sttKALIMAGATE_LEVEL[KALIMA_FLOORS] =
 {
@@ -56,8 +56,8 @@ static struct _KALIMAGATE_LEVEL
 	0x137, 0x15D, // MG, DL
 
 	// Kalima 7
-	0x15E, MAX_CHAR_LEVEL, // DK, DW, Elf
-	0x15E, MAX_CHAR_LEVEL // MG, DL
+	1, MAX_CHAR_LEVEL, // DK, DW, Elf
+	1, MAX_CHAR_LEVEL // MG, DL
 };
 
 

@@ -1,80 +1,82 @@
-//-> Revised by DarkSim | 27.06.2013 | 1.01.00 GS-N
-// -------------------------------------------------------------------------------
+#ifndef DARKSPIRIT_H
+#define DARKSPIRIT_H
 
+#if _MSC_VER > 1000
 #pragma once
-// -------------------------------------------------------------------------------
+#endif // _MSC_VER > 1000
 
 #include "user.h"
 #include "MagicInf.h"
 #include "..\\common\\zzzitem.h"
 #include "ObjBaseAttack.h"
-// -------------------------------------------------------------------------------
 
-#define RAVEN_ATTACK_DISTANCE		7
-// -------------------------------------------------------------------------------
+
+
+//#define RAVEN_ATTACK_DISTANCE		7
+
+
 
 struct PMSG_SEND_PET_ITEMINFO
 {
-	PBMSG_HEAD h;
-	// ----
-	BYTE	PetType;
-	BYTE	InvenType;
-	BYTE	nPos;
-	BYTE	Level;
-	int		Exp;
-	BYTE	Life;
+	PBMSG_HEAD h;	// C1:[A9:AC]
+	BYTE PetType;	// 3
+	BYTE InvenType;	// 4
+	BYTE nPos;	// 5
+	BYTE Level;	// 6
+	int Exp;	// 8
 };
-// -------------------------------------------------------------------------------
+
 
 class CDarkSpirit : public CObjBaseAttack
 {
+
 public:
-	int		m_AttackDamageMin;		//+4
-	int		m_AttackDamageMax;		//+8
-	int		m_AttackSpeed;			//+12
-	int		m_SuccessAttackRate;	//+16
-	float	m_CriticalAttackRate;	//+20
-	float	m_ExcellentAttackRate;	//+24
-	int		m_Unknown28;			//+28
-	int		m_Unknown32;			//+32
-	int		m_iMasterIndex;			//+36
-	int		m_iTargetIndex;			//+40
-	DWORD	m_dwLastAttackTime;		//+44
-	// ----
+
+	int m_AttackDamageMin;	// 4
+	int m_AttackDamageMax;	// 8
+	int m_AttackSpeed;	// C
+	int m_SuccessAttackRate;	// 10
+	int m_iMasterIndex;	// 14
+	int m_iTargetIndex;	// 18
+	DWORD m_dwLastAttackTime;	// 1C
 	enum ePetItem_Mode
 	{
-		PetItem_Mode_Normal				= 0,
-		PetItem_Mode_Attack_Random		= 1,
-		PetItem_Mode_Attack_WithMaster	= 2,
-		PetItem_Mode_Attack_Target		= 3,
+		PetItem_Mode_Normal = 0x0,
+		PetItem_Mode_Attack_Random = 0x1,
+		PetItem_Mode_Attack_WithMaster = 0x2,
+		PetItem_Mode_Attack_Target = 0x3,
 
-	} m_ActionMode;					//+48
-	CItem *	m_pPetItem;				//+52
-	// ----
+	} m_ActionMode;	// 20
+	CItem * m_pPetItem;	// 24
+
 public:
-			CDarkSpirit();
-  virtual	~CDarkSpirit();
-  // ----
-  void		Init();
-  void		Run();
-  void		ModeNormal();
-  void		ModeAttackRandom();
-  void		ModeAttackWithMaster();
-  void		ModeAttakTarget();
-  void		SetTarget(int aTargetIndex);
-  void		ReSetTarget(int aTargetIndex);
-  void		Set(int aIndex, CItem* pPetItem);
-  void		SetMode(ePetItem_Mode mode, int iTargetindex);
-  int		Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic, int criticaldamage, int iActionType);
-  int		GetAttackDamage(LPOBJ lpObj, int targetDefense, int bIsOnDuel,  int criticaldamage);
-  int		MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, int& bAllMiss);
-  int		MissCheckPvP(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, int& bAllMiss);
-  void		ChangeCommand(int command, int targetindex);
-  void		RangeAttack(int aIndex, int aTargetIndex);
-  void		SendAttackMsg(int aIndex, int aTargetIndex, int criticaldamage, int iActionType);
-  int		GetShieldDamage(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage);
-  // ----
+
+  CDarkSpirit();
+  virtual ~CDarkSpirit();
+
+  void Init();
+  void Run();
+  void ModeNormal();
+  void ModeAttackRandom();
+  void ModeAttackWithMaster();
+  void ModeAttakTarget();
+  void SetTarget(int aTargetIndex);
+  void ReSetTarget(int aTargetIndex);
+  void Set(int aIndex, CItem* pPetItem);
+  void SetMode(ePetItem_Mode mode, int iTargetindex);
+  int Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic, int criticaldamage, int iActionType);
+  int GetAttackDamage(LPOBJ lpObj, int targetDefense, int bIsOnDuel,  int criticaldamage);
+  int MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, int& bAllMiss);
+  int MissCheckPvP(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, int& bAllMiss);
+  void ChangeCommand(int command, int targetindex);
+  void RangeAttack(int aIndex, int aTargetIndex);
+  void SendAttackMsg(int aIndex, int aTargetIndex, int criticaldamage, int iActionType);
+  int GetShieldDamage(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage);
+ 
   static void __cdecl CDarkSpirit::SendLevelmsg(int aIndex, int nPos, int PetType, int InvenType);
-  // ----
-}; extern CDarkSpirit gDarkSpirit[OBJMAX];
-// -------------------------------------------------------------------------------
+  static void __cdecl CDarkSpirit::SendExpmsg(int aIndex, int nPos, int PetType, int InvenType);
+};
+
+extern CDarkSpirit gDarkSpirit[OBJMAX];
+
+#endif

@@ -1,10 +1,13 @@
-//	GS-N	1.00.90	JPN		-	Completed
-//	GS-CS	1.00.90	JPN		-	Completed
 #include "stdafx.h"
 #include "GuildClass.h"
 #include "LogProc.h"
 #include "GameMain.h"
 #include "protocol.h"
+
+// GS-N 0.99.60T 0x0048F590
+//BOOL CGuildClass::SetGuildMemberStatus(char* szGuildName, char* szMemberName, int iGuildStatus) - Special IF
+//BOOL CGuildClass::SetGuildType(char* szGuildName, int iGuildType) - Special IF
+//	GS-N	1.00.18	JPN	0x004AAE00	-	Completed
 
 CGuildClass::CGuildClass()
 {
@@ -47,6 +50,7 @@ _GUILD_INFO_STRUCT * CGuildClass::AddGuild(int number, char* guildname, GUILDMAR
 		}
 
 		pNewNode->Number = number;
+		pNewNode->GensFam = 0;
 		pNewNode->Count = 0;
 		pNewNode->TotalCount = 0;
 		pNewNode->PlayScore = 0;
@@ -57,6 +61,7 @@ _GUILD_INFO_STRUCT * CGuildClass::AddGuild(int number, char* guildname, GUILDMAR
 		memset(pNewNode->Notice, 0, sizeof(pNewNode->Notice));
 		pNewNode->iGuildUnion = 0;
 		pNewNode->iGuildRival = 0;
+		pNewNode->WareOpen = 0;
 
 		for ( int i=0;i<MAX_USER_GUILD;i++)
 		{
@@ -65,9 +70,6 @@ _GUILD_INFO_STRUCT * CGuildClass::AddGuild(int number, char* guildname, GUILDMAR
 			pNewNode->pServer[i] = -1;
 			pNewNode->GuildStatus[i] = -1;
 		}
-//#if _GSCS == 1 
-		pNewNode->lpLifeStone = NULL;
-//#endif
 
 		this->BuildMemberTotal(pNewNode);
 		this->AddTail(pNewNode);
@@ -680,24 +682,7 @@ BOOL gGuildNoticeStringCheck(char* notice)
 	{
 		if ( (notice[i] & 0x80 ) != 0 )
 		{
-			if ( gLanguage == 2 )
-			{
-				if ( ((BYTE)notice[i]) != 0x81 )
-				{
-					return TRUE;
-				}
-
-				if ( notice[i+1] != '@' )
-				{
-					return TRUE;
-				}
-
-				i++;
-			}
-			else
-			{
-				return TRUE;
-			}
+			return TRUE;
 		}
 		else
 		{
@@ -710,4 +695,3 @@ BOOL gGuildNoticeStringCheck(char* notice)
 
 	return FALSE;
 }
-				

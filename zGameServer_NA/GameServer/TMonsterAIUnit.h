@@ -32,8 +32,8 @@ public:
 public:
 
 	char m_szUnitName[50];	// 4
-	int m_iUnitNumber;	// 38
-	int m_iDelayTime;	// 3C
+	short m_iUnitNumber;	// 38
+	short m_iDelayTime;	// 3C
 	TMonsterAIAutomata* m_lpAutomata;	// 40
 	TMonsterAIElement* m_lpAIClassNormal;	// 44
 	TMonsterAIElement* m_lpAIClassMove;	// 48

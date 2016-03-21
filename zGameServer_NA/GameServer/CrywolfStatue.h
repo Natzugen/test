@@ -9,13 +9,14 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "user.h"
+#if (GS_CASTLE==1)
 
-#define CRYWOLF_STATUE_CHECK(iClass) ( ( ((iClass)) == 204 )?TRUE:FALSE)
 
 class CCrywolfShield
 {
+
 public:
+
 	CCrywolfShield()
 	{
 		this->Reset();
@@ -40,22 +41,25 @@ public:
 	}
 
 public:
+
 	int m_iShieldMaxHP;	// 0
 	int m_iShieldHP;	// 4
-	int m_iShieldState;	// 8
-	int m_iPriestNumber;	// C
+	BYTE m_iShieldState;	// 8
+	short m_iPriestNumber;	// C
 };
+
+
 
 class CCrywolfStatue 
 {
 	
 public:
+
 	CCrywolfStatue();
 	virtual ~CCrywolfStatue();
 
 	void CrywolfStatueAct(int iIndex);
 	int GetStatueViewState(int iPriestNumber);
-	void SetStatueViewState(LPOBJ lpObj, int iAltarNumber);
 
 public:
 
@@ -65,4 +69,5 @@ public:
 
 extern CCrywolfStatue g_CrywolfNPC_Statue;
 
+#endif
 #endif // !defined(AFX_CRYWOLFSTATUE_H__74030238_F088_4B74_A543_22B27C44C469__INCLUDED_)

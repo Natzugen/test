@@ -1,14 +1,17 @@
-//	GS-CS	1.00.90	JPN		-	Completed
 #include "stdafx.h"
 #include "Weapon.h"
 #include "user.h"
 #include "gObjMonster.h"
 #include "ObjAttack.h"
-#include "BuffEffectSlot.h"
+#include "IllusionTemple.h"
+
+// GS-N 0.99.60T 0x0051A5F0
+//	GS-N	1.00.18	JPN	0x0054BF60	-	Completed
 
 CWeapon g_CsNPC_Weapon;
 
 #define MAX_ST_CS_WEAPON	(4)
+
 
 struct ST_CS_WEAPON
 {
@@ -30,23 +33,40 @@ static const ST_CS_WEAPON WEAPON_CS_DEFENSER[MAX_ST_CS_WEAPON] =
 	0x54, 0x34, 0x66, 0x42, 0x00, 0x00, 0x00, 0x00
 };
 
+
+
+
 CWeapon::CWeapon()
 {
-	for ( int i=0;i<MAX_WEAPON_CAL_DAMAGER_INFO;i++)	// #error Cahnge to MAX_WEAPON_DAMAGED_TARGET_INFO
+	//for ( int i=0;i<MAX_WEAPON_CAL_DAMAGER_INFO;i++)	// #error Cahnge to MAX_WEAPON_DAMAGED_TARGET_INFO
+	//{
+	//	this->m_WeaponDamagedTargetInfo[i].RESET();
+	//}
+
+	//for ( int i=0;i<MAX_WEAPON_DAMAGED_TARGET_INFO;i++)	// #error Cahnge to MAX_WEAPON_CAL_DAMAGER_INFO
+	//{
+	//	this->m_WeaponCalDamageInfo[i].RESET();
+	//}
+	for ( int i=0;i<MAX_WEAPON_DAMAGED_TARGET_INFO;i++)	// FIX
 	{
 		this->m_WeaponDamagedTargetInfo[i].RESET();
 	}
 
-	for (int i=0;i<MAX_WEAPON_DAMAGED_TARGET_INFO;i++)	// #error Cahnge to MAX_WEAPON_CAL_DAMAGER_INFO
+	for ( int i=0;i<MAX_WEAPON_CAL_DAMAGER_INFO;i++)	// FIX
 	{
 		this->m_WeaponCalDamageInfo[i].RESET();
 	}
 }
 
+
+
+
+
 CWeapon::~CWeapon()
 {
 	return;
 }
+
 
 BOOL CWeapon::SetWeaponCalDamageInfo(WORD wObjIndex, BYTE btTargetX, BYTE btTargetY, int iDelayTime)
 {
@@ -67,6 +87,7 @@ BOOL CWeapon::SetWeaponCalDamageInfo(WORD wObjIndex, BYTE btTargetX, BYTE btTarg
 	return FALSE;
 }
 
+
 BOOL CWeapon::GetWeaponCalDamageInfo(WORD wObjIndex, BYTE & btTargetX, BYTE & btTargetY)
 {
 	for( int i=0;i<MAX_WEAPON_CAL_DAMAGER_INFO;i++)
@@ -85,6 +106,8 @@ BOOL CWeapon::GetWeaponCalDamageInfo(WORD wObjIndex, BYTE & btTargetX, BYTE & bt
 	return FALSE;
 }
 
+
+
 int  CWeapon::GetAttackDamage(int iObjClass)
 {
 	int iDamage = 0;
@@ -100,6 +123,9 @@ int  CWeapon::GetAttackDamage(int iObjClass)
 
 	return iDamage;
 }
+
+
+
 
 BOOL CWeapon::GetTargetPointXY(int iObjClass, int iTargetPointIndex, BYTE &btX, BYTE &btY, BOOL bRandomPos)
 {
@@ -146,16 +172,32 @@ BOOL CWeapon::GetTargetPointXY(int iObjClass, int iTargetPointIndex, BYTE &btX, 
 	return TRUE;
 }
 
+
+
 BOOL CWeapon::MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int iSkill, int iSkillSuccess, BOOL& bAllMiss)
 {
+	if ( lpTargetObj->m_SkillIT_Time > 0 )
+	{
+		if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
+		{
+			bAllMiss = TRUE;
+
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+			return FALSE;
+		}
+	}
+
 	return TRUE;
 }
+
+
+
 
 BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iCriticalDamage, int iActionType)
 {
 	int iSkill = 0;
 	int iSkillSuccess = TRUE;
-	BYTE MsgDamage = 0;
+	BYTE MsgDamage = MSG_DAMAGE_MISS;
 	int ManaChange = 0;
 
 	if ( lpMagic != NULL )
@@ -163,10 +205,10 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 		iSkill = lpMagic->m_Skill;
 	}
 
-	if ( (lpTargetObj->Authority & 2) == 2 )
+	/*if ((lpTargetObj->Authority & 2) == 2 )
 	{
 		return FALSE;
-	}
+	}*/
 
 	if ( lpObj->MapNumber != lpTargetObj->MapNumber )
 	{
@@ -181,31 +223,57 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 		}
 	}
 
-	if ( gObjAttackQ(lpTargetObj) == 0 )
-	{
+	if ( gObjAttackType(lpTargetObj,lpObj) == 0)
 		return FALSE;
-	}
+	if ( gclassObjAttack.PkCheck(lpObj, lpTargetObj) == FALSE )
+		return FALSE;
+	if ( gclassObjAttack.CheckAttackArea(lpObj, lpTargetObj) == FALSE )
+		return FALSE;
 
-	lpObj->m_TotalAttackCount++;
+	//lpObj->m_TotalAttackCount++;
 
 	int MSBFlag = 0;
 
 	if ( iCriticalDamage != 0 )
 	{
-		MsgDamage = 3;
+		MsgDamage = MSG_DAMAGE_CRITICAL;
 	}
 	else
 	{
-		MsgDamage = 0;
+		MsgDamage = MSG_DAMAGE_MISS;
 	}
 
+	//int target_m_Defense = lpTargetObj->m_Defense;
 	int iAttackDamage = this->GetAttackDamage(lpObj->Class);
+	int iSkillDefense = lpTargetObj->m_SkillDefense;
 
-	int iTargetDefense = lpTargetObj->m_Defense;//loc8
+	//TEST MODE! SKILLS!!!
+	/*if (iSkill == AT_SKILL_DARKSIDE)
+	{
+		iAttackDamage = (lpObj->Dexterity/8 + lpObj->Energy/10 + iAttackDamage)* (100 + lpObj->Dexterity/8 + lpObj->Vitality/10)/100;
+	}*/
 
-	int iSkillDefense = gObjGetTotalValueOfEffect(lpObj,AT_CW_ALTAR_STATUS);//loc9
+	//if(lpTargetObj->Type == OBJ_USER && lpTargetObj->Class == CLASS_SUMMONER && lpTargetObj->m_SkillBerserkerTime > 0)
+	//{
+	//	target_m_Defense = lpTargetObj->m_Defense * lpTargetObj->m_SkillBerserkerDef;
+	//}
 
-	iTargetDefense -= (iTargetDefense * iSkillDefense)/100;
+	int iSkillReduceDefense = lpTargetObj->m_SkillReduceDefense + lpTargetObj->m_RFBufReduceDefense;
+	int iTargetDefense = lpTargetObj->m_Defense + iSkillDefense - iSkillReduceDefense;
+
+	if(lpObj->Type == OBJ_USER)
+	{
+		if(lpObj->m_SkillRedArmorIgnoreTime > 0)
+		{
+			//iTargetDefense -= lpObj->m_SkillRedArmorIgnoreNum;
+			iTargetDefense = (iTargetDefense * (100 - lpObj->m_SkillRedArmorIgnoreNum)/100);
+		}
+	}
+
+	iTargetDefense -= (iTargetDefense * lpTargetObj->m_SkillMagumReduceDefense)/100;
+
+	if(iTargetDefense < 0) 
+		iTargetDefense = 0;
 
 	BOOL bAllMiss = FALSE;
 	
@@ -221,7 +289,6 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 
 	if ( lpTargetObj->DamageMinus != 0 )
 	{
-		int lc11 = iAttackDamage;
 		iAttackDamage -= (iAttackDamage * lpTargetObj->DamageMinus)/100;
 	}
 
@@ -254,21 +321,71 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 		}
 	}
 
+	if ( gObjSpiritOfGuardianSprite(lpTargetObj) == TRUE )
+	{
+		if ( iAttackDamage > 1 )
+		{
+			float lc13 = (float)(iAttackDamage * 8 ) / 20.0f;
+			iAttackDamage = (int)( lc13 );
+		}
+	}
+
+
 	if ( gObjWingSprite(lpTargetObj) == TRUE )
 	{
 		CItem * Wing = &lpTargetObj->pInventory[7];
 
 		if ( iAttackDamage > 1 )
 		{
-			if ( Wing->m_Type > ITEMGET(12,2) )
+			if ( (Wing->m_Type > ITEMGET(12,2) && Wing->m_Type < ITEMGET(12,7)) || (Wing->m_Type == ITEMGET(12,42)) )
 			{
 				float lc15 = float((int)iAttackDamage *  (int)(75 - Wing->m_Level * 2) ) / 100.0f;
 				iAttackDamage = (int )lc15;
 			}
-			else
+			else if ( (Wing->m_Type >= ITEMGET(12,0) && Wing->m_Type <= ITEMGET(12,2)) || (Wing->m_Type == ITEMGET(12,41)) )
 			{
 				float lc16 = float((int)iAttackDamage *  (int)(88 - Wing->m_Level * 2) ) / 100.0f;
 				iAttackDamage = (int)lc16;
+			}
+			else if ( Wing->m_Type == ITEMGET(12,130))
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(80 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+			else if ( Wing->m_Type == ITEMGET(12,135))
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(80 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+			else if ( Wing->m_Type >= ITEMGET(12,131) && Wing->m_Type <= ITEMGET(12,134))
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(88 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+			else if ( (Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,39)) || (Wing->m_Type == ITEMGET(12,43)))
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(61 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+#if (CRYSTAL_EDITION == 1)
+			else if ( (Wing->m_Type >= ITEMGET(12,200) && Wing->m_Type <= ITEMGET(12,254)) )
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(61 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+#endif
+			else if ( (Wing->m_Type == ITEMGET(12,40)) || (Wing->m_Type == ITEMGET(12,50)))
+			{
+				float lc16 = float((int)iAttackDamage *  (int)(76 - Wing->m_Level * 2) ) / 100.0f;
+				iAttackDamage = (int)lc16;
+			}
+			else if ( Wing->m_Type == ITEMGET(13,30) )	// Cape Of Lord
+			{
+				//No such option
+			}
+			else if ( Wing->m_Type == ITEMGET(12,49) )	// Cape Of Lord
+			{
+				//No such option
 			}
 		}
 	}
@@ -315,39 +432,18 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 
 	if ( lpTargetObj->Live != FALSE )
 	{
-		if ( gObjCheckUsedBuffEffect(lpTargetObj,4) == 1 && iAttackDamage > 0 )//changed
+		if ( lpTargetObj->m_WizardSkillDefense !=0 && iAttackDamage > 0 )
 		{
-			int iValue1 = 0;//loc21 
-			int iValue2 = 0;//loc22
-			
-			gObjCheckUsedBuffEffect(lpTargetObj,4,&iValue1,&iValue2);//changed
-
-			int ManaPercent = 0 ;//loc23
-
-			if(iValue2 > 0)//new
-			{
-				ManaPercent = (WORD)lpTargetObj->Mana * iValue2 / 1000;//changed
-			}
-			else
-			{
-				ManaPercent = (WORD)lpTargetObj->Mana * 2 / 100;
-			}
+			int ManaPercent = (WORD)lpTargetObj->Mana * 2 / 100;
 
 			if ( ManaPercent < lpTargetObj->Mana )
 			{
 				lpTargetObj->Mana -= ManaPercent;
-				
-				int loc24 = 0;//changed
+				int lc22 = (iAttackDamage * lpTargetObj->m_WizardSkillDefense )/100;
 
-				if(iValue1 > 0)//changed
-				{
-					loc24 = iAttackDamage * iValue1 / 100;//changed
-				}
-
-				iAttackDamage -= loc24;
+				iAttackDamage -= lc22;
 				ManaChange = TRUE;
 			}
-			
 		}
 
 		lpTargetObj->Life -= iAttackDamage;
@@ -362,7 +458,7 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 	{
 		if ( lpTargetObj->Type == OBJ_USER )
 		{
-			gObjArmorRandomDurDown(lpTargetObj, lpObj);
+			gObjArmorRandomDurDown(lpTargetObj, lpObj, true);
 		}
 	}
 
@@ -393,11 +489,13 @@ BOOL CWeapon::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iC
 
 	if ( iAttackDamage > 0 )
 	{
-		gObjLifeCheck(lpTargetObj, lpObj, iAttackDamage, 0, MSBFlag, MsgDamage, iSkill, 0);
+		gObjLifeCheck(lpTargetObj, lpObj, iAttackDamage, DAMAGE_TYPE_REG, MSBFlag, MsgDamage, iSkill, 0);
 	}
 
 	return TRUE;
 }
+
+
 
 BOOL CWeapon::AddWeaponDamagedTargetInfo(int iWeaponIndex, int iTargetIndex, int iDelayTime)
 {
@@ -416,6 +514,8 @@ BOOL CWeapon::AddWeaponDamagedTargetInfo(int iWeaponIndex, int iTargetIndex, int
 
 	return FALSE;
 }
+
+	
 
 void CWeapon::WeaponAttackProc()
 {
@@ -450,6 +550,8 @@ void CWeapon::WeaponAttackProc()
 	}
 
 }
+
+
 
 void CWeapon::WeaponAct(int iIndex)
 {

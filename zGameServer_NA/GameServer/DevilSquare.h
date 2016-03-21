@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #ifndef DEVILSQUARE_H
 #define DEVILSQUARE_H
 
@@ -9,8 +13,8 @@
 #include "DevilSquareGround.h"
 #include "user.h"
 #include "..\common\classdef.h"
-#include <list>
-#include "MasterLevelSystem.h"
+
+// Original
 
 enum eDevilSquareState
 {
@@ -25,27 +29,6 @@ enum eDevilSquareState
 #define DS_MAP_RANGE(map) ( ( ((map)) == MAP_INDEX_DEVILSQUARE  )?TRUE:( ((map)) == MAP_INDEX_DEVILSQUARE2  )?TRUE:FALSE  )
 #define DS_LEVEL_RANGE(level) ( ( ((level)) < 0  )?FALSE:( ((level)) > MAX_DEVILSQUARE_GROUND-1  )?FALSE:TRUE)
 
-struct DEVILSQUARE_START_TIME
-{
-	int m_iHour;	// 0
-	int m_iMinute;	// 4
-};
-
-struct GROUND_DATA
-{
-	int m_BonusScoreTable[MAX_TYPE_PLAYER];
-	float m_RewardExp;
-};
-struct BonusTable
-{
-	int m_0;
-	int m_1;
-	int m_2;
-	int m_3;
-	int m_4;
-	float m_5;
-};
-
 class CDevilSquare
 {
 
@@ -56,9 +39,8 @@ public:
 
 	void Init();
 	void SetState(enum eDevilSquareState eState);
-	enum eDevilSquareState GetState(){return this->m_eState;};
+	enum eDevilSquareState GetState(){return this->m_eState;};	// line : 93
 	int Run();
-	int CheckCloseTime();
 	int GetRemainTime(){return this->m_iRemainTime;}
 	void SetMonster();
 	void ClearMonstr();
@@ -71,11 +53,8 @@ public:
 	void CalcScore();
 	void SetClose();
 	int GetDevilSquareIndex(int iGateNumber);
-	int GetUserLevelToEnter(int iUserIndex, int& iMoveGate);
-	// ----
-	int DelUser(int nDevilSquareIndex, int UserIndex);	//1.01.00
-	int LeaveDevilSquare(int nDevilSquareIndex, int UserIndex);	//1.01.00
-	// ----
+	int GetUserLevelToEnter(int iUserIndex, WORD& btMoveGate);
+
 private:
 
 	void SetOpen();
@@ -91,6 +70,8 @@ private:
 	void CheckInvalidUser();
 
 public:
+
+
 	enum eDevilSquareState m_eState;	// 4
 	DWORD m_iTime;	// 8
 	int m_iRemainTime;	// C
@@ -99,26 +80,23 @@ public:
 	BOOL m_bQuit;	// 18
 	BOOL m_bFlag;	// 1C
 	UINT m_hThread;	// 20
-	std::list<DEVILSQUARE_START_TIME> m_listDevilSquareOpenTime;	// 24
-	int m_iCloseTime;	// 24 -> 30
-	int m_iOpenTime;	// 28 -> 34
-	int m_iPlaytime;	// 2C -> 38
+	int m_iCloseTime;	// 24
+	int m_iOpenTime;	// 28
+	int m_iPlaytime;	// 2C
+	CDevilSquareGround m_DevilSquareGround[MAX_DEVILSQUARE_GROUND];	// 30
+	int m_BonusScoreTable[MAX_TYPE_PLAYER][MAX_DEVILSQUARE_GROUND];	// 1BA8
 
-	CDevilSquareGround m_DevilSquareGround[MAX_DEVILSQUARE_GROUND];	// 30 -> 3C
-	int m_BonusScoreTable[MAX_TYPE_PLAYER][MAX_DEVILSQUARE_GROUND];	// 1BA8 -> 1BB4
 };
-
-
 
 extern CDevilSquare g_DevilSquare;
 
 struct EVENT_LEVEL_LIMITATION_EX
 {
-	int NormalCharacterMinLevel; // Dark Knight, Dark Wizard, Elf
-	int NormalCharacterMaxLevel; // Dark Knight, Dark Wizard, Elf
-	int SpecialCharacterMinLevel; // Magic Gladiator, Dark Lord
-	int SpecialCharacterMaxLevel; // Magic Gladitor, Dark Lord
-	int MoveGate;	// Dest Gate
+	short NormalCharacterMinLevel; // Dark Knight, Dark Wizard, Elf
+	short NormalCharacterMaxLevel; // Dark Knight, Dark Wizard, Elf
+	short SpecialCharacterMinLevel; // Magic Gladiator, Dark Lord
+	short SpecialCharacterMaxLevel; // Magic Gladitor, Dark Lord
+	short MoveGate;	// Dest Gate
 };
 
 static EVENT_LEVEL_LIMITATION_EX g_sttDEVILSQUARE_LEVEL[MAX_DEVILSQUARE_GROUND] =
@@ -153,19 +131,14 @@ static EVENT_LEVEL_LIMITATION_EX g_sttDEVILSQUARE_LEVEL[MAX_DEVILSQUARE_GROUND] 
 	311, MAX_CHAR_LEVEL, // MG, DL
 	112,	// Gate
 
-	// Devil Square 6 - with master level from 1
-	1, MAX_CHAR_LEVEL+MASTER_MAX_LEVEL-1, // DK, DW, Elf
-	1, MAX_CHAR_LEVEL+MASTER_MAX_LEVEL-1, // MG, DL
-	270		// Gate
-
-	// Devil Square 6 - with master level from 400
-	//MAX_CHAR_LEVEL, MAX_CHAR_LEVEL+MAX_MASTER_LEVEL-1, // DK, DW, Elf
-	//MAX_CHAR_LEVEL, MAX_CHAR_LEVEL+MAX_MASTER_LEVEL-1, // MG, DL
-	//270		// Gate
+	// Devil Square 7
+	1, MAX_CHAR_LEVEL, // DK, DW, Elf
+	1, MAX_CHAR_LEVEL, // MG, DL
+	270	// Gate
 };
 
 
-unsigned __stdcall DevilSquareThreadFunc(LPVOID p);
+unsigned __stdcall DevilSquareThreadFunc(void * p);
 void DevilSquareProtocolCore(BYTE protoNum, LPBYTE aRecv, int  aLen);
 void DataSendRank(char* pMsg, int size);
 

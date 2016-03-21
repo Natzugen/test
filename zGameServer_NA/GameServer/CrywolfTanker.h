@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==1)
+
 class CCrywolfTanker
 {
 
@@ -23,4 +25,5 @@ public:
 
 extern CCrywolfTanker g_CrywolfMON_Tanker;
 
+#endif
 #endif // !defined(AFX_CRYWOLFTANKER_H__8CBC3465_0A8F_4932_825C_4BC8F77DA823__INCLUDED_)

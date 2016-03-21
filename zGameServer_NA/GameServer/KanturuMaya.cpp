@@ -1,5 +1,5 @@
 // KanturuMaya.cpp: implementation of the CKanturuMaya class.
-//	GS-CS	1.00.90	JPN	 - finished
+//	GS-N	1.00.18	JPN	0x005785B0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -7,8 +7,12 @@
 #include "TMonsterSkillManager.h"
 #include "LogProc.h"
 #include "KanturuUtil.h"
+#include "ObjAttack.h"
+
+#if (GS_CASTLE==0)
 
 static CKanturuUtil KANTURU_UTIL;
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -47,18 +51,18 @@ void CKanturuMaya::KanturuMayaAct_IceStorm(int iSkillUsingRate)
 			 gObj[iCount].MapNumber == MAP_INDEX_KANTURU_BOSS )
 		{
 			KANTURU_UTIL.NotifyKanturuWideAreaAttack(this->m_iMayaObjIndex, iCount, 0);
-			TMonsterSkillManager::UseMonsterSkill(this->m_iMayaObjIndex, iCount, 31,-1,NULL);
+			TMonsterSkillManager::UseMonsterSkill(this->m_iMayaObjIndex, iCount, 31);
 			this->m_iIceStormCount++;
 		}
 	}
 
-	LogAddTD("[ KANTURU ][ IceStorm ] Skill Using(%d) : Index(%d) %s",
+	LogAddTD("[Kanturu][IceStorm] Skill Using(%d) : Index(%d) %s",
 		this->m_iIceStormCount, this->m_iMayaObjIndex, gObj[this->m_iMayaObjIndex].Name);
 }
 
 
 
-//Season 4.5 identical
+
 void CKanturuMaya::KanturuMayaAct_Hands()
 {
 	int TickCount = GetTickCount() - this->m_iMayaSkillTime;
@@ -78,37 +82,36 @@ void CKanturuMaya::KanturuMayaAct_Hands()
 			 gObj[iCount].MapNumber == MAP_INDEX_KANTURU_BOSS )
 		{
 			KANTURU_UTIL.NotifyKanturuWideAreaAttack(this->m_iMayaObjIndex, iCount, 1);
-			TMonsterSkillManager::UseMonsterSkill(this->m_iMayaObjIndex, iCount, 1,-1,NULL);
+			TMonsterSkillManager::UseMonsterSkill(this->m_iMayaObjIndex, iCount, 1);
 
-			//#if(_GSCS==0)
-			if (gObj[iCount].pInventory[10].m_Type == ITEMGET(13,38) &&
-				gObj[iCount].pInventory[10].m_Durability != 0.0f )
+			if ( gObj[iCount].pInventory[10].m_Type == ITEMGET(13,38) &&
+				 gObj[iCount].pInventory[10].m_Durability != 0.0f )
 			{
 				continue;
 			}
 
 
 			if ( gObj[iCount].pInventory[11].m_Type == ITEMGET(13,38) &&
-				gObj[iCount].pInventory[11].m_Durability != 0.0f )
+				 gObj[iCount].pInventory[11].m_Durability != 0.0f )
 			{
 				continue;
 			}
 
-			if ( gObj[iCount].MapNumber == MAP_INDEX_KANTURU_BOSS )
+			if ( gObj[iCount].MapNumber == MAP_INDEX_KANTURU_BOSS )	// #warning unuseful if
 			{
 				LPOBJ lpMayaHandObj = &gObj[this->m_iMayaObjIndex];
 				gObj[iCount].Life = 0;
 
-				gObjLifeCheck(&gObj[iCount], lpMayaHandObj, gObj[iCount].Life, 0, 0, 0, 0, 0);
+				gObjLifeCheck(&gObj[iCount], lpMayaHandObj, gObj[iCount].Life, DAMAGE_TYPE_REG, 0, 0, 0, 0);
 
-				LogAddTD("[ KANTURU ][ BrokenShower ] [%s][%s] User Dying cause NOT wearing MoonStone Pandent",
-				gObj[iCount].AccountID, gObj[iCount].Name);
+				LogAddTD("[Kanturu][BrokenShower] [%s][%s] User Dying cause NOT wearing MoonStone Pandent",
+					gObj[iCount].AccountID, gObj[iCount].Name);
 			}
-			//#endif
-
 		}
 	}
 
-	LogAddTD("[ KANTURU ][ BrokenShower ] Skill Using : Index(%d) %s",
+	LogAddTD("[Kanturu][BrokenShower] Skill Using : Index(%d) %s",
 		this->m_iMayaObjIndex, gObj[this->m_iMayaObjIndex].Name);
 }
+
+#endif

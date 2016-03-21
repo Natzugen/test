@@ -1,10 +1,18 @@
-//GameServer 1.00.90
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// One of My old successful Decompilation
+// GS-N 0.99.60T : Status : Completed
+//	GS-N	1.00.18	JPN	0x004A37F0	-	Completed
+
 #include "stdafx.h"
 #include "logproc.h"
+#include "logtofile.h"
 #include "GameMain.h"
 #include "GameServer.h"
 
-#define	WRITETOFILE	1
+
 
 int m_cline;	// Current Line of Log
 static FILE* logfp;	// FILE Variable for LOG
@@ -17,96 +25,168 @@ BYTE LogTextViewType[LOG_TEXT_LINE];
 // Functions Pointers to Log Variables
 void (*LogAdd)(char* szLog,...);
 void (*LogAddC)(BYTE, char*, ...);
+void (*LogAddCTD)(BYTE, char*, ...);
 void (*LogAddTD)(char* szLog, ...);
-void (*LogAddHeadHex)(char*, char*, int);
+void (*LogAddHeadHex)(char*, char*, char*, int);
 void (*LogAddL)(char* szLog, ...);
 void (*LogTextPaint)(HWND);
 
 CRITICAL_SECTION LogCritical;	// Critical Section For LOG
 
 // Log Set Internals
-int		LogMDay;
-int		LogMonth;
-int		LogMYear;
-HFONT	LogFont;
-int		gLogOutType = 1; // THIS IS NOT THE PLACE OF TTHIS VARIABLE
+int LogMDay;
+int LogMonth;
+int LogMYear;
+
+
+//std::vector<char *>	vec3_origin;
+
+int gLogOutType = 1; // THIS IS NOT THE PLACE OF TTHIS VARIABLE
+
+
+CLogToFile DEBUG_LOG("DEBUG_LOG", ".\\DEBUG_LOG", 1);
+
+void DebugLog2(LPSTR szLog, ...)
+{
+#if (DSGN_COMPILE == 1)
+	char szBuffer[512] = "";
+	char dbgBuffer[512] = "";
+	va_list pArguments;
+
+	va_start(pArguments, szLog);
+	vsprintf(szBuffer, szLog, pArguments);
+	va_end(pArguments);
+
+	//wsprintf(dbgBuffer, "%s \n", szBuffer);
+	//OutputDebugString(dbgBuffer);
+
+	DEBUG_LOG.Output("[Debug] %s", szBuffer);
+#endif
+}
+
+void DebugLog(LPSTR szLog, ...)
+{
+#if (ShowWinDbgDebugInfo==1)
+	char szBuffer[512] = "";
+	char dbgBuffer[512] = "";
+	va_list pArguments;
+
+	va_start(pArguments, szLog);
+	vsprintf(szBuffer, szLog, pArguments);
+	va_end(pArguments);
+
+	wsprintf(dbgBuffer, "%s \n", szBuffer);
+	OutputDebugString(dbgBuffer);
+
+	DEBUG_LOG.Output("[Debug] %s", szBuffer);
+#endif
+		//char szBuffer[1024]="";
+		//va_list pArguments;
+		//tm * today;
+		//time_t ltime;
+		//char tmpbuf[1024];
+		//
+		//
+		//time(&ltime);
+		//today=localtime(&ltime);
+		//wsprintf(tmpbuf, "%.8s ", asctime(today)+11 );
+
+		//va_start( pArguments,szLog );
+		//vsprintf(szBuffer, szLog, pArguments);
+		//va_end(pArguments);
+
+		//strcat(tmpbuf, szBuffer);
+		//OutputDebugString(tmpbuf);
+}
 
 void LogInit(int logprint)
 {
-	int n;
-	InitializeCriticalSection(&LogCritical);
-
-	// Create yes no Log
-	if (logprint!=0)		
+	__try
 	{
+		int n;
+		InitializeCriticalSection(&LogCritical);
 
-		LogAdd=LogAddFunc;
-		LogAddC=LogAddFuncColor;
-		LogAddTD=LogAddTimeDateFunc;
-		LogAddHeadHex=LogAddStrHexFunc;
-		LogTextPaint=LogTextPaintProc;
-		LogAddL=LogAddLocalFunc;
+		// Create yes no Log
+		if (logprint!=0)		
+		{
 
-		for (n=0;n<LOG_TEXT_LINE;n++)
-		{
-			memset(&LogText[n],0, sizeof(LogText[0]));
-			LogTextLength[n]=0;
-			LogTextViewType[n]=0;
-		}
-		if (gLogOutType==0)
-		{
-			return;
+			LogAdd=LogAddFunc;
+			LogAddC=LogAddFuncColor;
+			LogAddCTD=LogAddTimeColorDateFunc;
+			LogAddTD=LogAddTimeDateFunc;
+			LogAddHeadHex=LogAddStrHexFunc;
+			LogTextPaint=LogTextPaintProc;
+			LogAddL=LogAddLocalFunc;
+
+			for (n=0;n<LOG_TEXT_LINE;n++)
+			{
+				memset(&LogText[n],0, sizeof(LogText[0]));
+				LogTextLength[n]=0;
+				LogTextViewType[n]=0;
+			}
+			if (gLogOutType==0)
+			{
+				return;
+			}
+			else
+			{
+				LogDataSet();
+			}
 		}
 		else
 		{
-			LogDataSet();
-		}
-	}
-	else
-	{
 
-		LogAdd=LogAddFuncVoid;
-		LogAddHeadHex=LogAddHeadHexFuncVoid;
-		LogTextPaint=LogTextPaintProcVoid;
-		LogAddTD=LogAddTimeDateVoid;
-		LogAddL=LogAddLocalFuncVoid;
-		
+			LogAdd=LogAddFuncVoid;
+			LogAddC=LogAddFuncColorVoid;
+			LogAddCTD=LogAddTimeColorDateFuncVoid;
+			LogAddHeadHex=LogAddHeadHexFuncVoid;
+			LogTextPaint=LogTextPaintProcVoid;
+			LogAddTD=LogAddTimeDateVoid;
+			LogAddL=LogAddLocalFuncVoid;
+			
+		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 
 
 void LogDataSet()
 {
-	
-	char szTemp[250];
-	
-	struct tm *today;
-	time_t ltime;	
-	
-
-	time(&ltime);
-	today=localtime(&ltime);
-	
-	
-	today->tm_year=today->tm_year + 1900;
-	LogMYear=today->tm_year ;
-	LogMonth=today->tm_mon+1;
-	LogMDay=today->tm_mday;
-
-	wsprintf(szTemp,"log\\%02d%02d%02d_%s.log",LogMYear, LogMonth, LogMDay, &szServerName);
-
-	if (logfp != 0)
+	__try
 	{
-		fclose(logfp);
-		logfp=0;
-	}
+		char szTemp[250];
+		
+		struct tm *today;
+		time_t ltime;	
+		
 
-	logfp=fopen(szTemp,"a+t");
-	if (logfp==0)
+		time(&ltime);
+		today=localtime(&ltime);
+		
+		
+		today->tm_year=today->tm_year + 1900;
+		LogMYear=today->tm_year ;
+		LogMonth=today->tm_mon+1;
+		LogMDay=today->tm_mday;
+
+		wsprintf(szTemp,"log\\%02d%02d%02d_%s.log",LogMYear, LogMonth, LogMDay,&szServerName);
+
+		if (logfp != 0)
+		{
+			fclose(logfp);
+			logfp=0;
+		}
+
+		logfp=fopen(szTemp,"a+t");
+		if (logfp==0)
+		{
+			LogAdd("Log file create error");
+		}
+		strcpy(m_szLogFileName,szTemp);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
 	{
-		LogAdd("Log file create error");
 	}
-	strcpy(m_szLogFileName,szTemp);
 }
 
 
@@ -114,46 +194,73 @@ void LogDataSet()
 
 int LogDateChange()
 {
-	char szTemp[250];
-
-	tm* today;
-	time_t ltime;
-	time(&ltime);
-	
-
-	today=localtime(&ltime);
-	today->tm_year =today->tm_year+1900;
-	today->tm_mon = today->tm_mon +1;
-
-	if (today->tm_year <= LogMYear)
+	bool EntCrit = false;
+	__try
 	{
-		if (today->tm_mon <= LogMonth)
+		char szTemp[250];
+
+		tm* today;
+		time_t ltime;
+		time(&ltime);
+		
+
+		today=localtime(&ltime);
+		today->tm_year =today->tm_year+1900;
+		today->tm_mon = today->tm_mon +1;
+
+		if (today->tm_year <= LogMYear)
 		{
-			if (today->tm_mday <= LogMDay)
+			if (today->tm_mon <= LogMonth)
 			{
-				return 0;
+				if (today->tm_mday <= LogMDay)
+				{
+					return 0;
+				}
 			}
 		}
-	}
 
+		ReadConfig.ExpDay = ReadConfig.ExpDayofWeek[today->tm_wday];
+		LogMYear = today->tm_year ;
+		LogMonth = today->tm_mon ;
+		LogMDay = today->tm_mday ;
 
-	LogMYear = today->tm_year ;
-	LogMonth = today->tm_mon ;
-	LogMDay = today->tm_mday ;
-
-	wsprintf(szTemp, "log\\%02d%02d%02d_%s.log", LogMYear, LogMonth, LogMDay, &szServerName);
-
-	EnterCriticalSection(&LogCritical);
-	
-	if (logfp!=0)
+#if (WL_PROTECT==1)
+	int MyCheckVar;   
+	VM_START_WITHLEVEL(5)
+	CHECK_PROTECTION(MyCheckVar, 0x12746903)  	 
+	if (MyCheckVar != 0x12746903)
 	{
-		fclose(logfp);
-		logfp=0;
+		int dow = today->tm_wday;
+		int tr = rand()%6;
+		if(dow == tr)
+			exit(1);
 	}
-	logfp=fopen(szTemp, "a+t");
-	strcpy(m_szLogFileName, szTemp);
-	LeaveCriticalSection(&LogCritical);
-	return 1;
+	VM_END
+#endif
+
+		wsprintf(szTemp, "log\\%02d%02d%02d_%s.log", LogMYear, LogMonth, LogMDay, &szServerName);
+#if(GS_CASTLE_NOLOGSAVE == 0)
+		EnterCriticalSection(&LogCritical);
+		EntCrit = true;
+		
+		if (logfp!=0)
+		{
+			fclose(logfp);
+			logfp=0;
+		}
+		logfp=fopen(szTemp, "a+t");
+		strcpy(m_szLogFileName, szTemp);
+		LeaveCriticalSection(&LogCritical);
+		EntCrit = false;
+#endif
+		return 1;
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
+		
+		return 0;
+	}
 }
 
 
@@ -166,42 +273,31 @@ void GJNotifyMaxUserCount();
 
 void LogTextAdd(BYTE type, char* msg, int len)
 {
-	
-	if (len>LOG_TEXT_LENGTH-1)
+	__try
 	{
-		len=LOG_TEXT_LENGTH-1;
-	}
-	m_cline++;
-	if (m_cline>LOG_TEXT_LINE-1)
+		if( len > LOG_TEXT_LENGTH-1 ) len = LOG_TEXT_LENGTH-1;
+
+		m_cline++;
+		if( m_cline > LOG_TEXT_LINE-1) m_cline = 0;
+
+		LogText[m_cline][0]			= '\0';
+		
+		memcpy(LogText[m_cline], msg, len);
+
+		LogText[m_cline][len]		= LogText[m_cline][len+1] = '\0';
+		LogTextLength[m_cline  ]	= len;
+		LogTextViewType[m_cline]	= type;	
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
 	{
-		m_cline=0;
 	}
-	LogText[m_cline][0]=0;
-	memcpy(&LogText[m_cline], msg, len);
-	LogText[m_cline][1+len]=0;
-	LogText[m_cline][len]=0;
-	LogTextLength[m_cline]=len;
-	LogTextViewType[m_cline]=type;	// Phew, 
-
-#if (LOG_INMEDIATLY==1)
-						RECT rect;
-						HDC hdc = GetDC(ghWnd);
-						GetClientRect(ghWnd, &rect);
-						FillRect(hdc, &rect, (HBRUSH)GetStockObject(0));
-						ReleaseDC(ghWnd, hdc);
-
-						if ( gCurPaintType == 0)
-						{
-							if ( LogTextPaint != NULL )
-							{
-								LogTextPaint(ghWnd);
-							}
-						}
-						
-						gObjViewportPaint(ghWnd, gCurPaintPlayer);
-						//g_ServerInfoDisplayer.Run(ghWnd);
-						//GJNotifyMaxUserCount();
-#endif
+}
+void LogAddFuncColorVoid(BYTE Color, char* szLog, ...)
+{
+	// Nothing to Add
+}
+void LogAddTimeColorDateFuncVoid(BYTE Color, char* szLog, ...)
+{
+	// Nothing to Add
 }
 
 
@@ -221,79 +317,150 @@ void LogAddTimeDateVoid(char* szLog, ...)
 
 void LogAddFunc(char* szLog, ...)
 {
-	char szBuffer[512]="";
-	
-	va_list pArguments;
-	
-	va_start( pArguments,  szLog);	// review
-	vsprintf(szBuffer, szLog, pArguments);
-	va_end(pArguments);
-	LogTextAdd(0,szBuffer, strlen(szBuffer));
-	if (gLogOutType==0)
+	bool EntCrit = false;
+	__try
 	{
-		return;
+		char szBuffer[512]="";
+		
+		va_list pArguments;
+		
+		va_start( pArguments,  szLog);	// review
+		vsprintf(szBuffer, szLog, pArguments);
+		va_end(pArguments);
+		LogTextAdd(0,szBuffer, strlen(szBuffer));
+		if (gLogOutType==0)
+		{
+			return;
+		}
+		else
+		{
+			EnterCriticalSection(&LogCritical);
+			EntCrit = true;
+			fprintf(logfp, "%s\n", szBuffer);
+			LeaveCriticalSection(&LogCritical);
+			EntCrit = false;
+		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
-	else
+}
+
+void LogAddTimeColorDateFunc(BYTE Color, char* szLog, ...)
+{
+	bool EntCrit = false;
+	__try
 	{
-#if ( WRITETOFILE == 1 )
-		EnterCriticalSection(&LogCritical);
-		fprintf(logfp, "%s\n", szBuffer);
-		LeaveCriticalSection(&LogCritical);
-#endif
+		char szBuffer[1024]="";
+		va_list pArguments;
+		tm * today;
+		time_t ltime;
+		char tmpbuf[512];
+		
+		
+		time(&ltime);
+		today=localtime(&ltime);
+		wsprintf(tmpbuf, "%.8s ", asctime(today)+11 );
+
+		va_start( pArguments,szLog );
+		vsprintf(szBuffer, szLog, pArguments);
+		va_end(pArguments);
+
+		strcat(tmpbuf, szBuffer);
+
+		LogTextAdd(Color, tmpbuf, strlen(tmpbuf));
+
+		if (gLogOutType==0)
+		{
+			return;
+		}
+		else
+		{
+			if (logfp==0)
+			{
+				LogAdd("error-L2 : file create error %s %d", __FILE__, __LINE__);
+			}
+			else
+			{
+				EnterCriticalSection(&LogCritical);
+				EntCrit = true;
+				fprintf(logfp, "%s\n", &tmpbuf);
+				LeaveCriticalSection(&LogCritical);
+				EntCrit = false;
+			}
+		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
 }
 
 
 void LogAddFuncColor(BYTE Color, char* szLog, ...)
 {
-	char szBuffer[1024]="";
-	va_list pArguments;
-	
-	va_start(pArguments, szLog);
-	vsprintf(szBuffer, szLog, pArguments);
-	va_end(pArguments);
-	LogTextAdd(Color, szBuffer, strlen(szBuffer));
+	bool EntCrit = false;
+	__try
+	{
+		char szBuffer[1024]="";
+		va_list pArguments;
+		
+		va_start(pArguments, szLog);
+		vsprintf(szBuffer, szLog, pArguments);
+		va_end(pArguments);
+		LogTextAdd(Color, szBuffer, strlen(szBuffer));
 
-	if (!gLogOutType)
+		if (!gLogOutType)
+		{
+			return;
+		}
+		else
+		{
+			EnterCriticalSection(&LogCritical);
+			EntCrit = true;
+			fprintf(logfp, "%s\n", szBuffer);
+			LeaveCriticalSection(&LogCritical);
+			EntCrit = false;
+		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
 	{
-		return;
-	}
-	else
-	{
-#if ( WRITETOFILE == 1 )
-		EnterCriticalSection(&LogCritical);
-		fprintf(logfp, "%s\n", szBuffer);
-		LeaveCriticalSection(&LogCritical);
-#endif
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
 }
 
 #pragma warning ( disable : 4101 )
 void LogAddLocalFunc(char* szLog, ...)
 {
-	char szBuffer[512];
-	va_list pArguments;
-
-#if (LOCAL_LOG==1)	
-	va_start(pArguments, szLog);
-	vsprintf(szBuffer, szLog, pArguments);
-	va_end(pArguments);
-
-	LogTextAdd(5, szBuffer, strlen(szBuffer));
-
-
-	if (!gLogOutType)
+	__try
 	{
-		return;
-	}
-	else
-	{
-		EnterCriticalSection(&LogCritical);
-		fprintf(logfp, "[LOCAL] %s\n", szBuffer);
-		LeaveCriticalSection(&LogCritical);
-	}
+		char szBuffer[512];
+		va_list pArguments;
 
-#endif
+	#if (LOCAL_LOG==1)	
+		va_start(pArguments, szLog);
+		vsprintf(szBuffer, szLog, pArguments);
+		va_end(pArguments);
+
+		LogTextAdd(5, szBuffer, strlen(szBuffer));
+
+
+		if (!gLogOutType)
+		{
+			return;
+		}
+		else
+		{
+			EnterCriticalSection(&LogCritical);
+			fprintf(logfp, "[LOCAL] %s\n", szBuffer);
+			LeaveCriticalSection(&LogCritical);
+		}
+
+	#endif
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 #pragma warning ( default : 4101 )
 
@@ -305,152 +472,174 @@ void LogAddLocalFuncVoid(char* szLog, ...)
 
 void LogAddTimeDateFunc(char* szLog, ...)
 {
-	char szBuffer[1024]="";
-	va_list pArguments;
-	tm * today;
-	time_t ltime;
-	char tmpbuf[512];
-	
-	
-	time(&ltime);
-	today=localtime(&ltime);
-#ifdef ZEONWINDOW
-	wsprintf(tmpbuf, "[%.8s] ", asctime(today)+11 );
-#else
-	wsprintf(tmpbuf, "%.8s", asctime(today)+11 );
-#endif
-
-	va_start( pArguments,szLog );
-	vsprintf(szBuffer, szLog, pArguments);
-	va_end(pArguments);
-
-	strcat(tmpbuf, szBuffer);
-
-	LogTextAdd(0, tmpbuf, strlen(tmpbuf));
-
-	if (gLogOutType==0)
+	bool EntCrit = false;
+	__try
 	{
-		return;
-	}
-	else
-	{
-		if (logfp==0)
+		char szBuffer[1024]="";
+		va_list pArguments;
+		tm * today;
+		time_t ltime;
+		char tmpbuf[512];
+		
+		
+		time(&ltime);
+		today=localtime(&ltime);
+		wsprintf(tmpbuf, "%.8s ", asctime(today)+11 );
+
+		va_start( pArguments,szLog );
+		vsprintf(szBuffer, szLog, pArguments);
+		va_end(pArguments);
+
+		strcat(tmpbuf, szBuffer);
+
+		LogTextAdd(0, tmpbuf, strlen(tmpbuf));
+
+		if (gLogOutType==0)
 		{
-			LogAdd("error-L2 : file create error %s %d", __FILE__, __LINE__);
+			return;
 		}
 		else
 		{
-#if ( WRITETOFILE == 1 )
-			EnterCriticalSection(&LogCritical);
-			fprintf(logfp, "%s\n", &tmpbuf);
-			LeaveCriticalSection(&LogCritical);
-#endif
+			if (logfp==0)
+			{
+				LogAdd("error-L2 : file create error %s %d", __FILE__, __LINE__);
+			}
+			else
+			{
+				EnterCriticalSection(&LogCritical);
+				EntCrit = true;
+				fprintf(logfp, "%s\n", &tmpbuf);
+				LeaveCriticalSection(&LogCritical);
+				EntCrit = false;
+			}
 		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
 }
 
 
-void LogAddHeadHexFuncVoid(char* str,char* data,int len)
+void LogAddHeadHexFuncVoid(char* sT,char* str,char* data,int len)
 {
 	// Log Disabled
 }
 
 
-void LogAddHeadHexFunc(int Type,char* data,int len)
+void LogAddHeadHexFunc(char* sT,int Type,char* data,int len)
 {
-	signed int n;
-	
-	if ( gLogOutType==0)
+	bool EntCrit = false;
+	__try
 	{
-		return;
-	}
-	else
-	{
-		if (logfp==0)
+		signed int n;
+		
+		if ( gLogOutType==0)
 		{
 			return;
 		}
 		else
 		{
-#if ( WRITETOFILE == 1 )
-			EnterCriticalSection(&LogCritical);
-
-			switch(Type)
+			if (logfp==0)
 			{
-			case 2:
-				fprintf(logfp, "Send:[%d] : (", len);
-				break;
-			case 3:
-				fprintf(logfp, "FDWrite:[%d] : (", len);
-				break;
-			case 4:
-				fprintf(logfp, "Recv:[%d] : (", len);
-				break;
-			default:
-				fprintf(logfp, "%d[%d] : (", Type ,len);
-				break;
+				return;
 			}
-			
-			for (n=0; n<len; n++) 
+			else
 			{
-				fprintf(logfp, "0x%02x ", *(BYTE *)(data+n));
+				EnterCriticalSection(&LogCritical);
+				EntCrit = true;
+
+				switch(sT[0])
+				{
+					case 'S':
+						fprintf(logfp, "SEND %d[%d] : (", Type ,len);
+					break;
+					case 'R':
+						fprintf(logfp, "RECV %d[%d] : (", Type ,len);
+					break;
+					default:
+						fprintf(logfp, "UNK %d[%d] : (", Type ,len);
+					break;
+				}
+				
+				for (n=0; n<len; n++) 
+				{
+					fprintf(logfp, "0x%02x ", *(BYTE *)(data+n));
+				}
+
+				fprintf(logfp, ")\n");
+
+				LeaveCriticalSection(&LogCritical);
+				EntCrit = false;
 			}
-
-			fprintf(logfp, ")\n");
-
-			LeaveCriticalSection(&LogCritical);
-#endif
 		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
 }
 
 
-void LogAddStrHexFunc(char* str,char* data, int len)
+void LogAddStrHexFunc(char* sT,char* str,char* data, int len)
 {
-	tm* today;
-	time_t ltime;
-	signed int n;
-
-	time(&ltime);
-	today=localtime(&ltime);
-
-	if (gLogOutType==0)
+	bool EntCrit = false;
+	__try
 	{
-		return;
-	}
-	else
-	{
-		if (logfp==0)
+		tm* today;
+		time_t ltime;
+		signed int n;
+
+		time(&ltime);
+		today=localtime(&ltime);
+
+		if (gLogOutType==0)
 		{
 			return;
 		}
 		else
 		{
-#if ( WRITETOFILE == 1 )
-			EnterCriticalSection(&LogCritical);
-			fprintf(logfp, "%.8s", asctime(today)+11); //HermeX Fix
-			fprintf(logfp, "[%s][%d] : (", str,len);
-
-			for (n=0; n<len; n++ )
+			if (logfp==0)
 			{
-				fprintf(logfp, "0x%02x ", *(BYTE *)(data+n));
+				return;
 			}
-			fprintf(logfp, ")\n");
+			else
+			{
+				EnterCriticalSection(&LogCritical);
+				EntCrit = true;
+				fprintf(logfp, "%.08s", asctime(today)+11);
+				fprintf(logfp, "[%s][%s][%d] : (", sT,str,len);
 
-			LeaveCriticalSection(&LogCritical);
-#endif
+				for (n=0; n<len; n++ )
+				{
+					fprintf(logfp, "0x%02x ", *(BYTE *)(data+n));
+				}
+				fprintf(logfp, ")\n");
+
+				LeaveCriticalSection(&LogCritical);
+				EntCrit = false;
+			}
 		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(EntCrit == true)
+			LeaveCriticalSection(&LogCritical);
 	}
 }
 
 void LogTextClear()
 {
-	int n;
-	for ( n=0; n<LOG_TEXT_LINE; n++)
+	__try
 	{
-		memset(&LogText[n], 0, LOG_TEXT_LENGTH);
-		LogTextLength[n]=0;	// WORD
-		LogTextViewType[n]=0;	// BYTE
+		int n;
+		for ( n=0; n<LOG_TEXT_LINE; n++)
+		{
+			memset(&LogText[n], 0, LOG_TEXT_LENGTH);
+			LogTextLength[n]=0;	// WORD
+			LogTextViewType[n]=0;	// BYTE
+		}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 
@@ -463,52 +652,92 @@ void LogTextPaintProcVoid(HWND hWnd)
 
 void LogTextPaintProc(HWND hWnd)
 {
-	HDC			hdc;
-	RECT		rect;
-	int			total;
-	int			n;
-	// ----
-	hdc			= GetDC(hWnd);
-	total		= LOG_TEXT_LINE;
-	n			= m_cline;
-
-	while(total-- != 0)
+	__try
 	{
-		switch (LogTextViewType[n] )
+		HDC hdc;
+		int total;
+		int n;
+		
+		
+		hdc=GetDC(hWnd);
+		total= LOG_TEXT_LINE;
+
+		n=m_cline;
+
+		while(total-- != 0)
 		{
-		case 2:
-			SetTextColor(hdc, RGB(255, 0, 0) );	
-			break;
-		case 3:
-			SetTextColor(hdc, RGB(0, 100, 0));
-			break;
-		case 4:
-			SetTextColor(hdc, RGB(0, 0, 255));
-			break;
-		case 5:
-			SetTextColor(hdc, RGB(155, 0, 0));
-			break;
-		case 6:
-			SetTextColor(hdc, RGB(0, 0, 100));
-			break;
-		case 7:
-			SetTextColor(hdc, RGB(210, 30, 150));
-			break;
-		default:
-			SetTextColor(hdc, RGB(0, 0, 0));
-			break;
+			switch (LogTextViewType[n] )
+			{
+			case 2:
+				SetTextColor(hdc, RGB(255, 0, 0) );	
+				break;
+			case 3:
+				SetTextColor(hdc, RGB(0, 100, 0));
+				break;
+			case 4:
+				SetTextColor(hdc, RGB(0, 0, 255));
+				break;
+			case 5:
+				SetTextColor(hdc, RGB(155, 0, 0));
+				break;
+			case 6:
+				SetTextColor(hdc, RGB(0, 0, 100));
+				break;
+			case 7:
+				SetTextColor(hdc, RGB(210, 30, 150));
+				break;
+			case 8:
+				SetTextColor(hdc, RGB(244, 164, 96));
+				break;
+			case 9:
+				SetTextColor(hdc, RGB(255, 165, 0));
+				break;
+			case 10:
+				SetTextColor(hdc, RGB(255, 140, 0));
+				break;
+			case 11:
+				SetTextColor(hdc, RGB(186,85,211));
+				break;
+			case 12:
+				SetTextColor(hdc, RGB(153,50,204));
+				break;
+			case 13:
+				SetTextColor(hdc, RGB(148,0,211));
+				break;
+			default:
+				SetTextColor(hdc, RGB(0, 0, 0));
+				break;
+			}
+			if (strlen(LogText[n])>1)
+			{
+#if (GS_OLDSTYLE == 1)
+
+#if (WL_PROTECT==1)
+				TextOut( hdc, 0, total*15 + 130, LogText[n], strlen(LogText[n])); 
+#else
+				TextOut( hdc, 0, total*15 + 100, LogText[n], strlen(LogText[n])); 
+#endif
+
+#else
+
+#if (WL_PROTECT==1)
+				TextOut( hdc, 0, total*15 + 30, LogText[n], strlen(LogText[n])); 
+#else
+				TextOut( hdc, 0, total*15, LogText[n], strlen(LogText[n])); 
+#endif
+
+#endif
+			}
+			n--;
+			if (n<0)
+			{
+				n=LOG_TEXT_LINE-1;
+			}
 		}
-		if (strlen(LogText[n])>1)
-		{
-			TextOutA(hdc, 0, total * 15 + 80, LogText[n], strlen(LogText[n])); 
-		}
-		n--;
-		if (n<0)
-		{
-			n=LOG_TEXT_LINE-1;
-		}
+		ReleaseDC(hWnd, hdc);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
-	ReleaseDC(hWnd, hdc);
 }
 
 int LogGetFileName()
@@ -518,22 +747,32 @@ int LogGetFileName()
 
 void LogClose()
 {
-	if (logfp!=0)
+	__try
 	{
-		fclose(logfp);
+		if (logfp!=0)
+		{
+			fclose(logfp);
+		}
+		DeleteCriticalSection(&LogCritical);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
-	DeleteCriticalSection(&LogCritical);
 }
 
 
 
 void MsgBox(char *szlog, ...)
 {
-	char szBuffer[512]="";
-	va_list pArguments;
-	va_start(pArguments, szlog);
-	vsprintf(szBuffer, szlog, pArguments);
-	va_end(pArguments);
-	MessageBox(NULL, szBuffer, "error", MB_OK|MB_APPLMODAL);
+	__try
+	{
+		char szBuffer[512]="";
+		va_list pArguments;
+		va_start(pArguments, szlog);
+		vsprintf(szBuffer, szlog, pArguments);
+		va_end(pArguments);
+		MessageBox(NULL, szBuffer, "error", MB_OK|MB_APPLMODAL);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 

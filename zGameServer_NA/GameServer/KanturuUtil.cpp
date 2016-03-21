@@ -1,5 +1,5 @@
 // KanturuUtil.cpp: implementation of the CKanturuUtil class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x005845B0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -11,6 +11,8 @@
 
 #include "logproc.h"
 #include "..\common\winutil.h"
+
+#if (GS_CASTLE==0)
 
 CKanturuUtil g_KanturuUtil; 
 //////////////////////////////////////////////////////////////////////
@@ -134,6 +136,11 @@ struct PMSG_NOTIFY_KANTURU_WIDE_AREA_ATTACK
 
 void CKanturuUtil::NotifyKanturuWideAreaAttack(int iIndex, int iTargetIndex, int iSkillType)
 {
+	if(OBJMAX_RANGE(iIndex) == 0)
+	{
+		return;
+	}
+
 	PMSG_NOTIFY_KANTURU_WIDE_AREA_ATTACK pMsg;
 
 	PHeadSubSetB((LPBYTE)&pMsg, 0xD1, 0x06, sizeof(pMsg));
@@ -169,6 +176,8 @@ void CKanturuUtil::NotifyKanturuUserMonsterCount(int iMonsterCount, int iUserCou
 
 void CKanturuUtil::SendMsgKanturuBattleUser(LPSTR lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -180,17 +189,18 @@ void CKanturuUtil::SendMsgKanturuBattleUser(LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	TNotice::MakeNoticeMsg(&pNotice, 0, szBuffer);
 
 	int iUserIndex = 0;
 
 	for ( int iCount=0;iCount<MAX_KANTURU_BATTLE_USER;iCount++)
 	{
-		if( g_KanturuBattleUserMng.m_BattleUser[iCount].GetIndex() == 0)//Season 4.5 addon
-		{
-			continue;
-		}
-
 		iUserIndex = g_KanturuBattleUserMng.m_BattleUser[iCount].GetIndex();
 
 		if ( gObj[iUserIndex].Connected == PLAYER_PLAYING &&
@@ -198,6 +208,9 @@ void CKanturuUtil::SendMsgKanturuBattleUser(LPSTR lpszMsg, ...)
 		{
 			TNotice::SendNoticeToUser(iUserIndex, &pNotice);
 		}
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 
@@ -208,11 +221,6 @@ void CKanturuUtil::SendDataKanturuBattleUser(LPBYTE lpMsg, int iSize)
 
 	for ( int iCount=0;iCount<MAX_KANTURU_BATTLE_USER;iCount++)
 	{
-		if( g_KanturuBattleUserMng.m_BattleUser[iCount].GetIndex() == 0)//Season 4.5 addon
-		{
-			continue;
-		}
-
 		iUserIndex = g_KanturuBattleUserMng.m_BattleUser[iCount].GetIndex();
 
 		if ( gObj[iUserIndex].Connected == PLAYER_PLAYING &&
@@ -227,6 +235,8 @@ void CKanturuUtil::SendDataKanturuBattleUser(LPBYTE lpMsg, int iSize)
 
 void CKanturuUtil::SendMsgKauturuBossMapUser(LPSTR lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -238,6 +248,12 @@ void CKanturuUtil::SendMsgKauturuBossMapUser(LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	TNotice::MakeNoticeMsg(&pNotice, 0, szBuffer);
 
 	for ( int iCount=OBJ_STARTUSERINDEX;iCount<OBJMAX;iCount++)
@@ -248,6 +264,9 @@ void CKanturuUtil::SendMsgKauturuBossMapUser(LPSTR lpszMsg, ...)
 		{
 			TNotice::SendNoticeToUser(iCount, &pNotice);
 		}
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 
@@ -270,6 +289,8 @@ void CKanturuUtil::SendDataKanturuBossMapUser(LPBYTE lpMsg, int iSize)
 
 void CKanturuUtil::SendMsgKauturuMapUser(LPSTR lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -281,6 +302,12 @@ void CKanturuUtil::SendMsgKauturuMapUser(LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	TNotice::MakeNoticeMsg(&pNotice, 0, szBuffer);
 
 	for ( int iCount=OBJ_STARTUSERINDEX;iCount<OBJMAX;iCount++)
@@ -293,6 +320,10 @@ void CKanturuUtil::SendMsgKauturuMapUser(LPSTR lpszMsg, ...)
 		{
 			TNotice::SendNoticeToUser(iCount, &pNotice);
 		}
+	}
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
 
@@ -316,6 +347,8 @@ void CKanturuUtil::SendDataKanturuMapUser(LPBYTE lpMsg, int iSize)
 
 void CKanturuUtil::SendMsgAllUser(LPSTR lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -327,9 +360,18 @@ void CKanturuUtil::SendMsgAllUser(LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	TNotice::MakeNoticeMsg(&pNotice, 0, szBuffer);
-	
 	TNotice::SendNoticeToAllUser(&pNotice);
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 
 
@@ -350,6 +392,8 @@ void CKanturuUtil::SendDataAllUser(LPBYTE lpMsg, int iSize)
 
 void CKanturuUtil::SendMsgToUser(int iIndex, LPSTR lpszMsg, ...)
 {
+	__try
+	{
 	if ( !lpszMsg )
 		return;
 
@@ -361,14 +405,28 @@ void CKanturuUtil::SendMsgToUser(int iIndex, LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	TNotice::MakeNoticeMsg(&pNotice, 0, szBuffer);
-	
 	TNotice::SendNoticeToUser(iIndex, &pNotice);
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 
 
 void CKanturuUtil::SendDataToUser(int iIndex, LPBYTE lpMsg, int iSize)
 {
+	if(OBJMAX_RANGE(iIndex) == 0)
+	{
+		return;
+	}
+
 	if ( gObj[iIndex].Connected == PLAYER_PLAYING &&
 		 gObj[iIndex].Type == OBJ_USER )
 	{
@@ -376,51 +434,13 @@ void CKanturuUtil::SendDataToUser(int iIndex, LPBYTE lpMsg, int iSize)
 	}
 }
 
-//Season 4.5 - identical
-void CKanturuUtil::SendKanturuChattingMsg(int iIndex, LPSTR lpMsg, ...) 
-{
-	#if(TESTSERVER==0)
-	return;
-	#endif
-
-	if ( !lpMsg )
-	{
-		return;
-	}
-
-	LPOBJ lpObj = &gObj[iIndex];
-	char szBuffer[512] = "";
-	va_list pArguments;
-
-	va_start(pArguments, lpMsg);
-	vsprintf(szBuffer, lpMsg, pArguments);
-	va_end(pArguments);
-
-	char szChat[MAX_CHAT_LEN] = {0};
-	memcpy(szChat, szBuffer, sizeof(szChat)-1);
-
-	for(int i=0;i<MAX_VIEWPORT_MONSTER;i++)
-	{
-		if ( lpObj->VpPlayer2[i].state )
-		{
-			int iTargetNumber = lpObj->VpPlayer2[i].number;
-
-			if ( iTargetNumber >= 0 || iTargetNumber < OBJMAX)
-			{
-				ChatTargetSend(lpObj, szChat, iTargetNumber);
-			}
-		}
-	}
-}
-
-
 
 struct PMSG_REQ_LOG_KANTURU_TIMEATTACK_EVENT
 {
 	PBMSG_HEAD h;	// C1:22:00
 	short nINDEX;	// 4
-	char szUID[11];	// 6
-	char szNAME[11];	// 11
+	char szUID[10];	// 6
+	char szNAME[10];	// 11
 	unsigned short wServerCode;	// 1C
 	char szBattleID[14];	// 1E
 	BYTE btStageNumber;	// 2C
@@ -430,4 +450,41 @@ struct PMSG_REQ_LOG_KANTURU_TIMEATTACK_EVENT
 };
 
 
+void CKanturuUtil::SendDataKanturuTimeAttackEvent(int iIndex, BYTE btFlag, int iClearTime)
+{
+	if(OBJMAX_RANGE(iIndex) == 0)
+	{
+		return;
+	}
 
+	PMSG_REQ_LOG_KANTURU_TIMEATTACK_EVENT pMsg = {0};
+
+	PHeadSubSetB((LPBYTE)&pMsg, 0x22, 0x00, sizeof(pMsg));
+	pMsg.nINDEX = iIndex;
+	memcpy(pMsg.szUID, gObj[iIndex].AccountID, MAX_ACCOUNT_LEN);
+	pMsg.szUID[10] = '\0';	// #error Change 11 to 10
+	memcpy(pMsg.szNAME, gObj[iIndex].Name, MAX_ACCOUNT_LEN);
+	pMsg.szNAME[10] = '\0';	// #error Change 11 to 10
+	pMsg.wServerCode = gGameServerCode / 20;	// #warning Change the 20 for a posible macro of MapServerInfo
+
+	char szKanturuBattleDate[14];
+	memset(szKanturuBattleDate, 0, sizeof(szKanturuBattleDate));
+
+	wsprintf(szKanturuBattleDate, "%d%03d%02d",
+		g_Kanturu.GetKanturuBattleDate()/* 8 BYTE */, gGameServerCode,
+		g_Kanturu.GetKanturuBattleCounter());
+	
+	memcpy(pMsg.szBattleID, szKanturuBattleDate, sizeof(szKanturuBattleDate));
+	pMsg.btStageNumber = btFlag;
+	pMsg.wClearTime = iClearTime;
+	pMsg.iLevel = gObj[iIndex].Level;
+	pMsg.iExp = gObj[iIndex].Experience;
+
+	LogAddTD("[Kanturu][TimeAttackEvent] [%s][%s] %d/BattleID:%s, StageNum:%d, ClearTime:%d, Level:%d(%d)",
+		pMsg.szUID, pMsg.szNAME, pMsg.wServerCode, pMsg.szBattleID, pMsg.btStageNumber,
+		pMsg.wClearTime, pMsg.iLevel, pMsg.iExp);
+
+	DataSendEventChip((PCHAR)&pMsg, sizeof(pMsg));
+}
+
+#endif

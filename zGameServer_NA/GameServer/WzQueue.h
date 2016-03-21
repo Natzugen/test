@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #ifndef WZQUEUE_H
 #define WZQUEUE_H
 

@@ -33,20 +33,7 @@ struct SDHP_GUILDCREATE_RESULT
 	unsigned char btGuildType;	//	42
 };
 
-struct FHP_FRIEND_MEMO_SEND
-{
-	PWMSG_HEAD h;
-	short Number;	// 4
-	DWORD WindowGuid;	// 8
-	char Name[10];	// C
-	char ToName[10];	// 16
-	char Subject[32];	// 20
-	BYTE Dir;	// 40
-	BYTE Action;	// 41
-	short MemoSize;	// 42
-	BYTE Photo[18];	// 44
-	char Memo[1000];	// 56
-};
+
 
 struct SDHP_GUILDDESTROY_RESULT
 {
@@ -131,7 +118,7 @@ struct SDHP_GUILDNOTICE
 {
 	PBMSG_HEAD h;	//	
 	char GuildName[9];	//	3
-	char szGuildNotice[MAX_CHAT_LEN_OLD];	//	C
+	char szGuildNotice[60];	//	C
 };
 
 
@@ -170,7 +157,7 @@ struct EXSDHP_SERVERGROUP_GUILD_CHATTING_RECV
 	PBMSG_HEAD h;	//	
 	int iGuildNum;	//	4
 	char szCharacterName[10];	//	8
-	char szChattingMsg[MAX_CHAT_LEN];	//	12
+	char szChattingMsg[60];	//	12
 };
 
 
@@ -181,7 +168,7 @@ struct EXSDHP_SERVERGROUP_UNION_CHATTING_RECV
 	PBMSG_HEAD h;	//	
 	int iUnionNum;	//	4
 	char szCharacterName[10];	//	8
-	char szChattingMsg[MAX_CHAT_LEN];	//	12
+	char szChattingMsg[60];	//	12
 };
 
 
@@ -409,12 +396,26 @@ struct PMSG_FRIEND_MEMO
 	PWMSG_HEAD h;	//	
 	unsigned long WindowGuid;	//	4
 	char Name[10];	//	8
+	char Subject[32];	//	12
+	unsigned char Dir;	//	32
+	unsigned char Action;	//	33
+	short MemoSize;	//	34
+	char Memo[1000];	//	36
+};
+
+
+struct PMSG_FRIEND_MEMO_ENG
+{
+	PWMSG_HEAD h;	//	
+	unsigned long WindowGuid;	//	4
+	char Name[10];	//	8
 	char Subject[60];	//	12
 	unsigned char Dir;	//	32
 	unsigned char Action;	//	33
 	short MemoSize;	//	34
 	char Memo[1000];	//	36
 };
+
 
 
 
@@ -594,6 +595,7 @@ void FriendDelResult( FHP_FRIEND_DEL_RESULT* lpMsg);
 void FriendChatRoomCreateReq( PMSG_FRIEND_ROOMCREATE_REQ* lpMsg, int aIndex);
 void FriendChatRoomCreateResult( FHP_FRIEND_CHATROOM_CREATE_RESULT* lpMsg);
 void FriendMemoSend( PMSG_FRIEND_MEMO* lpMsg, int aIndex);
+void FriendMemoSend_Eng(PMSG_FRIEND_MEMO_ENG * lpMsg, int aIndex);
 void MngFriendMemoSend( PMSG_JG_MEMO_SEND* lpMsg);
 BOOL WithdrawUserMoney(LPSTR Type, struct OBJECTSTRUCT* lpObj, int Withdraw_Money);
 void FriendMemoSendResult( FHP_FRIEND_MEMO_SEND_RESULT* lpMsg);

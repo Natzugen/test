@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 #include "KanturuBattleUser.h"
 
 #define MAX_KANTURU_BATTLE_USER	15
@@ -37,12 +39,13 @@ public:
 public:
 
 	CKanturuBattleUser m_BattleUser[MAX_KANTURU_BATTLE_USER];	// 4
-	int m_iBattleUserCount;	// B8
-	int m_iBattleMaxUser;	// BC
+	BYTE m_iBattleUserCount;	// B8
+	BYTE m_iBattleMaxUser;	// BC
 
 };
 
 
 extern CKanturuBattleUserMng g_KanturuBattleUserMng;
 
+#endif
 #endif // !defined(AFX_KANTURUBATTLEUSERMNG_H__D86024AB_B505_469B_9529_6A2C9E1C67F4__INCLUDED_)

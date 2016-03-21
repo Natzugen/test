@@ -1,9 +1,9 @@
 // TMonsterSkillElementInfo.cpp: implementation of the TMonsterSkillElementInfo class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00557A00	-	Completed
 //////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 #include "TMonsterSkillElementInfo.h"
+
 #include "protocol.h"
 #include "user.h"
 
@@ -11,10 +11,6 @@
 // Construction
 //////////////////////////////////////////////////////////////////////
 
-void TMonsterSkillElementInfo::SetSkillElement(int iSkillElement)
-{
-	//
-}
 
 void TMonsterSkillElementInfo::CheckSkillElementInfoProc(LPOBJ lpObj)
 {
@@ -54,7 +50,7 @@ void TMonsterSkillElementInfo::CheckSkillElementInfoProc(LPOBJ lpObj)
 				lpObj->Life += lpObj->m_MonsterSkillElementInfo.m_iSkillElementAutoHP;
 			else
 	
-			lpObj->Life += (((float)(lpObj->Life) * (float)(lpObj->m_MonsterSkillElementInfo.m_iSkillElementAutoHP)))/100.0f;
+			lpObj->Life += lpObj->Life * lpObj->m_MonsterSkillElementInfo.m_iSkillElementAutoHP / 100.0f;
 
 			if ( lpObj->Life <0 )
 			{
@@ -81,11 +77,23 @@ void TMonsterSkillElementInfo::CheckSkillElementInfoProc(LPOBJ lpObj)
 		}
 	}
 
+	// #error Again Repeated???
 	if ( lpObj->m_MonsterSkillElementInfo.CheckAttackTime() )
 	{
 		if ( lpObj->m_MonsterSkillElementInfo.DecAttackTime() )
 		{
 			lpObj->m_MonsterSkillElementInfo.ResetAttack();
+		}
+	}
+
+	if ( lpObj->m_MonsterSkillElementInfo.CheckImmuneTime() )
+	{
+		if ( lpObj->m_MonsterSkillElementInfo.DecImmuneTime() )
+		{
+			lpObj->m_MonsterSkillElementInfo.ResetImmune();
+			//lpObj->m_ViewSkillState &= ~0x200000;
+#pragma message(" [TO FIX] !!! : Reset Immunity proper skill view state missing")
+			//GCSkillInfoSend(lpObj, 0, 0x200000);		//???
 		}
 	}
 
@@ -104,17 +112,9 @@ void TMonsterSkillElementInfo::CheckSkillElementInfoProc(LPOBJ lpObj)
 			lpObj->m_MonsterSkillElementInfo.ResetModifyStat();
 		}
 	}
-
-	if ( lpObj->m_MonsterSkillElementInfo.CheckBerserkTime() )
-	{
-		if ( lpObj->m_MonsterSkillElementInfo.DecBerserkTime() )
-		{
-			lpObj->m_MonsterSkillElementInfo.ResetBerserkTime();
-		}
-	}
 }
 
-//005E19C0 
+
 void TMonsterSkillElementInfo::Reset()
 {
 	this->ResetDefense();
@@ -125,8 +125,8 @@ void TMonsterSkillElementInfo::Reset()
 	this->ResetImmune();
 	this->ResetResist();
 	this->ResetModifyStat();
-	this->ResetBerserkTime();
 }
+
 
 void  TMonsterSkillElementInfo::ResetDefense()
 {
@@ -134,11 +134,13 @@ void  TMonsterSkillElementInfo::ResetDefense()
 	this->m_iSkillElementDefenseTime = 0;
 }
 
+
 void  TMonsterSkillElementInfo::ResetAttack()
 {
 	this->m_iSkillElementAttack = 0;
 	this->m_iSkillElementAttackTime = 0;
 }
+
 
 void  TMonsterSkillElementInfo::ResetAutoHP()
 {
@@ -147,12 +149,14 @@ void  TMonsterSkillElementInfo::ResetAutoHP()
 	this->m_iSkillElementAutoHPTime = 0;
 }
 
+
 void  TMonsterSkillElementInfo::ResetAutoMP()
 {
 	this->m_iSkillElementAutoMP = 0;
 	this->m_iSkillElementAutoMPCycle = 0;
 	this->m_iSkillElementAutoMPTime = 0;
 }
+
 
 void  TMonsterSkillElementInfo::ResetAutoAG()
 {
@@ -161,11 +165,13 @@ void  TMonsterSkillElementInfo::ResetAutoAG()
 	this->m_iSkillElementAutoAGTime = 0;
 }
 
+
 void  TMonsterSkillElementInfo::ResetImmune()
 {
 	this->m_iSkillElementImmuneNumber = 0;
 	this->m_iSkillElementImmuneTime = 0;
 }
+
 
 void  TMonsterSkillElementInfo::ResetResist()
 {
@@ -173,18 +179,15 @@ void  TMonsterSkillElementInfo::ResetResist()
 	this->m_iSkillElementResistTime = 0;
 }
 
+
 void  TMonsterSkillElementInfo::ResetModifyStat()
+
 {
 	this->m_iSkillElementModifyStat = 0;
 	this->m_iSkillElementModifyStatType = 0;
 	this->m_iSkillElementModifyStatTime = 0;
 }
 
-//005E1C00  /> \55            PUSH EBP
-void  TMonsterSkillElementInfo::ResetBerserkTime()
-{
-	this->m_iSkillElementBerserkTime = 0;
-}
 /////////////////////////////////////////////////////////
 
 BOOL  TMonsterSkillElementInfo::CheckDefenseTime()
@@ -192,49 +195,56 @@ BOOL  TMonsterSkillElementInfo::CheckDefenseTime()
 	return (this->m_iSkillElementDefense <= 0)?FALSE:TRUE;
 }
 
+
 BOOL  TMonsterSkillElementInfo::CheckAttackTime()
 {
 	return (this->m_iSkillElementAttack <= 0)?FALSE:TRUE;
 }
+
 
 BOOL  TMonsterSkillElementInfo::CheckAutoHPTime()
 {
 	return (this->m_iSkillElementAutoHPTime <= 0)?FALSE:TRUE;
 }
 
+
 BOOL  TMonsterSkillElementInfo::CheckAutoMPTime()
 {
 	return (this->m_iSkillElementAutoMPTime <= 0)?FALSE:TRUE;
 }
+
 
 BOOL  TMonsterSkillElementInfo::CheckAutoAGTime()
 {
 	return (this->m_iSkillElementAutoAGTime <= 0)?FALSE:TRUE;
 }
 
+
+BOOL  TMonsterSkillElementInfo::CheckImmuneTime()
+{
+	return (this->m_iSkillElementImmuneTime <= 0)?FALSE:TRUE;
+}
+
+
 BOOL  TMonsterSkillElementInfo::CheckResistTime()
 {
 	return (this->m_iSkillElementResistTime <= 0)?FALSE:TRUE;
 }
+
 
 BOOL  TMonsterSkillElementInfo::CheckModifyStatTime()
 {
 	return (this->m_iSkillElementModifyStatTime <= 0)?FALSE:TRUE;
 }
 
-
-//005E1D80  /> \55            PUSH EBP
-BOOL  TMonsterSkillElementInfo::CheckBerserkTime()
-{
-	return (this->m_iSkillElementBerserkTime <= 0)?FALSE:TRUE;
-}
-
 ////////////////////////////////////////////////////////////////
+
 BOOL  TMonsterSkillElementInfo::DecDefenseTime()
 {
 	this->m_iSkillElementDefense--;
 	return (this->m_iSkillElementDefense > 0)?FALSE:TRUE;
 }
+
 
 BOOL  TMonsterSkillElementInfo::DecAttackTime()
 {
@@ -242,11 +252,13 @@ BOOL  TMonsterSkillElementInfo::DecAttackTime()
 	return (this->m_iSkillElementAttack > 0)?FALSE:TRUE;
 }
 
+
 BOOL  TMonsterSkillElementInfo::DecAutoHPTime()
 {
 	this->m_iSkillElementAutoHPTime--;
 	return (this->m_iSkillElementAutoHPTime > 0)?FALSE:TRUE;
 }
+
 
 BOOL  TMonsterSkillElementInfo::DecAutoMPTime()
 {
@@ -254,11 +266,20 @@ BOOL  TMonsterSkillElementInfo::DecAutoMPTime()
 	return (this->m_iSkillElementAutoMPTime > 0)?FALSE:TRUE;
 }
 
+
 BOOL  TMonsterSkillElementInfo::DecAutoAGTime()
 {
 	this->m_iSkillElementAutoAGTime--;
 	return (this->m_iSkillElementAutoAGTime > 0)?FALSE:TRUE;
 }
+
+
+BOOL  TMonsterSkillElementInfo::DecImmuneTime()
+{
+	this->m_iSkillElementImmuneTime--;
+	return (this->m_iSkillElementImmuneTime > 0)?FALSE:TRUE;
+}
+
 
 BOOL  TMonsterSkillElementInfo::DecResistTime()
 {
@@ -266,15 +287,11 @@ BOOL  TMonsterSkillElementInfo::DecResistTime()
 	return (this->m_iSkillElementResistTime > 0)?FALSE:TRUE;
 }
 
+
 BOOL  TMonsterSkillElementInfo::DecModifyStatTime()
 {
 	this->m_iSkillElementModifyStatTime--;
 	return (this->m_iSkillElementModifyStatTime > 0)?FALSE:TRUE;
 }
 
-//005E1F70  /> \55            PUSH EBP
-BOOL  TMonsterSkillElementInfo::DecBerserkTime()
-{
-	this->m_iSkillElementBerserkTime--;
-	return (this->m_iSkillElementBerserkTime > 0)?FALSE:TRUE;
-}
+

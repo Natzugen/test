@@ -31,14 +31,7 @@
 
 
 
-/*
-struct SDHP_DBCHARINFOREQUEST
-{
-	PBMSG_HEAD h;	// C1:06
-	char AccountID[11];	// 3
-	char Name[11];	// E
-	short Number;	// 1A
-};*/
+
 
 
 
@@ -76,8 +69,6 @@ struct SDHP_IDPASSRESULT
 	int UserNumber;
 	int DBNumber;
 	char JoominNumber[13];
-	int ukn_30;//NEW
-	BYTE PcBangRoom;//NEW
 };
 
 
@@ -167,7 +158,7 @@ struct SDHP_BILLKILLUSER
 struct SDHP_OTHERJOINMSG
 {
 	struct PBMSG_HEAD h;
-	char AccountID[10];
+	char AccountID[11];
 };
 
 
@@ -292,7 +283,7 @@ struct SDHP_LOVEHEARTCREATE
 struct SDHP_NOTICE
 {
 	PBMSG_HEAD h;
-	char Notice[MAX_CHAT_LEN+1];
+	char Notice[61];
 };
 
 
@@ -308,7 +299,7 @@ struct SDHP_USER_NOTICE
 {
 	PBMSG_HEAD h;
 	char szId[10];
-	char Notice[MAX_CHAT_LEN+1];
+	char Notice[61];
 };
 
 
@@ -326,13 +317,11 @@ struct PMSG_REQ_MAPSVRMOVE
 	int iIndex;
 	char szAccountID[11];
 	char szCharName[11];
-	WORD wCurMapSvrCode;
-	WORD wDstMapSvrCode;
-	WORD wMapNumber;
-	BYTE btX;
-	BYTE btY;
-	BYTE btPcbangRoom;
-
+	unsigned short wCurMapSvrCode;
+	unsigned short wDstMapSvrCode;
+	unsigned short wMapNumber;
+	unsigned char btX;
+	unsigned char btY;
 };
 
 
@@ -387,8 +376,6 @@ struct PMSG_ANS_MAPSVRAUTH
 	int iDBNumber;
 	char cJoominNumber[13];
 	unsigned char btBlockCode;
-	int ukn_30;//NEW
-	BYTE PcBangRoom;//NEW
 };
 
 
@@ -416,6 +403,21 @@ struct PMSG_ANS_MAPSVRAUTH
 };*/
 
 
+struct SDHP_USERCONNECTION
+{
+	PBMSG_HEAD h;
+	char Id[11];
+};
+
+
+
+struct SDHP_SETGOLDCHANNELTIME
+{
+	PBMSG_HEAD h;	// C1:01
+	char AccountID[11];
+	short aIndex;
+	DWORD GoldChannelTime;
+};
 
 
 void SProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen);
@@ -447,6 +449,8 @@ void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg);
 void GJNotifyMaxUserCount();
 void JGPSendMail(PMSG_JG_MEMO_SEND * lpMsg);
 void GJUpdateMatchDBUserCharacters(LPOBJ lpObj);
+void GJPCheckUserConnection( SDHP_USERCONNECTION * lpMsg);
+void GDSendGoldChannel(int aIndex, DWORD GoldTime);
 
 
 #endif

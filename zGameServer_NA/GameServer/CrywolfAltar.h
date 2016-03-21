@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==1)
+
 #define MAX_CRYWOLF_ALTAR	5
 #define MAX_ALTAR_CONTRACTS	2
 
@@ -63,10 +65,10 @@ public:
 
 public:
 
-	int m_iAltarState;	// 0
-	int m_iAltarIndex;	// 4
-	int m_iUserIndex;	// 8
-	int m_iContractCount;	// C
+	BYTE m_iAltarState;	// 0
+	short m_iAltarIndex;	// 4
+	short m_iUserIndex;	// 8
+	BYTE m_iContractCount;	// C
 	int m_dwAppliedContractTime;	// 10
 	int m_dwValidContractTime;	// 14
 	int m_dwLastValidContractTime;	// 18
@@ -107,4 +109,5 @@ private:
 
 extern CCrywolfAltar g_CrywolfNPC_Altar;
 
+#endif
 #endif // !defined(AFX_CRYWOLFALTAR_H__4D5C2361_CB6E_4B57_8509_CB4BD40525D7__INCLUDED_)

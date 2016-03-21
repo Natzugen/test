@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 #include "KanturuStateInfo.h"
 
 
@@ -64,8 +66,9 @@ private:
 	BOOL m_bIsUseTowerOfRefinement;	// C
 	BOOL m_bFileDataLoad;	// 10
 	CKanturuStateInfo m_StateInfo[KANTURU_TOWER_OF_REFINEMENT_STATE_INFO];	// 14
-	int m_StateInfoCount;	// 8C
+	short m_StateInfoCount;	// 8C
 
 };
 
+#endif
 #endif // !defined(AFX_KANTURUTOWEROFREFINEMENT_H__5A9FF48E_75EB_42CC_9E98_D70BD55A4064__INCLUDED_)

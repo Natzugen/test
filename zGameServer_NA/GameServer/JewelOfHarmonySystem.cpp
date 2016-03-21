@@ -1,4 +1,6 @@
-//1.01.00 ok
+// JewelOfHarmonySystem.cpp: implementation of the CJewelOfHarmonySystem class.
+//	GS-N	1.00.18	JPN	0x00571D60	-	Completed
+//////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "JewelOfHarmonySystem.h"
@@ -8,10 +10,16 @@
 #include "..\include\Readscript.h"
 #include "..\common\winutil.h"
 #include "DSProtocol.h"
-#include "MixSystem.h"
-#include "LuckyItem.h"
+#include "ChaosBox.h"
+
+#include "MuItemShop.h"
+#include "CrywolfSync.h"
+#include "Crywolf.h"
 
 CJewelOfHarmonySystem g_kJewelOfHarmonySystem;
+
+#include "LogToFile.h"
+extern CLogToFile CHAOS_LOG;
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -29,36 +37,39 @@ CJewelOfHarmonySystem::~CJewelOfHarmonySystem()
 }
 
 
-//00637080	-> OK (need check memset)
+
 void CJewelOfHarmonySystem::_InitOption()
 {
-	this->JEWEL_OF_HARMONY_ITEMINDEX			= ITEMGET(14,41);
-	this->JEWEL_OF_HARMONY_PURITY_ITEMINDEX		= ITEMGET(14,42);
-	this->JEWEL_OF_HARMONY_SMELT_NOR_ITEMINDEX	= ITEMGET(14,43);
-	this->JEWEL_OF_HARMONY_SMELT_EXT_ITEMINDEX	= ITEMGET(14,44);
+	this->JEWEL_OF_HARMONY_ITEMINDEX = ITEMGET(14,41);
+	this->JEWEL_OF_HARMONY_PURITY_ITEMINDEX = ITEMGET(14,42);
+	this->JEWEL_OF_HARMONY_SMELT_NOR_ITEMINDEX = ITEMGET(14,43);
+	this->JEWEL_OF_HARMONY_SMELT_EXT_ITEMINDEX = ITEMGET(14,44);
 
-	memset(this->m_itemOption, 0, sizeof(this->m_itemOption));	//0x5300
+	memset(this->m_itemOption, 0, sizeof(this->m_itemOption));
 
-	this->m_bSystemPrutiyJewel = GetPrivateProfileInt("GameServerInfo", "PurityHarmonyJewel", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_bSystemMixSmeltingStone = GetPrivateProfileInt("GameServerInfo", "MixSmeltingStoneItem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_bSystemRestoreStrengthen = GetPrivateProfileInt("GameServerInfo", "RestoreStrengthenItem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_bSystemStrengthenItem = GetPrivateProfileInt("GameServerInfo", "StrengthenItem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_bSystemSmeltingItem = GetPrivateProfileInt("GameServerInfo", "SmeltItemBySmeltingStone", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRatePuritySuccess = GetPrivateProfileInt("GameServerInfo", "PuritySuccessRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iZenForPurity = GetPrivateProfileInt("GameServerInfo", "PurityNeedZen", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateMixSmeltingStoneNor = GetPrivateProfileInt("GameServerInfo", "SmeltingStoneSuccesRateNormal", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateMixSmeltingStoneExt = GetPrivateProfileInt("GameServerInfo", "SmeltingStoneSuccesRateExcellent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iZenForMixSmeltingStone = GetPrivateProfileInt("GameServerInfo", "SmeltingNeedZen", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateStrengthenSuccess = GetPrivateProfileInt("GameServerInfo", "StrengthenSuccessRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateSmeltingSuccessNor = GetPrivateProfileInt("GameServerInfo", "SmeltingItemSuccessRateNor", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateSmeltingSuccessExt = GetPrivateProfileInt("GameServerInfo", "SmeltingItemSuccessRateExt", 0, gDirPath.GetNewPath("commonserver.cfg"));
+	this->m_bSystemPrutiyJewel = GetPrivateProfileInt("GameServerInfo", "PurityHarmonyJewel", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_bSystemMixSmeltingStone = GetPrivateProfileInt("GameServerInfo", "MixSmeltingStoneItem", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_bSystemRestoreStrengthen = GetPrivateProfileInt("GameServerInfo", "RestoreStrengthenItem", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_bSystemStrengthenItem = GetPrivateProfileInt("GameServerInfo", "StrengthenItem", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_bSystemSmeltingItem = GetPrivateProfileInt("GameServerInfo", "SmeltItemBySmeltingStone", 0, ReadConfig.ConnDataFiles[0]);
+
+	this->m_iRatePuritySuccess = GetPrivateProfileInt("GameServerInfo", "PuritySuccessRate", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iZenForPurity = GetPrivateProfileInt("GameServerInfo", "PurityNeedZen", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateMixSmeltingStoneNor = GetPrivateProfileInt("GameServerInfo", "SmeltingStoneSuccesRateNormal", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateMixSmeltingStoneExt = GetPrivateProfileInt("GameServerInfo", "SmeltingStoneSuccesRateExcellent", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iZenForMixSmeltingStone = GetPrivateProfileInt("GameServerInfo", "SmeltingNeedZen", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateStrengthenSuccess = GetPrivateProfileInt("GameServerInfo", "StrengthenSuccessRate", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateSmeltingSuccessNor = GetPrivateProfileInt("GameServerInfo", "SmeltingItemSuccessRateNor", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateSmeltingSuccessExt = GetPrivateProfileInt("GameServerInfo", "SmeltingItemSuccessRateExt", 0, ReadConfig.ConnDataFiles[0]);
 }
 
-//006373a0	-> OK
+
+
+
 BOOL CJewelOfHarmonySystem::LoadScript(LPSTR lpszFileName)
 {
 	SMDToken Token;
-	SMDFile = fopen(lpszFileName, "r");	//ok
+	SMDFile = fopen(lpszFileName, "r");
 
 	if ( SMDFile == NULL )
 		return FALSE;
@@ -101,7 +112,7 @@ BOOL CJewelOfHarmonySystem::LoadScript(LPSTR lpszFileName)
 				Token = (SMDToken)GetToken();
 				p->iRequireLevel = TokenNumber;
 
-				for ( int i=0;i<MAX_JOH_ITEM_OPTION;i++)	//OK
+				for ( int i=0;i<MAX_JOH_ITEM_OPTION;i++)
 				{
 					Token = (SMDToken)GetToken();
 					p->iItemEffectValue[i] = TokenNumber;
@@ -114,17 +125,15 @@ BOOL CJewelOfHarmonySystem::LoadScript(LPSTR lpszFileName)
 			}
 		}
 	}
-	// ----
-	fclose(SMDFile); //wz mistake, fixed
-	// ----
+	fclose(SMDFile);
 	return TRUE;
 }
 
-//00637a00	-> OK
+
 BOOL CJewelOfHarmonySystem::LoadScriptOfSmelt(LPSTR lpszFileName)
 {
 	SMDToken Token;
-	SMDFile = fopen(lpszFileName, "r");	//ok
+	SMDFile = fopen(lpszFileName, "r");
 
 	if ( SMDFile == NULL )
 		return FALSE;
@@ -155,7 +164,10 @@ BOOL CJewelOfHarmonySystem::LoadScriptOfSmelt(LPSTR lpszFileName)
 					}
 				}
 
+				char itemDesc[30] = {0};
+
 				Token = (SMDToken)GetToken();
+				strcpy(itemDesc, TokenString);
 
 				Token = (SMDToken)GetToken();
 
@@ -163,17 +175,22 @@ BOOL CJewelOfHarmonySystem::LoadScriptOfSmelt(LPSTR lpszFileName)
 				int idx = ITEMGET(Type, index);
 
 				this->m_mapEnableMixList[idx]= reqLev;
+
+				LogAddTD("[JewelOfHarmony][Smelt Load] ID: %d(%d,%d) Req Lvl: %d Mix Item: %s",
+					idx, Type, index,
+					reqLev,
+					itemDesc
+				);
 			}
 		}
 	}
-	// ----
-	fclose(SMDFile);//wz mistake, fixed
-	// ----
+
+	fclose(SMDFile);
 	return TRUE;
 }
 
 
-//00637b50	-> OK
+
 BOOL CJewelOfHarmonySystem::IsJewelOfHarmonyOriginal(short type)
 {
 	BOOL bRet = FALSE;
@@ -185,7 +202,7 @@ BOOL CJewelOfHarmonySystem::IsJewelOfHarmonyOriginal(short type)
 }
 
 
-//00637b90	-> OK
+
 BOOL CJewelOfHarmonySystem::IsJewelOfHarmonyPurity(short type)
 {
 	BOOL bRet = FALSE;
@@ -196,7 +213,9 @@ BOOL CJewelOfHarmonySystem::IsJewelOfHarmonyPurity(short type)
 	return bRet;
 }
 
-//00637bd0	-> OK
+
+
+
 BOOL CJewelOfHarmonySystem::IsJewelOfHarmonySmeltingItems(short type)
 {
 	BOOL bRet = FALSE;
@@ -207,7 +226,7 @@ BOOL CJewelOfHarmonySystem::IsJewelOfHarmonySmeltingItems(short type)
 	return bRet;
 }
 
-//00637c30	-> OK
+
 BOOL CJewelOfHarmonySystem::_IsJewelOfHarmonySmeltingItemNor(short type)
 {
 	BOOL bRet = FALSE;
@@ -218,7 +237,8 @@ BOOL CJewelOfHarmonySystem::_IsJewelOfHarmonySmeltingItemNor(short type)
 	return bRet;
 }
 
-//00637c70	-> OK
+
+
 BOOL CJewelOfHarmonySystem::_IsJewelOfHarmonySmeltingItemExt(short type)
 {
 	BOOL bRet = FALSE;
@@ -229,7 +249,9 @@ BOOL CJewelOfHarmonySystem::_IsJewelOfHarmonySmeltingItemExt(short type)
 	return bRet;
 }
 
-//00637CB0	-> OK
+
+
+
 void CJewelOfHarmonySystem::SetEnableToUsePuritySystem(BOOL bEnable)
 {
 	this->m_bEnable = bEnable;
@@ -237,13 +259,13 @@ void CJewelOfHarmonySystem::SetEnableToUsePuritySystem(BOOL bEnable)
 	LogAddTD("[JewelOfHarmony][PuritySystem] Enable %d", bEnable);
 }
 
-//00637CF0	-> OK
 BOOL CJewelOfHarmonySystem::IsEnableToUsePuritySystem()
 {
 	return this->m_bEnable;
 }
 
-//00637D10	-> OK
+
+
 void CJewelOfHarmonySystem::PurityJewelOfHarmony(LPOBJ lpObj)
 {
 	if ( this->m_bSystemPrutiyJewel != TRUE )
@@ -255,112 +277,134 @@ void CJewelOfHarmonySystem::PurityJewelOfHarmony(LPOBJ lpObj)
 	if ( this->IsEnableToUsePuritySystem() == FALSE )
 	{
 		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 50)), lpObj->m_Index, 1);
-		LogAddTD("[JewelOfHarmony][%s][%s] Not Purtiy Time ", lpObj->AccountID, lpObj->Name);
+		CHAOS_LOG.Output("[JewelOfHarmony][%s][%s] Not Purtiy Time ", lpObj->AccountID, lpObj->Name);
 		return;
 	}
 
 	lpObj->ChaosLock = TRUE;
 	// Chaos Lock was Enabled
-		int iJewelOfHarmonyItemCount = 0;
-		int iInvalidItemCount = 0;
-		int iChaosMixPrice = 0;
-		PMSG_CHAOSMIXRESULT pMsg;
-		PHeadSetB((LPBYTE)&pMsg, 0x86, sizeof(PMSG_CHAOSMIXRESULT));
+	int iJewelOfHarmonyItemCount = 0;
+	int iInvalidItemCount = 0;
+	int iChaosMixPrice = 0;
+	PMSG_CHAOSMIXRESULT pMsg;
+	PHeadSetB((LPBYTE)&pMsg, 0x86, sizeof(PMSG_CHAOSMIXRESULT));
 
-		pMsg.Result = CB_ERROR;
+	pMsg.Result = CB_ERROR;
 
-		for ( int n =0;n<CHAOS_BOX_SIZE;n++)
+	for ( int n =0;n<CHAOS_BOX_SIZE;n++)
+	{
+		if ( lpObj->pChaosBox[n].IsItem() == TRUE )
 		{
-			if ( lpObj->pChaosBox[n].IsItem() == TRUE )
+			if ( lpObj->pChaosBox[n].m_Type == this->JEWEL_OF_HARMONY_ITEMINDEX )
 			{
-				if ( lpObj->pChaosBox[n].m_Type == this->JEWEL_OF_HARMONY_ITEMINDEX )
-				{
-					iJewelOfHarmonyItemCount++;
-				}
-				else
-				{
-					iInvalidItemCount++;
-				}
+				iJewelOfHarmonyItemCount++;
+			}
+			else
+			{
+				iInvalidItemCount++;
 			}
 		}
+	}
 
-		if ( iInvalidItemCount > 0 || iJewelOfHarmonyItemCount !=1 )
-		{
-			DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
-			lpObj->ChaosLock = FALSE;
-			return;
-		}
+	if ( iInvalidItemCount > 0 || iJewelOfHarmonyItemCount !=1 )
+	{
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+		lpObj->ChaosLock = FALSE;
+		return;
+	}
 
-		iChaosMixPrice = this->m_iZenForPurity;
-		int iChaosTaxMoney = iChaosMixPrice * g_CastleSiegeSync.GetTaxRateChaos(lpObj->m_Index) / 100;
+	iChaosMixPrice = this->m_iZenForPurity;
+	int iChaosTaxMoney = iChaosMixPrice * g_CastleSiegeSync.GetTaxRateChaos(lpObj->m_Index) / 100;
 
-		if (iChaosTaxMoney < 0 )
-			iChaosTaxMoney = 0;
+	if (iChaosTaxMoney < 0 )
+		iChaosTaxMoney = 0;
 
-		iChaosMixPrice += iChaosTaxMoney;
+	iChaosMixPrice += iChaosTaxMoney;
 
-		if ( iChaosMixPrice < 0 )
-			iChaosMixPrice = 0;
+	if ( iChaosMixPrice < 0 )
+		iChaosMixPrice = 0;
 
-		if ( lpObj->Money < iChaosMixPrice )
-		{
-			pMsg.Result = CB_NOT_ENOUGH_ZEN;
-			DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
-			lpObj->ChaosLock = FALSE;
-			return;
-		}
+	if ( lpObj->Money < iChaosMixPrice )
+	{
+		pMsg.Result = CB_NOT_ENOUGH_ZEN;
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+		lpObj->ChaosLock = FALSE;
+		return;
+	}
 
-		lpObj->Money -= iChaosMixPrice;
-		g_CastleSiegeSync.AddTributeMoney(iChaosTaxMoney);
-		GCMoneySend(lpObj->m_Index, lpObj->Money);
-		g_MixSystem.LogChaosItem(lpObj, "JewelOfHarmony][Purity"); //LogChaosItem(lpObj, "JewelOfHarmony][Purity");
+	lpObj->Money -= iChaosMixPrice;
+	g_CastleSiegeSync.AddTributeMoney(iChaosTaxMoney);
+	GCMoneySend(lpObj->m_Index, lpObj->Money);
 
-		LogAddTD("[JewelOfHarmony][Purity] - Mix Start");
+	LogChaosItem(lpObj, "JewelOfHarmony][Purity");
+	CHAOS_LOG.Output("[JewelOfHarmony][Purity] - Mix Start");
 
-
-		int iRate = rand() % 100;
-
-		if ( iRate < this->m_iRatePuritySuccess )
-		{
-			int iItemType = this->JEWEL_OF_HARMONY_PURITY_ITEMINDEX;
-			ItemSerialCreateSend(lpObj->m_Index, -1, 0, 0, iItemType, 0, 1, 0, 0, 0, lpObj->m_Index, 0, 0);
-			gObjInventoryCommit(lpObj->m_Index);
-
-			LogAddTD("[JewelOfHarmony][Purity] Purity Success [%s][%s] Rate %d/%d",
-				lpObj->AccountID, lpObj->Name, iRate, this->m_iRatePuritySuccess);
-		}
+	lpObj->ChaosSuccessRate = this->m_iRatePuritySuccess;
+	if (ReadConfig.IsVipExtraMixPercent == 1 && lpObj->Vip == 1)
+	{
+		if (lpObj->ChaosSuccessRate + ReadConfig.VipExtraMixPercent < 100)
+			lpObj->ChaosSuccessRate += ReadConfig.VipExtraMixPercent;
 		else
-		{
-			g_MixSystem.ChaosBoxInit(lpObj); //ChaosBoxInit(lpObj);
-			GCUserChaosBoxSend(lpObj, 0);
-			DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+			lpObj->ChaosSuccessRate = 100;
 
-			LogAddTD("[JewelOfHarmony][Purity] Purity Fail [%s][%s] Rate %d/%d",
-				lpObj->AccountID, lpObj->Name, iRate, this->m_iRatePuritySuccess);
-		}
+		CHAOS_LOG.Output("[CBMix][%s][%s] VIP Extra Percent brings mix up to: %d", 
+			lpObj->AccountID, lpObj->Name,
+			lpObj->ChaosSuccessRate
+		);
+
+		char sbuff[1024]={0};
+		wsprintf(sbuff,"[VIP] Extra %d percent added!",ReadConfig.VipExtraMixPercent);
+		GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+	}
+
+	int iRate = rand() % 100;
+
+	if ( iRate < lpObj->ChaosSuccessRate )
+	{
+		int iItemType = this->JEWEL_OF_HARMONY_PURITY_ITEMINDEX;
+		ItemSerialCreateSend(lpObj->m_Index, -1, 0, 0, iItemType, 0, 1, 0, 0, 0, lpObj->m_Index, 0, 0);
+
+		CHAOS_LOG.Output("[JewelOfHarmony][Purity] Purity Success [%s][%s] Rate %d/%d",
+			lpObj->AccountID, lpObj->Name, iRate, lpObj->ChaosSuccessRate);
+
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 0);
+	}
+	else
+	{
+		ChaosBoxInit(lpObj);
+		GCUserChaosBoxSend(lpObj, 0);
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+
+		CHAOS_LOG.Output("[JewelOfHarmony][Purity] Purity Fail [%s][%s] Rate %d/%d",
+			lpObj->AccountID, lpObj->Name, iRate, lpObj->ChaosSuccessRate );
+
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 1);
+	}
+
+	::gObjInventoryCommit(lpObj->m_Index);
 	// Chaos Lock was Disabled
 	lpObj->ChaosLock = FALSE;
 }
 
-//00638160	-> OK
+
+
 BYTE CJewelOfHarmonySystem::GetItemStrengthenOption(CItem *pItem)
 {
 	return ( pItem->m_JewelOfHarmonyOption & 0xF0 ) >> 4;
 }
 
-//006381A0	-> OK
 BYTE CJewelOfHarmonySystem::GetItemOptionLevel(CItem *pItem)
 {
 	return this->_GetItemOptionLevel(pItem);
 }
 
-//006381D0	-> OK
+
 BYTE CJewelOfHarmonySystem::_GetItemOptionLevel(CItem *pItem)
 {
 	return ( pItem->m_JewelOfHarmonyOption & 0x0F ) ;
 }
 
-//00638200	-> OK
+
 BOOL CJewelOfHarmonySystem::IsStrengthenByJewelOfHarmony(CItem *pItem)
 {
 	if ( this->GetItemStrengthenOption(pItem) >0  )
@@ -369,7 +413,7 @@ BOOL CJewelOfHarmonySystem::IsStrengthenByJewelOfHarmony(CItem *pItem)
 	return FALSE;
 }
 
-//00638240	-> OK
+
 BOOL CJewelOfHarmonySystem::IsActive(CItem *pItem)
 {
 	if ( this->IsStrengthenByJewelOfHarmony(pItem) == FALSE )
@@ -383,46 +427,41 @@ BOOL CJewelOfHarmonySystem::IsActive(CItem *pItem)
 	return TRUE;
 }
 
-//006382B0	-> OK
+
 BYTE CJewelOfHarmonySystem::_GetItemOptionRequireLevel(CItem * pItem)
 {
 	int iItemType = this->_GetItemType(pItem);
 	BYTE iItemOption = this->GetItemStrengthenOption(pItem);
 
-	if ( iItemType == 0 || iItemOption > MAX_JOH_ITEM_OPTION+1 || iItemOption == 0 )
+	if ( iItemType == 0 || iItemOption > ReadConfig.MAXJOHITEMOPTION + 1 || iItemOption == 0 )
 		return 0;
 
 	return this->m_itemOption[iItemType][iItemOption].iRequireLevel;
 }
 
-//00638350	-> OK
+
+
+
 int CJewelOfHarmonySystem::_GetItemType(CItem *pItem)
 {
 	int iItemType = JEWELOFHARMONY_ITEM_TYPE_NULL;
 
 
-	if ( (pItem->m_Type >= ITEMGET(0,0) && pItem->m_Type <ITEMGET(4,0)) 
-		|| (pItem->m_Type >= ITEMGET(4,0) && pItem->m_Type <ITEMGET(4,7)) 
-		|| (pItem->m_Type >= ITEMGET(4,8) && pItem->m_Type <ITEMGET(4,15)) 
-		|| (pItem->m_Type >= ITEMGET(4,16) && pItem->m_Type <ITEMGET(5,0)) )
-	{
+	if ( (pItem->m_Type >= ITEMGET(0,0) && pItem->m_Type <ITEMGET(4,0)) || (pItem->m_Type >= ITEMGET(4,0) && pItem->m_Type <ITEMGET(4,7)) || (pItem->m_Type >= ITEMGET(4,8) && pItem->m_Type <ITEMGET(4,15)) || (pItem->m_Type >= ITEMGET(4,16) && pItem->m_Type <ITEMGET(5,0)) )
 		iItemType =JEWELOFHARMONY_ITEM_TYPE_WEAPON;
-	}
 
 	if (pItem->m_Type >= ITEMGET(5,0) && pItem->m_Type <ITEMGET(6,0) )
-	{
 		iItemType =JEWELOFHARMONY_ITEM_TYPE_STAFF;
-	}
 
 	if (pItem->m_Type >= ITEMGET(6,0) && pItem->m_Type <ITEMGET(12,0) )
-	{
 		iItemType =JEWELOFHARMONY_ITEM_TYPE_DEFENSE;
-	}
 
 	return iItemType;
 }
 
-//00638470	-> 
+
+
+
 int CJewelOfHarmonySystem::_GetSelectRandomOption(CItem * pItem, int iItemType)
 {
 	if ( iItemType == 0 )
@@ -458,105 +497,8 @@ int CJewelOfHarmonySystem::_GetSelectRandomOption(CItem * pItem, int iItemType)
 	return iItemOption;
 }
 
-//006385E0	-> OK [NEW]
-BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfRise(LPOBJ lpObj, int source, int target)
-{
-	if ( this->m_bSystemStrengthenItem == FALSE )
-	{
-		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 52)), lpObj->m_Index, 1);
-		return FALSE;
-	}
-
-	if ( source < 0 || source > MAIN_INVENTORY_SIZE-1 )
-		return FALSE;
-
-	if ( target < 0 || target > MAIN_INVENTORY_SIZE-1 )
-		return FALSE;
-
-	if ( lpObj->pInventory[source].IsItem() == FALSE )
-		return FALSE;
-
-	if ( lpObj->pInventory[target].IsItem() == FALSE )
-		return FALSE;
-
-	CItem * pSource = &lpObj->pInventory[source];
-	CItem * pTarget = &lpObj->pInventory[target];
-
-	if( g_LuckyItemManager.IsLuckyItemEquipment(pTarget->m_Type) )
-	{
-		return false;
-	}
-
-	if ( this->IsStrengthenByJewelOfHarmony(pTarget) == TRUE )
-	{
-		LogAddTD("[LuckyItem][Strengthen Item] Already Strengtened [%s][%s]",
-			lpObj->AccountID, lpObj->Name);
-
-		return FALSE;
-	}
-
-	int iItemType = this->_GetItemType(pTarget);
-
-	if ( iItemType == JEWELOFHARMONY_ITEM_TYPE_NULL )
-	{
-		LogAddTD("[LuckyItem][Strengthen Item] Strengthen Fail [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Invalid ItemType[%d]",
-			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iItemType);
-		
-		return FALSE;
-	}
-
-	int iItemOption = this->_GetSelectRandomOption(pTarget, iItemType);
-
-	if ( iItemOption == AT_JEWELOFHARMONY_NOT_STRENGTHEN_ITEM )
-	{
-		LogAddTD("[LuckyItem][Strengthen Item] Strengthen Fail - NOT OPTION [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) ItemType[%d]",
-			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iItemType);
-		
-		return FALSE;
-	}
-
-	int iItemOptionLevel = this->m_itemOption[iItemType][iItemOption].iRequireLevel;
-	int iSuccessRate = rand() % 100;
-
-	if ( iSuccessRate >= this->m_iRateStrengthenSuccess )
-	{
-		LogAddTD("[LuckyItem][Strengthen Item] Strengthen Fail [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Rate (%d/%d)",
-			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess);
-		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 45)), lpObj->m_Index, 1);
-		return TRUE;
-	}
 
 
-	this->_MakeOption(pTarget, iItemOption, iItemOptionLevel);
-
-	LogAddTD("[LuckyItem][Strengthen Item] Strengthen Success [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Rate (%d/%d) Option %d OptionLevel %d",
-		lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type, pTarget->m_Number,
-		pSource->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess,
-		iItemOption, iItemOptionLevel);
-
-	GCServerMsgStringSend(lMsg.Get(MSGGET(13, 46)), lpObj->m_Index, 1);
-
-	gObjMakePreviewCharSet(lpObj->m_Index);
-
-	float levelitemdur = ItemGetDurability(lpObj->pInventory[target].m_Type,
-		lpObj->pInventory[target].m_Level, lpObj->pInventory[target].IsExtItem(),
-		lpObj->pInventory[target].IsSetItem());
-
-	lpObj->pInventory[target].m_Durability = levelitemdur * lpObj->pInventory[target].m_Durability / lpObj->pInventory[target].m_BaseDurability;
-
-	lpObj->pInventory[target].Convert(lpObj->pInventory[target].m_Type,
-		lpObj->pInventory[target].m_Option1, lpObj->pInventory[target].m_Option2,
-		lpObj->pInventory[target].m_Option3, lpObj->pInventory[target].m_NewOption,
-		lpObj->pInventory[target].m_SetOption, lpObj->pInventory[target].m_ItemOptionEx, NULL, 0xFF, 0, 3);
-
-
-	return TRUE;
-}
-
-//00638C00	->
 BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int source, int target)
 {
 	if ( this->m_bSystemStrengthenItem == FALSE )
@@ -565,10 +507,10 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 		return FALSE;
 	}
 
-	if ( source < 0 || source > MAIN_INVENTORY_SIZE-1 )
+	if ( source < 0 || source > ReadConfig.MAIN_INVENTORY_SIZE(lpObj->m_Index,false)-1 )
 		return FALSE;
 
-	if ( target < 0 || target > MAIN_INVENTORY_SIZE-1 )
+	if ( target < 0 || target > ReadConfig.MAIN_INVENTORY_SIZE(lpObj->m_Index,false)-1 )
 		return FALSE;
 
 	if ( lpObj->pInventory[source].IsItem() == FALSE )
@@ -582,31 +524,30 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 
 	if ( this->IsStrengthenByJewelOfHarmony(pTarget) == TRUE )
 	{
-		LogAddTD("[JewelOfHarmony][Strengthen Item] Already Strengtened [%s][%s]",
+		LogAddTD("[JewelOfHarmony][Strengten Item] Already Strengtened [%s][%s]",
 			lpObj->AccountID, lpObj->Name);
 
 		return FALSE;
 	}
 
-	if( gAllowJOHonAncient == 0)
-	{
-		if (pTarget->IsSetItem() != FALSE)
-		{
-			GCServerMsgStringSend(lMsg.Get(MSGGET(13, 44)), lpObj->m_Index, 1);
-			LogAddTD("[JewelOfHarmony][Strengthen Item] SetItem not enable to Strengthened [%s][%s]",
-				lpObj->AccountID, lpObj->Name);
+	int isSetItem = pTarget->IsSetItem();
 
-			return FALSE;
-		}
+	if ((isSetItem == 1 || isSetItem == 2 ) && (ReadConfig.StrengthenItemByJewelOfHarmonyAncient == FALSE))
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 44)), lpObj->m_Index, 1);
+		LogAddTD("[JewelOfHarmony][Strengten Item] SetItem not enable to Strengtened [%s][%s]",
+			lpObj->AccountID, lpObj->Name);
+
+		return FALSE;
 	}
 
 	int iItemType = this->_GetItemType(pTarget);
 
 	if ( iItemType == JEWELOFHARMONY_ITEM_TYPE_NULL )
 	{
-		LogAddTD("[JewelOfHarmony][Strengthen Item] Strengthen Fail [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Invalid ItemType[%d]",
+		LogAddTD("[JewelOfHarmony][Strengten Item] Strenghten Fail [%s][%s] Name[%s] Type[%d] Serial[%d] Invalid ItemType[%d]",
 			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iItemType);
+			pTarget->m_Number, iItemType);
 		
 		return FALSE;
 	}
@@ -615,10 +556,19 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 
 	if ( iItemOption == AT_JEWELOFHARMONY_NOT_STRENGTHEN_ITEM )
 	{
-		LogAddTD("[JewelOfHarmony][Strengthen Item] Strengthen Fail - NOT OPTION [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) ItemType[%d]",
+		LogAddTD("[JewelOfHarmony][Strengten Item] Strenghten Fail - NOT OPTION [%s][%s] Name[%s] Type[%d] Serial[%d] ItemType[%d]",
 			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iItemType);
+			pTarget->m_Number, iItemType);
 		
+		return FALSE;
+	}
+
+	if(pTarget->m_Level > ReadConfig.StrengthenItemByJewelOfHarmony_MAXLevel)
+	{
+		LogAddTD("[JewelOfHarmony][Strengten Item] Strenghten Fail - LEVEL EXCEED [%s][%s] Name[%s] Type[%d] Serial[%d] ItemType[%d] ItemLevel[%d]",
+			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
+			pTarget->m_Number, iItemType,pTarget->m_Level);
+
 		return FALSE;
 	}
 
@@ -627,9 +577,9 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 
 	if ( iSuccessRate >= this->m_iRateStrengthenSuccess )
 	{
-		LogAddTD("[JewelOfHarmony][Strengthen Item] Strengthen Fail [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Rate (%d/%d)",
+		LogAddTD("[JewelOfHarmony][Strengten Item] Strenghten Fail [%s][%s] Name[%s] Type[%d] Serial[%d]  Rate (%d/%d)",
 			lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess);
+			pTarget->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess);
 		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 45)), lpObj->m_Index, 1);
 		return TRUE;
 	}
@@ -637,9 +587,9 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 
 	this->_MakeOption(pTarget, iItemOption, iItemOptionLevel);
 
-	LogAddTD("[JewelOfHarmony][Strengthen Item] Strengthen Success [%s][%s] Name[%s] Type[%d] Serial[%u] JewelSerial(%u) Rate (%d/%d) Option %d OptionLevel %d", //season 2.5 changed -> identical
-		lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type, pTarget->m_Number,
-		pSource->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess,
+	LogAddTD("[JewelOfHarmony][Strengten Item] Strenghten Success [%s][%s] Name[%s] Type[%d] Serial[%d] Rate (%d/%d) Option %d OptionLevel %d",
+		lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
+		pTarget->m_Number, iSuccessRate, this->m_iRateStrengthenSuccess,
 		iItemOption, iItemOptionLevel);
 
 	GCServerMsgStringSend(lMsg.Get(MSGGET(13, 46)), lpObj->m_Index, 1);
@@ -653,29 +603,33 @@ BOOL CJewelOfHarmonySystem::StrengthenItemByJewelOfHarmony(LPOBJ lpObj, int sour
 	lpObj->pInventory[target].m_Durability = levelitemdur * lpObj->pInventory[target].m_Durability / lpObj->pInventory[target].m_BaseDurability;
 
 	lpObj->pInventory[target].Convert(lpObj->pInventory[target].m_Type,
-		lpObj->pInventory[target].m_Option1, lpObj->pInventory[target].m_Option2,
-		lpObj->pInventory[target].m_Option3, lpObj->pInventory[target].m_NewOption,
-		lpObj->pInventory[target].m_SetOption, lpObj->pInventory[target].m_ItemOptionEx, NULL, 0xFF, 0, 3);
+		lpObj->pInventory[target].m_SkillOption, lpObj->pInventory[target].m_LuckOption,
+		lpObj->pInventory[target].m_Z28Option, lpObj->pInventory[target].m_NewOption,
+		lpObj->pInventory[target].m_SetOption, lpObj->pInventory[target].m_ItemOptionEx, 3);
 
 
 	return TRUE;
 }
 
-//00639260	-> OK (Maybe not changed, need check again)
+
+
 BOOL CJewelOfHarmonySystem::_MakeOption(CItem *pItem, BYTE btOptionType, BYTE btOptionLevel)
 {
 	pItem->m_JewelOfHarmonyOption = AT_JEWELOFHARMONY_NOT_STRENGTHEN_ITEM;
-	pItem->m_JewelOfHarmonyOption |= 16 * btOptionType/*btOptionType << 4*/;
+	pItem->m_JewelOfHarmonyOption |= btOptionType << 4;
+	if(btOptionLevel > ReadConfig.JOHLevelMax)
+		btOptionLevel = ReadConfig.JOHLevelMax;
 	pItem->m_JewelOfHarmonyOption |= btOptionLevel & 0x0F;
 
 	return TRUE;
 }
 
 
+
 #pragma warning ( disable : 4101 )
-//006392E0	-> OK
 void CJewelOfHarmonySystem::StrengthenItemByMacro(LPOBJ lpObj, BYTE invenrotyTargetPos, BYTE btOptionType,  BYTE btOptionLevel)
 {
+#pragma message(" NOTE : Add Here code to make an Artificial JOH Item")
 	return;
 	
 	int iType;
@@ -709,9 +663,10 @@ void CJewelOfHarmonySystem::StrengthenItemByMacro(LPOBJ lpObj, BYTE invenrotyTar
 }
 #pragma warning ( default : 4101 )
 
-//00639300	-> 
 BYTE CJewelOfHarmonySystem::ShowStrengthenOption(CItem *pItem)
 {
+	__try
+	{
 	BYTE bResult = -1;
 
 	if ( this->IsStrengthenByJewelOfHarmony(pItem) == FALSE )
@@ -722,15 +677,20 @@ BYTE CJewelOfHarmonySystem::ShowStrengthenOption(CItem *pItem)
 	int iItemOptionLevel = this->_GetItemOptionLevel(pItem);
 	
 	char buf[256];
-	sprintf(buf, "??°? : %20s    type:%d, option:%d optionLevel %d value %d \n", 
+	sprintf(buf, "È¿°ú : %20s    type:%d, option:%d optionLevel %d value %d \n", 
 		this->m_itemOption[type][bResult].szOptionName, type,
 		bResult, iItemOptionLevel, this->m_itemOption[type][bResult].iItemEffectValue[iItemOptionLevel]);
 	
 	OutputDebugString(buf);
 	return bResult;
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return -1;
+	}
 }
 
-//00639430	-> OK
+
+
 BYTE CJewelOfHarmonySystem::MakeCharSetData(LPOBJ lpObj)
 {
 	BYTE btResult = 0;
@@ -762,7 +722,7 @@ BYTE CJewelOfHarmonySystem::MakeCharSetData(LPOBJ lpObj)
 	return btResult;
 }
 
-//00639580	-> OK
+
 void CJewelOfHarmonySystem::SetApplyStrengthenItem(LPOBJ lpObj)
 {
 	JEWELOFHARMONY_ITEM_EFFECT * pItemEffect = &lpObj->m_JewelOfHarmonyEffect;
@@ -804,7 +764,9 @@ void CJewelOfHarmonySystem::SetApplyStrengthenItem(LPOBJ lpObj)
 	lpObj->DamageMinus += pItemEffect->HJOpAddDamageDecrease;
 }
 
-//00639840	-> OK
+
+
+
 int CJewelOfHarmonySystem::GetItemEffectValue(CItem * pItem, int iOptionType)
 {
 	int iItemType = this->_GetItemType(pItem);
@@ -821,14 +783,15 @@ int CJewelOfHarmonySystem::GetItemEffectValue(CItem * pItem, int iOptionType)
 
 	int iItemOptionLevel = this->_GetItemOptionLevel(pItem);
 
-	if ( iItemOptionLevel >= MAX_JOH_ITEM_OPTION )
+	if ( iItemOptionLevel > ReadConfig.MAXJOHITEMOPTION )
 		return 0;
 
 	int iItemEffectValue = this->m_itemOption[iItemType][iItemOptionType].iItemEffectValue[iItemOptionLevel];
 	return iItemEffectValue;
 }
 
-//00639910	-> OK
+
+
 BOOL CJewelOfHarmonySystem::_CalcItemEffectValue(CItem *pItem, JEWELOFHARMONY_ITEM_EFFECT * pItemEffect)
 {
 	int iItemType = this->_GetItemType(pItem);
@@ -845,7 +808,7 @@ BOOL CJewelOfHarmonySystem::_CalcItemEffectValue(CItem *pItem, JEWELOFHARMONY_IT
 
 	int iItemOptionLevel = this->_GetItemOptionLevel(pItem);
 
-	if ( iItemOptionLevel >= MAX_JOH_ITEM_OPTION )
+	if ( iItemOptionLevel > ReadConfig.MAXJOHITEMOPTION )
 		return 0;
 
 
@@ -868,6 +831,7 @@ BOOL CJewelOfHarmonySystem::_CalcItemEffectValue(CItem *pItem, JEWELOFHARMONY_IT
 					pItemEffect->HJOpAddMaxAttackDamage += iItemEffectValue;
 					break;
 				case AT_JEWELOFHARMONY_WEAPON_DECREASE_REQUIRE_STR:
+					break;
 				case AT_JEWELOFHARMONY_WEAPON_DECREASE_REQUIRE_DEX:
 					break;
 				case AT_JEWELOFHARMONY_WEAPON_IMPROVE_ATTACKDAMAGE_BOTH:
@@ -901,6 +865,7 @@ BOOL CJewelOfHarmonySystem::_CalcItemEffectValue(CItem *pItem, JEWELOFHARMONY_IT
 					pItemEffect->HJOpAddMagicPower += iItemEffectValue;
 					break;
 				case AT_JEWELOFHARMONY_STAFF_DECREASE_REQUIRE_STR:
+					break;
 				case AT_JEWELOFHARMONY_STAFF_DECREASE_REQUIRE_DEX:
 					break;
 				case AT_JEWELOFHARMONY_STAFF_IMPROVE_SKILLDAMAGE:
@@ -962,7 +927,8 @@ BOOL CJewelOfHarmonySystem::_CalcItemEffectValue(CItem *pItem, JEWELOFHARMONY_IT
 	return bResult;
 }
 
-//00639DC0	-> OK
+
+
 void CJewelOfHarmonySystem::InitEffectValue(JEWELOFHARMONY_ITEM_EFFECT * pItemEffect)
 {
 	pItemEffect->HJOpAddMinAttackDamage = 0;
@@ -986,7 +952,9 @@ void CJewelOfHarmonySystem::InitEffectValue(JEWELOFHARMONY_ITEM_EFFECT * pItemEf
 	pItemEffect->HJOpAddSDRate = 0;
 }
 
-//00639EB0	-> OK
+
+
+
 BOOL CJewelOfHarmonySystem::IsEnableToMakeSmeltingStoneItem(CItem * pItem)
 {
 	if ( this->_GetItemType(pItem) == JEWELOFHARMONY_ITEM_TYPE_NULL )
@@ -995,7 +963,7 @@ BOOL CJewelOfHarmonySystem::IsEnableToMakeSmeltingStoneItem(CItem * pItem)
 	if ( this->IsStrengthenByJewelOfHarmony(pItem) == TRUE )
 		return FALSE;
 
-	if ( pItem->IsSetItem() != FALSE)
+	if ( pItem->IsSetItem() == TRUE )
 		return FALSE;
 
 	std::map<int,int>::iterator iter = this->m_mapEnableMixList.find(pItem->m_Type);
@@ -1012,7 +980,6 @@ BOOL CJewelOfHarmonySystem::IsEnableToMakeSmeltingStoneItem(CItem * pItem)
 	return TRUE;
 }
 
-//00639FA0	-> OK
 BOOL CJewelOfHarmonySystem::MakeSmeltingStoneItem(LPOBJ lpObj)
 {
 	if ( this->m_bSystemMixSmeltingStone != TRUE )
@@ -1095,12 +1062,31 @@ BOOL CJewelOfHarmonySystem::MakeSmeltingStoneItem(LPOBJ lpObj)
 	lpObj->Money -= iMakeSmeltingStoneMixPrice;
 	g_CastleSiegeSync.AddTributeMoney(iChaosTaxMoney);
 	GCMoneySend(lpObj->m_Index, lpObj->Money);
-	g_MixSystem.LogChaosItem(lpObj, "JewelOfHarmony][Smelt Item Mix"); //LogChaosItem(lpObj, "JewelOfHarmony][Smelt Item Mix");
-	LogAddTD("[JewelOfHarmony][Smelt Item Mix] - Mix Start");
+	
+	LogChaosItem(lpObj, "JewelOfHarmony][Smelt Item Mix");
+	CHAOS_LOG.Output("[JewelOfHarmony][Smelt Item Mix] - Mix Start");
+
+	lpObj->ChaosSuccessRate = JEWEL_OF_HARMONY_MAKE_SMELTINGSTONE_RATE;
+	if (ReadConfig.IsVipExtraMixPercent == 1 && lpObj->Vip == 1)
+	{
+		if (lpObj->ChaosSuccessRate + ReadConfig.VipExtraMixPercent < 100)
+			lpObj->ChaosSuccessRate += ReadConfig.VipExtraMixPercent;
+		else
+			lpObj->ChaosSuccessRate = 100;
+
+		CHAOS_LOG.Output("[CBMix][%s][%s] VIP Extra Percent brings mix up to: %d", 
+			lpObj->AccountID, lpObj->Name,
+			lpObj->ChaosSuccessRate
+		);
+
+		char sbuff[1024]={0};
+		wsprintf(sbuff,"[VIP] Extra %d percent added!",ReadConfig.VipExtraMixPercent);
+		GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+	}
 
 	int iRate = rand() % 100;
 
-	if ( iRate < JEWEL_OF_HARMONY_MAKE_SMELTINGSTONE_RATE )
+	if ( iRate < lpObj->ChaosSuccessRate  )
 	{
 		int iItemType;
 
@@ -1111,32 +1097,36 @@ BOOL CJewelOfHarmonySystem::MakeSmeltingStoneItem(LPOBJ lpObj)
 
 		ItemSerialCreateSend(lpObj->m_Index, 255, 0, 0, iItemType, 0,
 							1, 0, 0, 0, lpObj->m_Index, 0, 0);
-		gObjInventoryCommit(lpObj->m_Index);
 
-		LogAddTD("[JewelOfHarmony][Smelt Item Mix] Smelting Stone Normal[%d] Mix Success [%s][%s], Money(%d-%d) Rate(%d/%d)",
+		CHAOS_LOG.Output("[JewelOfHarmony][Smelt Item Mix] Smelting Stone Normal[%d] Mix Success [%s][%s], Money(%d-%d) Rate(%d/%d)",
 			bIsItemNormal, lpObj->AccountID, lpObj->Name,
 			lpObj->Money, iMakeSmeltingStoneMixPrice, iRate,
-			JEWEL_OF_HARMONY_MAKE_SMELTINGSTONE_RATE);
+			lpObj->ChaosSuccessRate );
 
-		return TRUE; // Season 4.5 addon
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 0);
 	}
 	else
 	{
-		g_MixSystem.ChaosBoxInit(lpObj); //ChaosBoxInit(lpObj);
+		ChaosBoxInit(lpObj);
 		GCUserChaosBoxSend(lpObj, 0);
 		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
 
-		LogAddTD("[JewelOfHarmony][Smelt Item Mix] Smelting Stone Normal[%d] Mix Fail [%s][%s], Money : %d-%d Rate(%d/%d)",
+		CHAOS_LOG.Output("[JewelOfHarmony][Smelt Item Mix] Smelting Stone Normal[%d] Mix Fail [%s][%s], Money : %d-%d Rate(%d/%d)",
 			bIsItemNormal, lpObj->AccountID, lpObj->Name,
 			lpObj->Money, iMakeSmeltingStoneMixPrice, iRate,
-			JEWEL_OF_HARMONY_MAKE_SMELTINGSTONE_RATE);
+			lpObj->ChaosSuccessRate );
+
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 1);
 	}
 
+	gObjInventoryCommit(lpObj->m_Index);
 	lpObj->ChaosLock = FALSE;
 	return TRUE;
 }
 
-//0063A450	->
+
+
+
 BOOL CJewelOfHarmonySystem::SmeltItemBySmeltingStone(LPOBJ lpObj, int source, int target)
 {
 	if ( this->m_bSystemSmeltingItem == FALSE )
@@ -1145,10 +1135,10 @@ BOOL CJewelOfHarmonySystem::SmeltItemBySmeltingStone(LPOBJ lpObj, int source, in
 		return FALSE;
 	}
 
-	if ( source < 0 || source > MAIN_INVENTORY_SIZE-1 )
+	if ( source < 0 || source > ReadConfig.MAIN_INVENTORY_SIZE(lpObj->m_Index,false)-1 )
 		return FALSE;
 
-	if ( target < 0 || target > MAIN_INVENTORY_SIZE-1 )
+	if ( target < 0 || target > ReadConfig.MAIN_INVENTORY_SIZE(lpObj->m_Index,false)-1 )
 		return FALSE;
 
 	if ( lpObj->pInventory[source].IsItem() == FALSE )
@@ -1162,21 +1152,13 @@ BOOL CJewelOfHarmonySystem::SmeltItemBySmeltingStone(LPOBJ lpObj, int source, in
 
 	if ( !this->IsStrengthenByJewelOfHarmony(pTarget)  )
 	{
-		LogAddTD("[JewelOfHarmony][Smelt Item] Not Strengthen Item [%s][%s]",
+		LogAddTD("[JewelOfHarmony][Smelt Item] Not Strengten Item [%s][%s]",
 			lpObj->AccountID, lpObj->Name);
 
 		return FALSE;
 	}
 
 	int iItemOptionLevel = this->_GetItemOptionLevel(pTarget);
-
-	if( iItemOptionLevel >= 13 )	//1.01.00
-	{
-		GCServerMsgStringSend(lMsg.Get(MSGGET(13,41)), lpObj->m_Index, 1);
-		LogAddTD("[JewelOfHarmony][Smelt Item] Already Have Max OptionLevel [%s][%s] OptionLevel [%d] ItemLevel [%d]",
-			lpObj->AccountID, lpObj->Name, iItemOptionLevel, pTarget->m_Level);
-		return false;
-	}
 
 	if ( iItemOptionLevel >= pTarget->m_Level )
 	{
@@ -1223,32 +1205,35 @@ BOOL CJewelOfHarmonySystem::SmeltItemBySmeltingStone(LPOBJ lpObj, int source, in
 	{
 		int iItemOptionNewLevel = _GetItemOptionRequireLevel(pTarget);
 		pTarget->m_JewelOfHarmonyOption = pTarget->m_JewelOfHarmonyOption & 0xF0;
+		if(iItemOptionNewLevel > ReadConfig.JOHLevelMax)
+			iItemOptionNewLevel = ReadConfig.JOHLevelMax;
 		pTarget->m_JewelOfHarmonyOption |= iItemOptionNewLevel & 0x0F;
 		this->ShowStrengthenOption(pTarget);
 
-		LogAddTD("[JewelOfHarmony][Smelt Item] Smelt Item Fail by Normal[%d] [%s][%s] Name[%s] Type [%d] Serial [%u] JewelSerial(%u) Rate(%d/%d) Level(%d->%d)",
+		LogAddTD("[JewelOfHarmony][Smelt Item] Smelt Item Fail by Normal[%d] [%s][%s] Name[%s] Type [%d] Serial [%d] Rate(%d/%d) Level(%d->%d)",
 			bIsNormalSmeltingStone, lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iSuccessRate, iRateSmeltingSuccess, iItemOptionLevel, iItemOptionNewLevel);
+			pTarget->m_Number, iSuccessRate, iRateSmeltingSuccess, iItemOptionLevel, iItemOptionNewLevel);
 		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 47)), lpObj->m_Index, 1);
 	}
 	else
 	{
 		int iItemOptionNewLevel = iItemOptionLevel+1;
 		pTarget->m_JewelOfHarmonyOption = pTarget->m_JewelOfHarmonyOption & 0xF0;
+		if(iItemOptionNewLevel > ReadConfig.JOHLevelMax)
+			iItemOptionNewLevel = ReadConfig.JOHLevelMax;
 		pTarget->m_JewelOfHarmonyOption |= iItemOptionNewLevel & 0x0F;
 		this->ShowStrengthenOption(pTarget);
-		int iItemOptionType = this->GetItemStrengthenOption(pTarget); //loc12
 
-		LogAddTD("[JewelOfHarmony][Smelt Item] Smelt Item Success by Normal[%d] [%s][%s] Name[%s] Type [%d] Serial [%u] JewelSerial(%u) Rate(%d/%d) Option(%d) Level(%d->%d)",
+		LogAddTD("[JewelOfHarmony][Smelt Item] Smelt Item Success by Normal[%d] [%s][%s] Name[%s] Type [%d] Serial [%d] Rate(%d/%d) Level(%d->%d)",
 			bIsNormalSmeltingStone, lpObj->AccountID, lpObj->Name, pTarget->GetName(), pTarget->m_Type,
-			pTarget->m_Number, pSource->m_Number, iSuccessRate, iRateSmeltingSuccess, iItemOptionType, iItemOptionLevel, iItemOptionNewLevel & 0x0F);
+			pTarget->m_Number, iSuccessRate, iRateSmeltingSuccess, iItemOptionLevel, iItemOptionNewLevel & 0x0F);
 		GCServerMsgStringSend(lMsg.Get(MSGGET(13, 48)), lpObj->m_Index, 1);
 	}
 
 	return TRUE;
 }
 
-//0063AA30	-> OK
+
 int CJewelOfHarmonySystem::_GetZenForRestoreItem(CItem * pItem)
 {
 	int iItemType = this->_GetItemType(pItem);
@@ -1264,14 +1249,14 @@ int CJewelOfHarmonySystem::_GetZenForRestoreItem(CItem * pItem)
 
 	int iItemOptionLevel = this->_GetItemOptionLevel(pItem);
 
-	if ( iItemOptionLevel >= MAX_JOH_ITEM_OPTION )
+	if ( iItemOptionLevel > ReadConfig.MAXJOHITEMOPTION )
 		return -1;
 
 	int iZenForRestore = this->m_itemOption[iItemType][iItemOptionType].iZenForRestore[iItemOptionLevel];
 	return iZenForRestore;
 }
 
-//0063AB00	-> OK
+
 BOOL CJewelOfHarmonySystem::RestoreStrengthenItem(LPOBJ lpObj)
 {
 	if ( this->m_bSystemRestoreStrengthen != TRUE )
@@ -1287,7 +1272,6 @@ BOOL CJewelOfHarmonySystem::RestoreStrengthenItem(LPOBJ lpObj)
 	PHeadSetB((LPBYTE)&pMsg, 0x86, sizeof(pMsg));
 	pMsg.Result = 0;
 	int iStrengtenItemCount = 0;
-	int iInvalidItemCount = 0;
 	CItem * pItem = NULL;
 
 	for ( int n=0;n<CHAOS_BOX_SIZE;n++)
@@ -1344,10 +1328,11 @@ BOOL CJewelOfHarmonySystem::RestoreStrengthenItem(LPOBJ lpObj)
 	lpObj->Money -= JEWEL_OF_HARMONY_RETORE_NEEDZEN;
 	g_CastleSiegeSync.AddTributeMoney(iChaosTaxMoney);
 	GCMoneySend(lpObj->m_Index, lpObj->Money);
-	g_MixSystem.LogChaosItem(lpObj, "JewelOfHarmony][Restore Item"); //LogChaosItem(lpObj, "JewelOfHarmony][Restore Item");
-	LogAddTD("[JewelOfHarmony][Restore Item] - Restore Start");
+	
+	LogChaosItem(lpObj, "JewelOfHarmony][Restore Item");
+	CHAOS_LOG.Output("[JewelOfHarmony][Restore Item] - Restore Start");
 
-	LogAddTD("[JewelOfHarmony][Restore Item] Restore Strengthened Item [%s][%s] Name[%s] ItemType[%d] Serial[%u] OptionType[%d] OptionLevel [%d] Money %d-%d",
+	CHAOS_LOG.Output("[JewelOfHarmony][Restore Item] Restore Strengtened Item [%s][%s] Name[%s] ItemType[%d] Serial[%d] OptionType[%d] OptionLevel [%d] Money %d-%d",
 		lpObj->AccountID, lpObj->Name, pItem->GetName(), pItem->m_Type,
 		pItem->m_Number, iItemOption, iItemOptionLevel, 
 		lpObj->Money, JEWEL_OF_HARMONY_RETORE_NEEDZEN);
@@ -1360,7 +1345,7 @@ BOOL CJewelOfHarmonySystem::RestoreStrengthenItem(LPOBJ lpObj)
 	return TRUE;
 }
 
-//0063AED0	-> OK
+
 BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 {
 	if ( lpObj->m_IfState.use > 0 )
@@ -1386,7 +1371,7 @@ BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 		if ( !this->IsEnableToUsePuritySystem() )
 		{
 			GCServerMsgStringSend(lMsg.Get(MSGGET(13,50)), lpObj->m_Index, 1);
-			LogAddTD("[JewelOfHarmony][%s][%s] Not Purtiy Time ",
+			CHAOS_LOG.Output("[JewelOfHarmony][%s][%s] Not Purtiy Time ",
 				lpObj->AccountID, lpObj->Name);
 
 			return TRUE;
@@ -1416,7 +1401,7 @@ BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 	}
 	else
 	{
-		LogAddTD("[JewelOfHarmony][%s][%s] Open Chaos Box Failed NpcType [%d]",
+		CHAOS_LOG.Output("[JewelOfHarmony][%s][%s] Open Chaos Box Failed NpcType [%d]",
 			lpObj->AccountID, lpObj->Name, lpNpc->Class);
 
 		return TRUE;
@@ -1426,7 +1411,7 @@ BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 	{
 		if ( lpObj->m_bPShopOpen == true )
 		{
-			LogAdd("[JewelOfHarmony][%s][%s] is Already Opening PShop, ChaosBox Failed",
+			CHAOS_LOG.Output("[JewelOfHarmony][%s][%s] is Already Opening PShop, ChaosBox Failed",
 				lpObj->AccountID, lpObj->Name);
 
 			GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
@@ -1441,7 +1426,7 @@ BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
 		gObjInventoryTrans(lpObj->m_Index);
 
-		LogAddTD("[JewelOfHarmony][%s][%s] Open Chaos Box",
+		CHAOS_LOG.Output("[JewelOfHarmony][%s][%s] Open Chaos Box",
 			lpObj->AccountID, lpObj->Name);
 
 		gObjItemTextSave(lpObj);
@@ -1452,7 +1437,8 @@ BOOL CJewelOfHarmonySystem::NpcJewelOfHarmony(LPOBJ lpNpc, LPOBJ lpObj)
 	return TRUE;
 }
 
-//0063B2D0	-> OK
+
+
 BOOL CJewelOfHarmonySystem::IsEnableToTrade(OBJECTSTRUCT * lpObj) 
 {
 	BOOL bRet = TRUE;
@@ -1470,3 +1456,4 @@ BOOL CJewelOfHarmonySystem::IsEnableToTrade(OBJECTSTRUCT * lpObj)
 
 	return bRet;
 }
+

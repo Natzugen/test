@@ -9,6 +9,9 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
+
 #include "KanturuStateInfo.h"
 #include "KanturuMaya.h"
 
@@ -114,29 +117,34 @@ public:
 
 private:
 
-	int m_bFileDataLoad;	// 4
-	int m_iBattleOfMayaState;	// 8
-	int m_iSceneState;	// C
+	BYTE m_bFileDataLoad;	// 4
+	short m_iBattleOfMayaState;	// 8
+	short m_iSceneState;	// C
 	CKanturuStateInfo m_BattleTimeInfo[KANTURU_MAYA_TIME_INFO];	// 10
-	int m_BattleTimeInfoCount;	// 4C
+	BYTE m_BattleTimeInfoCount;	// 4C
 	CKanturuStateInfo m_StateInfo[KANTURU_MAYA_STATE_INFO];	// 50
-	int m_StateInfoCount;	// 1CC
+
+	BYTE m_StateInfoCount;	// 1CC
+
 	BOOL m_bEntrancePermit;	// 1D0
 	BOOL m_bIsSucccess;	// 1D4
 	BOOL m_bIsSceneSuccess;	// 1D8
 	CKanturuMaya m_KanturuMaya;	// 1DC
 	int m_iMayaHandDieTimeCounter;	// 1F0
-	int m_iMayaLeftHandObjIndex;	// 1F4
-	int m_iMayaRightHandObjIndex;	// 1F8
+
+	short m_iMayaLeftHandObjIndex;	// 1F4
+	short m_iMayaRightHandObjIndex;	// 1F8
+
 	int m_iMayaHandAIChangeTime[KANTURU_MAYA_AI_CHANGE_TIME];	// 1FC
 	int m_iMayaHandAIChangeTimeCount;	// 20C
 	int m_iMayaHandAIAppliedTime;	// 210
-	int m_iMayaHandCurrentAI;	// 214
-	int m_iMayaHandGroupNumber[KANTURU_MAYA_GROUP_NUMBER];	// 218
-	int m_iMayaHAndGroupNumberCount;	// 224
-	int m_iMayaIceStormUsingRate;	// 228
+
+	short m_iMayaHandCurrentAI;	// 214
+	short m_iMayaHandGroupNumber[KANTURU_MAYA_GROUP_NUMBER];	// 218
+	short m_iMayaHAndGroupNumberCount;	// 224
+	short m_iMayaIceStormUsingRate;	// 228
 
 };
 
-
+#endif
 #endif // !defined(AFX_KANTURUBATTLEOFMAYA_H__69EB902F_6582_4C1D_A741_77B1411DAC09__INCLUDED_)

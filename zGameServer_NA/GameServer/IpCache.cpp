@@ -1,18 +1,30 @@
-//	GS-CS	1.00.90	JPN	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// IpCache.cpp	
+// GS-N 0.99.60T 0x00488260 : Status : Completed;
+//	GS-N	1.00.18	JPN	0x004A3220	-	Completed
 #include "stdafx.h"
 #include "IpCache.h"
 
+
+
 CIpCache IpCache;
+
 
 CIpCache::CIpCache()
 {
 	this->Init();	
 }
 
+
 CIpCache::~CIpCache()
 {
 
 }
+
+
 
 void CIpCache::Init()
 {

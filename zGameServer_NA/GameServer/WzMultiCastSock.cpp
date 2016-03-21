@@ -1,8 +1,10 @@
-// GS-N	1.00.90	JPN		-	Completed
 #include "stdafx.h"
 #include "WzMultiCastSock.h"
 #include "..\include\prodef.h"
 #include <Ws2tcpip.h>
+
+// GS-N 0.99.60T 0x00472450
+// GS-N	1.00.18	JPN	0x00489400	-	Completed
 
 CWzMultiCastSock::CWzMultiCastSock()
 {
@@ -163,7 +165,8 @@ BOOL CWzMultiCastSock::StartMultiCast(LPSTR lpszIPADDR)
 
 		return FALSE;
 	}
-	this->m_hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, (unsigned int (__stdcall*)(void *))CWzMultiCastSock::RecvThreadProc, this, NULL, &this->m_idWorkerThread);
+
+	this->m_hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, CWzMultiCastSock::RecvThreadProc, this, NULL, &this->m_idWorkerThread);
 
 	return TRUE;
 }

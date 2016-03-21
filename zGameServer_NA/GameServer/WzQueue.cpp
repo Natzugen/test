@@ -1,16 +1,21 @@
-//GameServer 1.00.90 JPN - finished
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99060T 0x00476C40 Status : Completed
+//	GS-N	1.00.18	JPN	0x48DC10	-	Completed
 #include "stdafx.h"
 #include "WzQueue.h"
 
-//004B5100  /> \55            PUSH EBP
+
 WZQueue::WZQueue(UINT nMaxNode)
 {
 	this->m_Max_Node = nMaxNode;
 	this->m_pTail = 0;
 	this->m_pHead = 0;
 	this->m_Count = 0;
-	BOOL bSuccess;
-	bSuccess=InitializeCriticalSectionAndSpinCount(&this->m_CriticalSection , 4000);
+	BOOL bSuccess = 0;
+	bSuccess = InitializeCriticalSectionAndSpinCount(&this->m_CriticalSection , 4000);
 	if (bSuccess == 0 )
 	{
 		if ( GetLastError() == STATUS_NO_MEMORY )	

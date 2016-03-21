@@ -1,12 +1,15 @@
-//GS-CS		1.00.90 JPN 0xXXXXXXXX 	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #include "stdafx.h"
 #include "MonsterHerd.h"
 #include "MapClass.h"
 #include "GameMain.h"
 #include "gObjMonster.h"
-#include "BuffEffectSlot.h"
+// GS-N 0.99.60T 0x004084D0
+//	GS-N	1.00.18	JPN	0x0040B8F0	-	Completed
 
-//0040FE30 - identical
 MonsterHerd::MonsterHerd()
 {
 	this->m_iMapNumber =-1;
@@ -19,13 +22,19 @@ MonsterHerd::MonsterHerd()
 	InitializeCriticalSection(&this->m_critMonsterHerd);
 }
 
-//0040FF20 - identical
+
+
+
+
 MonsterHerd::~MonsterHerd()
 {
 	DeleteCriticalSection(&this->m_critMonsterHerd);
 }
 
-//0040FFA0 - identical
+
+
+
+
 BOOL MonsterHerd::SetTotalInfo(int iMapNumber, int iRadius, int iStartX, int iStartY)
 {
 	if ( MAX_MAP_RANGE(iMapNumber) == FALSE ) 
@@ -58,8 +67,11 @@ BOOL MonsterHerd::SetTotalInfo(int iMapNumber, int iRadius, int iStartX, int iSt
 	return TRUE;
 }
 
-//00410130 - identical
-BOOL MonsterHerd::AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst)
+
+
+
+
+BOOL MonsterHerd::AddMonster(int iMonsterType, BYTE bRegen, BYTE bAttackFirst)
 {
 	if ( this->m_bHasInfo == 0 )
 	{
@@ -67,7 +79,6 @@ BOOL MonsterHerd::AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst)
 	}
 
 	int iIndex;
-	BYTE btMapNumber = this->m_iMapNumber;
 	BYTE cX=0;
 	BYTE cY=0;
 
@@ -100,10 +111,10 @@ BOOL MonsterHerd::AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst)
 		}
 
 		gObj[iIndex].Level = iAttr->m_Level;
-		gObjSetMonster(iIndex, iMonsterType);
+		gObjSetMonster(iIndex, iMonsterType,"MonsterHerd::AddMonster");
 		gObj[iIndex].MaxRegenTime = 1000;
 		gObj[iIndex].Dir = rand() % 8;
-		gObj[iIndex].m_bIsInMonsterHerd = 1;
+		gObj[iIndex].m_bIsInMonsterHerd = true;
 		gObj[iIndex].m_bIsMonsterAttackFirst = bAttackFirst;
 		gObj[iIndex].m_lpMonsterHerd = this;
 
@@ -113,7 +124,8 @@ BOOL MonsterHerd::AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst)
 		pMonsterData.m_iIndex = iIndex;
 		pMonsterData.m_iType = iMonsterType;
 		pMonsterData.m_iX = cX;
-		pMonsterData.m_iX = cY;	
+		//pMonsterData.m_iX = cY;	// #error Apply Deathway Fix, change btXMap for btYMap
+		pMonsterData.m_iY = cY;	// #FIX
 		pMonsterData.m_bRegen = bRegen;
 
 		this->m_mapMonsterHerd.insert( std::pair<int, _MONSTER_HERD_DATA>(iIndex, pMonsterData) );
@@ -129,7 +141,9 @@ BOOL MonsterHerd::AddMonster(int iMonsterType, BOOL bRegen, BOOL bAttackFirst)
 
 }
 
-//004105B0 - identical
+
+
+
 void MonsterHerd::SetRadius(int iRadius)
 {
 	if ( ((iRadius<0)?FALSE:(iRadius>15)?FALSE:TRUE) != FALSE )
@@ -140,7 +154,10 @@ void MonsterHerd::SetRadius(int iRadius)
 	this->m_iRADIUS = iRadius;
 }
 
-//00410610 - identical
+
+
+
+
 void MonsterHerd::SetPosition(BYTE iTX, BYTE iTY)
 {
 	if ( this->m_bHasInfo == 0 )
@@ -159,7 +176,10 @@ void MonsterHerd::SetPosition(BYTE iTX, BYTE iTY)
 	this->m_iCUR_Y = iTY;
 }
 
-//004106E0 - identical 
+
+
+
+
 BOOL MonsterHerd::Start()
 {
 	if ( this->m_bHerdActive != 0 )
@@ -176,11 +196,12 @@ BOOL MonsterHerd::Start()
 	return TRUE;
 }
 
-//00410730 - identical
+
+
+
 void MonsterHerd::Stop()
 {
 	this->m_bHerdActive = 0;
-	this->m_bHasInfo = 0; // Season 4.5 addon
 
 	if ( this->m_mapMonsterHerd.empty() == false )
 	{
@@ -205,7 +226,8 @@ void MonsterHerd::Stop()
 
 }
 
-//00410890 - identical
+
+
 _MONSTER_HERD_DATA * MonsterHerd::GetMonsterData(int iIndex)
 {
 	if ( OBJMAX_RANGE(iIndex) == FALSE )
@@ -243,7 +265,8 @@ _MONSTER_HERD_DATA * MonsterHerd::GetMonsterData(int iIndex)
 	return lpMHD_RETURN;
 }
 
-//004109C0 - identical
+
+
 void MonsterHerd::BeenAttacked(LPOBJ lpObj, LPOBJ lpTargetObj)
 {
 	if ( lpObj == NULL )
@@ -310,7 +333,9 @@ void MonsterHerd::BeenAttacked(LPOBJ lpObj, LPOBJ lpTargetObj)
 	}
 }
 
-//00410D30 - identical
+
+
+
 void MonsterHerd::OrderAttack(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackPercent)
 {
 	if ( lpObj == NULL )
@@ -373,7 +398,8 @@ void MonsterHerd::OrderAttack(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackPercent
 	}
 }
 
-//00410FD0 - identical
+
+
 BOOL MonsterHerd::CheckInRadius(int iIndex)
 {
 	if ( OBJMAX_RANGE(iIndex) == FALSE )
@@ -399,7 +425,11 @@ BOOL MonsterHerd::CheckInRadius(int iIndex)
 	return TRUE;
 }
 
-//004110F0 - identical
+
+
+
+
+
 BOOL MonsterHerd::GetCurrentLocation(BYTE&cX, BYTE& cY)
 {
 	if ( this->m_bHasInfo == 0 )
@@ -413,7 +443,8 @@ BOOL MonsterHerd::GetCurrentLocation(BYTE&cX, BYTE& cY)
 	return TRUE;
 }
 
-//00411140 - identical
+
+
 BOOL MonsterHerd::GetRandomLocation(BYTE& cX, BYTE& cY)
 {
 	if ( this->m_bHasInfo == 0 )
@@ -439,7 +470,9 @@ BOOL MonsterHerd::GetRandomLocation(BYTE& cX, BYTE& cY)
 	return FALSE;
 }
 
-//00411280 - identical
+
+
+
 BOOL MonsterHerd::CheckLocation(BYTE& cX, BYTE& cY)
 {
 	BYTE btMapAttr = MapC[this->m_iMapNumber].GetAttr(cX, cY);
@@ -452,7 +485,9 @@ BOOL MonsterHerd::CheckLocation(BYTE& cX, BYTE& cY)
 	return TRUE;
 }
 
-//00411320 - identical
+
+
+
 BOOL MonsterHerd::MoveHerd(BYTE iTX, BYTE iTY)
 {
 	if ( this->m_bHasInfo == 0 )
@@ -473,16 +508,18 @@ BOOL MonsterHerd::MoveHerd(BYTE iTX, BYTE iTY)
 	return TRUE;
 }
 
-//00411400 - identical
+
+
+
 BOOL MonsterHerd::MonsterHerdItemDrop(LPOBJ lpObj)
 {
-	return FALSE;
+	return FALSE;	// NO MACRO
 }
 
-//00411420 - identical
+
 void MonsterHerd::MonsterMoveAction(LPOBJ lpObj)
 {
-	if ( gObjCheckUsedBuffEffect(lpObj, 57) == 1 )
+	if ( lpObj->m_SkillHarden != 0 )
 	{
 		return;
 	}
@@ -522,13 +559,16 @@ void MonsterHerd::MonsterMoveAction(LPOBJ lpObj)
 	}
 }
 
-//00411580 - identical
+
 void MonsterHerd::MonsterAttackAction(LPOBJ lpObj, LPOBJ lpTargetObj)
 {
-	gObjCheckUsedBuffEffect(lpObj, 57);
+	return;	// Here goes a MACRO
 }
 
-//004115B0 - identical
+//*******************************************************
+// START REVIEW HERE
+
+
 void MonsterHerd::MonsterBaseAct(LPOBJ lpObj)
 {
 	LPOBJ lpTargetObj = NULL;
@@ -562,13 +602,13 @@ void MonsterHerd::MonsterBaseAct(LPOBJ lpObj)
 				}
 				else if ( lpObj->m_MoveRange > 0 )
 				{
-					if ( gObjCheckUsedBuffEffect(lpObj, 57) == 0 )
+					if ( lpObj->m_SkillHarden == 0 )
 					{
 						this->MonsterMoveAction(lpObj);
 					}
 				}
 
-				if ( lpObj->m_bIsMonsterAttackFirst != false )
+				if ( lpObj->m_bIsMonsterAttackFirst != 0 )
 				{
 					lpObj->TargetNumber = gObjMonsterSearchEnemy(lpObj, OBJ_USER);
 
@@ -677,14 +717,15 @@ void MonsterHerd::MonsterBaseAct(LPOBJ lpObj)
 			break;
 	}
 }
+	
 
-//00411D50 - identical
+
 void MonsterHerd::MonsterDieAction(LPOBJ lpObj)
 {
 	return;	// Here goes a MACRO
 }
 
-//00411D70 - identical
+
 BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 {
 	if ( lpObj == NULL )
@@ -706,7 +747,7 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 
 	_MONSTER_HERD_DATA * lpMHD = lpMH->GetMonsterData(lpObj->m_Index);
 
-	if ( lpMHD == NULL || lpMHD->m_bRegen == FALSE )
+	if ( lpMHD == NULL || lpMHD->m_bRegen == 0 )
 	{
 		return FALSE;
 	}
@@ -714,8 +755,9 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 	lpObj->Life = lpObj->AddLife + lpObj->MaxLife;
 	lpObj->Mana = lpObj->AddMana + lpObj->MaxMana;
 	lpObj->Live = TRUE;
-	gObjClearBuffEffect(lpObj, CLEAR_TYPE_DIEREGEN);
-	lpObj->m_ViewState = 0;
+	lpObj->m_PoisonBeattackCount = 0;
+	lpObj->m_ColdBeattackCount = 0;
+	//lpObj->m_ViewState = 0;
 	lpObj->Teleport = 0;
 
 	for ( int i=0;i<MAX_SELF_DEFENSE;i++)
@@ -724,8 +766,9 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 	}
 
 	gObjTimeCheckSelfDefense(lpObj);
-	gObjRemoveBuffEffect(lpObj, 55);
-    gObjRemoveBuffEffect(lpObj, 56);
+	lpObj->m_ViewSkillState &= 0xFFFFFFFE;
+	lpObj->m_ViewSkillState &= 0xFFFFFFFD;
+
 	gObjClearViewport(lpObj);
 	gObjViewportListProtocolDestroy(lpObj);
 	gObjViewportClose(lpObj);
@@ -739,8 +782,8 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 	lpObj->TargetNumber = -1;
 	lpObj->NextActionTime = 5000;
 
-	BYTE cX;
-	BYTE cY;
+	BYTE cX=0;
+	BYTE cY=0;
 	int iCount = 100;
 	BOOL bGetPosition = FALSE;
 
@@ -752,7 +795,6 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 			break;
 		}
 	}
-
 
 	if ( bGetPosition == FALSE )
 	{
@@ -772,6 +814,8 @@ BOOL MonsterHerd::MonsterRegenAction(LPOBJ lpObj)
 	lpObj->TY = lpObj->Y;
 	lpObj->StartX = lpObj->X;
 	lpObj->StartY = lpObj->Y;
+		//lpObj->m_OldX = lpObj->X;
+		//lpObj->m_OldY = lpObj->Y;
 
 	gObjMonsterHitDamageInit(lpObj);
 	CreateFrustrum(lpObj->X, lpObj->Y, lpObj->m_Index);

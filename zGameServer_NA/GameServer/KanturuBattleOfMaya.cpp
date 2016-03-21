@@ -1,9 +1,8 @@
 // KanturuBattleOfMaya.cpp: implementation of the CKanturuBattleOfMaya class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x0057A2C0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
-
 #include "KanturuBattleOfMaya.h"
 #include "Gamemain.h"
 #include "TMonsterAIGroup.h"
@@ -14,8 +13,9 @@
 #include "..\include\ReadScript.h"
 #include "KanturuUtil.h"
 
-static CKanturuUtil KANTURU_UTIL;
+#if (GS_CASTLE==0)
 
+static CKanturuUtil KANTURU_UTIL;
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -86,18 +86,18 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 
 	if ( !lpszFileName || !strcmp(lpszFileName , "") )
 	{
-		MsgBox("[ KANTURU ][ BattleOfMaya ] - File load error : File Name Error");
+		MsgBox("[Kanturu][BattleOfMaya] - File load error : File Name Error");
 		return FALSE;
 	}
 
 	try
 	{
 		enum SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
-			MsgBox("[ KANTURU ][ BattleOfMaya ] - Can't Open %s ", lpszFileName);
+			MsgBox("[Kanturu][BattleOfMaya] - Can't Open %s ", lpszFileName);
 			return FALSE;
 		}
 
@@ -145,7 +145,7 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 					if ( this->m_BattleTimeInfoCount < 0 ||
 						 this->m_BattleTimeInfoCount >= KANTURU_MAYA_TIME_INFO )
 					{
-						MsgBox("[ KANTURU ][ BattleOfMaya ] - Exceed Max Scene (%d)",
+						MsgBox("[Kanturu][BattleOfMaya] - Exceed Max Scene (%d)",
 							this->m_BattleTimeInfoCount);
 
 						break;
@@ -186,7 +186,7 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 					if ( this->m_StateInfoCount < 0 ||
 						 this->m_StateInfoCount >= KANTURU_MAYA_STATE_INFO )
 					{
-						MsgBox("[ KANTURU ][ BattleOfMaya ] - Exceed Max State Time (%d)",
+						MsgBox("[Kanturu][BattleOfMaya] - Exceed Max State Time (%d)",
 							this->m_StateInfoCount);
 
 						break;
@@ -219,8 +219,8 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 					if ( this->m_iMayaHandAIChangeTimeCount < 0 ||
 						 this->m_iMayaHandAIChangeTimeCount >= KANTURU_MAYA_AI_CHANGE_TIME )
 					{
-						MsgBox("[ KANTURU ][ BattleOfMaya ] - Exceed Maya Hand AI Change Time(%d)",
-							this->m_iMayaHandAIChangeTime);	// #error Change to m_iMayaHandAIChangeTimeCount
+						MsgBox("[Kanturu][BattleOfMaya] - Exceed Maya Hand AI Change Time(%d)",
+							this->m_iMayaHandAIChangeTimeCount);//this->m_iMayaHandAIChangeTime);	// #error Change to m_iMayaHandAIChangeTimeCount
 
 						break;
 					}
@@ -244,7 +244,7 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 					if ( this->m_iMayaHAndGroupNumberCount < 0 ||
 						 this->m_iMayaHAndGroupNumberCount >= KANTURU_MAYA_GROUP_NUMBER )
 					{
-						MsgBox("[ KANTURU ][ BattleOfMaya ] - Maya Hand AI Group Read Error(%d)",
+						MsgBox("[Kanturu][BattleOfMaya] - Maya Hand AI Group Read Error(%d)",
 							this->m_iMayaHAndGroupNumberCount);
 
 						break;
@@ -268,7 +268,7 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 
 					if ( iValue < 0 )
 					{
-						MsgBox("[ KANTURU ][ BattleOfMaya ] - Maya IceStorm Using Rate Load Error(%d)",
+						MsgBox("[Kanturu][BattleOfMaya] - Maya IceStorm Using Rate Load Error(%d)",
 							iValue);
 
 						iValue = 60;
@@ -276,7 +276,7 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 					
 					this->m_iMayaIceStormUsingRate = iValue;
 					
-					LogAddTD("[ KANTURU ][ BattleOfMaya ] IceStorm Using Rate Load: %d",
+					LogAddTD("[Kanturu][BattleOfMaya] IceStorm Using Rate Load: %d",
 						this->m_iMayaIceStormUsingRate);
 				}
 				else
@@ -292,14 +292,14 @@ BOOL CKanturuBattleOfMaya::LoadData(LPSTR lpszFileName)
 		}	// while ( true )
 
 		fclose(SMDFile);
-		LogAddC(2, "[ KANTURU ][ BattleOfMaya ] %s file is Loaded",
+		LogAddTD("[Kanturu][BattleOfMaya] %s file is Loaded",
 			lpszFileName);
 
 		this->m_bFileDataLoad = TRUE;
 	}	// __try
 	catch ( DWORD )
 	{
-		MsgBox("[ KANTURU ][ BattleOfMaya ] - Loading Exception Error (%s) File. ", lpszFileName);
+		MsgBox("[Kanturu][BattleOfMaya] - Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
 	return this->m_bFileDataLoad;
@@ -469,7 +469,7 @@ void CKanturuBattleOfMaya::SetNextState(int iCurrentState)
 
 void CKanturuBattleOfMaya::SetState_NONE()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> NONE",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> NONE",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_NONE);
@@ -479,9 +479,9 @@ void CKanturuBattleOfMaya::SetState_NONE()
 
 void CKanturuBattleOfMaya::SetState_STANBY1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> STANBY1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> STANBY1",
 		this->m_iBattleOfMayaState);
-	LogAddTD("[ KANTURU ][ BattleOfMaya ] State(%d) -> STANBY1",
+	LogAddTD("[Kanturu][BattleOfMaya] State(%d) -> STANBY1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_STANBY1);
@@ -492,7 +492,7 @@ void CKanturuBattleOfMaya::SetState_STANBY1()
 
 void CKanturuBattleOfMaya::SetState_NOTIFY1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> NOTIFY1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> NOTIFY1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_NOTIFY1);
@@ -503,7 +503,7 @@ void CKanturuBattleOfMaya::SetState_NOTIFY1()
 
 void CKanturuBattleOfMaya::SetState_START1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> START1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> START1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_START1);
@@ -525,7 +525,7 @@ void CKanturuBattleOfMaya::SetState_START1()
 
 void CKanturuBattleOfMaya::SetState_MAYA1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> MAYA1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> MAYA1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA1);
@@ -543,7 +543,7 @@ void CKanturuBattleOfMaya::SetState_MAYA1()
 
 void CKanturuBattleOfMaya::SetState_END_MAYA1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> END_MAYA1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> END_MAYA1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleSceneState(-1);
@@ -556,7 +556,7 @@ void CKanturuBattleOfMaya::SetState_END_MAYA1()
 
 void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA1()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> ENDCYCLE_MAYA1",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> ENDCYCLE_MAYA1",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_ENDCYCLE1);
@@ -569,7 +569,7 @@ void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA1()
 
 void CKanturuBattleOfMaya::SetState_STANBY2()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> STANBY2",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> STANBY2",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_STANBY2);
@@ -580,7 +580,7 @@ void CKanturuBattleOfMaya::SetState_STANBY2()
 
 void CKanturuBattleOfMaya::SetState_START2()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> START2",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> START2",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_START2);
@@ -603,7 +603,7 @@ void CKanturuBattleOfMaya::SetState_START2()
 
 void CKanturuBattleOfMaya::SetState_MAYA2()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> MAYA2",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> MAYA2",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA2);
@@ -620,7 +620,7 @@ void CKanturuBattleOfMaya::SetState_MAYA2()
 
 void CKanturuBattleOfMaya::SetState_END_MAYA2()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> END_MAYA2",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> END_MAYA2",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleSceneState(-1);
@@ -633,7 +633,7 @@ void CKanturuBattleOfMaya::SetState_END_MAYA2()
 
 void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA2()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> ENDCYCLE_MAYA2",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> ENDCYCLE_MAYA2",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_ENDCYCLE2);
@@ -646,7 +646,7 @@ void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA2()
 
 void CKanturuBattleOfMaya::SetState_STANBY3()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> STANBY3",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> STANBY3",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_STANBY3);
@@ -657,7 +657,7 @@ void CKanturuBattleOfMaya::SetState_STANBY3()
 
 void CKanturuBattleOfMaya::SetState_START3()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> START3",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> START3",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_START3);
@@ -680,7 +680,7 @@ void CKanturuBattleOfMaya::SetState_START3()
 
 void CKanturuBattleOfMaya::SetState_MAYA3()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> MAYA3",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> MAYA3",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA3);
@@ -698,7 +698,7 @@ void CKanturuBattleOfMaya::SetState_MAYA3()
 
 void CKanturuBattleOfMaya::SetState_END_MAYA3()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> END_MAYA3",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> END_MAYA3",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleSceneState(-1);
@@ -711,7 +711,7 @@ void CKanturuBattleOfMaya::SetState_END_MAYA3()
 
 void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA3()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> ENDCYCLE_MAYA3",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> ENDCYCLE_MAYA3",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_ENDCYCLE3);
@@ -722,7 +722,7 @@ void CKanturuBattleOfMaya::SetState_ENDCYCLE_MAYA3()
 
 void CKanturuBattleOfMaya::SetState_END()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> END",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> END",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleSceneState(-1);
@@ -739,7 +739,7 @@ void CKanturuBattleOfMaya::SetState_END()
 		KANTURU_UTIL.SendMsgKanturuBattleUser(lMsg.Get(MSGGET(13, 36)));
 	}
 	
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] Success Value[%d]",
+	LogAddC(5, "[Kanturu][BattleOfMaya] Success Value[%d]",
 		this->GetSuccessValue());
 }
 
@@ -747,10 +747,10 @@ void CKanturuBattleOfMaya::SetState_END()
 
 void CKanturuBattleOfMaya::SetState_ENDCYCLE()
 {
-	LogAddC(5, "[ KANTURU ][ BattleOfMaya ] State(%d) -> ENDCYCLE",
+	LogAddC(5, "[Kanturu][BattleOfMaya] State(%d) -> ENDCYCLE",
 		this->m_iBattleOfMayaState);
 
-	LogAddTD("[ KANTURU ][ BattleOfMaya ] State(%d) -> ENDCYCLE",
+	LogAddTD("[Kanturu][BattleOfMaya] State(%d) -> ENDCYCLE",
 		this->m_iBattleOfMayaState);
 
 	this->SetBattleOfMayaState(KANTURU_MAYA_ENDCYCLE);
@@ -790,7 +790,7 @@ void CKanturuBattleOfMaya::ProcState_START1()
 	{
 		this->SetSuccessValue(TRUE);
 
-		LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+		LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 			this->m_iBattleOfMayaState);
 
 		this->SetNextState(this->m_iBattleOfMayaState);
@@ -806,11 +806,6 @@ void CKanturuBattleOfMaya::ProcState_START1()
 
 void CKanturuBattleOfMaya::ProcState_MAYA1()
 {
-	if(this->m_iMayaLeftHandObjIndex == -1)//Season 4.5 addon
-	{
-		return;
-	}
-
 	if ( gObj[this->m_iMayaLeftHandObjIndex].Live == FALSE )
 	{
 		if ( this->m_iMayaHandDieTimeCounter == 0 )
@@ -818,7 +813,7 @@ void CKanturuBattleOfMaya::ProcState_MAYA1()
 			this->SetSuccessValue(TRUE);
 			this->SetSceneSuccessValue(TRUE);
 
-			LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+			LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 				this->m_iBattleOfMayaState);
 
 			g_KanturuBattleUserMng.LogBattleWinnerUserInfo(0,
@@ -872,7 +867,7 @@ void CKanturuBattleOfMaya::ProcState_START2()
 	{
 		this->SetSuccessValue(TRUE);
 
-		LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+		LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 			this->m_iBattleOfMayaState);
 
 		this->SetNextState(this->m_iBattleOfMayaState);
@@ -889,11 +884,6 @@ void CKanturuBattleOfMaya::ProcState_START2()
 
 void CKanturuBattleOfMaya::ProcState_MAYA2()
 {
-	if(this->m_iMayaRightHandObjIndex == -1)//Season 4.5 addon
-	{
-		return;
-	}
-
 	if ( gObj[this->m_iMayaRightHandObjIndex].Live == FALSE )
 	{
 		if ( this->m_iMayaHandDieTimeCounter == 0 )
@@ -901,7 +891,7 @@ void CKanturuBattleOfMaya::ProcState_MAYA2()
 			this->SetSuccessValue(TRUE);
 			this->SetSceneSuccessValue(TRUE);
 
-			LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+			LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 				this->m_iBattleOfMayaState);
 
 			g_KanturuBattleUserMng.LogBattleWinnerUserInfo(1,
@@ -953,7 +943,7 @@ void CKanturuBattleOfMaya::ProcState_START3()
 	{
 		this->SetSuccessValue(TRUE);
 
-		LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+		LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 			this->m_iBattleOfMayaState);
 
 		this->SetNextState(this->m_iBattleOfMayaState);
@@ -971,14 +961,13 @@ void CKanturuBattleOfMaya::ProcState_START3()
 void CKanturuBattleOfMaya::ProcState_MAYA3()
 {
 	int iAliveCount = 0;
-	
-	//Season 4.5 change
-	if ( this->m_iMayaLeftHandObjIndex != -1 && gObj[this->m_iMayaLeftHandObjIndex].Live != FALSE )
+
+	if ( gObj[this->m_iMayaLeftHandObjIndex].Live != FALSE )
 	{
 		iAliveCount++;
 	}
-	//Season 4.5 change
-	if ( this->m_iMayaRightHandObjIndex != -1 && gObj[this->m_iMayaRightHandObjIndex].Live != FALSE )
+
+	if ( gObj[this->m_iMayaRightHandObjIndex].Live != FALSE )
 	{
 		iAliveCount++;
 	}
@@ -990,7 +979,7 @@ void CKanturuBattleOfMaya::ProcState_MAYA3()
 			this->SetSuccessValue(TRUE);
 			this->SetSceneSuccessValue(TRUE);
 
-			LogAddTD("[ KANTURU ][ BattleOfMaya ] Success!! - DetailState:%d",
+			LogAddTD("[Kanturu][BattleOfMaya] Success!! - DetailState:%d",
 				this->m_iBattleOfMayaState);
 
 			g_KanturuBattleUserMng.LogBattleWinnerUserInfo(2,
@@ -1069,7 +1058,7 @@ BOOL CKanturuBattleOfMaya::CheckStateTime()
 				this->SetSceneSuccessValue(FALSE);
 				this->SetSuccessValue(FALSE);
 
-				LogAddTD("[ KANTURU ][ BattleOfMaya ] Fail!! TimeOut - DetailState:%d",
+				LogAddTD("[Kanturu][BattleOfMaya] Fail!! TimeOut - DetailState:%d",
 					this->m_iBattleOfMayaState);
 
 				this->SetState(KANTURU_MAYA_END);
@@ -1104,7 +1093,7 @@ void CKanturuBattleOfMaya::CheckMayaBattleUser()
 			this->SetSuccessValue(FALSE);
 			this->SetSceneSuccessValue(FALSE);
 
-			LogAddTD("[ KANTURU ][ BattleOfMaya ] Fail!! All Battle User Die - DetailState:%d",
+			LogAddTD("[Kanturu][BattleOfMaya] Fail!! All Battle User Die - DetailState:%d",
 				this->m_iBattleOfMayaState);
 
 			this->SetState(KANTURU_MAYA_END);
@@ -1125,15 +1114,8 @@ void CKanturuBattleOfMaya::SetAIMonsterGroup(int iGroupNumber)
 
 void CKanturuBattleOfMaya::ResetAIMonster()
 {
-	if(this->m_iMayaLeftHandObjIndex != -1)//Season 4.5 addon
-	{
-		gObj[this->m_iMayaLeftHandObjIndex].Life = 0;
-	}
-
-	if(this->m_iMayaRightHandObjIndex != -1)//Season 4.5 addon
-	{
-		gObj[this->m_iMayaRightHandObjIndex].Life = 0;
-	}
+	gObj[this->m_iMayaLeftHandObjIndex].Life = 0;
+	gObj[this->m_iMayaRightHandObjIndex].Life = 0;
 
 	for ( int iCount=0;iCount < KANTURU_MAYA_AI_CHANGE_TIME ; iCount++)
 	{
@@ -1162,3 +1144,4 @@ void CKanturuBattleOfMaya::ChangeAI(int iGroupNumber)
 	}
 }
 
+#endif

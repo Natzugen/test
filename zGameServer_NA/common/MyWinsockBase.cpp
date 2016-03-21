@@ -1,4 +1,11 @@
-//	GS-N	1.00.90	JPN	-	Completed
+
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T MyWinsockBase.cpp	Status : Completed - Review procedure MyWinsockBase::Startup() - Finished, just SAR problem -SHR
+//	GS-N	1.00.18	JPN	0x0048CD90	-	Completed
+
 #include "stdafx.h"
 #include "MyWinsockBase.h"
 
@@ -40,7 +47,7 @@ BOOL MyWinsockBase::Startup()
 		this->m_socket = INVALID_SOCKET;
 		this->m_iMaxSockets = wsaData.iMaxSockets ;
 		this->m_Connect = FALSE;
-		return TRUE;
+		return true;
 	}
 }
 
@@ -59,7 +66,7 @@ BOOL MyWinsockBase::CreateSocket(HWND hWnd)
 	}
 
 	this->m_hWnd =hWnd;
-	return TRUE;
+	return true;
 }
 
 
@@ -70,7 +77,7 @@ BOOL MyWinsockBase::Close()
 
 	this->m_Connect=FALSE;
 
-	return TRUE;
+	return true;
 }
 
 BOOL MyWinsockBase::Close(SOCKET socket)
@@ -80,7 +87,7 @@ BOOL MyWinsockBase::Close(SOCKET socket)
 
 	this->m_socket=INVALID_SOCKET;
 	this->m_Connect =FALSE;
-	return TRUE;
+	return true;
 }
 
 int MyWinsockBase::Close2(SOCKET socket)

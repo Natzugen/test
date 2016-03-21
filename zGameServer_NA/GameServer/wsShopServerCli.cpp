@@ -1,5 +1,5 @@
 // wsShopServerCli.cpp: implementation of the wsShopServerCli class.
-//	GS-CS	1.00.90 JPN	 - Completed
+//	GS-N	1.00.18	JPN	0x005914B0 - Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -43,7 +43,7 @@ BOOL wsShopServerCli::Connect(LPSTR ip_addr, WORD port,DWORD WinMsgNum)
 	}
 
 	addr.sin_family = AF_INET;
-	addr.sin_port =  htons(port);//Season 4.5 changed
+	addr.sin_port =  ntohs(port);
 	addr.sin_addr.S_un.S_addr = inet_addr(ip_addr);
 
 	if ( addr.sin_addr.S_un.S_addr == -1 )

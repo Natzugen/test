@@ -39,10 +39,10 @@ public:
 
 private:
 
-	int m_iCurCastleState;	// 4
-	int m_iCurTaxRateChaos;	// 8
-	int m_iCurTaxRateStore;	// C
-	int m_iCurTaxHuntZone;	// 10
+	short m_iCurCastleState;	// 4
+	short m_iCurTaxRateChaos;	// 8
+	short m_iCurTaxRateStore;	// C
+	short m_iCurTaxHuntZone;	// 10
 	long m_lCastleTributeMoney;	// 14
 	char m_szCastleOwnerGuild[16];	// 18
 	int m_iCsTributeMoneyTimer;	// 28

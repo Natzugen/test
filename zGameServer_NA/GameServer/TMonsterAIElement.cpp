@@ -1,5 +1,7 @@
-//GameServer 1.00.77 JPN - Completed
-//GameServer 1.00.90 JPN - Completed
+// TMonsterAIElement.cpp: implementation of the TMonsterAIElement class.
+//	GS-N	1.00.18	JPN	0x0055D120	-	Completed
+//////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "TMonsterAIElement.h"
 #include "TMonsterAIGroup.h"
@@ -13,16 +15,22 @@
 #include "..\include\Readscript.h"
 #include "Gamemain.h"
 #include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
 
+#if (GS_CASTLE==0)
 static CKanturuUtil KANTURU_UTIL;
+#endif
 
 BOOL TMonsterAIElement::s_bDataLoad = FALSE;
 TMonsterAIElement TMonsterAIElement::s_MonsterAIElementArray[MAX_AI_ELEMENT];
-TMonsterAIMovePath TMonsterAIElement::s_MonsterAIMovePath[MAX_NUMBER_MAP];
+TMonsterAIMovePath TMonsterAIElement::s_MonsterAIMovePath[MAX_MAP_NUMBER];
 
+#if (GS_CASTLE==1)
 static CCrywolfUtil UTIL;
+#endif
 static TMonsterAIUtil MONSTER_UTIL;
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
 
 TMonsterAIElement::TMonsterAIElement()
 {
@@ -33,6 +41,9 @@ TMonsterAIElement::~TMonsterAIElement()
 {
 
 }
+
+
+
 
 void TMonsterAIElement::Reset()
 {
@@ -47,6 +58,9 @@ void TMonsterAIElement::Reset()
 	memset(this->m_szElementName, 0, sizeof(this->m_szElementName));
 }
 
+
+
+
 BOOL TMonsterAIElement::LoadData(LPSTR lpszFileName)
 {
 	TMonsterAIElement::s_bDataLoad = FALSE;
@@ -60,7 +74,7 @@ BOOL TMonsterAIElement::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( !SMDFile )
 		{
@@ -159,10 +173,13 @@ BOOL TMonsterAIElement::LoadData(LPSTR lpszFileName)
 		MsgBox("[Monster AI Element] - Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
-	TMonsterAIElement::s_MonsterAIMovePath[MAP_INDEX_CRYWOLF_FIRSTZONE].LoadData(gDirPath.GetNewPath("Event\\CrywolfMovePath.dat"));
+	TMonsterAIElement::s_MonsterAIMovePath[MAP_INDEX_CRYWOLF_FIRSTZONE].LoadData(ReadConfig.ConnDataFiles[42]);
 
 	return FALSE;
 }
+
+
+
 
 BOOL TMonsterAIElement::DelAllAIElement()
 {
@@ -171,13 +188,16 @@ BOOL TMonsterAIElement::DelAllAIElement()
 		TMonsterAIElement::s_MonsterAIElementArray[i].Reset();
 	}
 
-	for ( int j=0;j<MAX_NUMBER_MAP;j++)
+	for ( int j=0;j<MAX_MAP_NUMBER;j++)
 	{
 		TMonsterAIElement::s_MonsterAIMovePath[j].DelAllAIMonsterMovePath();
 	}
 
 	return FALSE;
 }
+
+
+
 
 TMonsterAIElement * TMonsterAIElement::FindAIElement(int iElementNumber)
 {
@@ -196,10 +216,11 @@ TMonsterAIElement * TMonsterAIElement::FindAIElement(int iElementNumber)
 	return NULL;
 }
 
+
+
+
 BOOL TMonsterAIElement::ForceAIElement(int iIndex, int iTargetIndex, TMonsterAIState *pAIState)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-
 	if ( (rand()%100) > this->m_iSuccessRate )
 		return FALSE;
 
@@ -275,25 +296,22 @@ BOOL TMonsterAIElement::ForceAIElement(int iIndex, int iTargetIndex, TMonsterAIS
 	return TRUE;
 }
 
+
+
+
 BOOL TMonsterAIElement::ApplyElementCommon(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
-	LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
 
-//#if(_GSCS==0)
-	KANTURU_UTIL.SendKanturuChattingMsg(iIndex, "앗싸 좆쿠나!");
-//#endif
+	//Do nothing here
 
 	return FALSE;
 }
 
+
 BOOL TMonsterAIElement::ApplyElementMove(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-이동");
-
-//#if(_GSCS==0)
-	KANTURU_UTIL.SendKanturuChattingMsg(iIndex, "Element-이동");
-//#endif
 
 	if ( lpObj->PathStartEnd )
 		return FALSE;
@@ -311,14 +329,10 @@ BOOL TMonsterAIElement::ApplyElementMove(int iIndex, int iTargetIndex, TMonsterA
 	return FALSE;
 }
 
+
 BOOL TMonsterAIElement::ApplyElementMoveTarget(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-타겟이동");
-
-//#if(_GSCS==0)
-	KANTURU_UTIL.SendKanturuChattingMsg(iIndex, "Element-타겟이동");
-//#endif
 
 	if ( lpObj->PathStartEnd )
 		return FALSE;
@@ -333,7 +347,7 @@ BOOL TMonsterAIElement::ApplyElementMoveTarget(int iIndex, int iTargetIndex, TMo
 	BOOL bFindXY = TRUE;
 	int iTargetX = this->m_iX;
 	int iTargetY = this->m_iY;
-	int iTargetDistance = sqrtf( ((lpObj->X - iTargetX)*(lpObj->X - iTargetX))+ ((lpObj->Y - iTargetY)*(lpObj->Y - iTargetY)));
+	int iTargetDistance = (int)sqrt((float) ((lpObj->X - iTargetX)*(lpObj->X - iTargetX))+ ((lpObj->Y - iTargetY)*(lpObj->Y - iTargetY)));
 	
 	if ( TMonsterAIElement::s_MonsterAIMovePath[lpObj->MapNumber].m_bDataLoad )
 	{
@@ -389,10 +403,11 @@ BOOL TMonsterAIElement::ApplyElementMoveTarget(int iIndex, int iTargetIndex, TMo
 	return FALSE;
 }
 
+
+
 BOOL TMonsterAIElement::ApplyElementGroupMove(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-그룹이동");
 
 	if ( lpObj->PathStartEnd )
 		return FALSE;
@@ -435,16 +450,14 @@ BOOL TMonsterAIElement::ApplyElementGroupMove(int iIndex, int iTargetIndex, TMon
 	return FALSE;
 }
 
+
 BOOL TMonsterAIElement::ApplyElementAttack(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-공격");
 
 	if ( TMonsterSkillManager::CheckMonsterSkill(lpObj->Class) )
 	{
-		BOOL bEnableAttack = TRUE;
-
-		if ( lpObj->TargetNumber < 0 )//Season 4.5 fix
+		if(OBJMAX_RANGE(lpObj->TargetNumber) == false)
 		{
 			lpObj->TargetNumber = -1;
 			lpObj->m_ActState.Emotion = 0;
@@ -454,7 +467,11 @@ BOOL TMonsterAIElement::ApplyElementAttack(int iIndex, int iTargetIndex, TMonste
 
 			return FALSE;
 		}
-		
+
+		BOOL bEnableAttack = TRUE;
+
+		if ( lpObj->TargetNumber < 0 )
+			bEnableAttack = FALSE;
 
 		if ( !gObj[lpObj->TargetNumber].Live || gObj[lpObj->TargetNumber].Teleport )
 			bEnableAttack = FALSE;
@@ -464,6 +481,12 @@ BOOL TMonsterAIElement::ApplyElementAttack(int iIndex, int iTargetIndex, TMonste
 		{
 			bEnableAttack = FALSE;
 		}
+
+		if ( gObj[lpObj->TargetNumber].m_bMapSvrMoveQuit == true )
+			bEnableAttack = FALSE;
+
+		if ( gObj[lpObj->TargetNumber].m_bMapAntiHackMove == true )
+			bEnableAttack = FALSE;
 
 		if ( !bEnableAttack )
 		{
@@ -481,19 +504,29 @@ BOOL TMonsterAIElement::ApplyElementAttack(int iIndex, int iTargetIndex, TMonste
 
 		if ( (rand()%4) == 0 )
 		{
-			PMSG_ATTACK pAttackMsg;
+			if(ReadConfig.S5E2 == TRUE)
+			{
+				PMSG_ATTACK_S5E2 pAttackMsg;
 
-			pAttackMsg.AttackAction = 0x78;
-			pAttackMsg.DirDis = lpObj->Dir;
-			pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
-			pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
+				pAttackMsg.AttackAction = 0x78;
+				pAttackMsg.DirDis = lpObj->Dir;
+				pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
+				pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
+			}else
+			{
+				PMSG_ATTACK pAttackMsg;
 
+				pAttackMsg.AttackAction = 0x78;
+				pAttackMsg.DirDis = lpObj->Dir;
+				pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
+				pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
+			}
 			GCActionSend(lpObj, 0x78, lpObj->m_Index, 0);
-			gObjAttack(lpObj, &gObj[lpObj->TargetNumber], 0, 0, 0, 0, 0, 0, 0);
+			gObjAttack(lpObj, &gObj[lpObj->TargetNumber], 0, 0, 0, 0, 0);
 		}
 		else
 		{
-			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 0, -1, NULL);
+			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 0);
 		}
 
 		lpObj->m_ActState.Attack = 0;
@@ -501,28 +534,35 @@ BOOL TMonsterAIElement::ApplyElementAttack(int iIndex, int iTargetIndex, TMonste
 	}
 	else
 	{
-		if(lpObj->TargetNumber < 0)//Season 4.5 addon
-		{
-			return FALSE;
-		}
-
 		LPOBJ lpTargetObj = &gObj[lpObj->TargetNumber];
 		lpObj->Dir = GetPathPacketDirPos(lpTargetObj->X - lpObj->X, lpTargetObj->Y - lpObj->Y);
+		
+		if(ReadConfig.S5E2 == TRUE)
+		{
+			PMSG_ATTACK_S5E2 pAttackMsg;
 
-		PMSG_ATTACK pAttackMsg;
+			pAttackMsg.AttackAction = 0x78;
+			pAttackMsg.DirDis = lpObj->Dir;
+			pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
+			pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
+			CGAttack((unsigned char *)&pAttackMsg, lpObj->m_Index);
+		}else
+		{
+			PMSG_ATTACK pAttackMsg;
 
-		pAttackMsg.AttackAction = 0x78;
-		pAttackMsg.DirDis = lpObj->Dir;
-		pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
-		pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
-
-		CGAttack((PMSG_ATTACK *)&pAttackMsg, lpObj->m_Index);
+			pAttackMsg.AttackAction = 0x78;
+			pAttackMsg.DirDis = lpObj->Dir;
+			pAttackMsg.NumberH = SET_NUMBERH(lpObj->TargetNumber);
+			pAttackMsg.NumberL = SET_NUMBERL(lpObj->TargetNumber);
+			CGAttack((unsigned char  *)&pAttackMsg, lpObj->m_Index);
+		}
 		GCActionSend(lpObj, 0x78, lpObj->m_Index, lpTargetObj->m_Index);
-		gObjAttack(lpObj, &gObj[lpObj->TargetNumber], 0, 0, 0, 0, 0, 0, 0);
+		gObjAttack(lpObj, &gObj[lpObj->TargetNumber], 0, 0, 0, 0, 0);
 
 		return FALSE;
 	}
 }
+
 
 struct PMSG_NOTIFY_REGION_MONSTER_ATTACK
 {
@@ -535,10 +575,11 @@ struct PMSG_NOTIFY_REGION_MONSTER_ATTACK
 	BYTE btPointY;	// 9
 };
 
+
+
 BOOL TMonsterAIElement::ApplyElementAttackArea(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-영역공격");
 
 	int iTargetX = this->m_iX + (rand()%5) * ((rand()%2==0)?1:-1 ) ;
 	int iTargetY = this->m_iY + (rand()%5) * ((rand()%2==0)?1:-1 ) ;
@@ -556,7 +597,7 @@ BOOL TMonsterAIElement::ApplyElementAttackArea(int iIndex, int iTargetIndex, TMo
 		if ( lpObj->MapNumber != lpTargetObj->MapNumber )
 			continue;
 
-		int iTargetDistance = sqrtf( ((lpTargetObj->X - iTargetX)*(lpTargetObj->X - iTargetX)) + ((lpTargetObj->Y - iTargetY)*(lpTargetObj->Y - iTargetY)) );
+		int iTargetDistance = (int)sqrt((float) ((lpTargetObj->X - iTargetX)*(lpTargetObj->X - iTargetX)) + ((lpTargetObj->Y - iTargetY)*(lpTargetObj->Y - iTargetY)) );
 
 		if ( iTargetDistance < 10 )
 		{
@@ -575,12 +616,13 @@ BOOL TMonsterAIElement::ApplyElementAttackArea(int iIndex, int iTargetIndex, TMo
 
 		if ( iTargetDistance < 6 )
 		{
-			gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
+			gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0);
 		}
 	}
 
 	return FALSE;
 }
+
 
 BOOL TMonsterAIElement::ApplyElementAttackPenetration(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
@@ -593,19 +635,15 @@ BOOL TMonsterAIElement::ApplyElementAttackPenetration(int iIndex, int iTargetInd
 	if ( gObj[iTargetIndex].Live == 0 )
 		return FALSE;
 
-	TMonsterSkillManager::UseMonsterSkill(iIndex, iTargetIndex, 2, -1, NULL);
+	TMonsterSkillManager::UseMonsterSkill(iIndex, iTargetIndex, 2);
 	return FALSE;
 }
+
+
 
 BOOL TMonsterAIElement::ApplyElementAvoid(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-회피");
-
-//#if(_GSCS==0)
-	KANTURU_UTIL.SendKanturuChattingMsg(iIndex, "Element-회피");
-//#endif
-
 	BOOL bFindXY = MONSTER_UTIL.GetXYToEascape(lpObj);
 
 	if ( bFindXY )
@@ -616,23 +654,24 @@ BOOL TMonsterAIElement::ApplyElementAvoid(int iIndex, int iTargetIndex, TMonster
 	return FALSE;
 }
 
+
+
 BOOL TMonsterAIElement::ApplyElementHealSelf(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-셀프치료");
 
 	lpObj->Life += lpObj->Life * 20.0f / 100.0f;
-	UTIL.SendCrywolfChattingMsg(iIndex, "HP : %d", (int)lpObj->Life);
-
-	gObjAddBuffEffect(lpObj, AT_INCREASE_DEFENSE, 0, 0, 0, 0, -10); //season3 add-on
+	lpObj->m_ViewSkillState |= 8;
+	GCSkillInfoSend(lpObj, 1, 0x02);
 
 	return FALSE;
 }
 
+
+
 BOOL TMonsterAIElement::ApplyElementHealGroup(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-그룹치료");
 	TMonsterAIGroupMember * pMemb = TMonsterAIGroup::FindGroupMemberToHeal(lpObj->m_Index, lpObj->m_iGroupNumber, lpObj->m_iGroupMemberGuid, 6);
 
 	if ( pMemb )
@@ -648,18 +687,16 @@ BOOL TMonsterAIElement::ApplyElementHealGroup(int iIndex, int iTargetIndex, TMon
 		{
 			lpSkillUnit->RunSkill(iIndex, lpTargetObj->m_Index);
 		}
-
-		UTIL.SendCrywolfChattingMsg(iIndex, "그룹치료 HP : %d", (int)lpTargetObj->Life);
-		UTIL.SendCrywolfChattingMsg(lpTargetObj->m_Index, "HP : %d", (int)lpTargetObj->Life);
 	}
 
 	return FALSE;
 }
 
+
+
 BOOL TMonsterAIElement::ApplyElementSpecialSommon(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	UTIL.SendCrywolfChattingMsg(iIndex, "Element-특수소환");
 	TMonsterAIGroupMember * pMemb = TMonsterAIGroup::FindGroupMemberToSommon(lpObj->m_Index, lpObj->m_iGroupNumber, lpObj->m_iGroupMemberGuid);
 
 	if ( pMemb )
@@ -680,6 +717,7 @@ BOOL TMonsterAIElement::ApplyElementSpecialSommon(int iIndex, int iTargetIndex, 
 	return FALSE;
 }
 
+
 BOOL TMonsterAIElement::ApplyElementSpecialImmune(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
@@ -690,11 +728,12 @@ BOOL TMonsterAIElement::ApplyElementSpecialImmune(int iIndex, int iTargetIndex, 
 	if ( this->m_iY < 1 )
 		this->m_iY = 10;
 
-	gObjAddBuffEffect(lpObj, AT_IMMUNE_MAGIC, 0, 0, 0, 0, this->m_iX); //season3 add-on
-	gObjAddBuffEffect(lpObj, AT_IMMUNE_HARM, 0, 0, 0, 0, this->m_iY); //season3 add-on
+	lpObj->m_ImmuneToHarmCount = this->m_iX;
+	lpObj->m_ImmuneToMagicCount = this->m_iY;
 
 	return FALSE;
 }
+
 
 BOOL TMonsterAIElement::ApplyElementNightmareSummon(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
@@ -709,15 +748,14 @@ BOOL TMonsterAIElement::ApplyElementNightmareSummon(int iIndex, int iTargetIndex
 	if ( lpSkillUnit )
 	{
 		GCUseMonsterSkillSend(&gObj[iIndex], &gObj[iTargetIndex], lpSkillUnit->m_iUnitNumber);
-
-//#if(_GSCS==0)
-		g_KanturuMonsterMng.SetKanturuMonster(6);
-		//int iRegenMonster = g_KanturuMonsterMng.SetKanturuMonster(6);
-//#endif
-		
+		#if (GS_CASTLE==0)
+			int iRegenMonster = g_KanturuMonsterMng.SetKanturuMonster(6);
+		#endif
 	}
+
 	return FALSE;
 }
+
 
 BOOL TMonsterAIElement::ApplyElementNightmareWarp(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
@@ -725,24 +763,49 @@ BOOL TMonsterAIElement::ApplyElementNightmareWarp(int iIndex, int iTargetIndex, 
 
 	BYTE x = this->m_iX;
 	BYTE y = this->m_iY;
-	PMSG_MAGICATTACK_RESULT pAttack;
+	if(ReadConfig.S5E2 == TRUE)
+	{
+		PMSG_MAGICATTACK_RESULT_S5E2 pAttack;
 
-	PHeadSetBE((LPBYTE)&pAttack,0x19,sizeof(pAttack));
+		PHeadSetBE((unsigned char *)&pAttack,0x19,sizeof(pAttack));
 
-	pAttack.MagicNumberH = SET_NUMBERH(6);
-	pAttack.MagicNumberL = SET_NUMBERL(6);
+		//pAttack.MagicNumber = 6;
+		
+		pAttack.MagicNumberH = 0;
+		pAttack.MagicNumberL = 6;
+		pAttack.SourceNumberH = SET_NUMBERH(iIndex);
+		pAttack.SourceNumberL = SET_NUMBERL(iIndex);
+		pAttack.TargetNumberH = SET_NUMBERH(iIndex);
+		pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+		pAttack.UnkS5E2 = 1;
 
-	pAttack.SourceNumberH = SET_NUMBERH(iIndex);
-	pAttack.SourceNumberL = SET_NUMBERL(iIndex);
-	pAttack.TargetNumberH = SET_NUMBERH(iIndex);
-	pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+		if ( lpObj->Type == OBJ_USER )
+			DataSend(iIndex,(unsigned char *)&pAttack,pAttack.h.size);
 
-	if ( lpObj->Type == OBJ_USER )
-		DataSend(iIndex,(LPBYTE)&pAttack,pAttack.h.size);
+		MsgSendV2(lpObj,(unsigned char*)&pAttack,pAttack.h.size);
+	}else
+	{
+		PMSG_MAGICATTACK_RESULT pAttack;
 
-	MsgSendV2(lpObj,(LPBYTE)&pAttack,pAttack.h.size);
+		PHeadSetBE((unsigned char *)&pAttack,0x19,sizeof(pAttack));
 
-	//LogAddC(2, "[%s] Warp [%d,%d] -> [%d,%d]", lpObj->Name, lpObj->X, lpObj->Y, x, y);
+		//pAttack.MagicNumber = 6;
+		
+		pAttack.MagicNumberH = 0;
+		pAttack.MagicNumberL = 6;
+		pAttack.SourceNumberH = SET_NUMBERH(iIndex);
+		pAttack.SourceNumberL = SET_NUMBERL(iIndex);
+		pAttack.TargetNumberH = SET_NUMBERH(iIndex);
+		pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+
+		if ( lpObj->Type == OBJ_USER )
+			DataSend(iIndex,(unsigned char *)&pAttack,pAttack.h.size);
+
+		MsgSendV2(lpObj,(unsigned char*)&pAttack,pAttack.h.size);
+	}
+
+	LogAddC(2, "[%s] Warp [%d,%d] -> [%d,%d]",
+		lpObj->Name, lpObj->X, lpObj->Y, x, y);
 
 	gObjTeleportMagicUse(iIndex,x,y);
 	lpObj->TargetNumber = -1;
@@ -750,15 +813,16 @@ BOOL TMonsterAIElement::ApplyElementNightmareWarp(int iIndex, int iTargetIndex, 
 	return FALSE;
 }
 
+
+
+
 BOOL TMonsterAIElement::ApplyElementSkillAttack(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	LPOBJ lpObj = &gObj[iIndex];
 
 	if ( TMonsterSkillManager::CheckMonsterSkill(lpObj->Class) )
 	{
-		BOOL bEnableAttack = TRUE;
-
-		if ( lpObj->TargetNumber < 0 ) // Season 4.5 fix
+		if(OBJMAX_RANGE(lpObj->TargetNumber) == false)
 		{
 			lpObj->TargetNumber = -1;
 			lpObj->m_ActState.Emotion = 0;
@@ -769,13 +833,25 @@ BOOL TMonsterAIElement::ApplyElementSkillAttack(int iIndex, int iTargetIndex, TM
 			return FALSE;
 		}
 
+		BOOL bEnableAttack = TRUE;
+
+		if ( lpObj->TargetNumber < 0 )
+			bEnableAttack = FALSE;
+
 		if ( !gObj[lpObj->TargetNumber].Live || gObj[lpObj->TargetNumber].Teleport )
 			bEnableAttack = FALSE;
 
-		if ( gObj[lpObj->TargetNumber].Connected <= PLAYER_LOGGED || gObj[lpObj->TargetNumber].CloseCount != -1 )
+		if ( gObj[lpObj->TargetNumber].Connected <= PLAYER_LOGGED ||
+			 gObj[lpObj->TargetNumber].CloseCount != -1 )
 		{
 			bEnableAttack = FALSE;
 		}
+
+		if ( gObj[lpObj->TargetNumber].m_bMapSvrMoveQuit == true )
+			bEnableAttack = FALSE;
+
+		if ( gObj[lpObj->TargetNumber].m_bMapAntiHackMove == true )
+			bEnableAttack = FALSE;
 
 		if ( !bEnableAttack )
 		{
@@ -796,11 +872,11 @@ BOOL TMonsterAIElement::ApplyElementSkillAttack(int iIndex, int iTargetIndex, TM
 		int iRandom = rand() % 100;
 
 		if ( iRandom < iRate1 )
-			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 0, -1, NULL);
+			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 0);
 		else if ( iRandom < (iRate1+iRate2) )
-			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 1, -1, NULL);
+			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 1);
 		else if ( iRandom < (iRate1+iRate2+iRate3) )
-			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 2, -1, NULL);
+			TMonsterSkillManager::UseMonsterSkill(lpObj->m_Index, lpObj->TargetNumber, 2);
 
 		lpObj->m_ActState.Attack = 0;
 		return FALSE;
@@ -809,11 +885,13 @@ BOOL TMonsterAIElement::ApplyElementSkillAttack(int iIndex, int iTargetIndex, TM
 	return FALSE;
 }
 		
+
+
 BOOL TMonsterAIElement::ApplyElementAIChange(int iIndex, int iTargetIndex, TMonsterAIState * pAIState)
 {
 	TMonsterAIGroup::ChangeAIOrder(this->m_iTargetType, this->m_iX);
-
-	LogAddC(2, "[AI Change] Group %d AI Order %d", this->m_iTargetType, this->m_iX);
+	LogAddC(2, "[AI Change] Group %d AI Order %d",
+		this->m_iTargetType, this->m_iX);
 
 	return FALSE;
 }

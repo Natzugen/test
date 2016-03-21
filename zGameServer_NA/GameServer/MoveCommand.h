@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #ifndef MOVECOMMAND_H
 #define MOVECOMMAND_H
 
@@ -7,17 +11,20 @@
 
 #include "user.h"
 
-#define MAX_MOVE_COMMAND 50
+#define MAX_MOVE_COMMAND 512
+
+
 
 struct MOVE_COMMAND_DATA
 {
 	int Index;	// 0
-	char Name[255];	// 3
-	char EngName[255];	// 103
+	char Name[50];	// 3
+	char EngName[50];	// 103
 	int NeedZen;	// 204
 	int NeedLevel;	// 208
 	int GateNumber;	// 20C
 };
+
 
 struct MOVE_MOVE_LEVEL
 {
@@ -35,6 +42,7 @@ class CMoveCommand
 private:
 
 	int FindIndex(char* mapname);
+	int FindPosByIndex(int Index);
 
 public:
 
@@ -46,20 +54,19 @@ public:
 	int Load(char* filename);
 	int LoadMoveLevel(char* filename);
 	int GetMoveLevel(int mapnumber, int x, int y, int Class);
+	//int __thiscall CheckMoveLevel(int, int, int, int);
 	int CheckMainToMove(LPOBJ lpObj);
 	int CheckEquipmentToMove(LPOBJ lpObj, int iTargetMapNumber);
 	int CheckInterfaceToMove(LPOBJ lpObj);
 	int Move(LPOBJ lpObj, char* mapname);
+	int Move(LPOBJ lpObj, int mapIndex);
 	int MoveFree2Kalima(LPOBJ lpObj);
 	BOOL CheckMoveMapBound(int iMapIndex);
-	BOOL Move(LPOBJ lpObj,int MoveNum);
-	int FindIndex(int MoveNum);
-	int CheckMoveNum(int MoveNum);
-	MOVE_COMMAND_DATA * GetMoveCommandData(int nMapIndex);	//1.01.00
+
 private:
 
-	MOVE_COMMAND_DATA m_MoveCommandData[MAX_MOVE_COMMAND];
-	MOVE_MOVE_LEVEL m_MoveLevel[MAX_MOVE_COMMAND];
+	MOVE_COMMAND_DATA m_MoveCommandData[MAX_MOVE_COMMAND];	// 4
+	MOVE_MOVE_LEVEL m_MoveLevel[MAX_MOVE_COMMAND];	// 3DE4
 	
 };
 

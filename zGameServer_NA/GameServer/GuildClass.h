@@ -7,12 +7,10 @@
 
 typedef unsigned char GUILDMARK[32];
 
-#include "..\\include\\prodef.h"
-
 #define MAX_USER_GUILD			80
-#define MAX_GUILD_NOTICE_LEN	MAX_CHAT_LEN
+#define MAX_GUILD_NOTICE_LEN	60
 #define MAX_WC_GUILD_NOTICE_LEN	(MAX_GUILD_NOTICE_LEN/2)
-#define MIN_GUILD_COUNT_FOR_CS	1 // 20
+//#define MIN_GUILD_COUNT_FOR_CS	20
 
 // Member Type
 // -------------------------------
@@ -108,23 +106,17 @@ struct _GUILD_INFO_STRUCT
 	unsigned char BattleTeamCode;	//594
 	unsigned char PlayScore;	//595
 	int TotalScore;	//598
-	char Notice[MAX_CHAT_LEN];	//59c
+	char Notice[60];	//59c
 	int GuildStatus[MAX_USER_GUILD];	//5D8
 	BYTE btGuildType;	//718
 	int iGuildUnion;	//71C
 	int iGuildRival;	//720
 	int iTimeStamp;	//724
 	char szGuildRivalName[9];	//728
-
-//#if (_GSCS==1)
-
-	struct OBJECTSTRUCT * lpLifeStone;
-	int btLifeStoneCount;
-
-//#endif
-
 	struct _GUILD_INFO_STRUCT* back;	//734
 	struct _GUILD_INFO_STRUCT* next;	//738
+	BYTE GensFam;
+	BOOL WareOpen;
 
 
 
@@ -134,22 +126,22 @@ struct _GUILD_INFO_STRUCT
 	int  GetGuildRival(){return this->iGuildRival;};
 
 
-	void SetGuildUnion(int iGuildNumber);	// line : 102
-	/*{
+	void SetGuildUnion(int iGuildNumber)	// line : 102
+	{
 		this->iGuildUnion = iGuildNumber;
 		this->SetTimeStamp();
-	};*/	// line : 105
+	};	// line : 105
 
-	void SetGuildRival(int iGuildNumber);	// line : 108
-	/*{
+	void SetGuildRival(int iGuildNumber)	// line : 108
+	{
 		this->iGuildRival = iGuildNumber;
 		this->SetTimeStamp();
-	};*/	// line : 111
+	};	// line : 111
 
-	void SetTimeStamp();	// line : 117
-	/*{
+	void SetTimeStamp()	// line : 117
+	{
 		this->iTimeStamp++;
-	};*/	// line : 119
+	};	// line : 119
 
 	int GetTimeStamp()	// line : 122
 	{
@@ -158,7 +150,7 @@ struct _GUILD_INFO_STRUCT
 
 	BOOL CheckTimeStamp(int iTime)	// line : 127
 	{
-		return (iTime == this->iTimeStamp)? TRUE : FALSE;
+		return (iTime == this->iTimeStamp )? TRUE : FALSE;
 	}	// line : 129
 };
 

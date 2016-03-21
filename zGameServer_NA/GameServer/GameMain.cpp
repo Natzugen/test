@@ -1,10 +1,20 @@
-#include "StdAfx.h"
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+//------------------------------------------
+// GameMain.cpp
+//------------------------------------------
+// GS-N 0.99.60T 0x004F4490
+//	GS-N	1.00.18	JPN	0x0051FE00	-	Completed
+#include "stdafx.h"
 #include "AcceptIp.h"
 #include "gamemain.h"
 #include "..\common\winutil.h"
 #include "GameServer.h"
 #include "DirPath.h"
 #include "logproc.h"
+////#include "GameServerAuth.h"
 #include "wsJoinServerCli.h"
 #include "DirPath.h"
 #include "DSProtocol.h"
@@ -24,7 +34,7 @@
 #include "PacketCheckSum.h"
 #include "DragonEvent.h"
 #include "AttackEvent.h"
-#include "..\SimpleModulus\SimpleModulus.h"
+#include "SimpleModulus.h"
 #include "MapServerManager.h"
 #include "..\ggsvr\ggsvr.h"
 #include "QuestInfo.h"
@@ -38,7 +48,7 @@
 #include "BattleSoccerManager.h"
 #include "GuildClass.h"
 #include "MoveCommand.h"
-#include "MixSystem.h"
+#include "ChaosBox.h"
 #include "BloodCastle.h"
 #include "Shop.h"
 #include "ItemAddOption.h"
@@ -57,87 +67,44 @@
 #include "CashShop.h"
 #include "CashItemPeriodSystem.h"
 #include "CashLotterySystem.h"
-#include "ProbabilityItemBag.h"
-#include "IllusionTempleEvent.h"
-#include "BuffScriptLoader.h"
-#include "MasterLevelSystem.h"
-#include "MasterLevelSkillTreeSystem.h"
-#include "ChaosCard.h"
 #include "Raklion.h"
-#include "LuckyItem.h"
-#include "XmasAttackEvent.h"
-#include "CrywolfAltar.h"
-#include "gObjMonster.h"
-#include "CheatGuard.h"
-#include "MUHelper.h"
-#include "MonsterRegenSystem.h"
-#include "License.h"
-#include "LuaFun.h"
-#include "Luna.h"
-#ifdef PCBANG
-#include "PCBangPointSystem.h"
-#endif
-#ifdef NPVP
-#include "NewPVP.h"
-#endif
-#ifdef GENS
-#include "GensSystem.h"
-#endif
-#ifdef PERIOD
-#include "PeriodItemEx.h"
-#endif
-#ifdef IMPERIAL
-#include "MonsterStatCalc.h"
+#include "IllusionTemple.h"
+#include "SwampEvent.h"
+#include "BlueEvent.h"
+#include "BossAttack.h"
+#include "SkyEvent.h"
+#include "SummerEvent.h"
+#include "MossShop.h"
 #include "ImperialGuardian.h"
-#include "EventDungeonItemBag.h"
-#endif
-#ifdef GAMESHOP
-#include "GameShop.h"
-#endif
-#ifdef DP
-#include "Doppelganger.h"
-#endif
-#ifdef WZQUEST
-#include "QuestExpLuaBind.h"
-#include "QuestExpInfo.h"
-#endif
-#ifdef __CUSTOMS__
-#include "ItemPrice.h"
-#include "ResetSystem.h"
-#include "MixOption.h"
-#include "NewsBoard.h"
-#include "PVPZone.h"
-#include "DropEx.h"
-#include "ChatFilter.h"
-#include "JewelsEx.h"
-#include "ShopPointEx.h"
-#include "OfflineTrade.h"
-#include "PKClear.h"
-#include "ClassCalc.h"
-#include "DropEvent.h"
-#ifdef QUESTSYSTEM
-#include "QuestSystem.h"
-#endif
-#endif
-#ifdef __NOVUS__
-#include "CraftSystem.h"
-#endif
-#ifdef __MAKELO__
-#include "OfflineAttack.h"
+#include "DoppelGanger.h"
+#include "XMasEvent.h"
+#include "CSAuth/CSAuth.h"
+#include "SCFPvPSystem.h"
+#include "ObjBotStore.h"
+#include "ObjBotBuffer.h"
+#include "ObjBotAlchemist.h"
+#include "ObjBotTrader.h"
+#include "ObjBotVipShop.h"
+#include "ObjBotReward.h"
+#include "ObjBotWarper.h"
+#include "ObjBotRacer.h"
+
+#include "DSGN_ItemMover.h"
+//***********************************************
+// Security Stuff, new implementation on the way.
+//***********************************************
+//#include "AntiRE.h"
+
+//+-----------------------------------------
+//	Castle Siege
+//+-----------------------------------------
+#if (GS_CASTLE==1)
+	#include "CastleDeepEvent.h"
 #endif
 
-
-#include "BalanceSystem.h"
-#include "ItemOption.h"
-#ifdef __ALIEN__
-#include "MonsterSpawner.h"
-#endif
-
-#ifdef OFFEXP
-#include "OffExp.h"
-#endif
-#include "ConnectEx.h"
-
+//------------------------------------------
+// GameMain.cpp Variables
+//------------------------------------------
 BOOL JoinServerConnected;
 BOOL DataServerConnected;
 BOOL GameServerCreated;
@@ -145,26 +112,39 @@ BOOL DevilSquareEventConnect;
 BOOL IsDevilSquareEventConnected;
 BOOL EventChipServerConnect;
 BOOL IsEventChipServerConnected;
+
 CDragonEvent * DragonEvent;
 CAttackEvent * AttackEvent;
+
 CItemBag * LuckboxItemBag;
 CItemBag * Mon55;
 CItemBag * Mon53;
-CItemBagEx * StarOfXMasItemBag;
 CItemBag * FireCrackerItemBag;
 CItemBag * HeartOfLoveItemBag;
+CItemBag * IllusionItemBag;
 CItemBag * GoldMedalItemBag;
 CItemBag * SilverMedalItemBag;
 CItemBag * EventChipItemBag;
-CProbabilityItemBag * GoldGoblenItemBag;
-CProbabilityItemBag * TitanItemBag;
-CProbabilityItemBag * GoldDerconItemBag;
-CProbabilityItemBag * DevilLizardKingItemBag;
-CProbabilityItemBag * KanturItemBag;
+CItemBag * GoldGoblenItemBag;
+CItemBag * TitanItemBag;
+CItemBag * GoldDerconItemBag;
+CItemBag * DevilLizardKingItemBag;
+CItemBag * KanturItemBag;
 CItemBag * RingEventItemBag;
 CItemBag * FriendShipItemBag;
 CItemBag * DarkLordHeartItemBag;
+
+CItemBagEx * StarOfXMasItemBag;
 CItemBagEx * KundunEventItemBag;
+CItemBagEx * SelupanEventItemBag;
+#if (PACK_EDITION>=1)
+CItemBagEx * BlueEventItemBag;
+CItemBagEx * SummerEventItemBag;
+#endif
+#if (PACK_EDITION>=3)
+CItemBagEx * SwampEventItemBag;
+CItemBagEx * BossAttackItemBag;
+#endif
 CItemBagEx * HiddenTreasureBoxItemBag;
 CItemBagEx * RedRibbonBoxEventItemBag;
 CItemBagEx * GreenRibbonBoxEventItemBag;
@@ -177,100 +157,89 @@ CItemBagEx * VermilionCandyBoxEventItemBag;
 CItemBagEx * DeepBlueCandyBoxEventItemBag;
 CItemBagEx * CrywolfDarkElfItemBag;
 CItemBagEx * CrywolfBossMonsterItemBag;
-
-//#if(_GSCS==0)
+CItemBagEx * CrywolfPedestalRewardItemBag;
 CItemBagEx * KanturuMayaHandItemBag;
 CItemBagEx * KanturuNightmareItemBag;
-//#endif
+CItemBagEx * HellMainItemBag;
+CItemBagEx * HalloweenDayEventItemBag;
+CItemBagEx * GreenMysteryEventItemBag;
+CItemBagEx * RedMysteryEventItemBag;
+CItemBagEx * PurpleMysteryEventItemBag;
+CItemBagEx * CherryBlossomEventItemBag;
+CItemBagEx * GMEventItemBag;
+//ImperialGuardian
+CItemBagEx * IGStatueItemBag;
+CItemBagEx * IGSundayItemBag2;
+CItemBagEx * IGSundayItemBag1;
+CItemBagEx * IGMondayItemBag;
+CItemBagEx * IGTuesdayItemBag;
+CItemBagEx * IGWednesdayItemBag;
+CItemBagEx * IGThursdayItemBag;
+CItemBagEx * IGFridayItemBag;
+CItemBagEx * IGSaturdayItemBag;
+#if (PACK_EDITION>=2)
 
-CItemBagEx * HallowinDayEventItemBag;
-
-CItemBag * RingOfHeroBoxItemBag;
-
-CProbabilityItemBag * NewYearLuckyPouchItemBag; //test
-CProbabilityItemBag * GMPresentBoxItemBag; //test
-CProbabilityItemBag * IllusionTemple1ItemBag; //test
-CProbabilityItemBag * IllusionTemple2ItemBag; //test
-CProbabilityItemBag * IllusionTemple3ItemBag; //test
-CProbabilityItemBag * MoonHarvestItemBag; //test
-CProbabilityItemBag * MoonHarvestItemBag2; //test
-
-CProbabilityItemBag * CherryBlossom1; //test
-CProbabilityItemBag * CherryBlossom2; //test
-CProbabilityItemBag * CherryBlossom3; //test
-CProbabilityItemBag * CherryBlossom4; //test
-
-CProbabilityItemBag * PCBangGageGreenBox; //test
-CProbabilityItemBag * PCBangGageRedBox; //test
-CProbabilityItemBag * PCBangGagePurpleBox; //test
-
-CProbabilityItemBag * ReservedBox; //test
-
-CProbabilityItemBag * RaklionSelupanItemBag; //test
-
-CProbabilityItemBag * XMasEventA; //test
-CProbabilityItemBag * XMasEventB; //test
-CProbabilityItemBag * XMasEventC; //test
-
-CProbabilityItemBag * LuckyCoin10; //test
-CProbabilityItemBag * LuckyCoin20; //test
-CProbabilityItemBag * LuckyCoin30; //test
-
-#ifdef SEASON6DOT3_ENG
-CProbabilityItemBag * GoldenBoxItemBag;
-CProbabilityItemBag * SilverBoxItemBag;
-CProbabilityItemBag * ShineJewelleryCaseItemBag;
-CProbabilityItemBag * RefinedJewelleryCaseItemBag;
-CProbabilityItemBag * IronJewelleryCaseItemBag;
-CProbabilityItemBag * OldJewelleryCaseItemBag;
-CProbabilityItemBag * NewMonsterItemBag;
-CProbabilityItemBag * BoxOfGreenColorItemBag;
-CProbabilityItemBag * BoxOfRedColorItemBag;
-CProbabilityItemBag * BoxOfPurpleColorItemBag;
+CItemBagEx * HalloweenPKEventItemBag;
 #endif
+//DoubleGoer
+CItemBagEx * DGBoss1ItemBag;
+CItemBagEx * DGBoss2ItemBag;
+CItemBagEx * DGBoss3ItemBag;
+CItemBagEx * DGTreasureItemBag;
+CItemBagEx * DGSilverTreasureItemBag;
 
-#ifdef IMPERIAL
-CEventDungeonItemBag *pEventDungeonItemBag = NULL;
-CEventDungeonItemBag *pEventDungeonItemBagGaion = NULL;
-CEventDungeonItemBag *pEventDungeonItemBagStone = NULL;
+CItemBag * GoldDarkKnightItemBag;
+CItemBag * GoldDevilItemBag;
+CItemBag * GoldStoneGolemItemBag;
+CItemBag * GoldCrustItemBag;
+CItemBag * GoldSatyrosItemBag;
+CItemBag * GoldTwinTaleItemBag;
+CItemBag * GoldIronKnightItemBag;
+CItemBag * GoldNapinItemBag;
+CItemBag * GoldGreatDragonItemBag;
+CItemBag * GoldRabbitItemBag;
+
+#if (PACK_EDITION>=1)
+CItemBagEx * XMasEventItemBag;
 #endif
+CItemBagEx * FortunePouchItemBag;
+
+CItemBagEx * ElegantJewerlyItemBag;
+CItemBagEx * MetalJewerlyItemBag;
+CItemBagEx * OldJewerlyItemBag;
+CItemBagEx * GoldBoxItemBag;
+CItemBagEx * SilverBoxItemBag;
+CItemBagEx * RainItemsEvent;
+CItemBagEx * GreenBoxEventItemBag;
+CItemBagEx * RedBoxEventItemBag;
+CItemBagEx * PurpleBoxEventItemBag;
 
 BOOL SpeedHackPlayerBlock;
 BOOL bCanConnectMember;
-BOOL bCanChangeCharacterName;
-int  gServerType;
-int  gPartition;
-BOOL gApplyHeroSystem;
-int  gSpeedHackPenalty;
 BOOL gEnableEventNPCTalk;
 BOOL gEnableServerDivision;
 BOOL gEvent1;
 int  gMonsterHp;
-BOOL gMerryXMasNpcEvent;
-BOOL gHappyNewYearNpcEvent;
+
 int  gEvent1ItemDropTodayCount;
-int  gLanguage;
 BOOL gChaosEvent;
 char gChaosEventServerIp[20];
 char gDevilSquareEventServerIp[20];
-char gHackLogServerIp[20];
 char gEventChipServerIp[20];
-char gStalkProtocolId[11];
-char g_ConnectMemberFile[300];
-BOOL gNonPK;
-BOOL gPkLimitFree;
-BOOL gXMasEvent;
-BOOL g_bDoBlueEvent;
+
+//BYTE gXMasEvent;
+//BYTE gMerryXMasNpcEvent;
+//BYTE gHappyNewYearNpcEvent;
+
 BOOL gFireCrackerEvent;
 BOOL gHeartOfLoveEvent;
 BOOL gMedalEvent;
 BOOL gEventChipEvent;
 BOOL gDevilSquareEvent;
 BOOL gWriteSkillLog;
-BOOL g_bStoneItemDrop;
-BOOL g_bDoXMasAttackEvent;
 BOOL g_bDoRingEvent;
 BOOL g_bEventManagerOn;
+BOOL g_bSCFEventManagerOn;
 int  g_iKundunMarkDropRate;
 int  g_iMarkOfTheLord;
 int g_iJapan1StAnivItemDropRate;
@@ -286,87 +255,83 @@ int gAppearTamaJJang;
 int gTamaJJangTime;
 BOOL gIsItemDropRingOfTransform;
 BOOL gIsEledoradoEvent;
+BOOL gIsEledorado2Event;
 BOOL gDoPShopOpen;
 BOOL gDisconnectHackUser;
 int g_iBlockKanturuMapEnter;
 int g_iBlockCastleSiegeMapEnter;
-int g_iBlockRaklionMapEnter;
 BOOL GSInfoSendFlag;
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+
 
 int  GameServerPort;
 int  JoinServerPort;
 int  DataServerPort;
 int  DataServerPort2;
 int  ExDbPort;
-int	 GameServerUpdPort;
-char RankingServerIP[256];
-int RankingServerPort;
-char EventServerIP[256];
-int EventServerPort;
-
-BOOL gNewServer;
-BOOL gEventOff;
-int g_ServerMinUserReset;
-int g_ServerMaxUserReset;
-
-//GXPROTECT SERVER
-BOOL g_GXProtectConnection;
-//END
 
 CwsGameServer wsGServer;	// line : 213GameServer
-
 wsJoinServerCli wsJServerCli;	// line : 214 Join Server
 wsJoinServerCli wsDataCli;	// line : 215 DataServer
+
+
+
+
+
+
 wsJoinServerCli wsExDbCli;	// line : 239 Extra DataBase Server
+
+
+
+
 wsJoinServerCli wsRServerCli;	// line : 244 Ranking Server
+
 wsJoinServerCli wsEvenChipServerCli; // line : 246 EVENT_MU2003
 
 CDirPath gDirPath;	// line : 248 Directory Path
-
-MapClass MapC[MAX_NUMBER_MAP];	// line 249	// Map Manager
-
+MapClass MapC[MAX_MAP_NUMBER];	// line 249	// Map Manager
 CMonsterAttr gMAttr;	// line 250
-
 CMonsterSetBase gMSetBase;	// line 251
-
 classdef DCInfo;	// line 252:
-
 CWhisperCash WhisperCash;	// line 253
-
 PartyClass gParty;	// line 254
-
 CDbSave gDbSave;	// line 255
-
 WzUdp gUdpSoc;	// line 256
+
 WzUdp gUdpSocCE;	// line 258
 WzUdp gUdpSocCER;	// line 259
+
 WzUdp gUdpSocCRank;	// line 261
 WzUdp gUdpSocCRankR;	//line 262
 
+
+
 CGuildClass Guild;	// line 265
 
-CMsg lMsg;	// line 324
+
+
+
 
 NSerialCheck gNSerialCheck[OBJMAX];	// line 326
 
+
 CLoginCount gLCount[3];	// line 329
 
-DWORD  gLevelExperience[MAX_CHAR_LEVEL+1];
 
+
+DWORD  gLevelExperience[MAX_CHAR_LEVEL+1];
 char szGameServerExeSerial[24];
 char szServerName[50];
-char szKorItemTextFileName[256];
-char szKorSkillTextFileName[256];
-char szItemTextFileName[256];
-char szSkillTextFileName[256];
-char szQuestTextFileName[256];
-char szMoveReqFileName[256];
-char szCommonlocIniFileName[256];
-char szAuthKey[20];
 
 BOOL gIsDropDarkLordItem;
 int  gSleeveOfLordDropRate;
 int  gSleeveOfLordDropLevel;
+
 int  gSoulOfDarkHorseDropRate;
 int  gSoulOfDarkHorseropLevel;
 int  gSoulOfDarkSpiritDropRate;
@@ -380,58 +345,9 @@ int  g_iCharacterRecuperationMaxLevel;
 int g_iServerGroupGuildChatting;
 int g_iServerGroupUnionChatting;
 
-BOOL g_bRibbonBoxEvent;
-int g_iRedRibbonBoxDropLevelMin;
-int g_iRedRibbonBoxDropLevelMax;
-int g_iRedRibbonBoxDropRate;
-int g_iRedRibbonBoxDropZenRate;
-int g_iRedRibbonBoxDropZen;
-int g_iGreenRibbonBoxDropLevelMin;
-int g_iGreenRibbonBoxDropLevelMax;
-int g_iGreenRibbonBoxDropRate;
-int g_iGreenRibbonBoxDropZenRate;
-int g_iGreenRibbonBoxDropZen;
-int g_iBlueRibbonBoxDropLevelMin;
-int g_iBlueRibbonBoxDropLevelMax;
-int g_iBlueRibbonBoxDropRate;
-int g_iBlueRibbonBoxDropZenRate;
-int g_iBlueRibbonBoxDropZen;
-
-BOOL g_bNewYearLuckyBagMonsterEventOn;
-
 BOOL g_bChocolateBoxEvent;
-int g_iPinkChocolateBoxDropLevelMin;
-int g_iPinkChocolateBoxDropLevelMax;
-int g_iPinkChocolateBoxDropRate;
-int g_iPinkChocolateBoxDropZenRate;
-int g_iPinkChocolateBoxDropZen;
-int g_iRedChocolateBoxDropLevelMin;
-int g_iRedChocolateBoxDropLevelMax;
-int g_iRedChocolateBoxDropRate;
-int g_iRedChocolateBoxDropZenRate;
-int g_iRedChocolateBoxDropZen;
-int g_iBlueChocolateBoxDropLevelMin;
-int g_iBlueChocolateBoxDropLevelMax;
-int g_iBlueChocolateBoxDropRate;
-int g_iBlueChocolateBoxDropZenRate;
-int g_iBlueChocolateBoxDropZen;
-
 BOOL g_bCandyBoxEvent;
-int g_iLightPurpleCandyBoxDropLevelMin;
-int g_iLightPurpleCandyBoxDropLevelMax;
-int g_iLightPurpleCandyBoxDropRate;
-int g_iLightPurpleCandyBoxDropZenRate;
-int g_iLightPurpleCandyBoxDropZen;
-int g_iVermilionCandyBoxDropLevelMin;
-int g_iVermilionCandyBoxDropLevelMax;
-int g_iVermilionCandyBoxDropRate;
-int g_iVermilionCandyBoxDropZenRate;
-int g_iVermilionCandyBoxDropZen;
-int g_iDeepBlueCandyBoxDropLevelMin;
-int g_iDeepBlueCandyBoxDropLevelMax;
-int g_iDeepBlueCandyBoxDropRate;
-int g_iDeepBlueCandyBoxDropZenRate;
-int g_iDeepBlueCandyBoxDropZen;
+BOOL g_bMysteryBoxEvent;
 
 BOOL g_bFenrirStuffItemDrop;
 int g_iFenrirStuff_01_DropLv_Min;
@@ -449,19 +365,8 @@ int g_iFenrirStuff_03_DropRate;
 int g_iFenrirRepairRate;
 int g_iFenrirDefaultMaxDurSmall;
 int g_iFenrirElfMaxDurSmall;
-int g_iFenrir_01Level_MixRate;
-int g_iFenrir_02Level_MixRate;
-int g_iFenrir_03Level_MixRate;
-
 BOOL g_bCrywolfMonsterDarkElfItemDrop;
-int g_iCrywolfMonsterDarkElfItemDropRate;
-int g_iCrywolfMonsterDarkElfDropZenRate;
-int g_iCrywolfMonsterDarkElfDropZen;
-
 BOOL g_bCrywolfBossMonsterItemDrop;
-int g_iCrywolfBossMonsterItemDropRate;
-int g_iCrywolfBossMonsterDropZenRate;
-int g_iCrywolfBossMonsterDropZen;
 int g_iCrywolfApplyMvpBenefit;
 int g_iCrywolfApplyMvpPenalty;
 int g_iSkillDistanceCheck;
@@ -469,240 +374,43 @@ int g_iSkillDistanceCheckTemp;
 int g_iSkillDistanceKick;
 int g_iSkillDistanceKickCount;
 int g_iSkillDiatanceKickCheckTime;
-
-//#if(_GSCS==0)
 BOOL g_bKanturuMayaHandItemDrop;
-int g_iKanturuMayaHandItemDropRate;
-int g_iKanturuMayaHandDropZenRate;
-int g_iKanturuMayaHandDropZen;
 BOOL g_bKanturuNightmareItemDrop;
-int g_iKanturuNightmareItemDropRate;
-int g_iKanturuNightmareDropZenRate;
-int g_iKanturuNightmareDropZen;
+BOOL g_bHellMainItemDrop;
 BOOL g_bKanturuSpecialItemDropOn;
 int g_iKanturuMoonStoneDropRate;
 int g_iKanturuJewelOfHarmonyDropRate;
-//#endif
+BOOL g_bHalloweenDayEventOn;
+int g_iHalloweenDayEventJOLBlessDropRate;
+int g_iHalloweenDayEventJOLAngerDropRaTe;
+int g_iHalloweenDayEventJOLScreamDropRate;
+int g_iHalloweenDayEventJOLFoodDropRate;
+int g_iHalloweenDayEventJOLDrinkDropRate;
+int g_iHalloweenDayEventJOLPolymorphRingDropRate;
 
-BOOL	g_bRaklionSelupanItemDrop;
-int g_bRaklionSelupanItemCount;
-int	g_iRaklionSelupanItemDropRate;
-int	g_iRaklionSelupanDropZenRate;
-BOOL	g_bRaklionSelupanDropZen;
-
-int g_bKalimaKundunItemCount;
-int g_bKalimaKundunAncItemCount;
-
-BOOL	g_bLuckyCoinEventOn;
-int	g_iLuckyCoinDropRate;
-
-int g_nMysteriousPaperDropRate;
-
-BOOL g_bHallowinDayEventOn;
-int g_iHallowinDayEventItemDropRate;
-int g_iHallowinDayEventJOLBlessDropRate;
-int g_iHallowinDayEventJOLAngerDropRaTe;
-int g_iHallowinDayEventJOLScreamDropRate;
-int g_iHallowinDayEventJOLFoodDropRate;
-int g_iHallowinDayEventJOLDrinkDropRate;
-int g_iHallowinDayEventJOLPolymorphRingDropRate;
-
-//Season2.5 add-on
-int g_iSantaPolymorphRingDropOn;
-int g_iSantaPolymorphRingDropRate;
-int g_iCondorFlameDropRate;
-
-//Season3 add-on
-BOOL g_bCherryBlossomEventOn;
-int g_iCherryBlossomEventItemDropRate;
-int g_iML_OldScrollDropRate = 10;
-int g_iML_CovenantOfIllusionDropRate = 10;
-int g_iML_AngelKingsPaperDropRate = 10;
-int g_iML_BloodBoneDropRate = 10;
-int g_iML_EyesOfDevilSquareDropRate = 10;
-int g_iML_KeysOfDevilSquareDropRate = 10;
-int g_ShadowPahtomMaxLevel = 220;
-
-int g_bAbilityDebug; //For GMMNG
-
-//Season 4.5 addon
-int g_iXMasVisitCount = 0;
-int g_iXMasEvent_LuckNumber1st = 100;
-int g_iXMasEvent_LuckNumber2nd = 200;
-
-//Season 4.6
-int g_iNewPVPSystem = 1;
-int g_bUseGambleSystem = 1;
-int	g_iGambleSystemMoney = 1000000;
-
-//customs
-int g_iPostReqLevel = 1;
-int g_iPostCost = 1000;
-int g_bPostFloodProtect = 1;
-int g_bPostFloodProtectTime = 5;
-BYTE g_PostChatColor = 2;
-int g_iUseAddPointsReqLevel = 1;
-int g_iAddPointsCommandCost = 1000;
-int g_iMaxAddPoints = 1000;
-int g_bUseSkinCommand = 1;
-int g_iUseSkinReqLevel = 1;
-int g_iSkinCommandCost = 1000;
-int g_iMaxCharStats = 32767;
-int gGuildAllianceMinUsers;
-
-int g_AutoReconnect;
-int g_AutoBotStart;
-BYTE g_MuHelperMinLevel;
-
-#ifdef NEWVIPSYSTEM
-int g_isCustomVipSys;
-int g_vip1AddExp;
-int g_vip2AddExp;
-int g_vip3AddExp;
-int g_vip4AddExp;
-int g_vip5AddExp;
-int g_vip6AddExp;
-
-int g_vip1AddDrop;
-int g_vip2AddDrop;
-int g_vip3AddDrop;
-int g_vip4AddDrop;
-int g_vip5AddDrop;
-int g_vip6AddDrop;
-
-int g_Buyvip1ItemCode;
-int g_Buyvip2ItemCode;
-int g_Buyvip3ItemCode;
-int g_Buyvip4ItemCode;
-int g_Buyvip5ItemCode;
-int g_Buyvip6ItemCode;
-#endif
-
-long gMainExeSize;
-
-//Plus item Mix
-int gChaos10MoneyNeed = 2000000;
-int gChaos11MoneyNeed = 4000000;
-int gChaos12MoneyNeed = 6000000;
-int gChaos13MoneyNeed = 8000000;
-int gChaos14MoneyNeed = 6000000;
-int gChaos15MoneyNeed = 8000000;
-int gChaosNormalMix10SuccessRate	= 60;
-int gChaos380AncExcMix10SuccessRate	= 50;
-int gChaosSocketMix10SuccessRate	= 40;
-int gChaosNormalMix11SuccessRate	= 60;
-int gChaos380AncExcMix11SuccessRate	= 50;
-int gChaosSocketMix11SuccessRate	= 40;
-int gChaosNormalMix12SuccessRate	= 60;
-int gChaos380AncExcMix12SuccessRate	= 50;
-int gChaosSocketMix12SuccessRate	= 40;
-int gChaosNormalMix13SuccessRate	= 55;
-int gChaos380AncExcMix13SuccessRate	= 45;
-int gChaosSocketMix13SuccessRate	= 35;
-int gChaosNormalMix14SuccessRate	= 55;
-int gChaos380AncExcMix14SuccessRate	= 45;
-int gChaosSocketMix14SuccessRate	= 35;
-int gChaosNormalMix15SuccessRate	= 55;
-int gChaos380AncExcMix15SuccessRate	= 45;
-int gChaosSocketMix15SuccessRate	= 35;
-int gChaosMaxSuccessRate = 75;
-int gChaosLuckOptRateAdd	= 20;
-
-int gAllowExcellentAncient = 0;
-int gAllowExcellentSocket = 0;
-int gAllowJOHonAncient= 0;
-int gGoldenArcherNeedRenaForPrize = 5;
-int gParty3ExpPercent = 230;
-int gParty4ExpPercent = 270;
-int gParty5ExpPercent = 300;
-int gPartyExpPercentOther = 120;
-
-int gParty2ExpSetPercent = 160;
-int gParty3ExpSetPercent = 180;
-int gParty4ExpSetPercent = 200;
-int gParty5ExpSetPercent = 220;
-int gParty1ExpSetPercent = 150;
-
-int gItemsDurationTime = 120000;
-int gHackToolPacketPerSecond = 50;
-
-int gSoulSuccessRate	= 60;
-int gLifeSuccessRate	= 50;
-int gBlessSuccessRate	= 50;
-
-int gMainCheckSumCheck = 1;
-char gMainAdminIPAddRess[20];
-
-
-int gKnightSkillAddLifeInceaseFormulaPercentNormal = 0;
-int gKnightSkillAddLifeDecreaseFormulaPercentNormal = 0;
-int gKnightSkillAddLifeInceaseFormulaPercentParty = 0;
-int gKnightSkillAddLifeDecreaseFormulaPercentParty = 0;
-int gKnightSkillAddLifeInceaseTimeDurationPercent = 0;
-int gKnightSkillAddLifeDecreaseTimeDurationPercent = 0;
-
-//SoulBarier
-int gWizardMagicDefenseInceaseFormulaPercent = 0;
-int gWizardMagicDefenseDecreaseFormulaPercent = 0;
-int gWizardMagicDefenseInceaseTimeDurationPercent = 0;
-int gWizardMagicDefenseDecreaseTimeDurationPercent = 0;
-
-
-int gSkillAddCriticalDamageInceaseFormulaPercent = 0;
-int gSkillAddCriticalDamageDecreaseFormulaPercent = 0;
-int gSkillAddCriticalDamageInceaseTimeDurationPercent = 0;
-int gSkillAddCriticalDamageDecreaseTimeDurationPercent = 0;
-
-
-int gSkillDamageReflectionInceaseFormulaPercent = 0;
-int gSkillDamageReflectionDecreaseFormulaPercent = 0;
-
-int gSkillDamageReflectionInceaseTimeDurationPercent = 0;
-int gSkillDamageReflectionDecreaseTimeDurationPercent= 0;
-
-int gBerserkSkillAttackDamageIncreaseFormulaPercent = 0;
-int gBerserkSkillAttackDamageDecreaseFormulaPercent = 0;
-
-int gMonsterAttackRateIncrease	= 0;
-int gMonsterDamageMinIncrease	= 0;
-int gMonsterDamageMaxIncrease	= 0;
-int gMonsterDefenseIncrease		= 0;
-int gMonsterLifeIncrease		= 0;
-
-int gAntiHackUseDC				= 0;
-
-char gGuardMessage[255];
-char gWelcomeMessage[255];
-int gIncreaseDarkSpiritAttackDamagePercent = 1;
-int gIncreaseDarkSpiritDefencePercent = 1;
-
-int gDecreaseDarkSpiritExpGivePercent = 1;
-
-
-int gIncreaseDarkHorseAttackDamagePercent = 1;
-int gIncreaseDarkHorseDefencePercent = 1;
-
-int gDecreaseDarkHorseExpGivePercent = 1;
+BYTE g_iWings3ReturnDamageSuccessRate;
+BYTE g_iWings3RecoverFullLifeSuccessRate;
+BYTE g_iWings3RecoverFullManaSuccessRate;
+BYTE g_iWings3SuccessfullBlockingRate;
 
 DWORD dwgCheckSum[MAX_CHECKSUM_KEY];
 char connectserverip[20];
 int  connectserverport;
 short gGameServerCode;
-int  gPkTime;
-BOOL g_bCastleGuildDestoyLimit;
-DWORD  gItemNumberCount;
 BOOL gStalkProtocol;
-DWORD  gAttackEventRegenTime;
-int  gYear;
-BOOL gOnlyFireCrackerEffectUse;
-int  g_iRingOrcKillGiftRate;
-int  g_iRingDropGiftRate;
-int  g_iXMasAttackEventDropRate;
-int  g_iXMasAttackEventDropZen;
+int g_iRingOrcKillGiftRate;
+int g_iRingDropGiftRate;
+int g_iRingDropItemWhiteWizType;
+int g_iRingDropItemWhiteWizIndex;
+int g_iRingEventOrcRewardDropRate;
+int g_iRingDropItemOrcType;
+int g_iRingDropItemOrcIndex;
 
-CSimpleModulus g_SimpleModulusCS;
-CSimpleModulus g_SimpleModulusSC;
+CSimpleModulus g_SimpleModulusCS;	// line 751
+CSimpleModulus g_SimpleModulusSC;	// line 752
 
+int gEledorado2EventItemDropRate[10];
+int gEledorado2EventExItemDropRate[10];
 int  gEledoradoGoldGoblenItemDropRate;
 int  gEledoradoTitanItemDropRate;
 int  gEledoradoGoldDerconItemDropRate;
@@ -713,16 +421,6 @@ int  gEledoradoTitanExItemDropRate;
 int  gEledoradoGoldDerconExItemDropRate;
 int  gEledoradoDevilLizardKingExItemDropRate;
 int  gEledoradoDevilTantarosExItemDropRate;
-int  gEledoradoGoldenRabbitRegenTime = 60;
-int  gEledoradoGoldenDarkKnightRegenTime = 60;
-int  gEledoradoGoldenDevilRegenTime = 60;
-int  gEledoradoGoldenMonsterRegenTime = 60;
-int  gEledoradoGoldenCrustRegenTime = 60;
-int  gEledoradoGoldenSatirosRegenTime = 60;
-int  gEledoradoGoldenTwintailRegenTime = 60;
-int  gEledoradoGoldenIronKnightRegenTime = 60;
-int  gEledoradoGoldenNeipinRegenTime = 60;
-int gEledoradoGoldenGreatDragonRegenTime = 60;
 int  giKundunRefillHPSec;
 int  giKundunRefillHP;
 int  giKundunRefillHPTime;
@@ -732,11 +430,8 @@ int g_ShieldSystemOn;
 int g_iDamageDevideToSDRate;
 int g_iDamageDevideToHPRate;
 float g_fSuccessAttackRateOption;
-int g_iSDChargingOption;
-int g_iConstNumberOfShieldPoint;
 int g_ShieldAutoRefillOn;
 int g_ShieldAutoRefillOnSafeZone;
-int g_PKLevelIncreaseOff;
 int g_CompoundPotionDropOn;
 int g_iCompoundPotionLv1DropRate;
 int g_iCompoundPotionLv2DropRate;
@@ -745,75 +440,35 @@ int g_iCompoundPotionLv1DropLevel;
 int g_iCompoundPotionLv2DropLevel;
 int g_iCompoundPotionLv3DropLevel;
 BOOL g_bShieldComboMissOptionOn;
-int g_iShieldPotionLv1MixSuccessRate;
-int g_iShieldPotionLv1MixMoney;
-int g_iShieldPotionLv2MixSuccessRate;
-int g_iShieldPotionLv2MixMoney;
-int g_iShieldPotionLv3MixSuccessRate;
-int g_iShieldPotionLv3MixMoney;
 int g_iShieldGageConstA;
 int g_iShieldGageConstB;
-BOOL g_bCheckSpeedHack = TRUE;
+char gMapName[MAX_MAP_NUMBER][25];
 
-char gMapName[MAX_NUMBER_MAP][255];
 
-char g_szMapName[MAX_NUMBER_MAP][32] =
-{
-	"Lorencia", "Dungeon", "Devias", 
-	"Noria", "LostTower", "Exile", 
-	"Arena", "Atlans", "Tarkan", "Devil Square 1",
-	"Icarus", "BloodCastle 1", "BloodCastle 2", 
-	"BloodCastle 3", "BloodCastle 4", "BloodCastle 5", 
-	"BloodCastle 6", "BloodCastle 7", "ChaosCastle 1",
-	"ChaosCastle 2", "ChaosCastle 3", "ChaosCastle 4",
-	"ChaosCastle 5", "ChaosCastle 6", "Kalima 1",
-	"Kalima 2", "Kalima 3", "Kalima 4",
-	"Kalima 5", "Kalima 6", "Valley Of Loren",
-	"Land Of Trial", "Devil Square 2", "Aida",
-	"Crywolf", "None", "Kalima 7", 
-	"Kanturu 1", "Kanturu 2", "Kanturu 3", 
-	"GM Map", "Balgass Baracks", "Balgass Refuge",
-	"None", "None", "Illusion Temple 1",
-	"Illusion Temple 2", "Illusion Temple 3", "Illusion Temple 4",
-	"Illusion Temple 5", "Illusion Temple 6", "Elbeland",
-	"BloodCastle 8", "Chaos Castle 7", "None",
-	"None", "Swamp of Calmness", "Raklion",
-	"Raklion Boss", "None", "None",
-	"None", "Santa Town", "Vulcanus",
-	"Duel Arena"
-};
-char szGameServerVersion[12]=GAMESERVER_VERSION;
+////////////////////////////////////////////////////////////////////
+
+
+
+
 char szClientVersion[8]="000000";
 BOOL bCanTrade=1;
 BOOL bCanChaosBox=1;
 BOOL bCanWarehouseLock=1;
-int  MapMinUserLevel[MAX_NUMBER_MAP] = { 0, 20, 15, 10, 80, 0, 0, 60, 130, 0, 160, 10, 36, 80, 130, 170, 210, 310, 15, 30, 100, 160, 220, 280, 15, 50, 120, 180, 240, 300, 10, 10, 0};
+// Here Appears Ring Data : 
+short  MapMinUserLevel[MAX_MAP_NUMBER] = { 0, 20, 15, 10, 80, 0, 0, 60, 130, 0, 160, 10, 36, 80, 130, 170, 210,
+										310, 15, 30, 100, 160, 220, 280, 15, 50, 120, 180, 240, 300, 10, 10, 0};
 BOOL gEnableBattleSoccer=1;
-int	gLootingTime=3;
-int	gPkItemDrop=1;
-int	gItemDropPer=10;
-int gItemLuckyDropPer = 10;
-int gItemSkillDropPer = 6;
-int	gExcItemDropRate = 10;
+int  gLootingTime=3;
+int  gItemDropPer=10;
 int  gEvent1ItemDropTodayMax=1;
 int  gEvent1ItemDropTodayPercent=80;
-char gCountryName[20]="Kor";
-int  gCharacterDeleteMinLevel=40;
 BOOL gCreateCharacter=1;
-short gCreateMGLevel = 220;
-short gCreateDLLevel = 250;
-short gCreateSUMLevel = 150;
-short gCreateMONKLevel = 180;
 BOOL gGuildCreate=1;
 BOOL gGuildDestroy=1;
 int  gGuildCreateLevel=100;
-int	gGuildCreateMoney = 0;
 BOOL gItemSerialCheck=1;
-float gAddExperience=1.0f;
-float gAddZen=1.0f;
-float gAddZenDiv = 5.0f;
-int  g_XMasEvent_StarOfXMasDropRate=80;
-int  g_XMasEvent_ItemDropRateForStarOfXMas=2;
+BOOL gItemZeroSerialCheck;
+float  gAddExperience=1.0f;
 int  gFireCrackerDropRate=80;
 int  g_ItemDropRateForgFireCracker=2;
 int  gHeartOfLoveDropRate=80;
@@ -823,25 +478,54 @@ int  gSilverMedalDropRate=2;
 int  g_ItemDropRateForGoldMedal=2;
 int  g_ItemDropRateForSilverMedal=2;
 int  gBoxOfGoldDropRate=2;
+int  gBoxOfGoldMinMobLevel=10;
+int  gBoxOfGoldMaxMobLevel=100;
 int  g_ItemDropRateForBoxOfGold=2;
+int  g_ItemEXDropRateForBoxOfGold=2;
 int  g_EventChipDropRateForBoxOfGold=2;
 int  gEyesOfDevilSquareDropRate=2;
 int  gKeyOfDevilSquareDropRate=2;
-int  gDQChaosSuccessRateLevel1=75;
-int  gDQChaosSuccessRateLevel2=70;
-int  gDQChaosSuccessRateLevel3=65;
-int  gDQChaosSuccessRateLevel4=60;
-int  gDQChaosSuccessRateLevel5=55;
-int  gDQChaosSuccessRateLevel6=50;
-int  gDQChaosSuccessRateLevel7=45;
 BOOL g_bBloodCastle=1;
 int  g_iBloodCastle_StartHour=1;
-int  g_iStoneDropRate=60;
-int	 g_iBloodCastle_Prize=7263;
-int  g_iBloodCastle_OddEvenHour=0;
 int  g_iAngelKingsPaperDropRate=10;
 int  g_iBloodBoneDropRate=20;
+int g_iNpcAngelKingRemainTime=900;
+int g_iBCDropChaosGemItemType=12;
+int g_iBCDropChaosGemItemIndex=15;
+int g_iBCDropChaosGemItemLevel=0;
+int g_iBCDropChaosGemItemDur=0;
+int g_iBCDropChaosGemItemSkill=0;
+int g_iBCDropChaosGemItemLuck=0;
+int g_iBCDropChaosGemItemOpt=0;
+int g_iBCDropChaosGemItemExc=0;
 BOOL g_bChaosCastle=1;
+
+BYTE g_iCheckCanStartPlayCCMinPlayers=2;
+BYTE g_iGiveWinnerItemCCType1=14;
+short g_iGiveWinnerItemCCIndex1=14;
+BYTE g_iGiveWinnerItemCCType2=14;
+short g_iGiveWinnerItemCCIndex2=22;
+BYTE g_iGiveWinnerItemCCType3=14;
+short g_iGiveWinnerItemCCIndex3=13;
+BYTE g_iGiveWinnerItemCCType4=14;
+short g_iGiveWinnerItemCCIndex4=16;
+
+BYTE g_bCC1SetDropRate=5;
+BYTE g_bCC2SetDropRate=5;
+BYTE g_bCC3SetDropRate=5;
+BYTE g_bCC4SetDropRate=5;
+BYTE g_bCC5SetDropRate=5;
+BYTE g_bCC6SetDropRate=5;
+BYTE g_bCC7SetDropRate=5;
+
+BYTE g_bCC1TypeDropRate=50;
+BYTE g_bCC2TypeDropRate=50;
+BYTE g_bCC3TypeDropRate=50;
+BYTE g_bCC4TypeDropRate=50;
+BYTE g_bCC5TypeDropRate=50;
+BYTE g_bCC6TypeDropRate=50;
+BYTE g_bCC7TypeDropRate=50;
+
 DWORD  gAttackSpeedTimeLimit=130;
 DWORD  gHackCheckCount=5;
 float gDecTimePerAttackSpeed=5.33f;
@@ -857,174 +541,100 @@ DWORD  gEledoradoTitanRegenTime=60;
 DWORD  gEledoradoGoldDerconRegenTime=60;
 DWORD  gEledoradoDevilLizardKingRegenTime=60;
 DWORD  gEledoradoDevilTantarosRegenTime=60;
+DWORD  gEledorado2EventRegenTime[10]={60,60,60,60,60,60,60,60,60,60};
 int  gZenDurationTime=30;
-int gMonsterHPAdjust = 100;
 BOOL gEnableCheckPenetrationSkill=TRUE;
-int g_MaintainUserConnectionSecond = 60;
-bool g_EnableSelfDefense = true;
-BYTE g_MaxCherryBranchWhite = 10;
-BYTE g_MaxCherryBranchRed = 30;
-BYTE g_MaxCherryBranchGold = 255;
-WORD g_MaxPartyLevelDiff = 120;
-int g_LuckyItemDurabilityTime = 2400;
-bool g_LuckyItemTrade = false;
-int g_MaxStat = 65000;
 
-//#if (_GSCS==1)
+#if (GS_CASTLE==1)
 BOOL g_bDoCastleDeepEvent;
 int gIsDropSetItemInCastleHuntZone;
 int gSetItemInCastleHuntZoneDropRate;
 int gSetItemInCastleHuntZoneDropLevel;
 int g_iCastleItemMixLimit = 1;
 CItemBagEx * CastleItemMixItemBag;
-CItemBagEx * CastleHuntZoneBossItemBag;
-//#endif
-
-DWORD g_ConnectMemberUpdate;
-DWORD g_isUpdateVipStatus;
-#ifdef __ALIEN__
-int g_ComboAttackPower;
-bool g_SuperPanda;
-
-bool g_HarmonyOptionOnSocket;
-int g_GuildCreateReset;
-DWORD g_PotionDelay;
-int g_PandaExpPerc;
-int g_SkeletonExpPerc;
-int g_SkeletonRingExpPerc;
+CItemBagEx * ErohimCastleZoneItemBag;
+CItemBagEx * HuntZoneItemBag;
 #endif
 
-bool BloodCastleAllowingPlayers;
-
-void CheckSumFileLoad(char* szCheckSum);
-
-bool gBloodCastleAllowingPlayers;
-bool gDevilSquareAllowingPlayers;
-bool gChaosCastleAllowingPlayers;
-
-bool gSellHarmonyItemShop;
-
-//identical
-void gSetDate()
-{
-	tm *today;
-	time_t ltime;
-
-	time(&ltime);
-	today=localtime(&ltime);
-
-	today->tm_year=today->tm_year+1900;
-	gYear=today->tm_year;
-}
-
-//identical
-BOOL gJoomin15Check(char* szJN)
-{
-	int tyear=1900;
-	char szTyear[3]="";
-
-	if ( szJN[6] == 51 || szJN[6] == 52)
-	{
-		tyear = 2000;
-	}
-
-	memcpy(&szTyear[0], szJN, sizeof(szTyear)-1);
-
-	tyear=tyear+atoi(&szTyear[0]);
-	if ( (gYear-15 ) < tyear )
-	{
-		return 0;
-	}
-	return 1;
-}
-
-//identical	
-BOOL gJoominCheck(char* szJN, int iLimitAge)
-{
-
-	if ( iLimitAge <0 )
-	{
-		return 1;
-	}
-
-	int tyear=1900;
-	char szTyear[3]="";
-
-	if ( szJN[6] == 51 || szJN[6] == 52)
-	{
-		tyear = 2000;
-	}
-
-	memcpy(&szTyear[0], szJN, sizeof(szTyear)-1);
-
-	tyear=tyear+atoi(&szTyear[0]);
-	if ( (gYear-iLimitAge ) < tyear )
-	{
-		return 0;
-	}
-
-	return 1;
-}	
 
 void GameMainInit(HWND hWnd)
 {
-	//VMBEGIN
-	// ----
-	int n;
-	int DataBufferSize;
-	char* DataBuffer;
-	int LevelOver_N;
+	CreateDirectory("LOG", NULL);
+	#if (WL_PROTECT==1) 
+		int MyCheckVar;   
+		VM_START_WITHLEVEL(14)
+			CHECK_PROTECTION(MyCheckVar, 0x95450743)  	 
+			if (MyCheckVar != 0x95450743)
+			{			
+				exit(1);
+			}
+		VM_END
+	#endif
 
+	int n;
+	//int DataBufferSize;
+	//char* DataBuffer;
+	int LevelOver_N;
+	
 	srand(time(NULL));
 	ReadServerInfo();
-	LogInit(TRUE);
-	gSetDate();
+	LogInit(TRUE);	// 1 : Enabled 0 : Disabled
 
-	//revisar
+	// Establish the work path of the files
 	gDirPath.SetFirstPath(FIRST_PATH);
 	gDirPath.SetFirstPath(FINAL_PATH);
+	
+	// WARNING
+	// This will enable the auth server from Korea
+	// Please check that you want to use this option
+	// Default is : Enabled;
 
-	gServerType = 0;//GetPrivateProfileInt("GameServerInfo","ServerType",0, gDirPath.GetNewPath("commonserver.cfg") );
-	gPartition	= 0;//GetPrivateProfileInt("GameServerInfo","Partition",0, gDirPath.GetNewPath("commonserver.cfg") );
-	gLanguage	= 0;//GetPrivateProfileInt("GameServerInfo","Language",0, gDirPath.GetNewPath("commonserver.cfg") );
-
-	gWzAG.SetInfo(gLanguage, gPartition,0, szGameServerVersion, szServerName, gServerType, GameServerAuthCallBackFunc);
-	gWzAG.GetKey(&szAuthKey[0], 0, 5);
+	//gGameServerAuth.Init();
+	//gGameServerAuth.SetInfo(0, szGameServerVersion, szServerName, gServerType, GameServerAuthCallBackFunc);
 
 	DragonEvent = new CDragonEvent;
 
+	#if (WL_PROTECT==1) 
+		int CheckCode;   
+		VM_START_WITHLEVEL(14)
+			CHECK_PROTECTION(CheckCode, 0x95450743)  	 
+			if (CheckCode != 0x95450743)
+			{			
+				exit(1);
+			}
+		VM_END
+	#endif
+	
 	if ( DragonEvent == 0 )
 	{
-		MsgBox("CDragonEvent %s", lMsg.Get( MSGGET(0,110)) );
+		MsgBox("CDragonEvent %s", lMsg.Get( MSGGET(0,110)) );	// Memory allocation error
 		return;
 	}
 
 	AttackEvent = new CAttackEvent;
-
+	
 	if ( AttackEvent == 0 )
 	{
-		MsgBox("AttackEvent %s", lMsg.Get(MSGGET(0,110)) );
+		MsgBox("AttackEvent %s", lMsg.Get(MSGGET(0,110)) );	// Memory allocation error
 		return;
 	}
 
 	ReadCommonServerInfo();
-
-	g_MapServerManager.LoadData( gDirPath.GetNewPath("Other\\MapServerInfo.dat"));
-
+	g_MapServerManager.LoadData( ReadConfig.ConnDataFiles[9]);
+#if (GS_CASTLE==1)
 	if( g_CastleSiege.Ready(g_MapServerManager.GetMapSvrGroup()) == TRUE )
 	{
-		if( g_CastleSiege.LoadData(gDirPath.GetNewPath("Event\\CastleSiege.dat")) )
+		if( g_CastleSiege.LoadData(ReadConfig.ConnDataFiles[20]) )
 		{
-			g_CastleSiege.LoadPreFixData(gDirPath.GetNewPath("commonserver.cfg"));
+			g_CastleSiege.LoadPreFixData(ReadConfig.ConnDataFiles[0]);
 			g_CastleSiege.SetDataLoadState(CASTLESIEGE_DATALOAD_2);
 		}
 	}
-
-	gWzAG.GetKey(szAuthKey, 10, 5);
+#endif
 
 	if ( gEnableServerDivision != 0 )
 	{
-		MessageBox(NULL, "서버분할이 가능한 서버입니다.", "Warning", MB_OK);
+		MessageBox(NULL, "Server division is ENABLED!!!", "Warning", MB_OK);
 	}
 
 	if ( gUdpSoc.CreateSocket() == 0)
@@ -1039,7 +649,7 @@ void GameMainInit(HWND hWnd)
 		return;
 	}
 
-	gUdpSocCER.RecvSet(GameServerUpdPort);
+	gUdpSocCER.RecvSet( ReadConfig.UDPPort ); // Same as MuManager to JS 60006
 	gUdpSocCER.Run();
 
 	if ( gUdpSocCE.CreateSocket() == 0)
@@ -1047,9 +657,9 @@ void GameMainInit(HWND hWnd)
 		MsgBox("UDP Socket create error");
 		return;
 	}
-
-	gUdpSocCER.SetProtocolCore(ChaosEventProtocolCore); 
-	gUdpSocCE.SetProtocolCore(ChaosEventProtocolCore);
+	
+	gUdpSocCER.SetProtocolCore(ChaosEventProtocolCore);
+	gUdpSocCE.SetProtocolCore(ChaosEventProtocolCore); 
 
 	if ( false )
 	{
@@ -1057,27 +667,26 @@ void GameMainInit(HWND hWnd)
 	}
 	if ( false )
 	{
-		MsgBox("Dah.. Error was blitch text");
+		MsgBox("주의!! 캐릭터 데이터를 저장하지 않습니다.");
 	}
 
 	gObjInit();
 	InitBattleSoccer();
 
-	gWzAG.RequestData(7);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-
-	gMAttr.LoadAttr( DataBuffer, DataBufferSize);
-
-	gWzAG.RequestData(9);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	gMSetBase.LoadSetBase(DataBuffer, DataBufferSize);
-
+	gMAttr.LoadAttr(ReadConfig.ConnDataFiles[11]);
+	gMSetBase.LoadSetBase(ReadConfig.ConnDataFiles[10]);
+	
 	g_MonsterItemMng.Init();
 
 	gLevelExperience[0]=0;
 	LevelOver_N=1;
+
+	#if (WL_PROTECT==1)
+		CODEREPLACE_START
+		g_CashShop.SystemProcessesScan();
+		CODEREPLACE_END
+	#endif
+	
 
 	for ( n=1;n<MAX_CHAR_LEVEL+1;n++)
 	{
@@ -1090,147 +699,148 @@ void GameMainInit(HWND hWnd)
 		}
 	}
 
-	g_MasterLevelSystem.SetMasterLevelExpTlb();
-
-
-
-		char MapAttrName[MAX_NUMBER_MAP][15] =	//1.01.00
+	/*char MapAttrName[MAX_MAP_NUMBER][15] =
 	{
-		"Terrain1.att",	// Lorencia 0
-		"Terrain2.att",	// Dungeon 1
-		"Terrain3.att",	// Devias 2
-		"Terrain4.att",	// Noria 3
-		"Terrain5.att",	// Losttower 4
-		"Terrain6.att",	// Exile 5
-		"Terrain7.att",	// Stadium 6
-		"Terrain8.att",	// Atlans 7
-		"Terrain9.att",	// Tarkan 8
-		"Terrain10.att",	// DevilSquare 1 ~ 4 9
-		"Terrain11.att",	// Icarus 10
-		"Terrain12.att",	// BloodCastle 1 11
-		"Terrain12.att",	// BloodCastle 2 12
-		"Terrain12.att",	// BloodCastle 3 13
-		"Terrain12.att",	// BloodCastle 4 14
-		"Terrain12.att",	// BloodCastle 5 15
-		"Terrain12.att",	// BloodCastle 6 16
-		"Terrain12.att",	// BloodCastle 7 17
-		"Terrain19.att",	// ChaosCastle 1 18
-		"Terrain19.att",	// ChaosCastle 2 19
-		"Terrain19.att",	// ChaosCastle 3 20
-		"Terrain19.att",	// ChaosCastle 4 21
-		"Terrain19.att",	// ChaosCastle 5 22
-		"Terrain19.att",	// ChaosCastle 6 23
-		"Terrain25.att",	// Kalima 1 24
-		"Terrain25.att",	// Kalima 2 25
-		"Terrain25.att",	// Kalima 3 26
-		"Terrain25.att",	// Kalima 4 27
-		"Terrain25.att",	// Kalima 5 28
-		"Terrain25.att",	// Kalima 6 29
-		"Terrain31.att",	// Valley Of Loren 30
-		"Terrain32.att",	// Land Of Trials 31
-		"Terrain33.att",	// DevilSquare 5 ~ 8 32
-		"Terrain34.att",	// Aida 33
-		"Terrain35.att",	// CryWolf First Zone 34
-		"Terrain36.att",	// CryWolf Second Zone 35
-		"Terrain37.att",	// Kalima 7 36
-		"Terrain38.att",	// Kanturu 1 37
-		"Terrain39.att",	// Kanturu 2 38
-		"Terrain40.att",	// Kanturu Boss 39
-		"Terrain41.att",	// Silent Map 40
-		"Terrain42.att",	// Barracks 41
-		"Terrain43.att",	// Refuge 42
-		"Terrain43.att",	// ~~~~ 43
-		"Terrain43.att",	// ~~~~ 44
-		"Terrain46.att",	// Illusion Temple 1 45
-		"Terrain46.att",	// Illusion Temple 2 46
-		"Terrain46.att",	// Illusion Temple 3 47
-		"Terrain46.att",	// Illusion Temple 4 48
-		"Terrain46.att",	// Illusion Temple 5 49
-		"Terrain46.att",	// Illusion Temple 6 50
-		"Terrain52.att",	// Elbeland 51
-		"Terrain12.att",	// BloodCastle 8 52
-		"Terrain19.att",	// ChaosCastle 7 53
-		"Terrain52.att",	// ~~~~ 54
-		"Terrain52.att",	// ~~~~ 55
-		"Terrain57.att",	// Swamp Of Calmness 56
-		"Terrain58.att",	// Raklion 57
-		"Terrain59.att",	// Raklion Boss 58
-		"Terrain58.att",	// NULL = 59
-		"Terrain58.att",	// NULL = 60
-		"Terrain58.att",	// NULL = 61
-		"Terrain63.att",	// X-Mas Map = 62
-		"Terrain64.att",	// Vulcan 63
-		"Terrain65.att",	// Vulcan Room 64
-		"Terrain66.att",	// Double Goer 1 65
-		"Terrain67.att",	// Double Goer 2 66
-		"Terrain68.att",	// Double Goer 3 67
-		"Terrain69.att",	// Double Goer 4 68
-		"Terrain70.att",	// Imperial Fort 1 69
-		"Terrain71.att",	// Imperial Fort 2 70
-		"Terrain72.att",	// Imperial Fort 3 71
-		"Terrain73.att",	// Imperial Fort 4 72
-		"Terrain75.att",	// ~~~~ 73
-		"Terrain75.att",  // ~~~~ 74
-		"Terrain75.att",  // ~~~~ 75
-		"Terrain75.att",  // ~~~~ 76
-		"Terrain75.att",  // ~~~~ 77
-		"Terrain75.att",  // ~~~~ 78
-		"Terrain80.att",  // Loren Market 79
-		"Terrain81.att",	// Kalrutan 1 80
-		"Terrain82.att",	// Kalrutan 2 81
-	};
+		"terrain1.att",
+		"terrain2.att",
+		"terrain3.att",
+		"terrain4.att",
+		"terrain5.att",
+		"terrain6.att",
+		"terrain7.att",
+		"terrain8.att",
+		"terrain9.att",
+		"terrain10.att",
+		"terrain11.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain12.att",
+		"terrain19.att",
+		"terrain19.att",
+		"terrain19.att",
+		"terrain19.att",
+		"terrain19.att",
+		"terrain19.att",
+		"terrain25.att",
+		"terrain25.att",
+		"terrain25.att",
+		"terrain25.att",
+		"terrain25.att",
+		"terrain25.att",
+		"terrain31.att",
+		"terrain32.att",
+		"terrain33.att",
+		"terrain34.att",
+		"terrain35.att",
+		"terrain36.att",
+		"terrain37.att",
+		"terrain38.att",
+		"terrain39.att",
+		"terrain40.att",
+		"terrain41.att", 
+		"terrain42.att", 
+		"terrain43.att", 
+		"terrain43.att", 
+		"terrain43.att", 
+		"terrain46.att", 
+		"terrain47.att", 
+		"terrain47.att", 
+		"terrain47.att", 
+		"terrain47.att", 
+		"terrain51.att",
+		"terrain52.att", 
+		"terrain12.att", 
+		"terrain19.att" 
+	};*/
 
-	for( n = 0; n < MAX_NUMBER_MAP; n++ )
+	char MapAttrName[MAX_MAP_NUMBER][64];
+	char MapAttrKanturuName[2][64];
+	char MapAttrCryWolfName[3][64];
+	char etiqueta[8];
+
+	#if (WL_PROTECT==1)
+		int MyCheckVar2;
+		CODEREPLACE_START
+			CHECK_PROTECTION(MyCheckVar2, 0x12345678)
+			if (MyCheckVar2 != 0x12345678)  	
+			{
+			   return;
+			}
+		CODEREPLACE_END
+	#endif
+
+	for ( n=0;n<MAX_MAP_NUMBER;n++)
 	{
-		MapC[n].ItemInit();
-		char CustomPath[60];
-		sprintf(CustomPath, "Terrain\\%s", MapAttrName[n]);
-		MapC[n].LoadMapAttr(gDirPath.GetNewPath(CustomPath), n);
+		wsprintf(etiqueta,"Map%02d", n);
+		GetPrivateProfileString("Terrains", etiqueta, "..\\Data\\Terrains\\(null).att", MapAttrName[n], 64, "..\\SCFData\\SCF_Common.ini");
 	}
 
-	g_Crywolf.LoadCrywolfMapAttr(gDirPath.GetNewPath("Terrain\\terrain35_Peace.att"), 0);
-	g_Crywolf.LoadCrywolfMapAttr(gDirPath.GetNewPath("Terrain\\terrain35_Occupied.att"), 1);
-	g_Crywolf.LoadCrywolfMapAttr(gDirPath.GetNewPath("Terrain\\terrain35_War.att"), 2);
-	g_Kanturu.LoadKanturuMapAttr(gDirPath.GetNewPath("Terrain\\terrain40_Close.att"), 0);
-	g_Kanturu.LoadKanturuMapAttr(gDirPath.GetNewPath("Terrain\\terrain40_Open.att"), 1);
+	for ( n=0;n<MAX_MAP_NUMBER;n++)
+	{
+		MapC[n].ItemInit();
+		MapC[n].LoadMapAttr(gDirPath.GetNewPath(MapAttrName[n]), n);
+	}
+
+	GetPrivateProfileString("Terrains", "Map40_Close", "..\\SCFData\\Terrains\\Kanturu_Close.att", MapAttrKanturuName[0], 64, "..\\SCFData\\SCF_Common.ini");
+	GetPrivateProfileString("Terrains", "Map40_Open", "..\\SCFData\\Terrains\\Kanturu_Open.att", MapAttrKanturuName[1], 64, "..\\SCFData\\SCF_Common.ini");
+
+	GetPrivateProfileString("Terrains", "Map35_Peace", "..\\SCFData\\Terrains\\CryWolf_Peace.att", MapAttrCryWolfName[0], 64, "..\\SCFData\\SCF_Common.ini");
+	GetPrivateProfileString("Terrains", "Map35_Occupied", "..\\SCFData\\Terrains\\CryWolf_Occupied.att", MapAttrCryWolfName[1], 64, "..\\SCFData\\SCF_Common.ini");
+	GetPrivateProfileString("Terrains", "Map35_War", "..\\SCFData\\Terrains\\CryWolf_War.att", MapAttrCryWolfName[2], 64, "..\\SCFData\\SCF_Common.ini");
+	
+	#if (GS_CASTLE==1)
+		g_Crywolf.LoadCrywolfMapAttr(MapAttrCryWolfName[0],0);	//terrain35_PEACE.att
+		g_Crywolf.LoadCrywolfMapAttr(MapAttrCryWolfName[1],1);	//terrain35_OCCUPIED.att
+		g_Crywolf.LoadCrywolfMapAttr(MapAttrCryWolfName[2],2);	//terrain35_WAR.att
+	#else
+		g_Kanturu.LoadKanturuMapAttr(MapAttrKanturuName[0], 0);	//terrain40_CLOSE.att
+		g_Kanturu.LoadKanturuMapAttr(MapAttrKanturuName[1], 1);	//terrain40_OPEN.att
+	#endif
 
 	DCInfo.Init();
 	ShopDataLoad();
-	wsGServer.CreateSocket(hWnd);
+
+	#if (WL_PROTECT==1)
+
+	CODEREPLACE_START
+		if(WLRegGetStatus(NULL) == 1)
+		{
+			wsGServer.CreateSocket(hWnd);
+		}
+	CODEREPLACE_END 
+
+	#else
+		wsGServer.CreateSocket(hWnd);
+	#endif
+
 	wsJServerCli.CreateSocket(hWnd);
 	wsDataCli.CreateSocket(hWnd);
-	gWzAG.GetKey(szAuthKey, 5,5 );
-	wsRServerCli.CreateSocket(hWnd);
-	wsEvenChipServerCli.CreateSocket(hWnd);
+	
+	if(ReadConfig.SCFRSON == FALSE)
+	{
+		wsRServerCli.CreateSocket(hWnd);
+	}
+	if(ReadConfig.SCFESON == FALSE)
+	{
+		wsEvenChipServerCli.CreateSocket(hWnd);
+	}
 	GameServerInfoSend();
 	GameMonsterAllAdd();
-	acceptIP.Load(gDirPath.GetNewPath("Other\\Iplist.dat"));
-	//VIP SYSTEM
-	//ConMember.Load(gDirPath.GetNewPath("Other\\ConnectMember.txt"));
-	ConMember.Load(g_ConnectMemberFile);
+
+	acceptIP.Load(gDirPath.GetNewPath("Iplist.dat"));
+	ConMember.Load(ReadConfig.ConnDataFiles[38]);
 	GCTeleportSend(gObj, 1, 1, 1, 2, 3);
-	gWzAG.GetKey(szAuthKey, 15,5 );
-	g_Raklion.SetState(RAKLION_STATE_END);
-
-#ifdef WZQUEST
-	Luna<QuestExpLuaBind>::Register(g_MuLuaQuestExp.GetLua());
-	g_MuLuaQuestExp.DoFile("..\\Data\\Lua\\Quest_Info.lua");
-	g_MuLuaQuestExp.DoFile("..\\Data\\Lua\\Quest_Main.lua");
-	g_Generic_Call(g_MuLuaQuestExp.GetLua(), "SetQuestInfo", ">");
-	g_QuestExpManager.QuestExpItemInit();
-#endif
-
-	//VMEND
 }
 
 
-int GetWarehouseUsedHowMuch(int UserLevel, int MasterLevel, BOOL IsLock)
+int GetWarehouseUsedHowMuch(int UserLevel, BOOL IsLock)
 {
 	int rZen=0;
-
-	int iBaseLevel = UserLevel+MasterLevel;
-
-	rZen = (iBaseLevel * iBaseLevel)* 0.1 * 0.4;
+	rZen = (UserLevel * UserLevel)* 0.1 * 0.4;
 
 	if (bCanWarehouseLock == TRUE)
 	{
@@ -1248,20 +858,19 @@ int GetWarehouseUsedHowMuch(int UserLevel, int MasterLevel, BOOL IsLock)
 	{
 		rZen = (rZen/100)*100;
 	}
-
+	
 	else if ( rZen >= 100 )
 	{
 		rZen = (rZen/10)*10;
 	}
-
+	
 	if ( rZen == 0 )
 	{
 		rZen=1;
 	}
-
+	
 	return rZen;
 }
-
 
 void GraphPaint(HWND hWnd)
 {
@@ -1300,15 +909,72 @@ void GraphPaint(HWND hWnd)
 			FillRect(hdc, &rect, colBrush[n]);
 		}
 	}
-
+	
 	ReleaseDC(hWnd, hdc);
 	DeleteObject( (HGDIOBJ)colBrush[0]);
 	DeleteObject( (HGDIOBJ)colBrush[1]);
 	DeleteObject( (HGDIOBJ)colBrush[2]);
 	DeleteObject( (HGDIOBJ)colBrush[3]);
 	DeleteObject( (HGDIOBJ)val[0]);
-}
 
+
+
+}
+/*
+void PaintGraph(HWND hWnd, int argC)
+{
+	int i;
+	HDC hdc;
+
+	int lc118 = 0;
+	int lc11C = 0;
+	int lc120 = 0;
+	int lc124 = 0;
+	int lc128 = 0;
+
+	if ( argC < 0 || argC > 3999 )
+	{
+		return;
+	}
+
+	hdc = GetDC(hWnd);
+
+	for ( i = 0 ; i < 4000 ; i++ )
+	{
+		if ( gObj[i]. xx != 0 && gObj[i].xxx != 0 && gObj[i].xx == gCurMap && gObj[i].xxx == 1)
+		{
+			lc124++;
+		}		
+
+		if ( gObj[i].xxx == 1 && gObj[i]. != 0 )
+		{
+			lc128++;
+		}
+		else if ( gObj[i] != 0 )
+		{
+			lc118++;
+		}
+	}
+
+	if ( gLogTypePaint == 1 )
+	{
+		lc13C = 100;
+		lc140 = 50;
+		lc144 = 1;
+		lc148 = 1;
+		lc14C = 3;
+		HBRUSH colBrush[5];
+		int bkMode;
+
+		colBrush[0] = CreateSolidBrush(0xFF);
+		colBrush[1] = CreateSolidBrush(0x808080);
+		colBrush[2] = CreateSolidBrush(0xFFFF00);
+		colBrush[3] = CreateSolidBrush(0xFF0000);
+		colBrush[4] = CreateSolidBrush(0xFF00);
+		bkMode = SetBkMode(hdc, 1);
+
+		hdc = GetDC(hWnd);
+*/
 
 void GameMonsterAllAdd()
 {
@@ -1331,76 +997,63 @@ void GameMonsterAllAdd()
 			}
 		}
 
+		if ( IT_MAP_RANGE(gMSetBase.m_Mp[n].m_MapNumber) != FALSE )
+		{
+			if(gMSetBase.m_Mp[n].m_Type < 380 || gMSetBase.m_Mp[n].m_Type > 384)
+			{
+				continue;
+			}
+		}
+
 		if ( CC_MAP_RANGE(gMSetBase.m_Mp[n].m_MapNumber) != FALSE )
 		{
 			continue;
 		}
-
-		if ( IT_MAP_RANGE(gMSetBase.m_Mp[n].m_MapNumber) != FALSE && gMSetBase.m_Mp[n].m_Type != 381 && gMSetBase.m_Mp[n].m_Type != 382)
-		{
-			if( gMSetBase.m_Mp[n].m_Type == 380 || gMSetBase.m_Mp[n].m_Type == 383 || gMSetBase.m_Mp[n].m_Type == 384 )
-			{
-				g_IllusionTempleEvent.AddNpcPosNum(gMSetBase.m_Mp[n].m_MapNumber,gMSetBase.m_Mp[n].m_Type, n);
-			}
-			else if(gMSetBase.m_Mp[n].m_Type >= 386 || gMSetBase.m_Mp[n].m_Type <= 403)
-			{
-				g_IllusionTempleEvent.AddMonsterPosNum(gMSetBase.m_Mp[n].m_MapNumber,gMSetBase.m_Mp[n].m_Type, n);
-			}
-
-			continue;
-		}
-
-#ifdef IMPERIAL
-		if( CImperialGuardian::IsEventMap(gMSetBase.m_Mp[n].m_MapNumber) )
-			continue;
-#endif
-
+			
 		result = gObjAddMonster(gMSetBase.m_Mp[n].m_MapNumber);
 
 		if ( result >= 0 )
 		{
 			gObjSetPosMonster(result, n);
-			gObjSetMonster(result, gMSetBase.m_Mp[n].m_Type);
+			gObjSetMonster(result, gMSetBase.m_Mp[n].m_Type,"GameMonsterAllAdd");
 			gCurPaintPlayer++;
 
 			if ( BC_MAP_RANGE(gObj[result].MapNumber) )
 			{
+				int BCRest = MAP_INDEX_BLOODCASTLE1;
+				if(gObj[result].MapNumber == MAP_INDEX_BLOODCASTLE8)
+					BCRest = 45;
 				if ( gObj[result].Class == 232 )
 				{
-					gObj[result].m_cBloodCastleIndex = g_BloodCastle.GetBridgeIndexByMapNum(gObj[result].MapNumber);
+					gObj[result].m_cBloodCastleIndex = gObj[result].MapNumber - BCRest;
 				}
 			}
 
-			if ( gObj[result].Class == 216 )
+			if ( IT_MAP_RANGE(gObj[result].MapNumber) && gObj[result].Class == 380 )
 			{
-				g_CastleSiege.SetCrownIndex(result);
-			}
-			if( CRYWOLF_MAP_RANGE(gObj[result].MapNumber) )
-			{
-				if(gObj[result].Type == OBJ_NPC)
+				WORD Room = gObj[result].MapNumber - 45;
+				if(Room >= 0 && Room <= 6)
 				{
-					if ( CRYWOLF_ALTAR_CLASS_RANGE(gObj[result].Class) ) //Altar?
-					{
-						g_Crywolf.m_ObjSpecialNPC.AddObj(result);
-					}
-					else
-					{
-						g_Crywolf.m_ObjCommonNPC.AddObj(result);
-					}
+					IllusionTemple.Room[Room].StatueNum = result;
+					IllusionTemple.Room[Room].Statue_X = gObj[result].X;
+					IllusionTemple.Room[Room].Statue_Y = gObj[result].Y;
 				}
 			}
-			if( CRYWOLF_MAP_RANGE(gObj[result].MapNumber) )
+
+#if (GS_CASTLE==1)
+			if ( gObj[result].MapNumber == MAP_INDEX_CASTLESIEGE )
 			{
-				if(gObj[result].Type == OBJ_MONSTER)
+				if ( gObj[result].Class == 216 )
 				{
-					g_Crywolf.m_ObjCommonMonster.AddObj(result);
+					//DebugLog("%s: Crown Index: %d",__FUNCTION__,result);
+					g_CastleSiege.SetCrownIndex(result);
 				}
 			}
+#endif
 		}
 	}
 
 	g_DevilSquare.Init();
-	g_BloodCastle.LoadItemDropRate();
 
 	if ( g_bBloodCastle != FALSE )
 	{
@@ -1413,71 +1066,114 @@ void GameMonsterAllAdd()
 
 	if ( g_bChaosCastle != FALSE )
 	{
-		g_ChaosCastle.Init(TRUE);
+		g_ChaosCastle.Init(true);
 	}
 	else
 	{
-		g_ChaosCastle.Init(FALSE);
+		g_ChaosCastle.Init(false);
 	}
-
-	if ( g_bIllusionTempleEvent != FALSE )
-	{
-		g_IllusionTempleEvent.IllusionTempleEventInit();
-	}
-	//revisar
-	g_Crywolf.SetCrywolfCommonNPC(g_Crywolf.GetOccupationState());
-
-#ifdef DP
-	g_DoppleganerEvent.DoppelgangerProcessInit();
+	g_DoppelGanger.Init();
+	
+	Raklion.ReadMonsters("..\\SCFData\\EventMobs\\SCF_RaklionEvent.dat");
+	g_ImperialGuardian.ReadMonsters("..\\SCFData\\EventMobs\\SCF_ImperialGuardian.dat");
+#if(GS_CASTLE_NOEVENTS == 0)
+	#if (PACK_EDITION>=1)
+		BlueEvent.ReadMonsters("..\\SCFData\\EventMobs\\SCF_BlueEvent.dat");
+		SummerEvent.ReadMonsters("..\\SCFData\\EventMobs\\SCF_SummerEvent.dat");
+	#endif
+	#if (PACK_EDITION>=2)
+		XMasEvent.ReadMonsters("..\\SCFData\\EventMobs\\SCF_XMasEvent.dat");
+		SkyEvent.ReadMonsters("..\\SCFData\\EventMobs\\SCF_SkyEvent.dat");
+	#endif
 #endif
 
+#if (PACK_EDITION>=3)
+	#if(GS_CASTLE_NOEVENTS == 0)
+		//g_DoubleGoer.ReadMonsters("..\\SCFData\\EventMobs\\SCF_DoubleGoer.dat");
+		BossAttack.ReadMonsters("..\\SCFData\\EventMobs\\SCF_BossAttack.dat");
+	#endif
+
+	#if (GS_CASTLE==1)
+		g_Swamp.ReadMonsters("..\\SCFData\\EventMobs\\SCF_SwampEvent.dat");
+	#endif
+
+	BotStore.MakeBot();
+	BotBuff.MakeBot();
+	BotAlchemist.MakeBot();
+	BotTrader.MakeBot();
+	BotReward.MakeBot();
+	BotWarper.MakeBot();
+	BotRacer.ForceClose = true;
+	#if (CRYSTAL_EDITION==1)	
+		BotVipShop.MakeBot();
+	#endif
+#endif
+
+#if(GS_CASTLE_NOEVENTS == 0)
+	MossShop.LoadMonster();
+#endif
+	ReadMonstersAndAdd(FilePathSpawn);
 }
+
+
+
+
+
+
 
 void GameMonsterAllCloseAndReLoad()
 {
-	for( int n = 0; n < OBJ_MAXMONSTER; n++ )
+	for ( int n=0;n<OBJ_MAXMONSTER;n++)
 	{
-		if( gObj[n].Type == OBJ_MONSTER || gObj[n].Type == OBJ_NPC )
+		if ( gObj[n].Type == OBJ_MONSTER || gObj[n].Type == OBJ_NPC )
 		{
-			if( gObj[n].m_btCsNpcType || gObj[n].MapNumber == MAP_INDEX_KANTURU_BOSS )
+			if ( gObj[n].MapNumber == MAP_INDEX_KANTURU_BOSS )
 			{
-				continue;
+				//continue;
 			}
-			// ----
-			if( gObj[n].m_iCurrentAI )
+
+			if ( gObj[n].m_iCurrentAI )
 			{
 				gObj[n].Live = FALSE;
 				gObjViewportListProtocolDestroy(&gObj[n]);
 				gObjViewportClose(&gObj[n]);
 			}
-			// ----
+			
 			gObjDel(n);
 		}
 	}
-	// ----
-	g_Crywolf.m_ObjCommonNPC.Reset();
-	g_Crywolf.m_ObjSpecialNPC.Reset();
-	g_Crywolf.m_ObjCommonMonster.Reset();
-	g_Crywolf.m_ObjSpecialMonster.Reset();
-	// ----
-	gWzAG.RequestData(7);
-	int DataBufferSize = gWzAG.GetDataBufferSize();
-	char * DataBuffer = gWzAG.GetDataBuffer();
-	gMAttr.LoadAttr(DataBuffer, DataBufferSize);
-	// ----
-	gWzAG.RequestData(9);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	gMSetBase.LoadSetBase(DataBuffer, DataBufferSize);
-	// ----
-	g_IllusionTempleEvent.ResetPosNum();
-	// ----
+
+#if (PACK_EDITION>=3)
+	for ( int n=OBJ_MAXMONSTER;n<OBJ_STARTUSERINDEX;n++)
+	{
+		if ( gObj[n].Type == OBJ_MONSTER || gObj[n].Type == OBJ_NPC )
+		{
+			if(gObj[n].IsBot >= 1 && gObj[n].BotNumOwner <= 0 && gObj[n].m_RecallMon <= 0)
+			{
+				if ( gObj[n].m_iCurrentAI )
+				{
+					gObj[n].Live = FALSE;
+					gObjViewportListProtocolDestroy(&gObj[n]);
+					gObjViewportClose(&gObj[n]);
+				}
+				gObjCallMonCount--;
+				gObjDel(n);
+			}
+		}
+	}
+#endif
+
+	gMAttr.LoadAttr(ReadConfig.ConnDataFiles[11]);
+	gMSetBase.LoadSetBase(ReadConfig.ConnDataFiles[10]);
+
 	g_MonsterItemMng.Init();
 	gObjMonCount = 0;
 	GameMonsterAllAdd();
-	// ----
-	g_Raklion.SetState(RAKLION_STATE_END);
 }
+
+
+
+
 
 void GameMainFree()
 {
@@ -1486,7 +1182,17 @@ void GameMainFree()
 	gObjEnd();
 	ClearBattleSoccer();
 	LogClose();
+#if (WL_PROTECT==1)
+	CODEREPLACE_START
+#endif
+	CleanupGameguardAuth();
+#if (WL_PROTECT==1)
+	CODEREPLACE_END
+#endif
 }
+
+
+
 
 BOOL GMJoinServerConnect(LPSTR ConnectServer, DWORD wMsg)
 {
@@ -1505,47 +1211,123 @@ BOOL GMJoinServerConnect(LPSTR ConnectServer, DWORD wMsg)
 
 }
 
+
+
+
+
+
 BOOL GMRankingServerConnect(char* RankingServer, DWORD wMsg)
 {
-	wsRServerCli.SetProtocolCore(DevilSquareProtocolCore);
-	int result = wsRServerCli.Connect(RankingServerIP, RankingServerPort, wMsg);
-	if ( result == 0 )
+	if(ReadConfig.SCFRSON == FALSE)
 	{
-		return FALSE;
+		wsRServerCli.SetProtocolCore(DevilSquareProtocolCore);
+		int result = wsRServerCli.Connect(RankingServer, RANKING_SERVER_PORT, wMsg);
+		if ( result == 0 )
+		{
+			return FALSE;
+		}
+		LogAdd("RankingServer Connect IP [%s]", RankingServer);
+		return TRUE;
 	}
-	LogAdd("RankingServer Connect IP [ %s ]", RankingServerIP);
-	return TRUE;
+	return FALSE;
 }
+
+
+
+
 
 BOOL GMEventChipServerConnect(char* ServerIP, DWORD wMsg)
 {
-	wsEvenChipServerCli.SetProtocolCore(EventChipEventProtocolCore);
-	int result = wsEvenChipServerCli.Connect(EventServerIP, EventServerPort, wMsg);
-	if ( result == 0 )
+	if(ReadConfig.SCFESON == FALSE)
 	{
-		return FALSE;
+		wsEvenChipServerCli.SetProtocolCore(EventChipEventProtocolCore);
+		int result = wsEvenChipServerCli.Connect(ServerIP, EVENT_CHIP_SERVER_PORT, wMsg);
+		if ( result == 0 )
+		{
+			return FALSE;
+		}
+	
+		LogAdd("EventChip Connect IP [%s]", ServerIP);
+		return TRUE;
 	}
-
-	LogAdd("EventChip Connect IP [ %s ]", ServerIP);
-	return TRUE;
+	return FALSE;
 }
+
+
+
+
 
 BOOL GMDataServerConnect(char* ConnectServer, WPARAM wMsg)
 {
-	wsDataCli.SetProtocolCore(DataServerProtocolCore);
-	int result = wsDataCli.Connect(ConnectServer, DataServerPort, wMsg);
-	if ( result == 0 )
-	{
-		LogAdd(lMsg.Get(MSGGET(1, 147)), ConnectServer, DataServerPort);
-		return FALSE;
-	}
-	DataServerLogin(0);
-	LogAdd(lMsg.Get(MSGGET(1, 146)), ConnectServer, DataServerPort);
+
+	#if (WL_PROTECT==1)
+		VM_START_WITHLEVEL(13)
+		int MyCheckVar4;  
+		CHECK_PROTECTION(MyCheckVar4, 0x12482415)  	 
+		if (MyCheckVar4 == 0x12482415)
+		{
+			wsDataCli.SetProtocolCore(DataServerProtocolCore);
+			int result = wsDataCli.Connect(ConnectServer, DataServerPort, wMsg);
+			if ( result == 0 )
+			{
+				LogAdd(lMsg.Get(MSGGET(1, 147)), ConnectServer, DataServerPort);
+				return FALSE;
+			}
+			DataServerLogin(0);
+			LogAdd(lMsg.Get(MSGGET(1, 146)), ConnectServer, DataServerPort);
+		}
+		VM_END
+	#else
+		wsDataCli.SetProtocolCore(DataServerProtocolCore);
+		int result = wsDataCli.Connect(ConnectServer, DataServerPort, wMsg);
+		if ( result == 0 )
+		{
+			LogAdd(lMsg.Get(MSGGET(1, 147)), ConnectServer, DataServerPort);
+			return FALSE;
+		}
+		DataServerLogin(0);
+		LogAdd(lMsg.Get(MSGGET(1, 146)), ConnectServer, DataServerPort);
+	#endif
+
 	return TRUE;
 }
 
+BYTE RecvTable[256]  =  
+{
+		0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,
+		0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,
+		0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F,
+		0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x3E,0x3F,
+		0x40,0x41,0x42,0x43,0x44,0x45,0x46,0x47,0x48,0x49,0x4A,0x4B,0x4C,0x4D,0x4E,0x4F,
+		0x50,0x51,0x52,0x53,0x54,0x55,0x56,0x57,0x58,0x59,0x5A,0x5B,0x5C,0x5D,0x5E,0x5F,
+		0x60,0x61,0x62,0x63,0x64,0x65,0x66,0x67,0x68,0x69,0x6A,0x6B,0x6C,0x6D,0x6E,0x6F,
+		0x70,0x71,0x72,0x73,0x74,0x75,0x76,0x77,0x78,0x79,0x7A,0x7B,0x7C,0x7D,0x7E,0x7F,
+		0x80,0x81,0x82,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8A,0x8B,0x8C,0x8D,0x8E,0x8F,
+		0x90,0x91,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9A,0x9B,0x9C,0x9D,0x9E,0x9F,
+		0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF,
+		0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF,
+		0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF,
+		0xD0,0xD1,0xD2,0xD3,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9,0xDA,0xDB,0xDC,0xDD,0xDE,0xDF,
+		0xE0,0xE1,0xE2,0xE3,0xE4,0xE5,0xE6,0xE7,0xE8,0xE9,0xEA,0xEB,0xEC,0xED,0xEE,0xEF,
+		0xF0,0xF1,0xF2,0xF3,0xF4,0xF5,0xF6,0xF7,0xF8,0xF9,0xFA,0xFB,0xFC,0xFD,0xFE,0xFF 
+} ; 
+
 BOOL ExDataServerConnect(char* ConnectServer, DWORD wMsg)
 {
+#if (WL_PROTECT==1)
+	int MyCheckVar;  
+	VM_START_WITHLEVEL(14)
+	CHECK_PROTECTION(MyCheckVar, 0x15472142)  	 
+	if (MyCheckVar != 0x15472142)
+	{
+		for(int i=0;i<256;i++)
+		{
+			RecvTable[i] = rand()%255;
+		}
+	}
+	VM_END
+#endif
+		
 	wsExDbCli.SetProtocolCore(ExDataServerProtocolCore);
 	int result = wsExDbCli.Connect(ConnectServer, ExDbPort, wMsg);
 	if ( result == 0 )
@@ -1555,9 +1337,14 @@ BOOL ExDataServerConnect(char* ConnectServer, DWORD wMsg)
 	}
 
 	ExDataServerLogin();
-	LogAdd("ExDB Server Connected (%s) Port (%d)", ConnectServer, ExDbPort);
+	LogAddC(2, "ExDB Server Online");
 	return TRUE;
 }
+
+
+
+
+
 
 BOOL GameMainServerCreate(DWORD sMsg, DWORD cMsg)
 {
@@ -1566,1299 +1353,610 @@ BOOL GameMainServerCreate(DWORD sMsg, DWORD cMsg)
 	return TRUE;
 }
 
-void GMServerMsgProc(WPARAM wParam, LPARAM lParam)
+
+
+
+
+
+
+void GMServerMsgProc( WPARAM wParam, LPARAM lParam)
 {
-
-	switch ( lParam & 0xFFFF & 0xFFFF)
 	{
-	case FD_ACCEPT :
-		/*SOCKET cSocket;
-		IN_ADDR cInAddr;
-		int ClientIndex;
-		//LogAdd("SFD_ACCEPT MESSAGE");
-		if( wsGServer.AcceptSocket(cSocket, cInAddr) == TRUE )
-		{
-		ClientIndex = gObjAddSearch(cSocket, inet_ntoa(cInAddr) );
-
-		int addnumber = gObjAdd(cSocket, inet_ntoa(cInAddr), ClientIndex);
-		if( addnumber >= 0 ) 
-		{
-		SCPJoinResultSend( addnumber, 0x01);
-		}
-		else 
-		{// �??????� ?㈅??? �?..
-		wsGServer.Close(cSocket);
-		}
-		}
-		else {
-		return;
-		}*/
-		break;
+		int unk =lParam & 0xFFFF & 0xFFFF;	// HERE is a switch here goes a macro
 	}
 }
 
+
+
+
+
+
 void GMClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
-	int wp = wParam;
-	int lp = lParam;
+	//int wp = wParam;
+	//int lp = lParam;
 
 	switch ( lParam & 0xFFFF & 0xFFFF)
 	{
 		SOCKET socket;
 
-	case 1:
-		wsGServer.DataRecv(wParam);
-		break;
-	case 2:
-		wsGServer.FDWRITE_MsgDataSend(wParam);
-		break;
-	case 32:
-		socket = gObjGetSocket(wParam);
-		break;
+		case 1:
+			wsGServer.DataRecv(wParam);
+			break;
+
+		case 2:
+			wsGServer.FDWRITE_MsgDataSend(wParam);
+			break;
+
+		case 32:
+			socket = gObjGetSocket(wParam);
+			break;
 
 	}
 }
+
+
+extern BOOL AutoClose;
 
 void GMJoinClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
 	switch ( lParam & 0xFFFF & 0xFFFF )
 	{
-	case 1:
-		wsJServerCli.DataRecv();
-		break;
-	case 2:
-		wsJServerCli.FDWRITE_MsgDataSend();
-		break;
-	case 32:
-		LogAddC(2, lMsg.Get(MSGGET(1, 149)));
-		SendMessage(ghWnd, WM_CLOSE, 0, 0);
+		case 1:
+			wsJServerCli.DataRecv();
+			break;
+
+		case 2:
+			wsJServerCli.FDWRITE_MsgDataSend();
+			break;
+
+		case 32:
+			{
+			LogAddC(2, lMsg.Get(MSGGET(1, 149)));
+			AutoClose = TRUE;
+			SendMessage(ghWnd, WM_CLOSE, 0, 0);
+			}break;
 	}
 }
+
+
+
+
+
 
 void GMRankingClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
 	switch ( lParam & 0xFFFF & 0xFFFF )
 	{
-	case 1:
-		wsRServerCli.DataRecv();
-		break;
-	case 2:
-		wsRServerCli.FDWRITE_MsgDataSend();
-		break;
-	case 32:
-		IsDevilSquareEventConnected = FALSE;
+		case 1:
+			wsRServerCli.DataRecv();
+			break;
+
+		case 2:
+			wsRServerCli.FDWRITE_MsgDataSend();
+			break;
+
+		case 32:
+			IsDevilSquareEventConnected = FALSE;
 	}
 }
+
+
+
+
+
 
 void GMEventChipClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
 	switch ( lParam & 0xFFFF & 0xFFFF )
 	{
-	case 1:
-		wsEvenChipServerCli.DataRecv();
-		break;
-	case 2:
-		wsEvenChipServerCli.FDWRITE_MsgDataSend();
-		break;
-	case 32:
-		IsEventChipServerConnected = FALSE;
+		case 1:
+			wsEvenChipServerCli.DataRecv();
+			break;
+
+		case 2:
+			wsEvenChipServerCli.FDWRITE_MsgDataSend();
+			break;
+
+		case 32:
+			IsEventChipServerConnected = FALSE;
 	}
 }
+
+
+
 
 void ExDataClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
 	switch ( lParam & 0xFFFF & 0xFFFF )
 	{
-	case 1:
-		wsExDbCli.DataRecv();
-		break;
-	case 2:
-		wsExDbCli.FDWRITE_MsgDataSend();
-		break;
-	case 32:
-		LogAddC(2, lMsg.Get(MSGGET(1, 150)));
-		wsExDbCli.Close();
+		case 1:
+			wsExDbCli.DataRecv();
+			break;
 
-		for ( int i =0;i<OBJMAX;i++)
-		{
-			if ( gObjIsConnectedGP(i) == TRUE )
+		case 2:
+			wsExDbCli.FDWRITE_MsgDataSend();
+			break;
+
+		case 32:
+			LogAddC(2, lMsg.Get(MSGGET(1, 150)));
+			wsExDbCli.Close();
+
+			for ( int i =0;i<OBJMAX;i++)
 			{
-				PMSG_FRIEND_STATE pMsg;
+				if ( gObjIsConnectedGP(i) == TRUE )
+				{
+					PMSG_FRIEND_STATE pMsg;
+					
+					pMsg.h.set((LPBYTE)&pMsg, 0xC4 , sizeof(pMsg) );
+					pMsg.State = -4;
 
-				pMsg.h.set((LPBYTE)&pMsg, 0xC4 , sizeof(pMsg) );
-				pMsg.State = -4;
+					DataSend(i, (unsigned char*)&pMsg, sizeof(pMsg) );
 
-				DataSend(i, (LPBYTE)&pMsg, sizeof(pMsg) );
-
-				gObj[i].m_FriendServerOnline = FRIEND_SERVER_STATE_OFFLINE;
+					gObj[i].m_FriendServerOnline = FRIEND_SERVER_STATE_OFFLINE;
+				}
 			}
-		}
 
-		LogAddTD("Error-L1 : Friend Server Down (State Send Ok)");
-		LogAddC(2, "Error-L1 : Friend Server Down (State Send Ok)");
-		break;
+			LogAddTD("Error-L1 : Friend Server Down (State Send Ok)");
+			LogAddC(2, "Error-L1 : Friend Server Down (State Send Ok)");
+			break;
 	}
 }
+
 
 void GMDataClientMsgProc(WPARAM wParam, LPARAM lParam)
 {
 	switch ( lParam & 0xFFFF & 0xFFFF )
 	{
-	case 1:
-		wsDataCli.DataRecv();
-		break;
-	case 2:
-		wsDataCli.FDWRITE_MsgDataSend();
-		break;
-	case 32:
-		LogAddC(2, lMsg.Get(MSGGET(1, 150)));
+		case 1:
+			wsDataCli.DataRecv();
+			break;
+
+		case 2:
+			wsDataCli.FDWRITE_MsgDataSend();
+			break;
+
+		case 32:
+			LogAddC(2, lMsg.Get(MSGGET(1, 150)));
 	}
 }
+
+
+
+
 
 void ReadServerInfo()
 {
-	if (!IsFile(SERVER_INFO_PATH))
+	if (!IsFile(ReadConfig.ConnDataFiles[8]))
 	{
 		MsgBox("ServerInfo.dat file not found");
 	}
-	GetPrivateProfileString("GameServerInfo","ServerName","",szServerName,50,SERVER_INFO_PATH);
-	gGameServerCode=GetPrivateProfileInt("GameServerInfo","ServerCode",0,SERVER_INFO_PATH);
-	bCanConnectMember=GetPrivateProfileInt("GameServerInfo","ConnectMemberLoad",0,SERVER_INFO_PATH);
-	bCanChangeCharacterName=GetPrivateProfileInt("GameServerInfo","ChangeCharacterName",0,SERVER_INFO_PATH);
-
-	g_ConnectEx.EnableAutoReconect();
+	GetPrivateProfileString("GameServerInfo","ServerName","",szServerName,50,ReadConfig.ConnDataFiles[8]);
+	gGameServerCode=GetPrivateProfileInt("GameServerInfo","ServerCode",0,ReadConfig.ConnDataFiles[8]);
+	bCanConnectMember=GetPrivateProfileInt("GameServerInfo","ConnectMemberLoad",0,ReadConfig.ConnDataFiles[8]);
 }
 
+bool AlreadyReaded = false;
 void ReadCommonServerInfo()
 {
 	char szTemp[256];
-	char szCheckSum[256];
-	char* cvstr;
-	int DataBufferSize;
-	char* DataBuffer;
+	//char szCheckSum[256];
+	//char* cvstr;
+	//int DataBufferSize;
+	//char* DataBuffer;
 
+	ReadConfig.Init();
+#if (WL_PROTECT==1)
+	VM_START_WITHLEVEL(2)
+
+#if (MAC_PROTECT_OLD==1)
+	CheckMemoryTeaser_MAC_Comparator(0);
+#else		
+	int MyCheckVar2;   
+	CHECK_PROTECTION(MyCheckVar2, 0x18465741)  	
+	if (MyCheckVar2 != 0x18465741)
+	{			
+		_beginthread( Teaser__InsideTrigger, 0, NULL  );
+	}
+#endif
+	VM_END
+#endif
 	ReadServerInfo();
 
-	gWzAG.RequestData(8);
+	gGateC.Load(ReadConfig.ConnDataFiles[12]);
 
-	DataBufferSize = gWzAG.GetDataBufferSize();
-
-	DataBuffer = gWzAG.GetDataBuffer();
-
-	gGateC.Load(DataBuffer, DataBufferSize);
-
-	if(!IsFile(gDirPath.GetNewPath("commonserver.cfg")))
+	if(!IsFile(ReadConfig.ConnDataFiles[0]))
 	{
 		MsgBox("[commonserver.cfg] file not found");
 	}
-
-	GetPrivateProfileString("GameServerInfo", "Language", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gLanguage = atoi(szTemp);
-	gStalkProtocol	= GetPrivateProfileInt("GameServerInfo","StalkProtocol",0,gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "StalkProtocolId", "0", gStalkProtocolId, 10, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_MuHelperMinLevel = GetPrivateProfileInt("GameServerInfo", "MuHelperMinLevelUse", 80, gDirPath.GetNewPath("commonserver.cfg"));
-
-	GetPrivateProfileStringA("GameServerInfo", "ConnectMemberFileLocation","..\\VipSystem\\ConnectMember.txt", g_ConnectMemberFile, 300, SERVER_INFO_PATH);
-	
-#ifdef NEWVIPSYSTEM
-	g_isCustomVipSys = GetPrivateProfileInt("VipActive", "IsCustomVipSystem", 0, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-
-	g_vip1AddExp = GetPrivateProfileInt("VipSystem", "Vip_1_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip2AddExp = GetPrivateProfileInt("VipSystem", "Vip_2_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip3AddExp = GetPrivateProfileInt("VipSystem", "Vip_3_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip4AddExp = GetPrivateProfileInt("VipSystem", "Vip_4_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip5AddExp = GetPrivateProfileInt("VipSystem", "Vip_5_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip6AddExp = GetPrivateProfileInt("VipSystem", "Vip_6_AddExp", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-
-	g_vip1AddDrop = GetPrivateProfileInt("VipSystem", "Vip_1_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip2AddDrop = GetPrivateProfileInt("VipSystem", "Vip_2_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip3AddDrop = GetPrivateProfileInt("VipSystem", "Vip_3_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip4AddDrop = GetPrivateProfileInt("VipSystem", "Vip_4_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip5AddDrop = GetPrivateProfileInt("VipSystem", "Vip_5_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_vip6AddDrop = GetPrivateProfileInt("VipSystem", "Vip_6_AddDropPer", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-
-	g_Buyvip1ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_1_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_Buyvip2ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_2_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_Buyvip3ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_3_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_Buyvip4ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_4_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_Buyvip5ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_5_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
-	g_Buyvip6ItemCode = GetPrivateProfileInt("GameShopBuy", "BuyVip_6_ItemCode", 80, gDirPath.GetNewPath("Custom\\CustomVipSystem.ini"));
+#if (DSGN_COMPILE == 1)
+	gStalkProtocol	= GetPrivateProfileInt("GameServerInfo","StalkProtocol",0,ReadConfig.ConnDataFiles[0]);
+#else
+	gStalkProtocol	= 0;
 #endif
-
-	
-
-	if(gStalkProtocol != 0)
-	{
-		LogAdd("Stalk Protocol ID = '%s' ", gStalkProtocolId);
-	}
-
-	if(g_SimpleModulusCS.LoadDecryptionKey(gDirPath.GetNewPath("Other\\Dec1.dat")) == FALSE)
+	if(g_SimpleModulusCS.LoadDecryptionKey(ReadConfig.ConnDataFiles[43]) == FALSE)
 	{
 		MsgBox("Dec1.dat file not found");
 	}
-
-	if(g_SimpleModulusSC.LoadEncryptionKey(gDirPath.GetNewPath("Other\\Enc2.dat")) == FALSE)
+	if(g_SimpleModulusSC.LoadEncryptionKey(ReadConfig.ConnDataFiles[44]) == FALSE)
 	{
 		MsgBox("Enc2.dat file not found");
 	}
 
-	strcpy(szKorItemTextFileName, gDirPath.GetNewPath("Item\\item.txt"));
-	strcpy(szKorSkillTextFileName, gDirPath.GetNewPath("Skill\\skill.txt"));
+	//strcpy(szCheckSum, ReadConfig.ConnDataFiles[4]);
+	//CheckSumFileLoad(szCheckSum);
+	CheckSumFileLoad(ReadConfig.ConnDataFiles[4]);
 
-	g_ServerMinUserReset = GetPrivateProfileInt("GameServerInfo", "MinUserReset", 0, SERVER_INFO_PATH);
-	g_ServerMaxUserReset = GetPrivateProfileInt("GameServerInfo", "MaxUserReset", 0, SERVER_INFO_PATH);
+#if (CSAUTH_VERSION==1)
+#if (WL_PROTECT==1)
+	CODEREPLACE_START
+#endif
+	BOOL bret = _LoadAuthTable(ReadConfig.ConnDataFiles[45]);
 
-	gFreeServer = GetPrivateProfileIntA("GameServerInfo", "FreeServer", 1, SERVER_INFO_PATH);
-	if (gFreeServer)
+	if(bret != 8)
 	{
-		LogAdd("Free Server");
+		MsgBox("CSAuth File Load Fail");
 	}
 
-	switch(gLanguage)
+	bret = _LoadAuthIndex(ReadConfig.ConnDataFiles[46]);
+
+	if(bret != 1)
 	{
-	case 0: // Korea
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("Item\\item.txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("Skill\\skill.txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("Quest.txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("Other\\CheckSum.dat"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("MoveReq.txt"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("Other\\commonloc.cfg"));
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-
-		gFreeServer = GetPrivateProfileIntA("GameServerInfo", "FreeServer", 1, SERVER_INFO_PATH);
-		if (gFreeServer)
-		{
-			LogAdd("Free Server");
-		}
-		break;
-	case 1: // English
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("lang\\eng\\item(eng).txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("lang\\eng\\skill(eng).txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("lang\\eng\\Quest(eng).txt"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("lang\\eng\\movereq(Eng).txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("lang\\eng\\CheckSum.dat"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("lang\\eng\\commonloc.cfg"));
-		strcpy(gCountryName, "Eng");
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-		gFreeServer = GetPrivateProfileIntA("GameServerInfo", "FreeServer", 1, SERVER_INFO_PATH);
-		if (gFreeServer)
-		{
-			LogAdd("Free Server");
-		}
-		break;
-	case 2: // Japan
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("lang\\jpn\\item(jpn).txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("lang\\jpn\\skill(jpn).txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("lang\\jpn\\Quest(jpn).txt"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("lang\\jpn\\movereq(jpn).txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("lang\\jpn\\CheckSum.dat"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("lang\\jpn\\commonloc.cfg"));
-		strcpy(gCountryName, "Jpn");
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-		gFreeServer = GetPrivateProfileIntA("GameServerInfo", "FreeServer", 1, SERVER_INFO_PATH);
-		if (gFreeServer)
-		{
-			LogAdd("Free Server");
-		}
-		break;
-	case 3: // China
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("lang\\chs\\item(chs).txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("lang\\chs\\skill(chs).txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("lang\\chs\\Quest(chs).txt"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("lang\\chs\\movereq(chs).txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("lang\\chs\\CheckSum.dat"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("lang\\chs\\commonloc.cfg"));
-		strcpy(gCountryName, "Chs");
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-		break;
-	case 4: // Taiwan
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("lang\\tai\\item(tai).txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("lang\\tai\\skill(tai).txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("lang\\tai\\Quest(tai).txt"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("lang\\tai\\movereq(tai).txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("lang\\tai\\CheckSum.dat"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("lang\\tai\\commonloc.cfg"));
-		strcpy(gCountryName, "Tai");
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-		break;
-	case 5: // Thailand
-		strcpy(szItemTextFileName, gDirPath.GetNewPath("lang\\tha\\item(tha).txt"));
-		strcpy(szSkillTextFileName, gDirPath.GetNewPath("lang\\tha\\skill(tha).txt"));
-		strcpy(szQuestTextFileName, gDirPath.GetNewPath("lang\\tha\\Quest(tha).txt"));
-		strcpy(szMoveReqFileName, gDirPath.GetNewPath("lang\\tha\\movereq(tha).txt"));
-		strcpy(szCheckSum, gDirPath.GetNewPath("lang\\tha\\CheckSum.dat"));
-		strcpy(szCommonlocIniFileName, gDirPath.GetNewPath("lang\\tha\\commonloc.cfg"));
-		strcpy(gCountryName, "Tha");
-		gNonPK = GetPrivateProfileInt("GameServerInfo","NonPK",0, SERVER_INFO_PATH);
-		if(gNonPK != 0)
-		{
-			LogAdd("NON-PK Server");
-		}
-		gPkLimitFree = GetPrivateProfileInt("GameServerInfo","PkLimitFree",0, SERVER_INFO_PATH);
-		if(gPkLimitFree != 0)
-		{
-			LogAdd("PK Limit Free Server");
-		}
-		gNewServer = GetPrivateProfileInt("GameServerInfo","NewServer",0, SERVER_INFO_PATH);
-		if(gNewServer != 0)
-		{
-			LogAdd("New Server");
-		}
-		gEventOff = GetPrivateProfileInt("GameServerInfo","EventOff",0, SERVER_INFO_PATH);
-		if(gEventOff != 0)
-		{
-			LogAdd("EventOff");
-		}
-		break;
+		MsgBox("CSAuth.idx File Load Fail");
 	}
+#if (WL_PROTECT==1)
+	CODEREPLACE_END
+#endif
+#endif
 
-	CheckSumFileLoad(szCheckSum);
 
-	//DWORD dwGGErrCode = InitGameguardAuth("", OBJMAXUSER);
+#if (CSAUTH_VERSION==2)
+#if (WL_PROTECT==1)
+	CODEREPLACE_START
+#endif
+	DWORD dwGGErrCode = InitGameguardAuth("", OBJMAXUSER);
 
-	//if ( dwGGErrCode != 0 )
-	//{
-	//	MsgBox("Failed initialization of GameGaurd !!! , Error: %d", dwGGErrCode);
-	//	return;
-	//}
-	g_SkillAdditionInfo.Load("Skill\\SkillAdditionInfo.dat");
+	if ( dwGGErrCode != 0 )
+	{
+		MsgBox("Failed initialization of GameGuard !!! , Error: %d", dwGGErrCode);
+		return;
+	}
+#if (WL_PROTECT==1)
+	CODEREPLACE_END
+#endif
+#endif
 
-	lMsg.LoadWTF(gDirPath.GetNewPath("Other\\Message.wtf"));
 	SetMapName();
 
-	gWzAG.RequestData(0);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	OpenItemScript(DataBuffer, DataBufferSize);
+	OpenItemScript(ReadConfig.ConnDataFiles[1]);
+	InitSocketItems("..\\SCFData\\Items\\SCF_SocketItems.txt");
 
-	if(gLanguage != 0)
-	{
-		gWzAG.RequestData(1);
-		DataBufferSize = gWzAG.GetDataBufferSize();
-		DataBuffer = gWzAG.GetDataBuffer();
-		OpenItemNameScript( DataBuffer, DataBufferSize);
-	}
-
-	gWzAG.RequestData(2);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	MagicDamageC.LogSkillList(DataBuffer, DataBufferSize);
-
-	if(gLanguage != 0)
-	{
-		gWzAG.RequestData(3);
-		DataBufferSize = gWzAG.GetDataBufferSize();
-		DataBuffer = gWzAG.GetDataBuffer();
-		MagicDamageC.LogSkillNameList(DataBuffer, DataBufferSize);
-	}
-
-#ifdef IMPERIAL
-	g_MonsterStatCalc.LoadScript(gDirPath.GetNewPath("Monster\\MonsterStat.txt"));
+#if (DSGN_ITEM_DBMOVE == 1)
+	DS_Mover.Init();
+	DS_Mover.LoadItem("..\\DSGNData\\DSGN_ItemConverter.txt");
 #endif
 
-	SkillSpearHitBox.Load(gDirPath.GetNewPath("Skill\\SkillSpear.hit"));
-	SkillElectricSparkHitBox.Load(gDirPath.GetNewPath("Skill\\SkillElect.hit"));
-	//SkillDrainLifeHitBox.Load(gDirPath.GetNewPath("SkillDrainLife.hit"));
-	//SkillLightingOrbHitBox.Load(gDirPath.GetNewPath("SkillLightingOrb.hit"));
+	MagicDamageC.LogSkillList(ReadConfig.ConnDataFiles[2]);
 
-	gWzAG.RequestData(26);
+	SkillSpearHitBox.Load(ReadConfig.ConnDataFiles[39]);
+	SkillElectricSparkHitBox.Load(ReadConfig.ConnDataFiles[40]);
 
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
+	gSetItemOption.LoadOptionInfo(ReadConfig.ConnDataFiles[36]);
+	gSetItemOption.LoadTypeInfo(ReadConfig.ConnDataFiles[37]);
 
+	g_kJewelOfHarmonySystem.LoadScript(ReadConfig.ConnDataFiles[32]);
+	g_kJewelOfHarmonySystem.LoadScriptOfSmelt(ReadConfig.ConnDataFiles[33]);
+	g_kItemSystemFor380.Load380ItemOptionInfo(ReadConfig.ConnDataFiles[34]);
+	g_ItemAddOption.Load(ReadConfig.ConnDataFiles[35]);
 
-	gSetItemOption.LoadOptionInfo(DataBuffer, DataBufferSize);
+	gMoveCommand.Load(ReadConfig.ConnDataFiles[5]);
+	gMoveCommand.LoadMoveLevel(ReadConfig.ConnDataFiles[22]);
 
-	gWzAG.RequestData(28);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	gSetItemOption.LoadTypeInfo(DataBuffer, DataBufferSize);
+	ConMember.Load(ReadConfig.ConnDataFiles[38]);
 
-	g_kJewelOfHarmonySystem.LoadScript(gDirPath.GetNewPath("Item\\JewelOfHarmonyOption.txt"));
-	g_kJewelOfHarmonySystem.LoadScriptOfSmelt(gDirPath.GetNewPath("Item\\JewelOfHarmonySmelt.txt"));
-	g_kItemSystemFor380.Load380ItemOptionInfo(gDirPath.GetNewPath("Item\\ItemAddOption.txt"));
-	g_ItemAddOption.Load(gDirPath.GetNewPath("Item\\ItemAddOption.txt"));
-	g_MasterSkillSystem.Load(gDirPath.GetNewPath("Skill\\MasterSkillTree.txt"));
-	gItemSocketOption.LoadOptionScript(gDirPath.GetNewPath("Item\\SocketItem.txt"));
+	g_QuestInfo.LoadQuestInfo(ReadConfig.ConnDataFiles[3]);	
 
-	g_MUHelper.Load();
-	g_CheatGuard.Load();
-	
-	//GXPROTECT SERVER
-	/*g_GXProtectConnection = FALSE;
-	DWORD	ThreadID;
-	if ((CreateThread(NULL, 0, LoadGXProtectServer, (LPVOID)NULL,0, &ThreadID)) == NULL)
-	{
-		LogAdd("CreateProtectThread() failed with error %d", GetLastError());
-	}*/
-	//END
+	TMonsterSkillElement::LoadData(ReadConfig.ConnDataFiles[24]);
+	TMonsterSkillUnit::LoadData(ReadConfig.ConnDataFiles[25]);
+	TMonsterSkillManager::LoadData(ReadConfig.ConnDataFiles[26]);
+	TMonsterAIElement::LoadData(ReadConfig.ConnDataFiles[27]);
+	TMonsterAIAutomata::LoadData(ReadConfig.ConnDataFiles[28]);
+	TMonsterAIUnit::LoadData(ReadConfig.ConnDataFiles[29]);
+	TMonsterAIRule::LoadData(ReadConfig.ConnDataFiles[30]);
+	TMonsterAIGroup::LoadData(ReadConfig.ConnDataFiles[31]);
 
+	// Skill Addition
+	g_SkillAdditionInfo.Load(ReadConfig.ConnDataFiles[41]);
 
-#ifdef __CUSTOMS__
-	g_ResetSystem.Load();
-	g_ItemPrice.Load();
-	g_MixOption.Load();
-	g_NewsBoard.Load();
-	g_PVPZone.Load();
-	g_DropEx.Load();
-	g_ChatFilter.Load();
-	g_JewelsEx.Load();
-	g_OfflineTrade.Load();
-	g_PKClear.Load();
-	g_ClassCalc.Load();
-	DropEvent.LoadFile();
-#ifdef QUESTSYSTEM
-	g_QuestSystem.Load();
-#endif
-#endif
-//#if defined __REEDLAN__ || __BEREZNUK__
-	g_ShopPointEx.Load();
-//#endif
-#ifdef __NOVUS__
-	g_CraftSystem.Load();
-#endif
-#ifdef __MAKELO__
-	g_OfflineAttack.Load();
-#endif
+	//Crywolf
+	#if (GS_CASTLE==1)
+	g_Crywolf.LoadData(ReadConfig.ConnDataFiles[21]);
+	#endif
 
-	//#if defined __ALIEN__ || __WHITE__
-	gBalanceSystem.Load();
-	//#endif
+	// Kanturu
+	#if (GS_CASTLE==0)
+	g_Kanturu.LoadData(ReadConfig.ConnDataFiles[16]);
+	g_KanturuMonsterMng.LoadData(ReadConfig.ConnDataFiles[23]);
+	#endif
 
+	//Read All Event Options
+	ReadEventInfo(MU_EVENT_ALL );
 
-	gItemOption.Init();
-#ifdef __ALIEN__
-	gMonsterSpawner.Load();
-#endif
-
-#ifdef OFFEXP
-	OffExp.LoadConfig();
-#endif
-
-
-	gWzAG.RequestData(24);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	gMoveCommand.Load(DataBuffer, DataBufferSize);
-	gMoveCommand.LoadMoveLevel(gDirPath.GetNewPath("MoveLevel.txt"));
-
-	//VIP SYSTEM
-	//ConMember.Load(gDirPath.GetNewPath("Other\\ConnectMember.txt"));
-	ConMember.Load(g_ConnectMemberFile);
-
-	gWzAG.RequestData(4);
-	DataBufferSize = gWzAG.GetDataBufferSize();
-	DataBuffer = gWzAG.GetDataBuffer();
-	g_QuestInfo.LoadQuestInfo(DataBuffer, DataBufferSize);
-	gWzAG.GetClientVersion(szTemp, szGameServerExeSerial);
-
-	cvstr = strtok(szTemp, ".");
-	szClientVersion[0] = cvstr[0];
-	cvstr = strtok(NULL, ".");
-	szClientVersion[1] = cvstr[0];
-	szClientVersion[2] = cvstr[1];
-	cvstr = strtok(NULL, ".");
-	szClientVersion[3] = cvstr[0];
-	szClientVersion[4] = cvstr[1];	
-
-
-	TMonsterSkillElement::LoadData(gDirPath.GetNewPath("Monster\\MonsterSkillElement.txt"));
-	TMonsterSkillUnit::LoadData(gDirPath.GetNewPath("Monster\\MonsterSkillUnit.txt"));
-	TMonsterSkillManager::LoadData(gDirPath.GetNewPath("Monster\\MonsterSkill.txt"));
-	TMonsterAIElement::LoadData(gDirPath.GetNewPath("Monster\\MonsterAIElement.txt"));
-	TMonsterAIAutomata::LoadData(gDirPath.GetNewPath("Monster\\MonsterAutomata.txt"));
-	TMonsterAIUnit::LoadData(gDirPath.GetNewPath("Monster\\MonsterAIUnit.txt"));
-	TMonsterAIRule::LoadData(gDirPath.GetNewPath("Monster\\MonsterAIRule.txt"));
-	TMonsterAIGroup::LoadData(gDirPath.GetNewPath("Monster\\MonsterAIGroup.txt"));
-
-
-	//#if(_GSCS == 1)
-	g_Crywolf.LoadData(gDirPath.GetNewPath("Event\\Crywolf.dat"));
-	//#endif
-
-	//#if(_GSCS==0)
-	g_Kanturu.LoadData(gDirPath.GetNewPath("Event\\Kanturu.dat"));
-	g_KanturuMonsterMng.LoadData(gDirPath.GetNewPath("Event\\KanturuMonsterSetBase.txt"));
-	//#endif
-
-	//g_PCBangPointSystem.Load(gDirPath.GetNewPath("PCBangPointItemOpt.txt"));
-
-	g_Raklion.LoadData(gDirPath.GetNewPath("Event\\Raklion.dat"));
-
-	GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gCreateCharacter = atoi(szTemp);
+	gServerMaxUser = GetPrivateProfileInt("GameServerInfo","NumberOfMaxUser",500, ReadConfig.ConnDataFiles[0]);
 
-	gCreateMGLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateMGLevel", 220, gDirPath.GetNewPath("commonserver.cfg"));
-	gCreateDLLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateDLLevel", 250, gDirPath.GetNewPath("commonserver.cfg"));
-	gCreateSUMLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateSUMLevel", 150, gDirPath.GetNewPath("commonserver.cfg"));
-	gCreateMONKLevel	= GetPrivateProfileIntA("GameServerInfo", "CreateMONKLevel", 180, gDirPath.GetNewPath("commonserver.cfg"));
-
-	GetPrivateProfileString("GameServerInfo", "CharacterDeleteMinLevel", "40", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gCharacterDeleteMinLevel = atoi(szTemp);
-
-	int iMaxUser = GetPrivateProfileInt("GameServerInfo","NumberOfMaxUser",500, gDirPath.GetNewPath("commonserver.cfg"));
-
-	if(iMaxUser >= 0 && iMaxUser <= OBJMAXUSER)
+	if(gServerMaxUser >= 0 && gServerMaxUser <= OBJMAXUSER)
 	{
-		gServerMaxUser = iMaxUser;
-		LogAddTD("[Option Reload] MaxUser : %d", gServerMaxUser);
+		LogAddTD("[Option Reload] MaxUser Settings: %d", gServerMaxUser);
+	} else {
+		gServerMaxUser=OBJMAXUSER;
+		LogAddTD("[Option Reload] MaxUser Settings: %d", gServerMaxUser);
 	}
 
-	g_iServerGroupGuildChatting = GetPrivateProfileInt("GameServerInfo","ServerGroupGuildChatting",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iServerGroupUnionChatting = GetPrivateProfileInt("GameServerInfo","ServerGroupUnionChatting",0, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	// Guild Settingss
+	g_iServerGroupGuildChatting = GetPrivateProfileInt("GameServerInfo","ServerGroupGuildChatting",0, ReadConfig.ConnDataFiles[0]);
+	g_iServerGroupUnionChatting = GetPrivateProfileInt("GameServerInfo","ServerGroupUnionChatting",0, ReadConfig.ConnDataFiles[0]);
+
+	GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gGuildCreate = atoi(szTemp);
 
-	LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);
-	GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);	// Guild creation option %d
 
+	GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gGuildDestroy = atoi(szTemp);
-	LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);
-	GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);	// Guild delete option %d
+
+	GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gGuildCreateLevel = atoi(szTemp);
-	gGuildCreateMoney = GetPrivateProfileInt("GameServerInfo", "GuildCreateMoney", 0, gDirPath.GetNewPath("commonserver.cfg"));
 
-	LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);
+	LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);	// Above level %d can create guild
 
-	g_bCastleGuildDestoyLimit = GetPrivateProfileInt("GameServerInfo", "CastleOwnerGuildDestroyLimit", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	GetPrivateProfileString("GameServerInfo", "SpeedHackPlayerBlock", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "SpeedHackPlayerBlock", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	SpeedHackPlayerBlock = atoi(szTemp);
-	GetPrivateProfileString("GameServerInfo", "ItemSerialCheck", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "ItemSerialCheck", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gItemSerialCheck = atoi(szTemp);
-	GetPrivateProfileString("GameServerInfo", "AddExperience", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gAddExperience = atof(szTemp);
-	GetPrivateProfileString("GameServerInfo", "WelcomeMessage", "zGameServer", gWelcomeMessage, 255, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "AddZen", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gAddZen = atof(szTemp);	
-	GetPrivateProfileString("GameServerInfo", "AddZenDiv", "5", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gAddZenDiv = atof(szTemp);	
-	GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "ItemZeroSerialCheck", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+	gItemZeroSerialCheck = atoi(szTemp);
+	GetPrivateProfileString("GameServerInfo", "AddExperience", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+	gAddExperience = atof(szTemp);	
+
+	GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	bCanTrade = atoi(szTemp);
-
 	if(bCanTrade != 0)
-	{
 		LogAddTD(lMsg.Get(407));
-	}
 	else
-	{
 		LogAddTD(lMsg.Get(408));
-	}
 
-	bCanChaosBox = GetPrivateProfileInt("GameServerInfo","ChaosBox",0, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosEvent = GetPrivateProfileInt("GameServerInfo","ChaosEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-	//GetPrivateProfileString("GameServerInfo", "ChaosEventServer", "210.181.89.241", gChaosEventServerIp, 20, gDirPath.GetNewPath("commonserver.cfg"));
-	LogAdd("[Option] ChaosBox = %d", bCanChaosBox);
-	LogAdd("[Option] ChaosEvent = %d", gChaosEvent);
-	LogAdd("[Option] ChaosEventServer = %s", gChaosEventServerIp);
-	LogAdd("[Option] AttackEventRegenTime = %d", gAttackEventRegenTime);
-	GetPrivateProfileString("GameServerInfo", "PKTIME", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gPkTime = atoi(szTemp);
+	bCanChaosBox = GetPrivateProfileInt("GameServerInfo","ChaosBox",0, ReadConfig.ConnDataFiles[0]);
+	LogAdd("[Option] Chaos Machine State: ChaosBox = %d", bCanChaosBox);
 
-	if(gPkTime != 0)
-	{
-		LogAddTD(lMsg.Get(409), gPkTime);
-	}
-
-	GetPrivateProfileString("GameServerInfo", "MonsterHp", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "MonsterHp", "100", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gMonsterHp = atoi(szTemp);
+	if (gMonsterHp == 0)
+		gMonsterHp = 100;
+	LogAddTD(lMsg.Get(410), gMonsterHp);
 
-	if(gMonsterHp != 0)
-	{
-		LogAddTD(lMsg.Get(410), gMonsterHp);
-	}
-
-	GetPrivateProfileString("GameServerInfo", "LootingTime", "3", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "LootingTime", "3", szTemp, 5, ReadConfig.ConnDataFiles[6]);
 	gLootingTime = atoi(szTemp);
-
 	if(gLootingTime != 0)
-	{
 		LogAddTD("[Option] Auto Looting Time Set : %d", gLootingTime);
-	}
 
-	GetPrivateProfileString("GameServerInfo", "PKItemDrop", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gPkItemDrop = atoi(szTemp);
-
-	if(gPkItemDrop != 0)
-	{
-		LogAddTD(lMsg.Get(MSGGET(1, 155)));
-	}
-	else
-	{
-		LogAddTD(lMsg.Get(MSGGET(1, 156)));
-	}
-
-	GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gItemDropPer = atoi(szTemp);
-	GetPrivateProfileString("GameServerInfo", "ItemLuckDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gItemLuckyDropPer = atoi(szTemp);
-	GetPrivateProfileString("GameServerInfo", "ItemSkillDropPer", "6", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-	gItemSkillDropPer = atoi(szTemp);;
-	gExcItemDropRate = GetPrivateProfileInt("GameServerInfo", "ItemExcDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
 	LogAddTD(lMsg.Get(413), gItemDropPer);
-	gZenDurationTime = GetPrivateProfileInt("GameServerInfo","ZenDurationTime",30, gDirPath.GetNewPath("commonserver.cfg"));
-	gEventChipEvent = GetPrivateProfileInt("GameServerInfo","EventChipEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-	gBoxOfGoldDropRate = GetPrivateProfileInt("GameServerInfo","BoxOfGoldDropRate",2, gDirPath.GetNewPath("commonserver.cfg"));
-	g_ItemDropRateForBoxOfGold = GetPrivateProfileInt("GameServerInfo","ItemDropRateForBoxOfGold",2, gDirPath.GetNewPath("commonserver.cfg"));
-	g_EventChipDropRateForBoxOfGold = GetPrivateProfileInt("GameServerInfo","EventChipDropRateForBoxOfGold",2, gDirPath.GetNewPath("commonserver.cfg"));
+	gZenDurationTime = GetPrivateProfileInt("GameServerInfo","ZenDurationTime",30, ReadConfig.ConnDataFiles[0]);
 
-	//#if(_GSCS == 1)
-	//	gDevilSquareEvent = FALSE;
-	//#endif
-	if ( gDevilSquareEvent == FALSE )
-	{
-		g_DevilSquare.SetClose();
-	}
+	// Antihack Settings
+	gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo","AttackSpeedTimeLimit",800, ReadConfig.ConnDataFiles[0]);
+	bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo","IsIgnorePacketHackDetect",0, ReadConfig.ConnDataFiles[0]);
+	gHackCheckCount = GetPrivateProfileInt("GameServerInfo","HackCheckCount",5, ReadConfig.ConnDataFiles[0]);
+	gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo","MinimumAttackSpeedTime",200, ReadConfig.ConnDataFiles[0]);
+	gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo","DetectedHackKickCount",10, ReadConfig.ConnDataFiles[0]);
+	gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo","IsKickDetecHackCountLimit",0, ReadConfig.ConnDataFiles[0]);
 
-	gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo","AttackSpeedTimeLimit",800, gDirPath.GetNewPath("commonserver.cfg"));
-	bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo","IsIgnorePacketHackDetect",0, gDirPath.GetNewPath("commonserver.cfg"));
-	gHackCheckCount = GetPrivateProfileInt("GameServerInfo","HackCheckCount",5, gDirPath.GetNewPath("commonserver.cfg"));
-	gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo","MinimumAttackSpeedTime",200, gDirPath.GetNewPath("commonserver.cfg"));
-	gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo","DetectedHackKickCount",10, gDirPath.GetNewPath("commonserver.cfg"));
-	gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo","IsKickDetecHackCountLimit",0, gDirPath.GetNewPath("commonserver.cfg"));
+	// Ring of Transform
+	gIsItemDropRingOfTransform = GetPrivateProfileInt("GameServerInfo","IsItemDropRingOfTransform",0, ReadConfig.ConnDataFiles[0]);
+	gItemDropRingOfTransform = GetPrivateProfileInt("GameServerInfo","ItemDropRingOfTransform",1, ReadConfig.ConnDataFiles[0]);
 
-	gTamaJJangEvent = GetPrivateProfileInt("GameServerInfo", "TamaJJangEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gTamaJJangKeepTime = GetPrivateProfileInt("GameServerInfo", "TamaJJangKeepTime", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gTamaJJangDisappearTime = GetPrivateProfileInt("GameServerInfo", "TamaJJangDisappearTime", 1800, gDirPath.GetNewPath("commonserver.cfg"));
-	gTamaJJangDisappearTimeRandomRange = GetPrivateProfileInt("GameServerInfo", "TamaJJangDisappearTimeRandomRange", 1800, gDirPath.GetNewPath("commonserver.cfg"));
-	gTamaJJangTime = 10;
-
-	gIsItemDropRingOfTransform = GetPrivateProfileInt("GameServerInfo","IsItemDropRingOfTransform",0, gDirPath.GetNewPath("commonserver.cfg"));
-	gItemDropRingOfTransform = GetPrivateProfileInt("GameServerInfo","ItemDropRingOfTransform",1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gDisconnectHackUser = GetPrivateProfileInt("GameServerInfo","DisconnectHackUser",0, gDirPath.GetNewPath("commonserver.cfg"));
-	gUseNPGGChecksum = GetPrivateProfileInt("GameServerInfo","UseNPGGChecksum",0, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "DecTimePerAttackSpeed", "5.33", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+	// Hack Settings
+	gDisconnectHackUser = GetPrivateProfileInt("GameServerInfo","DisconnectHackUser",0, ReadConfig.ConnDataFiles[0]);
+	gUseNPGGChecksum = GetPrivateProfileInt("GameServerInfo","UseNPGGChecksum",0, ReadConfig.ConnDataFiles[0]);
+	GetPrivateProfileString("GameServerInfo", "DecTimePerAttackSpeed", "5.33", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 	gDecTimePerAttackSpeed = atof(szTemp);
-	gSpeedHackPenalty = GetPrivateProfileInt("GameServerInfo","SpeedHackPenalty",0, gDirPath.GetNewPath("commonserver.cfg"));
 
-	gDQChaosSuccessRateLevel1 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel1",75, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel2 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel2",70, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel3 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel3",65, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel4 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel4",60, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel5 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel5",55, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel6 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel6",50, gDirPath.GetNewPath("commonserver.cfg"));
-	gDQChaosSuccessRateLevel7 = GetPrivateProfileInt("GameServerInfo","DQChaosSuccessRateLevel7",45, gDirPath.GetNewPath("commonserver.cfg"));
+	// Skill Log
+	gWriteSkillLog = GetPrivateProfileInt("GameServerInfo","WriteSkillLog",0, ReadConfig.ConnDataFiles[0]);
 
-	gWriteSkillLog = 0; //GetPrivateProfileInt("GameServerInfo","WriteSkillLog",0, gDirPath.GetNewPath("commonserver.cfg"));
+	// Marlon Teleport
+	gQuestNPCTeleportTime = GetPrivateProfileInt("GameServerInfo","QuestNPCTeleportTime",900, ReadConfig.ConnDataFiles[0]);
 
-	gQuestNPCTeleportTime = GetPrivateProfileInt("GameServerInfo","QuestNPCTeleportTime",900, gDirPath.GetNewPath("commonserver.cfg"));
+	#if (WL_PROTECT==1)
+		int MyCheckVar;   
+		VM_START_WITHLEVEL(20)
+			CHECK_PROTECTION(MyCheckVar, 0x12345678)  	 
+			if (MyCheckVar != 0x12345678)
+			{				
+				bCanTrade = 0;
+				gAddExperience = 1.0f;	
+				gCreateCharacter = 0;
+				gServerMaxUser=5;
+	 			gItemDropPer = 1;
+			}
+		VM_END
+	#endif
 
-	g_iJapan1StAnivItemDropRate = GetPrivateProfileInt("GameServerInfo","Japan1StAnivItemDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
+	// Fenrir Settings
+	g_bFenrirStuffItemDrop = GetPrivateProfileInt("GameServerInfo","FenrirStuffItemDrop", 0, ReadConfig.ConnDataFiles[0]);
 
-	g_iMarkOfTheLord = GetPrivateProfileInt("GameServerInfo","MarkOfTheLord",0, gDirPath.GetNewPath("commonserver.cfg"));
+		// Fenrir Stuff 1
+		g_iFenrirStuff_01_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropLv_Min", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_01_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropLv_Max", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_01_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropMap", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_01_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropRate", 0, ReadConfig.ConnDataFiles[0]);
 
+		// Fenrir Stuff 2
+		g_iFenrirStuff_02_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropLv_Min", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_02_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropLv_Max", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_02_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropMap", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_02_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropRate", 0, ReadConfig.ConnDataFiles[0]);
 
-	g_bRibbonBoxEvent = GetPrivateProfileInt("GameServerInfo","RibbonBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
+		// Fenrir Stuff 3
+		g_iFenrirStuff_03_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropLv_Min", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_03_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropLv_Max", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_03_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropMap", 0, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirStuff_03_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropRate", 0, ReadConfig.ConnDataFiles[0]);
 
-	g_iRedRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		// Fenrir Durability Settings
+		g_iFenrirRepairRate = GetPrivateProfileInt("GameServerInfo","FenrirRepairRate", 4000, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirDefaultMaxDurSmall = GetPrivateProfileInt("GameServerInfo","FenrirDefaultMaxDurSmall", 200, ReadConfig.ConnDataFiles[0]);
+		g_iFenrirElfMaxDurSmall = GetPrivateProfileInt("GameServerInfo","FenrirElfMaxDurSmall", 160, ReadConfig.ConnDataFiles[0]);
 
-	g_iGreenRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iGreenRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iGreenRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iGreenRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iGreenRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+	//Season 3 Wings
+	g_iWings3ReturnDamageSuccessRate = GetPrivateProfileInt("GameServerInfo","Wings3ReturnDamageSuccessRate",5, ReadConfig.ConnDataFiles[0]);
+	g_iWings3RecoverFullLifeSuccessRate = GetPrivateProfileInt("GameServerInfo","Wings3RecoverFullLifeSuccessRate",5, ReadConfig.ConnDataFiles[0]);
+	g_iWings3RecoverFullManaSuccessRate = GetPrivateProfileInt("GameServerInfo","Wings3RecoverFullManaSuccessRate",5, ReadConfig.ConnDataFiles[0]);
+	g_iWings3SuccessfullBlockingRate = GetPrivateProfileInt("GameServerInfo","Wings3SuccessfullBlockingRate",5, ReadConfig.ConnDataFiles[0]);
 
-	g_iBlueRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bChocolateBoxEvent = GetPrivateProfileInt("GameServerInfo","ChocolateEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iPinkChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iPinkChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iPinkChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iPinkChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iPinkChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iRedChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRedChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iBlueChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlueChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bCandyBoxEvent = GetPrivateProfileInt("GameServerInfo","CandyBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iLightPurpleCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iLightPurpleCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iLightPurpleCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iLightPurpleCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iLightPurpleCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iVermilionCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iVermilionCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iVermilionCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iVermilionCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iVermilionCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iDeepBlueCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iDeepBlueCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iDeepBlueCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iDeepBlueCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iDeepBlueCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	giKundunRefillHPSec = GetPrivateProfileInt("GameServerInfo","KundunRefillHPSec",500, gDirPath.GetNewPath("commonserver.cfg"));
-	giKundunRefillHP = GetPrivateProfileInt("GameServerInfo","KundunRefillHP",10000, gDirPath.GetNewPath("commonserver.cfg"));
-	giKundunRefillHPTime = GetPrivateProfileInt("GameServerInfo","KundunRefillHPTime",600, gDirPath.GetNewPath("commonserver.cfg"));
-	giKundunHPLogSaveTime = GetPrivateProfileInt("GameServerInfo","KundunHPLogSaveTime",120, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bKalimaKundunItemCount =  GetPrivateProfileInt("GameServerInfo","KundunDropItemCount",20, gDirPath.GetNewPath("commonserver.cfg"));
-	g_bKalimaKundunAncItemCount = GetPrivateProfileInt("GameServerInfo","KundunDropAncItemCount",1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bFenrirStuffItemDrop = GetPrivateProfileInt("GameServerInfo","FenrirStuffItemDrop", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iFenrirStuff_01_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropLv_Min", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_01_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropLv_Max", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_01_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropMap", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_01_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_01_DropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iFenrirStuff_02_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropLv_Min", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_02_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropLv_Max", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_02_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropMap", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_02_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_02_DropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iFenrirStuff_03_DropLv_Min = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropLv_Min", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_03_DropLv_Max = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropLv_Max", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_03_DropMap = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropMap", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirStuff_03_DropRate = GetPrivateProfileInt("GameServerInfo","FenrirStuff_03_DropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iFenrirRepairRate = GetPrivateProfileInt("GameServerInfo","FenrirRepairRate", 4000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirDefaultMaxDurSmall = GetPrivateProfileInt("GameServerInfo","FenrirDefaultMaxDurSmall", 200, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrirElfMaxDurSmall = GetPrivateProfileInt("GameServerInfo","FenrirElfMaxDurSmall", 160, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iFenrir_01Level_MixRate = GetPrivateProfileInt("GameServerInfo","Fenrir_01Level_MixRate", 70, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrir_02Level_MixRate = GetPrivateProfileInt("GameServerInfo","Fenrir_02Level_MixRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iFenrir_03Level_MixRate = GetPrivateProfileInt("GameServerInfo","Fenrir_03Level_MixRate", 30, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bCrywolfMonsterDarkElfItemDrop = GetPrivateProfileInt("GameServerInfo","CrywolfMonsterDarkElfItemDrop",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iCrywolfMonsterDarkElfItemDropRate = GetPrivateProfileInt("GameServerInfo","CrywolfMonsterDarkElfItemDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCrywolfMonsterDarkElfDropZenRate = GetPrivateProfileInt("GameServerInfo","CrywolfMonsterDarkElfDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCrywolfMonsterDarkElfDropZen = GetPrivateProfileInt("GameServerInfo","CrywolfMonsterDarkElfDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bCrywolfBossMonsterItemDrop = GetPrivateProfileInt("GameServerInfo","CrywolfBossMonsterItemDrop",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iCrywolfBossMonsterItemDropRate = GetPrivateProfileInt("GameServerInfo","CrywolfBossMonsterItemDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCrywolfBossMonsterDropZenRate = GetPrivateProfileInt("GameServerInfo","CrywolfBossMonsterDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCrywolfBossMonsterDropZen = GetPrivateProfileInt("GameServerInfo","CrywolfBossMonsterDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iCrywolfApplyMvpBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfApplyMvpBenefit",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	int iCrywolfPlusChaosRateBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfPlusChaosRateBenefit",0, gDirPath.GetNewPath("commonserver.cfg"));
-	int iCrywolfMonHPRateBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfMonHPRateBenefit", 100, gDirPath.GetNewPath("commonserver.cfg"));
-	int iCrywolfKundunHPRefillState = GetPrivateProfileInt("GameServerInfo","CrywolfKundunHPRefillBenefit", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_CrywolfSync.SetKundunHPRefillState(iCrywolfKundunHPRefillState);
-	g_CrywolfSync.SetPlusChaosRate(iCrywolfPlusChaosRateBenefit);
-	g_CrywolfSync.SetMonHPBenefitRate(iCrywolfMonHPRateBenefit);
-
-	g_iCrywolfApplyMvpPenalty = GetPrivateProfileInt("GameServerInfo","CrywolfApplyMvpPenalty",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	int iCrywolfGemDropPenaltyRate = GetPrivateProfileInt("GameServerInfo","CrwyolfGemDropPenaltyRate",100, gDirPath.GetNewPath("commonserver.cfg"));
-	int iCrywolfGettingExpPenaltyRate = GetPrivateProfileInt("GameServerInfo","CrwyolfGettingExpPenaltyRate",100, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_CrywolfSync.SetGemDropPenaltiyRate(iCrywolfGemDropPenaltyRate);
-	g_CrywolfSync.SetGettingExpPenaltyRate(iCrywolfGettingExpPenaltyRate);
-
-	//#if(_GSCS==0)
-	int iKanturuEnableValue = GetPrivateProfileInt("GameServerInfo","KanturuEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_Kanturu.SetKanturuEnable(iKanturuEnableValue);
-	//#endif
-
-	g_iBlockKanturuMapEnter = GetPrivateProfileInt("GameServerInfo","BlockKanturuMapEnter",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlockCastleSiegeMapEnter = GetPrivateProfileInt("GameServerInfo","BlockCastleSiegeMapEnter",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	//#if(_GSCS==0)
-	g_bKanturuMayaHandItemDrop = GetPrivateProfileInt("GameServerInfo","KanturuMayaHandItemDrop",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuMayaHandItemDropRate = GetPrivateProfileInt("GameServerInfo","KanturuMayaHandItemDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuMayaHandDropZenRate = GetPrivateProfileInt("GameServerInfo","KanturuMayaHandDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuMayaHandDropZen = GetPrivateProfileInt("GameServerInfo","KanturuMayaHandDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bKanturuNightmareItemDrop = GetPrivateProfileInt("GameServerInfo","KanturuNightmareItemDrop",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuNightmareItemDropRate = GetPrivateProfileInt("GameServerInfo","KanturuNightmareItemDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuNightmareDropZenRate = GetPrivateProfileInt("GameServerInfo","KanturuNightmareDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuNightmareDropZen = GetPrivateProfileInt("GameServerInfo","KanturuNightmareDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bKanturuSpecialItemDropOn = GetPrivateProfileInt("GameServerInfo","KanturuSpecialItemDropOn",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iKanturuMoonStoneDropRate = GetPrivateProfileInt("GameServerInfo","KanturuMoonStoneDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iKanturuJewelOfHarmonyDropRate = GetPrivateProfileInt("GameServerInfo","KanturuJewelOfHarmonyDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	//#endif
-
-	int iRaklionEnableValue = GetPrivateProfileInt("GameServerInfo","RaklionEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_Raklion.SetRaklionEnable(iRaklionEnableValue);
-	g_bRaklionSelupanItemCount = GetPrivateProfileInt("GameServerInfo","RaklionSelupanItemCount",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_bRaklionSelupanItemDrop = GetPrivateProfileInt("GameServerInfo","RaklionSelupanItemDrop",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRaklionSelupanItemDropRate = GetPrivateProfileInt("GameServerInfo","RaklionSelupanItemDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iRaklionSelupanDropZenRate = GetPrivateProfileInt("GameServerInfo","RaklionSelupanDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_bRaklionSelupanDropZen = GetPrivateProfileInt("GameServerInfo","RaklionSelupanDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iBlockRaklionMapEnter = GetPrivateProfileInt("GameServerInfo","BlockRaklionMapEnter",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bHallowinDayEventOn = GetPrivateProfileInt("GameServerInfo","HallowinEventOn",0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventItemDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventPumpkinOfLuckDropRate",100, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLBlessDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLBlessDropRate",10, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLAngerDropRaTe = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLAngerDropRate",15, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLScreamDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLScreamDropRate",15, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLFoodDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLFoodDropRate",30, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLDrinkDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLDrinkDropRate",25, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iHallowinDayEventJOLPolymorphRingDropRate = GetPrivateProfileInt("GameServerInfo","HallowinEventJOLPolymorphRingDropRate", 5, gDirPath.GetNewPath("commonserver.cfg"));
-
-	//Season 2.5 addon
-	g_iSantaPolymorphRingDropOn = GetPrivateProfileInt("GameServerInfo","SantaPolymorphRingDropOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSantaPolymorphRingDropRate = GetPrivateProfileInt("GameServerInfo","SantaPolymorphRingDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bNewYearLuckyBagMonsterEventOn = GetPrivateProfileInt("GameServerInfo","NewYearLuckyBagMonsterEventOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_IllusionTempleEvent.LoadIllusionTempleEventInfo();
-
-	g_iCondorFlameDropRate = GetPrivateProfileInt("GameServerInfo","CondorFlameDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-
-	//Season 3 add-on
-	g_bCherryBlossomEventOn = GetPrivateProfileInt("GameServerInfo","CherryBlossomEventOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCherryBlossomEventItemDropRate = GetPrivateProfileInt("GameServerInfo","CherryBlossomEventItemDropRate", 8000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	//Season4.5 add-on
-	g_bLuckyCoinEventOn = GetPrivateProfileInt("GameServerInfo","LuckyCoinEventOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iLuckyCoinDropRate = GetPrivateProfileInt("GameServerInfo","LuckyCoinDropRate", 1000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_EnableSelfDefense = GetPrivateProfileInt("GameServerInfo", "PKEnableSelfDefense", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_MaxCherryBranchWhite	= GetPrivateProfileInt("GameServerInfo", "CherryBranchMaxWhite", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_MaxCherryBranchRed	= GetPrivateProfileInt("GameServerInfo", "CherryBranchMaxRed", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_MaxCherryBranchGold	= GetPrivateProfileInt("GameServerInfo", "CherryBranchMaxGold", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_MaxPartyLevelDiff		= GetPrivateProfileInt("GameServerInfo", "PartyMaxLevelDiff", 120, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_LuckyItemDurabilityTime = GetPrivateProfileIntA("GameServerInfo", "LuckyItemDurabilityTime", 2400, gDirPath.GetNewPath("commonserver.cfg"));
-	g_LuckyItemTrade = GetPrivateProfileIntA("GameServerInfo", "LuckyItemTrade", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_MaxStat = GetPrivateProfileIntA("GameServerInfo", "CharacterMaxStats", 65000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_MasterLevelSystem.LoadData();
-#ifdef DP
-	//1.01.00
-	g_DoppleganerEvent.DoppelgangerInfoLoad();
-#endif
-	//1.01.00
-	g_MonsterRegenSystem.LoadScript(gDirPath.GetNewPath("Monster\\MonsterGroupRegen.txt"));
-#ifdef NPVP
-	//1.00.92
-	g_NewPVP.LoadData(); 
-#endif
-
-	g_iML_OldScrollDropRate				= GetPrivateProfileInt("ItemDrop","IllusionScroll", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-	g_iML_CovenantOfIllusionDropRate	= GetPrivateProfileInt("ItemDrop","IllusionCovenant", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-
-	g_iML_AngelKingsPaperDropRate		= GetPrivateProfileInt("ItemDrop","BloodScroll", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-	g_iML_BloodBoneDropRate				= GetPrivateProfileInt("ItemDrop","BloodBone", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-
-	g_iML_EyesOfDevilSquareDropRate		= GetPrivateProfileInt("ItemDrop","DevilEye ", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-	g_iML_KeysOfDevilSquareDropRate		= GetPrivateProfileInt("ItemDrop","DevilKey ", 0, gDirPath.GetNewPath("MasterSystem.cfg"));
-
-	//1.01.03
-	g_HacktoolBlockEx.LoadScript(gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_ShadowPahtomMaxLevel = GetPrivateProfileInt("GameServerInfo","ShadowPhantomMaxLevel", 220, gDirPath.GetNewPath("commonserver.cfg"));
-
-	GetPrivateProfileString("ConnectServerInfo", "IP", "", connectserverip, 20, szCommonlocIniFileName);
-	GetPrivateProfileString("ConnectServerInfo", "PORT", "", szTemp, 10, szCommonlocIniFileName);
+	// Servers
+	GetPrivateProfileString("ConnectServerInfo", "IP", "", connectserverip, 20, ReadConfig.ConnDataFiles[6]);
+	GetPrivateProfileString("ConnectServerInfo", "PORT", "", szTemp, 10, ReadConfig.ConnDataFiles[6]);
 	connectserverport = atoi(szTemp);
+
+	// (Option) Connect Server IP(%s) / PORT(%d)
 	LogAddTD(lMsg.Get(MSGGET(1, 158)), connectserverip, connectserverport);
 	gUdpSoc.SendSet(connectserverip, connectserverport);
-	gUdpSocCE.SendSet(gChaosEventServerIp, 60005);
-	DevilSquareEventConnect = GetPrivateProfileInt("GameServerInfo","DevilSquareEventConnect", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "DevilSquareEventServer", "210.181.89.241", gDevilSquareEventServerIp, 20, gDirPath.GetNewPath("commonserver.cfg"));
-	EventChipServerConnect = GetPrivateProfileInt("GameServerInfo","EventChipServerConnect", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "EventChipServerIp", "192.168.10.150", gEventChipServerIp, 20, gDirPath.GetNewPath("commonserver.cfg"));
 
-	gApplyHeroSystem = GetPrivateProfileInt("GameServerInfo","ApplyHeroSystem", 0, gDirPath.GetNewPath("commonserver.cfg"));
+	// Battle Soccer
+	gEnableBattleSoccer = GetPrivateProfileInt("GameServerInfo","EnableBattleSoccer", 1, ReadConfig.ConnDataFiles[0]);
 
-	gEnableBattleSoccer = GetPrivateProfileInt("GameServerInfo","EnableBattleSoccer", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	gEnableEventNPCTalk = GetPrivateProfileInt("GameServerInfo","EnableEventNPCTalk", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gEnableServerDivision = 0;//GetPrivateProfileInt("GameServerInfo","EnableServerDivision", 0, gDirPath.GetNewPath("commonserver.cfg"));
+	// Server Division
+	gEnableServerDivision = GetPrivateProfileInt("GameServerInfo","EnableServerDivision", 0, ReadConfig.ConnDataFiles[0]);
 
-	gMonsterHPAdjust = GetPrivateProfileInt("GameServerInfo","MonsterHPAdjust", 100, gDirPath.GetNewPath("commonserver.cfg"));
-
+	// COMMANDS Init ( /make / Create /trace etc...)
 	cManager.Init();
 
-	gEnableCheckPenetrationSkill = GetPrivateProfileInt("GameServerInfo","EnableCheckPenetrationSkill", 1, gDirPath.GetNewPath("commonserver.cfg"));
+	// Penetration Skill
+	gEnableCheckPenetrationSkill = GetPrivateProfileInt("GameServerInfo","EnableCheckPenetrationSkill", 1, ReadConfig.ConnDataFiles[0]);
 
-	g_ShieldSystemOn = GetPrivateProfileInt("GameServerInfo","ShieldSystemOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
 
-	g_iDamageDevideToSDRate = GetPrivateProfileInt("GameServerInfo","DamageDevideToSD", 90, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iDamageDevideToHPRate = GetPrivateProfileInt("GameServerInfo","DamageDevideToHP", 10, gDirPath.GetNewPath("commonserver.cfg"));
-	g_fSuccessAttackRateOption = (double)(GetPrivateProfileInt("GameServerInfo","SuccessAttackRateOption", 20000, gDirPath.GetNewPath("commonserver.cfg")) / 10000 );
-	g_iSDChargingOption = GetPrivateProfileInt("GameServerInfo","SDChargingOption", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iConstNumberOfShieldPoint = GetPrivateProfileInt("GameServerInfo","ConstNumberOfShieldPoint", 20, gDirPath.GetNewPath("commonserver.cfg"));
-	g_ShieldAutoRefillOn = GetPrivateProfileInt("GameServerInfo","ShieldAutoRefillOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_ShieldAutoRefillOnSafeZone = GetPrivateProfileInt("GameServerInfo","ShieldAutoRefilOnSafeZone", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_PKLevelIncreaseOff = GetPrivateProfileInt("GameServerInfo","PKLevelIncreaseOff", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_CompoundPotionDropOn = GetPrivateProfileInt("GameServerInfo","CompoundPotionDropOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iCompoundPotionLv1DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv1DropRate", 100, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCompoundPotionLv2DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv2DropRate", 80, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCompoundPotionLv3DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv3DropRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCompoundPotionLv1DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv1DropLevel", 68, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCompoundPotionLv2DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv2DropLevel", 96, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCompoundPotionLv3DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv3DropLevel", 118, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bShieldComboMissOptionOn = GetPrivateProfileInt("GameServerInfo","ShieldComboMissOptionOn", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iShieldPotionLv1MixSuccessRate = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv1MixSuccessRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldPotionLv1MixMoney = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv1MixMoney", 100000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldPotionLv2MixSuccessRate = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv2MixSuccessRate", 30, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldPotionLv2MixMoney = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv2MixMoney", 500000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldPotionLv3MixSuccessRate = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv3MixSuccessRate", 30, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldPotionLv3MixMoney = GetPrivateProfileInt("GameServerInfo","ShieldPotionLv3MixMoney", 1000000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_iShieldGageConstA = GetPrivateProfileInt("GameServerInfo","ShieldGageConstA", 12, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iShieldGageConstB = GetPrivateProfileInt("GameServerInfo","ShieldGageConstB", 30, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bCheckSpeedHack = GetPrivateProfileInt("GameServerInfo","CheckSpeedHack", TRUE, gDirPath.GetNewPath("commonserver.cfg"));
-
-	char cGsVersion[16];
-	int iServerType = 0;
-	iServerType = gServerType;
-	wsprintf(cGsVersion, "%s", szGameServerVersion);
-
-	wsprintf(szTemp, lMsg.Get(MSGGET(1, 160)), cGsVersion, szServerName, szClientVersion[0], szClientVersion[1], szClientVersion[2], szClientVersion[3], szClientVersion[4], szGameServerExeSerial, gCountryName);
-	LogAdd("User Object Size = %d", sizeof(OBJECTSTRUCT));
-
-	//#if (_GSCS==1)
-	//	strcat(szTemp, "[CastleSiege]");
-	//#endif
-
-	char szDiplayGSInfo[512] = {0};
-
-#ifndef ZEONWINDOW_STAT
-	wsprintfA(szDiplayGSInfo, "%s [%d][%d][%d]", szTemp, dwgCheckSum[1]%1000, dwgCheckSum[17]%1000, dwgCheckSum[1004]%1000);
-#else
-	wsprintfA(szDiplayGSInfo, "%s %s :: [%s] :: [%c.%c%c.%c%c] :: [%s]", GAMESERVER_NAME, GAMESERVER_VERSION, szServerName, 
-		szClientVersion[0], szClientVersion[1], szClientVersion[2], szClientVersion[3], szClientVersion[4], szGameServerExeSerial);
+#if (WL_PROTECT==1)
+	int MyCheckVar1;
+	VM_START
+	CHECK_REGISTRATION(MyCheckVar1, 0x64763510)  
+	if (MyCheckVar1 != 0x64763510)
+	{						
+		ReadConfig.SkillNightDiv = 0;
+		ReadConfig.SkillReflectTimeDiv = 0;
+		ReadConfig.SkillSleepTimeDiv = 0;
+		ReadConfig.SkillReduceDamageDiv = 0;
+	}
+	VM_END
 #endif
 
+	// Shield System
+	g_ShieldSystemOn = GetPrivateProfileInt("GameServerInfo","ShieldSystemOn", 0, ReadConfig.ConnDataFiles[0]);
+
+		g_iDamageDevideToSDRate = GetPrivateProfileInt("GameServerInfo","DamageDevideToSD", 90, ReadConfig.ConnDataFiles[0]);
+		g_iDamageDevideToHPRate = GetPrivateProfileInt("GameServerInfo","DamageDevideToHP", 10, ReadConfig.ConnDataFiles[0]);
+		g_fSuccessAttackRateOption = (double)(GetPrivateProfileInt("GameServerInfo","SuccessAttackRateOption", 20000, ReadConfig.ConnDataFiles[0]) / 10000 );
+
+		g_ShieldAutoRefillOn = GetPrivateProfileInt("GameServerInfo","ShieldAutoRefillOn", 0, ReadConfig.ConnDataFiles[0]);
+		g_ShieldAutoRefillOnSafeZone = GetPrivateProfileInt("GameServerInfo","ShieldAutoRefilOnSafeZone", 1, ReadConfig.ConnDataFiles[0]);
+
+	// Compund Potion
+	g_CompoundPotionDropOn = GetPrivateProfileInt("GameServerInfo","CompoundPotionDropOn", 0, ReadConfig.ConnDataFiles[0]);
+
+		g_iCompoundPotionLv1DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv1DropRate", 100, ReadConfig.ConnDataFiles[0]);
+		g_iCompoundPotionLv2DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv2DropRate", 80, ReadConfig.ConnDataFiles[0]);
+		g_iCompoundPotionLv3DropRate = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv3DropRate", 50, ReadConfig.ConnDataFiles[0]);
+
+		g_iCompoundPotionLv1DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv1DropLevel", 68, ReadConfig.ConnDataFiles[0]);
+		g_iCompoundPotionLv2DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv2DropLevel", 96, ReadConfig.ConnDataFiles[0]);
+		g_iCompoundPotionLv3DropLevel = GetPrivateProfileInt("GameServerInfo","CompoundPotionLv3DropLevel", 118, ReadConfig.ConnDataFiles[0]);
+
+	// Shile System Combo
+	g_bShieldComboMissOptionOn = GetPrivateProfileInt("GameServerInfo","ShieldComboMissOptionOn", 0, ReadConfig.ConnDataFiles[0]);
+
+	// Shield GAGE
+	g_iShieldGageConstA = GetPrivateProfileInt("GameServerInfo","ShieldGageConstA", 12, ReadConfig.ConnDataFiles[0]);
+	g_iShieldGageConstB = GetPrivateProfileInt("GameServerInfo","ShieldGageConstB", 30, ReadConfig.ConnDataFiles[0]);
+
+	// (%s)%s (ServiceServer) %c.%c%c.%c%c (%s)
+	wsprintf(szTemp, lMsg.Get(MSGGET(1, 160)), GAMESERVER_VERSION, szServerName, szClientVersion[0], szClientVersion[1], szClientVersion[2], szClientVersion[3], szClientVersion[4], szGameServerExeSerial, "CAD");
+	LogAdd("User Object Size = %d", sizeof(OBJECTSTRUCT));
+
+#if (GS_CASTLE==1)
+	strcat(szTemp, "[CastleSiege]");
+#endif
+	char szDiplayGSInfo[512] = {0};
+	wsprintfA(szDiplayGSInfo, "%s [%d][%d][%d]", szTemp, dwgCheckSum[1]%1000, dwgCheckSum[17]%1000, dwgCheckSum[1004]%1000);
 	SetWindowText(ghWnd, szDiplayGSInfo);
 
+	// Item Bag Load
 	LoadItemBag();
+
+	// Eledorado Event Start
+	gEledoradoEvent.SetEventState(gIsEledoradoEvent);
+	gEledoradoEvent.Init();
 
 	gPacketCheckSum.Init();
 
-	gDoPShopOpen = GetPrivateProfileInt("GameServerInfo","PersonalShopOpen", 0, gDirPath.GetNewPath("commonserver.cfg"));
+	gDoPShopOpen = GetPrivateProfileInt("GameServerInfo","PersonalShopOpen", 0, ReadConfig.ConnDataFiles[0]);
 
-	ReadEventInfo(MU_EVENT_ALL );
+	// AutoRecuperation Level
+	g_iUseCharacterAutoRecuperationSystem = GetPrivateProfileInt("GameServerInfo","UseCharacterAutoRecuperationSystem", 0, ReadConfig.ConnDataFiles[0]);
+	g_iCharacterRecuperationMaxLevel = GetPrivateProfileInt("GameServerInfo","CharacterRecuperationMaxLevel", 100, ReadConfig.ConnDataFiles[0]);
 
-	g_iUseCharacterAutoRecuperationSystem = GetPrivateProfileInt("GameServerInfo","UseCharacterAutoRecuperationSystem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iCharacterRecuperationMaxLevel = GetPrivateProfileInt("GameServerInfo","CharacterRecuperationMaxLevel", 100, gDirPath.GetNewPath("commonserver.cfg"));
+	// Skill Check Settings
+	g_iSkillDistanceCheck = GetPrivateProfileInt("GameServerInfo","SkillDistanceCheck", 0, ReadConfig.ConnDataFiles[0]);
+	g_iSkillDistanceCheckTemp = GetPrivateProfileInt("GameServerInfo","SkillDistanceCheckTemp", 2, ReadConfig.ConnDataFiles[0]);
+	g_iSkillDistanceKick = GetPrivateProfileInt("GameServerInfo","SkillDistanceKick", 0, ReadConfig.ConnDataFiles[0]);
+	g_iSkillDistanceKickCount = GetPrivateProfileInt("GameServerInfo","SkillDistanceKickCount", 5, ReadConfig.ConnDataFiles[0]);
+	g_iSkillDiatanceKickCheckTime = GetPrivateProfileInt("GameServerInfo","SkillDistanceKickCheckTime", 10, ReadConfig.ConnDataFiles[0]);
 
-	g_iSkillDistanceCheck = GetPrivateProfileInt("GameServerInfo","SkillDistanceCheck", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSkillDistanceCheckTemp = GetPrivateProfileInt("GameServerInfo","SkillDistanceCheckTemp", 2, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSkillDistanceKick = GetPrivateProfileInt("GameServerInfo","SkillDistanceKick", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSkillDistanceKickCount = GetPrivateProfileInt("GameServerInfo","SkillDistanceKickCount", 5, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSkillDiatanceKickCheckTime = GetPrivateProfileInt("GameServerInfo","SkillDistanceKickCheckTime", 10, gDirPath.GetNewPath("commonserver.cfg"));
 
-	//g_CashShop.CashShopOptioNReload();
+	g_CashShop.CashShopOptioNReload();
 	g_CashItemPeriodSystem.Initialize();
+	g_CashLotterySystem.Load(ReadConfig.ConnDataFiles[49]);
 
-#ifdef PERIOD
-	g_PeriodItemEx.Initialize();
-#endif
-
-	//Season 3.0 add-on
-	g_ChaosCard.Load("ChaosCard", gDirPath.GetNewPath("ItemBag\\00_ChaosCard.txt"));
-	g_ChaosCard.Load("ChaosCardMini", gDirPath.GetNewPath("ItemBag\\00_ChaosCardGold.txt"));
-	g_ChaosCard.Load("ChaosCardGold", gDirPath.GetNewPath("ItemBag\\00_ChaosCardMini.txt"));
-	g_ChaosCard.Load("ChaosCardRare", gDirPath.GetNewPath("ItemBag\\00_ChaosCardRare.txt"));
-
-	g_BuffScript.Load(gDirPath.GetNewPath("Skill\\BuffEffect.txt"));
-
-	g_EventItemList.Load(gDirPath.GetNewPath("ItemBag\\00_GoldenArcher.txt"));
-
-	//Season 4.6
-#ifndef NPVP
-	g_iNewPVPSystem = 1; //GetPrivateProfileInt("GameServerInfo","NewPvPSystem", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_DuelRoom.Init();
-#endif
-	//Season 4.6
-	g_bUseGambleSystem = GetPrivateProfileInt("GameServerInfo","UseGamblingSystem", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iGambleSystemMoney = GetPrivateProfileInt("GameServerInfo","GamblingSystemMoney", 1000000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_GambleSystem.Init("ItemBag\\00_Gambling.txt"); //Set Gamble System Initialization
-
-	g_iPostReqLevel = GetPrivateProfileInt("GameServerInfo","UsePostReqLevel", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iPostCost = GetPrivateProfileInt("GameServerInfo","PostCommandCost", 1000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gGuildAllianceMinUsers	= GetPrivateProfileInt("GameServerInfo", "GuildAllianceMinUsers", 20, gDirPath.GetNewPath("commonserver.cfg"));
-
-	g_bPostFloodProtect = GetPrivateProfileInt("GameServerInfo","IsPostFloodProtect", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_bPostFloodProtectTime = GetPrivateProfileInt("GameServerInfo","FloodProtectTime", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_PostChatColor = GetPrivateProfileInt("GameServerInfo", "PostChatColor", 2, gDirPath.GetNewPath("commonserver.cfg"));
-
-	if(g_bPostFloodProtectTime < 1)
+	if(AlreadyReaded)
 	{
-		g_bPostFloodProtectTime = 1;
-	}
-
-	if(g_bPostFloodProtectTime > 5000)
+#if (PACK_EDITION>=3)
+	for ( int n=OBJ_MAXMONSTER;n<OBJ_STARTUSERINDEX;n++)
 	{
-		g_bPostFloodProtectTime = 5000;
+		if ( gObj[n].Type == OBJ_MONSTER || gObj[n].Type == OBJ_NPC )
+		{
+			if(gObj[n].IsBot >= 1 && gObj[n].BotNumOwner <= 0 && gObj[n].m_RecallMon <= 0)
+			{
+				if ( gObj[n].m_iCurrentAI )
+				{
+					gObj[n].Live = FALSE;
+					gObjViewportListProtocolDestroy(&gObj[n]);
+					gObjViewportClose(&gObj[n]);
+				}
+				gObjCallMonCount--;
+				gObjDel(n);
+			}
+		}
 	}
-
-	if( g_PostChatColor < 1 || g_PostChatColor > 10 )
-	{
-		g_PostChatColor = 2;
+	BotStore.MakeBot();
+	BotBuff.MakeBot();
+	BotAlchemist.MakeBot();
+	BotTrader.MakeBot();
+	BotReward.MakeBot();
+	BotWarper.MakeBot();
+	BotRacer.ForceClose = true;
+	#if (CRYSTAL_EDITION==1)	
+		BotVipShop.MakeBot();
+	#endif
+#endif
 	}
-
-	g_iUseAddPointsReqLevel = GetPrivateProfileInt("GameServerInfo","UseAddPointsReqLevel", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iAddPointsCommandCost  = GetPrivateProfileInt("GameServerInfo","AddPointsCommandCost", 1000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iMaxAddPoints = GetPrivateProfileInt("GameServerInfo","MaxAddPoints", 1000, gDirPath.GetNewPath("commonserver.cfg"));
-	g_bUseSkinCommand = GetPrivateProfileInt("GameServerInfo","UseSkinCommand", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	g_iSkinCommandCost = GetPrivateProfileInt("GameServerInfo","SkinCommandCost", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	MapSettingsInit();
-
-	gChaos10MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos10MoneyNeed", 2000000, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos11MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos11MoneyNeed", 4000000, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos12MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos12MoneyNeed", 6000000, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos13MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos13MoneyNeed", 8000000, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos14MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos14MoneyNeed", 6000000, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos15MoneyNeed = GetPrivateProfileInt("GameServerInfo","Chaos15MoneyNeed", 8000000, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gChaosNormalMix10SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix10SuccessRate", 60, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix10SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix10SuccessRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix10SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix10SuccessRate", 40, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosNormalMix11SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix11SuccessRate", 60, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix11SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix11SuccessRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix11SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix11SuccessRate", 40, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosNormalMix12SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix12SuccessRate", 60, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix12SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix12SuccessRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix12SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix12SuccessRate", 40, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosNormalMix13SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix13SuccessRate", 55, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix13SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix13SuccessRate", 45, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix13SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix13SuccessRate", 35, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gChaosNormalMix14SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix14SuccessRate", 55, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix14SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix14SuccessRate", 45, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix14SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix14SuccessRate", 35, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gChaosNormalMix15SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosNormalMix15SuccessRate", 55, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaos380AncExcMix15SuccessRate	= GetPrivateProfileInt("GameServerInfo","Chaos380AncExcMix15SuccessRate", 45, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosSocketMix15SuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosSocketMix15SuccessRate", 35, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gChaosMaxSuccessRate = GetPrivateProfileInt("GameServerInfo","ChaosMaxSuccessRate", 75, gDirPath.GetNewPath("commonserver.cfg"));
-	gChaosLuckOptRateAdd = GetPrivateProfileInt("GameServerInfo","ChaosLuckOptRateAdd", 20, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gAllowExcellentAncient = GetPrivateProfileInt("GameServerInfo","AllowExcellentAncient", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gAllowExcellentSocket = GetPrivateProfileInt("GameServerInfo","AllowExcellentSocket", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gAllowJOHonAncient = GetPrivateProfileInt("GameServerInfo","AllowJOHonAncient", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gParty3ExpPercent = GetPrivateProfileInt("GameServerInfo","Party3ExpPercent", 230, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty4ExpPercent = GetPrivateProfileInt("GameServerInfo","Party4ExpPercent", 270, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty5ExpPercent = GetPrivateProfileInt("GameServerInfo","Party5ExpPercent", 300, gDirPath.GetNewPath("commonserver.cfg"));
-	gPartyExpPercentOther = GetPrivateProfileInt("GameServerInfo","PartyExpPercentOther", 120, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gParty2ExpSetPercent = GetPrivateProfileInt("GameServerInfo","Party2ExpSetPercent", 160, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty3ExpSetPercent = GetPrivateProfileInt("GameServerInfo","Party3ExpSetPercent", 180, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty4ExpSetPercent = GetPrivateProfileInt("GameServerInfo","Party4ExpSetPercent", 200, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty5ExpSetPercent = GetPrivateProfileInt("GameServerInfo","Party5ExpSetPercent", 220, gDirPath.GetNewPath("commonserver.cfg"));
-	gParty1ExpSetPercent = GetPrivateProfileInt("GameServerInfo","Party1ExpSetPercent", 150, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gItemsDurationTime = 1000 *  GetPrivateProfileInt("GameServerInfo","ItemsDurationTime", 120, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gHackToolPacketPerSecond =  GetPrivateProfileInt("GameServerInfo","HackToolPacketPerSecond", 50, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gSoulSuccessRate = GetPrivateProfileInt("GameServerInfo","SoulSuccessRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	gBlessSuccessRate = GetPrivateProfileInt("GameServerInfo","BlessSuccessRate", 40, gDirPath.GetNewPath("commonserver.cfg"));
-	gLifeSuccessRate = GetPrivateProfileInt("GameServerInfo","LifeSuccessRate", 60, gDirPath.GetNewPath("commonserver.cfg"));	
-	//Season 5,4 temp
-	gMainCheckSumCheck = 0;//= GetPrivateProfileInt("GameServerInfo","MainCheckSumCheck", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	GetPrivateProfileString("GameServerInfo", "MainAdminIPAddRess", "127.0.0.1", gMainAdminIPAddRess, 20, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gKnightSkillAddLifeInceaseFormulaPercentNormal = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeInceaseFormulaPercentNormal", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gKnightSkillAddLifeDecreaseFormulaPercentNormal = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeDecreaseFormulaPercentNormal", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gKnightSkillAddLifeInceaseFormulaPercentParty = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeInceaseFormulaPercentParty", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gKnightSkillAddLifeDecreaseFormulaPercentParty = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeDecreaseFormulaPercentParty", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gKnightSkillAddLifeInceaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeInceaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gKnightSkillAddLifeDecreaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","KnightSkillAddLifeDecreaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	//SoulBarier
-	gWizardMagicDefenseInceaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","WizardMagicDefenseInceaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gWizardMagicDefenseDecreaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","WizardMagicDefenseDecreaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gWizardMagicDefenseInceaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","WizardMagicDefenseInceaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gWizardMagicDefenseDecreaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","WizardMagicDefenseDecreaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-
-	gSkillAddCriticalDamageInceaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","SkillAddCriticalDamageInceaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gSkillAddCriticalDamageDecreaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","SkillAddCriticalDamageDecreaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gSkillAddCriticalDamageInceaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","SkillAddCriticalDamageInceaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gSkillAddCriticalDamageDecreaseTimeDurationPercent = GetPrivateProfileInt("GameServerInfo","SkillAddCriticalDamageDecreaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-
-	gSkillDamageReflectionInceaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","SkillDamageReflectionInceaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gSkillDamageReflectionDecreaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","SkillDamageReflectionDecreaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gSkillDamageReflectionInceaseTimeDurationPercent= GetPrivateProfileInt("GameServerInfo","SkillDamageReflectionInceaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gSkillDamageReflectionDecreaseTimeDurationPercent= GetPrivateProfileInt("GameServerInfo","SkillDamageReflectionDecreaseTimeDurationPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gBerserkSkillAttackDamageIncreaseFormulaPercent= GetPrivateProfileInt("GameServerInfo","BerserkSkillAttackDamageIncreaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gBerserkSkillAttackDamageDecreaseFormulaPercent = GetPrivateProfileInt("GameServerInfo","BerserkSkillAttackDamageDecreaseFormulaPercent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gMonsterAttackRateIncrease	= GetPrivateProfileInt("GameServerInfo","AttackRateIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gMonsterDamageMinIncrease	= GetPrivateProfileInt("GameServerInfo","DamageMinIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gMonsterDamageMaxIncrease	= GetPrivateProfileInt("GameServerInfo","DamageMaxIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gMonsterDefenseIncrease		= GetPrivateProfileInt("GameServerInfo","DefenseIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	gMonsterLifeIncrease		= GetPrivateProfileInt("GameServerInfo","LifeIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-	GetPrivateProfileString("GameServerInfo", "GuardMessage", "Welcome to hell", gGuardMessage, 255, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gIncreaseDarkSpiritAttackDamagePercent = GetPrivateProfileInt("GameServerInfo","IncreaseDarkSpiritAttackDamagePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	gIncreaseDarkSpiritDefencePercent = GetPrivateProfileInt("GameServerInfo","IncreaseDarkSpiritDefencePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gDecreaseDarkSpiritExpGivePercent = GetPrivateProfileInt("GameServerInfo","DecreaseDarkSpiritExpGivePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-
-	gIncreaseDarkHorseAttackDamagePercent = GetPrivateProfileInt("GameServerInfo","IncreaseDarkHorseAttackDamagePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	gIncreaseDarkHorseDefencePercent = GetPrivateProfileInt("GameServerInfo","IncreaseDarkHorseDefencePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gDecreaseDarkHorseExpGivePercent = GetPrivateProfileInt("GameServerInfo","DecreaseDarkHorseExpGivePercent", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-	gGoldenArcherNeedRenaForPrize = GetPrivateProfileInt("GameServerInfo","GoldenArcherNeedRenaCount", 1, gDirPath.GetNewPath("commonserver.cfg"));
-
-#ifdef GENS
-	gGensSystem.LoadData(gDirPath.GetNewPath("GensSystem.dat"));
-#endif
-
-#ifdef IMPERIAL
-	g_ImperialGuardian.LoadScript(gDirPath.GetNewPath("commonserver.cfg"));
-#endif
-
-#ifdef GAMESHOP
-	gGameShop.Load();
-#endif
-
-#ifdef __ALIEN__
-	g_ComboAttackPower		= GetPrivateProfileInt("Common", "ComboAttackPower", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_SuperPanda			= GetPrivateProfileInt("Common", "SuperPanda", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_ConnectMemberUpdate	= GetPrivateProfileInt("Common", "ConnectMemberUpdate", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_HarmonyOptionOnSocket = GetPrivateProfileInt("Common", "HarmonyOptionOnSocket", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_GuildCreateReset		= GetPrivateProfileInt("Common", "GuildCreateReset", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_PotionDelay			= GetPrivateProfileInt("Common", "PotionDelay", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_PandaExpPerc			= GetPrivateProfileInt("ExpItem", "PandaExpPercent", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_SkeletonExpPerc		= GetPrivateProfileInt("ExpItem", "SkeletonExpPercent", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-	g_SkeletonRingExpPerc	= GetPrivateProfileInt("ExpItem", "SkeletonRingExpPercent", 0, gDirPath.GetNewPath("Custom\\Aliennation.ini"));
-#endif
-
-	g_MaintainUserConnectionSecond = GetPrivateProfileInt("GameServerInfo", "MaintainUserConnectionSecond", 60, gDirPath.GetNewPath("commonserver.cfg"));;
-
-	SetEventOff(); //
+	AlreadyReaded = true;
 }
+
+
+
 
 void GameServerInfoSendStop()
 {
@@ -2870,6 +1968,10 @@ void GameServerInfoSendStart()
 	GSInfoSendFlag = 1;
 }
 
+
+
+
+
 struct PMSG_SERVERINFO
 {
 	PBMSG_HEAD h;	// C1:01
@@ -2880,6 +1982,7 @@ struct PMSG_SERVERINFO
 	short PCbangCount;	// C
 	short MaxUserCount;	// E
 };
+
 
 void GameServerInfoSend()
 {
@@ -2914,130 +2017,169 @@ void GameServerInfoSend()
 
 void CheckSumFileLoad(char * szCheckSum)
 {
-	int DataBufferSize;
-	char* DataBuffer;
+	FILE * fstream1;
+	unsigned long FileLen ;
+	char * FileBuffer;
 
-	gWzAG.RequestData(6);
-	DataBufferSize=gWzAG.GetDataBufferSize();
-	DataBuffer=gWzAG.GetDataBuffer();
-	memcpy(dwgCheckSum, DataBuffer, DataBufferSize);
+	if  ( fstream1=fopen(szCheckSum,"rb") )
+	{
+		fseek(fstream1,0,SEEK_END);
+		if (FileLen=ftell(fstream1) )
+		{
+			fseek(fstream1,0,SEEK_SET ) ;
+			FileBuffer =new char[FileLen+1];
+			fread(FileBuffer,FileLen,1,fstream1);
+			memcpy(dwgCheckSum, FileBuffer, FileLen);
+		}
+		else
+		{
+			MessageBox( NULL, szCheckSum,"Error!", MB_OK );
+			::ExitProcess(0);
+		}
+		fclose(fstream1);
+	}
 }
 
-//005df900	-> xD
+//void CheckSumFileLoad(char * szCheckSum)
+//{
+//	int DataBufferSize;
+//	char* DataBuffer;
+//
+//	gGameServerAuth.RequestData(6);
+//	DataBufferSize=gGameServerAuth.GetDataBufferSize();
+//	DataBuffer=gGameServerAuth.GetDataBuffer();
+//	memcpy(dwgCheckSum, DataBuffer, DataBufferSize);
+//}
+
+
 void LoadItemBag()
 {
-	if( LuckboxItemBag )
+	if ( LuckboxItemBag != FALSE )
 	{
 		delete LuckboxItemBag;
 	}
-	// --
+
 	LuckboxItemBag = new CItemBag;
-	// --
-	if( LuckboxItemBag == NULL )
+
+	if ( LuckboxItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( Mon55 )
+
+	LuckboxItemBag->Init(ReadConfig.ConnEventDropDataFiles[0]);//"eventitembag.txt");
+
+	if ( Mon55 != FALSE )	// Death king
 	{
 		delete Mon55;
 	}
-	// --
+
 	Mon55 = new CItemBag;
-	// --
-	if( Mon55 == NULL )
+
+	if ( Mon55 == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( Mon53 )
+
+	Mon55->Init(ReadConfig.ConnEventDropDataFiles[1]);//"eventitembag2.txt");
+
+	if ( Mon53 != FALSE )	// Golden Titan
 	{
 		delete Mon53;
 	}
-	// --
+
 	Mon53 = new CItemBag;
-	// --
-	if( Mon53 == NULL )
+
+	if ( Mon53 == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( StarOfXMasItemBag )	
+
+	Mon53->Init(ReadConfig.ConnEventDropDataFiles[2]);//"eventitembag3.txt");
+
+	if ( StarOfXMasItemBag != FALSE )	
 	{
 		delete StarOfXMasItemBag;
 	}
-	// --
+
 	StarOfXMasItemBag = new CItemBagEx;
-	// --
-	if( StarOfXMasItemBag == NULL )
+
+	if ( StarOfXMasItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( FireCrackerItemBag )	
+
+	StarOfXMasItemBag->Init(ReadConfig.ConnEventDropDataFiles[3]);//"eventitembag4.txt");
+
+	if ( FireCrackerItemBag != FALSE )	
 	{
 		delete FireCrackerItemBag;
 	}
-	// --
+
 	FireCrackerItemBag = new CItemBag;
-	// --
-	if( FireCrackerItemBag == NULL )
+
+	if ( FireCrackerItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( HeartOfLoveItemBag )	
+
+	FireCrackerItemBag->Init(ReadConfig.ConnEventDropDataFiles[4]);//"eventitembag5.txt");
+
+	if ( HeartOfLoveItemBag != FALSE )	
 	{
 		delete HeartOfLoveItemBag;
 	}
-	// --
+
 	HeartOfLoveItemBag = new CItemBag;
-	// --
-	if( HeartOfLoveItemBag == NULL )
+
+	if ( HeartOfLoveItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( GoldMedalItemBag )	
+
+	HeartOfLoveItemBag->Init(ReadConfig.ConnEventDropDataFiles[5]);//"eventitembag5.txt");
+
+	if ( GoldMedalItemBag != FALSE )	
 	{
 		delete GoldMedalItemBag;
 	}
-	// --
+
 	GoldMedalItemBag = new CItemBag;
-	// --
-	if( GoldMedalItemBag == NULL )
+
+	if ( GoldMedalItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( SilverMedalItemBag )	
+
+	GoldMedalItemBag->Init(ReadConfig.ConnEventDropDataFiles[6]);//"eventitembag6.txt");
+
+	if ( SilverMedalItemBag != FALSE )	
 	{
 		delete SilverMedalItemBag;
 	}
-	// --
+
 	SilverMedalItemBag = new CItemBag;
-	// --
+
 	if ( SilverMedalItemBag == NULL )
 	{
 		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
 
+	SilverMedalItemBag->Init(ReadConfig.ConnEventDropDataFiles[7]);//"eventitembag7.txt");
 
 	if ( GoldGoblenItemBag != FALSE )	
 	{
 		delete GoldGoblenItemBag;
 	}
 
-	GoldGoblenItemBag = new CProbabilityItemBag;
+	GoldGoblenItemBag = new CItemBag;
 
 	if ( GoldGoblenItemBag == NULL )
 	{
@@ -3045,14 +2187,14 @@ void LoadItemBag()
 		return;
 	}
 
-
+	GoldGoblenItemBag->Init(ReadConfig.ConnEventDropDataFiles[8]);//"eventitembag8.txt");
 
 	if ( TitanItemBag != FALSE )	
 	{
 		delete TitanItemBag;
 	}
 
-	TitanItemBag = new CProbabilityItemBag;
+	TitanItemBag = new CItemBag;
 
 	if ( TitanItemBag == NULL )
 	{
@@ -3060,14 +2202,14 @@ void LoadItemBag()
 		return;
 	}
 
-
+	TitanItemBag->Init(ReadConfig.ConnEventDropDataFiles[9]);//"eventitembag9.txt");
 
 	if ( GoldDerconItemBag != FALSE )	
 	{
 		delete GoldDerconItemBag;
 	}
 
-	GoldDerconItemBag = new CProbabilityItemBag;
+	GoldDerconItemBag = new CItemBag;
 
 	if ( GoldDerconItemBag == NULL )
 	{
@@ -3075,14 +2217,14 @@ void LoadItemBag()
 		return;
 	}
 
-
+	GoldDerconItemBag->Init(ReadConfig.ConnEventDropDataFiles[10]);//"eventitembag10.txt");
 
 	if ( DevilLizardKingItemBag != FALSE )	
 	{
 		delete DevilLizardKingItemBag;
 	}
 
-	DevilLizardKingItemBag = new CProbabilityItemBag;
+	DevilLizardKingItemBag = new CItemBag;
 
 	if ( DevilLizardKingItemBag == NULL )
 	{
@@ -3090,14 +2232,14 @@ void LoadItemBag()
 		return;
 	}
 
-
+	DevilLizardKingItemBag->Init(ReadConfig.ConnEventDropDataFiles[11]);//"eventitembag11.txt");
 
 	if ( KanturItemBag != FALSE )	
 	{
 		delete KanturItemBag;
 	}
 
-	KanturItemBag = new CProbabilityItemBag;
+	KanturItemBag = new CItemBag;
 
 	if ( KanturItemBag == NULL )
 	{
@@ -3105,7 +2247,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	KanturItemBag->Init(ReadConfig.ConnEventDropDataFiles[12]);//"eventitembag12.txt");
 
 	if ( RingEventItemBag != FALSE )	
 	{
@@ -3120,7 +2262,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	RingEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[13]);//"eventitembag13.txt");
 
 	if ( FriendShipItemBag != FALSE )	
 	{
@@ -3135,7 +2277,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	FriendShipItemBag->Init(ReadConfig.ConnEventDropDataFiles[14]);//"eventitembag14.txt");
 
 	if ( DarkLordHeartItemBag != FALSE )	
 	{
@@ -3150,7 +2292,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	DarkLordHeartItemBag->Init(ReadConfig.ConnEventDropDataFiles[15]);//"eventitembag15.txt");
 
 	if ( KundunEventItemBag != FALSE )	
 	{
@@ -3165,33 +2307,41 @@ void LoadItemBag()
 		return;
 	}
 
+	KundunEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[16]);//"eventitembag17.txt");
 
+#if (GS_CASTLE==1)
+	if ( ErohimCastleZoneItemBag != NULL )
+		delete ErohimCastleZoneItemBag;
 
-	//#if(_GSCS==1)
-	if ( CastleHuntZoneBossItemBag != FALSE )
-	{
-		delete CastleHuntZoneBossItemBag;
-	}
-
-	CastleHuntZoneBossItemBag = new CItemBagEx; 
-
-	if ( CastleHuntZoneBossItemBag == NULL )
+	ErohimCastleZoneItemBag = new CItemBagEx; 
+	if ( ErohimCastleZoneItemBag == NULL )
 	{
 		// Memory allocation error
 		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
 
+	ErohimCastleZoneItemBag->Init(ReadConfig.ConnEventDropDataFiles[41]);//"eventitembag18.txt");
 
+	//Monsters in CastleDeep Event
+	if ( HuntZoneItemBag != NULL )
+		delete HuntZoneItemBag;
 
-	//_GSCS EventItemBag for Special Mix
-	if ( CastleItemMixItemBag != FALSE )
+	HuntZoneItemBag = new CItemBagEx; 
+	if ( HuntZoneItemBag == NULL )
 	{
-		delete CastleItemMixItemBag;
+		// Memory allocation error
+		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
 	}
 
-	CastleItemMixItemBag = new CItemBagEx;
+	HuntZoneItemBag->Init(ReadConfig.ConnEventDropDataFiles[42]);//"eventitembag18.txt");
 
+	//GS_CASTLE EventItemBag for Special Mix
+	if ( CastleItemMixItemBag != NULL )
+		delete CastleItemMixItemBag;
+
+	CastleItemMixItemBag = new CItemBagEx; 
 	if ( CastleItemMixItemBag == NULL )
 	{
 		// Memory allocation error
@@ -3199,8 +2349,8 @@ void LoadItemBag()
 		return;
 	}
 
-
-	//#endif
+	CastleItemMixItemBag->Init(ReadConfig.ConnEventDropDataFiles[40]);//"eventitembag19.txt");
+#endif
 
 	if ( HiddenTreasureBoxItemBag != NULL )
 		delete HiddenTreasureBoxItemBag;
@@ -3213,7 +2363,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	HiddenTreasureBoxItemBag->Init(ReadConfig.ConnEventDropDataFiles[17]);//"eventitembag20.txt");
 
 	if ( RedRibbonBoxEventItemBag != NULL )
 		delete RedRibbonBoxEventItemBag;
@@ -3226,7 +2376,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	RedRibbonBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[18]);//"eventitembag21.txt");
 
 	if ( GreenRibbonBoxEventItemBag != NULL )
 		delete GreenRibbonBoxEventItemBag;
@@ -3239,7 +2389,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	GreenRibbonBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[19]);//"eventitembag22.txt");
 
 	if ( BlueRibbonBoxEventItemBag != NULL )
 		delete BlueRibbonBoxEventItemBag;
@@ -3252,7 +2402,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	BlueRibbonBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[20]);//"eventitembag23.txt");
 
 	if ( PinkChocolateBoxEventItemBag != NULL )
 		delete PinkChocolateBoxEventItemBag;
@@ -3265,7 +2415,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	PinkChocolateBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[21]);//"eventitembag24.txt");
 
 	if ( RedChocolateBoxEventItemBag != NULL )
 		delete RedChocolateBoxEventItemBag;
@@ -3278,7 +2428,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	RedChocolateBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[22]);//"eventitembag25.txt");
 
 	if ( BlueChocolateBoxEventItemBag != NULL )
 		delete BlueChocolateBoxEventItemBag;
@@ -3291,7 +2441,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	BlueChocolateBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[23]);//"eventitembag26.txt");
 
 	if ( LightPurpleCandyBoxEventItemBag != NULL )
 		delete LightPurpleCandyBoxEventItemBag;
@@ -3304,7 +2454,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	LightPurpleCandyBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[24]);//"eventitembag27.txt");
 
 	if ( VermilionCandyBoxEventItemBag != NULL )
 		delete VermilionCandyBoxEventItemBag;
@@ -3317,7 +2467,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	VermilionCandyBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[25]);//"eventitembag28.txt");
 
 	if ( DeepBlueCandyBoxEventItemBag != NULL )
 		delete DeepBlueCandyBoxEventItemBag;
@@ -3330,7 +2480,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	DeepBlueCandyBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[26]);//"eventitembag29.txt");
 
 	if ( CrywolfDarkElfItemBag != NULL )
 		delete CrywolfDarkElfItemBag;
@@ -3343,7 +2493,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	CrywolfDarkElfItemBag->Init(ReadConfig.ConnEventDropDataFiles[27]);//"eventitembag30.txt");
 
 	if ( CrywolfBossMonsterItemBag != NULL )
 		delete CrywolfBossMonsterItemBag;
@@ -3356,9 +2506,8 @@ void LoadItemBag()
 		return;
 	}
 
+	CrywolfBossMonsterItemBag->Init(ReadConfig.ConnEventDropDataFiles[28]);//"eventitembag31.txt");
 
-
-	//#if(_GSCS==0)
 	if ( KanturuMayaHandItemBag != NULL )
 		delete KanturuMayaHandItemBag;
 
@@ -3370,7 +2519,7 @@ void LoadItemBag()
 		return;
 	}
 
-
+	KanturuMayaHandItemBag->Init(ReadConfig.ConnEventDropDataFiles[29]);//"eventitembag32.txt");
 
 	if ( KanturuNightmareItemBag != NULL )
 		delete KanturuNightmareItemBag;
@@ -3383,549 +2532,835 @@ void LoadItemBag()
 		return;
 	}
 
+	KanturuNightmareItemBag->Init(ReadConfig.ConnEventDropDataFiles[30]);//"eventitembag33.txt");
 
-	//#endif
+	if ( HalloweenDayEventItemBag != NULL )
+		delete HalloweenDayEventItemBag;
 
-	if ( HallowinDayEventItemBag != NULL )
-		delete HallowinDayEventItemBag;
-
-	HallowinDayEventItemBag = new CItemBagEx; 
-	if ( HallowinDayEventItemBag == NULL )
+	HalloweenDayEventItemBag = new CItemBagEx; 
+	if ( HalloweenDayEventItemBag == NULL )
 	{
 		// Memory allocation error
 		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
 
+	HalloweenDayEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[31]);//"eventitembag34.txt");
 
+	//NEW
 
-	//////////////////////////////////////////////
-
-	if ( RingOfHeroBoxItemBag != NULL )
-		delete RingOfHeroBoxItemBag;
-
-	RingOfHeroBoxItemBag = new CItemBag; 
-	if ( RingOfHeroBoxItemBag == NULL )
+	if ( SelupanEventItemBag != FALSE )	
 	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		delete SelupanEventItemBag;
+	}
+
+	SelupanEventItemBag = new CItemBagEx;
+
+	if ( SelupanEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
 
+	SelupanEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[32]);//"eventitembag40.txt");
 
+#if (PACK_EDITION>=1)
+	//NEW
 
-	if ( NewYearLuckyPouchItemBag != NULL )
-		delete NewYearLuckyPouchItemBag;
-
-	NewYearLuckyPouchItemBag = new CProbabilityItemBag; 
-	if ( NewYearLuckyPouchItemBag == NULL )
+	if ( BlueEventItemBag != FALSE )	
 	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		delete BlueEventItemBag;
+	}
+
+	BlueEventItemBag = new CItemBagEx;
+
+	if ( BlueEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
 
-
-
-	if ( GMPresentBoxItemBag != NULL )
-		delete GMPresentBoxItemBag;
-
-	GMPresentBoxItemBag = new CProbabilityItemBag; 
-	if ( GMPresentBoxItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//PCBangGageGreenBox
-	if ( PCBangGageGreenBox != NULL )
-		delete PCBangGageGreenBox;
-
-	PCBangGageGreenBox = new CProbabilityItemBag; 
-	if ( PCBangGageGreenBox == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//PCBangGageRedBox
-	if ( PCBangGageRedBox != NULL )
-		delete PCBangGageRedBox;
-
-	PCBangGageRedBox = new CProbabilityItemBag; 
-	if ( PCBangGageRedBox == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//PCBangGagePurpleBox
-	if ( PCBangGagePurpleBox != NULL )
-		delete PCBangGagePurpleBox;
-
-	PCBangGagePurpleBox = new CProbabilityItemBag; 
-	if ( PCBangGagePurpleBox == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//ReservedBox
-	if ( ReservedBox != NULL )
-		delete ReservedBox;
-
-	ReservedBox = new CProbabilityItemBag; 
-	if ( ReservedBox == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//RaklionSelupanItemBag
-	if ( RaklionSelupanItemBag != NULL )
-		delete RaklionSelupanItemBag;
-
-	RaklionSelupanItemBag = new CProbabilityItemBag; 
-	if ( RaklionSelupanItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//LuckyCoin10
-	if ( LuckyCoin10 != NULL )
-		delete LuckyCoin10;
-
-	LuckyCoin10 = new CProbabilityItemBag; 
-	if ( LuckyCoin10 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//LuckyCoin20
-	if ( LuckyCoin20 != NULL )
-		delete LuckyCoin20;
-
-	LuckyCoin20 = new CProbabilityItemBag; 
-	if ( LuckyCoin20 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//LuckyCoin30
-	if ( LuckyCoin30 != NULL )
-		delete LuckyCoin30;
-
-	LuckyCoin30 = new CProbabilityItemBag; 
-	if ( LuckyCoin30 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( IllusionTemple1ItemBag != NULL )
-		delete IllusionTemple1ItemBag;
-
-	IllusionTemple1ItemBag = new CProbabilityItemBag; 
-	if ( IllusionTemple1ItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( IllusionTemple2ItemBag != NULL )
-		delete IllusionTemple2ItemBag;
-
-	IllusionTemple2ItemBag = new CProbabilityItemBag; 
-	if ( IllusionTemple2ItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( IllusionTemple3ItemBag != NULL )
-		delete IllusionTemple3ItemBag;
-
-	IllusionTemple3ItemBag = new CProbabilityItemBag; 
-	if ( IllusionTemple3ItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( MoonHarvestItemBag != NULL )
-		delete MoonHarvestItemBag;
-
-	MoonHarvestItemBag = new CProbabilityItemBag; 
-	if ( MoonHarvestItemBag == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( CherryBlossom1 != NULL )
-		delete CherryBlossom1;
-
-	CherryBlossom1 = new CProbabilityItemBag; 
-	if ( CherryBlossom1 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( CherryBlossom2 != NULL )
-		delete CherryBlossom2;
-
-	CherryBlossom2 = new CProbabilityItemBag; 
-	if ( CherryBlossom2 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag-A %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	if ( CherryBlossom3 != NULL )
-		delete CherryBlossom3;
-
-	CherryBlossom3 = new CProbabilityItemBag; 
-	if ( CherryBlossom3 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag-B %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-	if ( CherryBlossom4 != NULL )
-		delete CherryBlossom4;
-
-	CherryBlossom4 = new CProbabilityItemBag; 
-	if ( CherryBlossom4 == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag-C %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//XMasEventA
-	if ( XMasEventA != NULL )
-		delete XMasEventA;
-
-	XMasEventA = new CProbabilityItemBag; 
-	if ( XMasEventA == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-
-
-	//XMasEventB
-	if ( XMasEventB != NULL )
-		delete XMasEventB;
-
-	XMasEventB = new CProbabilityItemBag; 
-	if ( XMasEventB == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag100 %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	//XMasEventC
-	if ( XMasEventC != NULL )
-		delete XMasEventC;
-
-	XMasEventC = new CProbabilityItemBag; 
-	if ( XMasEventC == NULL )
-	{
-		// Memory allocation error
-		MsgBox("CProbabilityItemBag1000 %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-#ifdef IMPERIAL
-	delete pEventDungeonItemBag;
-
-	pEventDungeonItemBag = new CEventDungeonItemBag;
-	if( !pEventDungeonItemBag )
-	{
-		MsgBox("CEventDungeonItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-	delete pEventDungeonItemBagGaion;
-	pEventDungeonItemBagGaion = new CEventDungeonItemBag;
-	if( !pEventDungeonItemBagGaion )
-	{
-		MsgBox("CEventDungeonItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-
-	delete pEventDungeonItemBagStone;
-	pEventDungeonItemBagStone = new CEventDungeonItemBag;
-	if( !pEventDungeonItemBagStone )
-	{
-		MsgBox("CEventDungeonItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
+	BlueEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[33]);//"eventitembag41.txt");
 #endif
-	// ----
-	if( GoldenBoxItemBag )
+	//NEW
+
+#if (PACK_EDITION>=3)
+	if ( BossAttackItemBag != FALSE )	
 	{
-		delete GoldenBoxItemBag;
+		delete BossAttackItemBag;
 	}
-	// ----
-	GoldenBoxItemBag = new CProbabilityItemBag;
-	// ----
-	if( !GoldenBoxItemBag )
+
+	BossAttackItemBag = new CItemBagEx;
+
+	if ( BossAttackItemBag == NULL )
 	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// -----
-	if( SilverBoxItemBag )
+
+	BossAttackItemBag->Init(ReadConfig.ConnEventDropDataFiles[34]);//"eventitembag42.txt");
+#endif
+	if ( GreenMysteryEventItemBag != FALSE )	
+	{
+		delete GreenMysteryEventItemBag;
+	}
+
+	GreenMysteryEventItemBag = new CItemBagEx;
+
+	if ( GreenMysteryEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GreenMysteryEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[35]);//"eventitembag35.txt");
+
+	if ( RedMysteryEventItemBag != FALSE )	
+	{
+		delete RedMysteryEventItemBag;
+	}
+
+	RedMysteryEventItemBag = new CItemBagEx;
+
+	if ( RedMysteryEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	RedMysteryEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[36]);//"eventitembag36.txt");
+
+	//NEW
+
+	if ( PurpleMysteryEventItemBag != FALSE )	
+	{
+		delete PurpleMysteryEventItemBag;
+	}
+
+	PurpleMysteryEventItemBag = new CItemBagEx;
+
+	if ( PurpleMysteryEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	PurpleMysteryEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[37]);//"eventitembag37.txt");
+
+	//NEW
+
+	if ( CherryBlossomEventItemBag != FALSE )	
+	{
+		delete CherryBlossomEventItemBag;
+	}
+
+	CherryBlossomEventItemBag = new CItemBagEx;
+
+	if ( CherryBlossomEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	CherryBlossomEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[38]);//"eventitembag38.txt");
+
+	//NEW
+
+	if ( GMEventItemBag != FALSE )	
+	{
+		delete GMEventItemBag;
+	}
+
+	GMEventItemBag = new CItemBagEx;
+
+	if ( GMEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GMEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[39]);//"eventitembag39.txt");
+
+	//NEW
+
+	if ( IGSundayItemBag2 != FALSE )	
+	{
+		delete IGSundayItemBag2;
+	}
+
+	IGSundayItemBag2 = new CItemBagEx;
+
+	if ( IGSundayItemBag2 == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGSundayItemBag2->Init(ReadConfig.ConnEventDropDataFiles[43]);//"eventitembag43.txt");
+
+	//NEW
+
+	if ( IGSundayItemBag1 != FALSE )	
+	{
+		delete IGSundayItemBag1;
+	}
+
+	IGSundayItemBag1 = new CItemBagEx;
+
+	if ( IGSundayItemBag1 == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGSundayItemBag1->Init(ReadConfig.ConnEventDropDataFiles[44]);//"eventitembag44.txt");
+
+	//NEW
+
+	if ( IGMondayItemBag != FALSE )	
+	{
+		delete IGMondayItemBag;
+	}
+
+	IGMondayItemBag = new CItemBagEx;
+
+	if ( IGMondayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGMondayItemBag->Init(ReadConfig.ConnEventDropDataFiles[45]);//"eventitembag45.txt");
+
+	//NEW
+
+	if ( IGTuesdayItemBag != FALSE )	
+	{
+		delete IGTuesdayItemBag;
+	}
+
+	IGTuesdayItemBag = new CItemBagEx;
+
+	if ( IGTuesdayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGTuesdayItemBag->Init(ReadConfig.ConnEventDropDataFiles[46]);//"eventitembag46.txt");
+
+	//NEW
+
+	if ( IGWednesdayItemBag != FALSE )	
+	{
+		delete IGWednesdayItemBag;
+	}
+
+	IGWednesdayItemBag = new CItemBagEx;
+
+	if ( IGWednesdayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGWednesdayItemBag->Init(ReadConfig.ConnEventDropDataFiles[47]);//"eventitembag47.txt");
+
+	//NEW
+
+	if ( IGThursdayItemBag != FALSE )	
+	{
+		delete IGThursdayItemBag;
+	}
+
+	IGThursdayItemBag = new CItemBagEx;
+
+	if ( IGThursdayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGThursdayItemBag->Init(ReadConfig.ConnEventDropDataFiles[48]);//"eventitembag48.txt");
+
+	//NEW
+
+	if ( IGFridayItemBag != FALSE )	
+	{
+		delete IGFridayItemBag;
+	}
+
+	IGFridayItemBag = new CItemBagEx;
+
+	if ( IGFridayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGFridayItemBag->Init(ReadConfig.ConnEventDropDataFiles[49]);//"eventitembag49.txt");
+
+	//NEW
+
+	if ( IGSaturdayItemBag != FALSE )	
+	{
+		delete IGSaturdayItemBag;
+	}
+
+	IGSaturdayItemBag = new CItemBagEx;
+
+	if ( IGSaturdayItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGSaturdayItemBag->Init(ReadConfig.ConnEventDropDataFiles[50]);//"eventitembag50.txt");
+
+	//NEW
+
+	
+	if ( DGBoss1ItemBag != FALSE )	
+	{
+		delete DGBoss1ItemBag;
+	}
+
+	DGBoss1ItemBag = new CItemBagEx;
+
+	if ( DGBoss1ItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	DGBoss1ItemBag->Init(ReadConfig.ConnEventDropDataFiles[51]);//"eventitembag51.txt");
+
+	//NEW
+
+	if ( DGBoss2ItemBag != FALSE )	
+	{
+		delete DGBoss2ItemBag;
+	}
+
+	DGBoss2ItemBag = new CItemBagEx;
+
+	if ( DGBoss2ItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	DGBoss2ItemBag->Init(ReadConfig.ConnEventDropDataFiles[52]);//"eventitembag52.txt");
+
+	//NEW
+
+	if ( DGBoss3ItemBag != FALSE )	
+	{
+		delete DGBoss3ItemBag;
+	}
+
+	DGBoss3ItemBag = new CItemBagEx;
+
+	if ( DGBoss3ItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	DGBoss3ItemBag->Init(ReadConfig.ConnEventDropDataFiles[53]);//"eventitembag53.txt");
+
+	//NEW
+
+	if ( DGTreasureItemBag != FALSE )	
+	{
+		delete DGTreasureItemBag;
+	}
+
+	DGTreasureItemBag = new CItemBagEx;
+
+	if ( DGTreasureItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	DGTreasureItemBag->Init(ReadConfig.ConnEventDropDataFiles[54]);//"eventitembag54.txt");
+
+	//NEW
+
+	if ( FortunePouchItemBag != FALSE )	
+	{
+		delete FortunePouchItemBag;
+	}
+
+	FortunePouchItemBag = new CItemBagEx;
+
+	if ( FortunePouchItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	FortunePouchItemBag->Init(ReadConfig.ConnEventDropDataFiles[55]);//"eventitembag55.txt");
+
+	//NEW
+#if (PACK_EDITION>=2)
+	if ( XMasEventItemBag != FALSE )	
+	{
+		delete XMasEventItemBag;
+	}
+
+	XMasEventItemBag = new CItemBagEx;
+
+	if ( XMasEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+	XMasEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[56]);//"eventitembag56.txt");
+#endif
+
+	//NEW
+
+	if ( DGSilverTreasureItemBag != FALSE )	
+	{
+		delete DGSilverTreasureItemBag;
+	}
+
+	DGSilverTreasureItemBag = new CItemBagEx;
+
+	if ( DGSilverTreasureItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	DGSilverTreasureItemBag->Init(ReadConfig.ConnEventDropDataFiles[57]);//"eventitembag57.txt");
+	//NEW
+
+#if (PACK_EDITION>=3)
+	if ( SwampEventItemBag != FALSE )	
+	{
+		delete SwampEventItemBag;
+	}
+
+	SwampEventItemBag = new CItemBagEx;
+
+	if ( SwampEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	SwampEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[58]);//"eventitembag58.txt");
+#endif
+	//
+	if ( GoldRabbitItemBag != FALSE )	
+	{
+		delete GoldRabbitItemBag;
+	}
+
+	GoldRabbitItemBag = new CItemBag;
+
+	if ( GoldRabbitItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldRabbitItemBag->Init(ReadConfig.ConnEventDropDataFiles[59]);//"eventitembag59.txt");
+
+	//
+	if ( GoldDarkKnightItemBag != FALSE )	
+	{
+		delete GoldDarkKnightItemBag;
+	}
+
+	GoldDarkKnightItemBag = new CItemBag;
+
+	if ( GoldDarkKnightItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldDarkKnightItemBag->Init(ReadConfig.ConnEventDropDataFiles[60]);//"eventitembag60.txt");
+
+	//
+	if ( GoldDevilItemBag != FALSE )	
+	{
+		delete GoldDevilItemBag;
+	}
+
+	GoldDevilItemBag = new CItemBag;
+
+	if ( GoldDevilItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldDevilItemBag->Init(ReadConfig.ConnEventDropDataFiles[61]);//"eventitembag61.txt");
+
+	//
+	if ( GoldStoneGolemItemBag != FALSE )	
+	{
+		delete GoldStoneGolemItemBag;
+	}
+
+	GoldStoneGolemItemBag = new CItemBag;
+
+	if ( GoldStoneGolemItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldStoneGolemItemBag->Init(ReadConfig.ConnEventDropDataFiles[62]);//"eventitembag62.txt");
+
+	//
+	if ( GoldCrustItemBag != FALSE )	
+	{
+		delete GoldCrustItemBag;
+	}
+
+	GoldCrustItemBag = new CItemBag;
+
+	if ( GoldCrustItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldCrustItemBag->Init(ReadConfig.ConnEventDropDataFiles[63]);//"eventitembag63.txt");
+
+	//
+	if ( GoldSatyrosItemBag != FALSE )	
+	{
+		delete GoldSatyrosItemBag;
+	}
+
+	GoldSatyrosItemBag = new CItemBag;
+
+	if ( GoldSatyrosItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldSatyrosItemBag->Init(ReadConfig.ConnEventDropDataFiles[64]);//"eventitembag64.txt");
+
+	//
+	if ( GoldTwinTaleItemBag != FALSE )	
+	{
+		delete GoldTwinTaleItemBag;
+	}
+
+	GoldTwinTaleItemBag = new CItemBag;
+
+	if ( GoldTwinTaleItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldTwinTaleItemBag->Init(ReadConfig.ConnEventDropDataFiles[65]);//"eventitembag65.txt");
+
+	//
+	if ( GoldIronKnightItemBag != FALSE )	
+	{
+		delete GoldIronKnightItemBag;
+	}
+
+	GoldIronKnightItemBag = new CItemBag;
+
+	if ( GoldIronKnightItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldIronKnightItemBag->Init(ReadConfig.ConnEventDropDataFiles[66]);//"eventitembag66.txt");
+
+	//
+	if ( GoldNapinItemBag != FALSE )	
+	{
+		delete GoldNapinItemBag;
+	}
+
+	GoldNapinItemBag = new CItemBag;
+
+	if ( GoldNapinItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldNapinItemBag->Init(ReadConfig.ConnEventDropDataFiles[67]);//"eventitembag67.txt");
+
+	//
+	if ( GoldGreatDragonItemBag != FALSE )	
+	{
+		delete GoldGreatDragonItemBag;
+	}
+
+	GoldGreatDragonItemBag = new CItemBag;
+
+	if ( GoldGreatDragonItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldGreatDragonItemBag->Init(ReadConfig.ConnEventDropDataFiles[68]);//"eventitembag68.txt");
+
+	//
+	//NEW
+
+	if ( ElegantJewerlyItemBag != FALSE )	
+	{
+		delete ElegantJewerlyItemBag;
+	}
+
+	ElegantJewerlyItemBag = new CItemBagEx;
+
+	if ( ElegantJewerlyItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	ElegantJewerlyItemBag->Init(ReadConfig.ConnEventDropDataFiles[69]);//"eventitembag69.txt");
+	//NEW
+
+	if ( MetalJewerlyItemBag != FALSE )	
+	{
+		delete MetalJewerlyItemBag;
+	}
+
+	MetalJewerlyItemBag = new CItemBagEx;
+
+	if ( MetalJewerlyItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	MetalJewerlyItemBag->Init(ReadConfig.ConnEventDropDataFiles[70]);//"eventitembag70.txt");
+	//NEW
+
+	if ( OldJewerlyItemBag != FALSE )	
+	{
+		delete OldJewerlyItemBag;
+	}
+
+	OldJewerlyItemBag = new CItemBagEx;
+
+	if ( OldJewerlyItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	OldJewerlyItemBag->Init(ReadConfig.ConnEventDropDataFiles[71]);//"eventitembag71.txt");
+	//NEW
+
+	if ( GoldBoxItemBag != FALSE )	
+	{
+		delete GoldBoxItemBag;
+	}
+
+	GoldBoxItemBag = new CItemBagEx;
+
+	if ( GoldBoxItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GoldBoxItemBag->Init(ReadConfig.ConnEventDropDataFiles[72]);//"eventitembag72.txt");
+	//NEW
+
+	if ( SilverBoxItemBag != FALSE )	
 	{
 		delete SilverBoxItemBag;
 	}
-	// ----
-	SilverBoxItemBag = new CProbabilityItemBag;
-	// ----
-	if( !SilverBoxItemBag )
+
+	SilverBoxItemBag = new CItemBagEx;
+
+	if ( SilverBoxItemBag == NULL )
 	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// -----
-	if( ShineJewelleryCaseItemBag != NULL )
+
+	SilverBoxItemBag->Init(ReadConfig.ConnEventDropDataFiles[73]);//"eventitembag73.txt");
+
+#if (PACK_EDITION>=1)
+	//NEW
+
+	if ( SummerEventItemBag != FALSE )	
 	{
-		delete ShineJewelleryCaseItemBag;
+		delete SummerEventItemBag;
 	}
-	// ----
-	ShineJewelleryCaseItemBag = new CProbabilityItemBag;
-	// ----
-	if( !ShineJewelleryCaseItemBag )
+
+	SummerEventItemBag = new CItemBagEx;
+
+	if ( SummerEventItemBag == NULL )
 	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
 		return;
 	}
-	// ----
-	if( RefinedJewelleryCaseItemBag != NULL )
-	{
-		delete RefinedJewelleryCaseItemBag;
-	}
-	// ----
-	RefinedJewelleryCaseItemBag = new CProbabilityItemBag;
-	// ----
-	if( !RefinedJewelleryCaseItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( IronJewelleryCaseItemBag != NULL )
-	{
-		delete IronJewelleryCaseItemBag;
-	}
-	// ----
-	IronJewelleryCaseItemBag = new CProbabilityItemBag;
-	// ----
-	if( !IronJewelleryCaseItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( OldJewelleryCaseItemBag != NULL )
-	{
-		delete OldJewelleryCaseItemBag;
-	}
-	// ----
-	OldJewelleryCaseItemBag = new CProbabilityItemBag;
-	// ----
-	if( !OldJewelleryCaseItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( NewMonsterItemBag )
-	{
-		delete NewMonsterItemBag;
-	}
-	// ----
-	NewMonsterItemBag = new CProbabilityItemBag;
-	// ----
-	if( !NewMonsterItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( BoxOfGreenColorItemBag )
-	{
-		delete BoxOfGreenColorItemBag;
-	}
-	// ----
-	BoxOfGreenColorItemBag = new CProbabilityItemBag;
-	// ----
-	if( !BoxOfGreenColorItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( BoxOfRedColorItemBag )
-	{
-		delete BoxOfRedColorItemBag;
-	}
-	// ----
-	BoxOfRedColorItemBag = new CProbabilityItemBag;
-	// ----
-	if( !BoxOfRedColorItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	if( BoxOfPurpleColorItemBag )
-	{
-		delete BoxOfPurpleColorItemBag;
-	}
-	// ----
-	BoxOfPurpleColorItemBag = new CProbabilityItemBag;
-	// ----
-	if( !BoxOfPurpleColorItemBag )
-	{
-		MsgBox("CProbabilityItemBag %s", lMsg.Get(MSGGET(0, 110)));
-		return;
-	}
-	// ----
-	LuckboxItemBag->Init("ItemBag\\01_BoxOfLuck&Heaven.txt");
-	Mon55->Init("ItemBag\\02_SkeletonKing.txt");
-	Mon53->Init("ItemBag\\03_RedDragon.txt");
-	StarOfXMasItemBag->Init("ItemBag\\04_StarOfXMas.txt");
-	FireCrackerItemBag->Init("ItemBag\\05_HeartOfLove&Cracker.txt");
-	HeartOfLoveItemBag->Init("ItemBag\\05_HeartOfLove&Cracker.txt");
-	GoldMedalItemBag->Init("ItemBag\\06_GoldMedal.txt");
-	SilverMedalItemBag->Init("ItemBag\\07_SilverMedal.txt");
-	GoldGoblenItemBag->ProbabilityItemBagInit("ItemBag\\08_BoxOfKundun1.txt");
-	TitanItemBag->ProbabilityItemBagInit("ItemBag\\09_BoxOfKundun2.txt");
-	GoldDerconItemBag->ProbabilityItemBagInit("ItemBag\\10_BoxOfKundun3.txt");
-	DevilLizardKingItemBag->ProbabilityItemBagInit("ItemBag\\11_BoxOfKundun4.txt");
-	KanturItemBag->ProbabilityItemBagInit("ItemBag\\12_BoxOfKundun5.txt");
-	RingEventItemBag->Init("ItemBag\\13_ChaosCastleBox.txt");
-	FriendShipItemBag->Init("ItemBag\\14_RingEventLevel80.txt");
-	DarkLordHeartItemBag->Init("ItemBag\\15_DarkLordHeart.txt");
-	KundunEventItemBag->Init("ItemBag\\17_Kundun.txt");
-	CastleHuntZoneBossItemBag->Init("ItemBag\\18_Erohim.txt");
-	CastleItemMixItemBag->Init("ItemBag\\19_CastleMix.txt");
-	HiddenTreasureBoxItemBag->Init("ItemBag\\20_TreasureBox.txt");
-	RedRibbonBoxEventItemBag->Init("ItemBag\\21_RedRibbonBox.txt");
-	GreenRibbonBoxEventItemBag->Init("ItemBag\\22_GreenRibbonBox.txt");
-	BlueRibbonBoxEventItemBag->Init("ItemBag\\23_BlueRibbonBox.txt");
-	PinkChocolateBoxEventItemBag->Init("ItemBag\\24_PinkChocolateBox.txt");
-	RedChocolateBoxEventItemBag->Init("ItemBag\\25_RedChocolateBox.txt");
-	BlueChocolateBoxEventItemBag->Init("ItemBag\\26_BlueChocolateBox.txt");
-	LightPurpleCandyBoxEventItemBag->Init("ItemBag\\27_LightPurpleCandyBox.txt");
-	VermilionCandyBoxEventItemBag->Init("ItemBag\\28_VermilionCandyBox.txt");
-	DeepBlueCandyBoxEventItemBag->Init("ItemBag\\29_DeepBlueCandyBox.txt");
-	CrywolfDarkElfItemBag->Init("ItemBag\\30_CrywolfDarkElf.txt");
-	CrywolfBossMonsterItemBag->Init("ItemBag\\31_CrywolfBalgass.txt");
-	KanturuMayaHandItemBag->Init("ItemBag\\32_KanturuMayaHand.txt");
-	KanturuNightmareItemBag->Init("ItemBag\\33_KanturuNightmare.txt");
-	HallowinDayEventItemBag->Init("ItemBag\\34_Halloween.txt");
-	RingOfHeroBoxItemBag->Init("ItemBag\\35_RingEventLevel40.txt");
-	NewYearLuckyPouchItemBag->ProbabilityItemBagInit("ItemBag\\37_FortunePounch.txt");
-	//PCBangGageGreenBox->ProbabilityItemBagInit("ItemBag\\eventitembag38.txt");
-	//PCBangGageRedBox->ProbabilityItemBagInit("ItemBag\\eventitembag39.txt");
-	//PCBangGagePurpleBox->ProbabilityItemBagInit("ItemBag\\eventitembag40.txt");
-	GMPresentBoxItemBag->ProbabilityItemBagInit("ItemBag\\41_GMGift.txt");
-	IllusionTemple1ItemBag->ProbabilityItemBagInit("ItemBag\\42_IllusionTemple1.txt");
-	IllusionTemple2ItemBag->ProbabilityItemBagInit("ItemBag\\43_IllusionTemple2.txt");
-	IllusionTemple3ItemBag->ProbabilityItemBagInit("ItemBag\\44_IllusionTemple3.txt");
-	//ReservedBox->ProbabilityItemBagInit("ItemBag\\eventitembag45.txt");
-	MoonHarvestItemBag->ProbabilityItemBagInit("ItemBag\\46_Rabbit&Harvest.txt");
-	CherryBlossom1->ProbabilityItemBagInit("ItemBag\\48_CherryBlossom1.txt");
-	CherryBlossom2->ProbabilityItemBagInit("ItemBag\\49_CherryBlossom2.txt");
-	CherryBlossom3->ProbabilityItemBagInit("ItemBag\\50_CherryBlossom3.txt");
-	CherryBlossom4->ProbabilityItemBagInit("ItemBag\\51_CherryBlossom4.txt");
-	RaklionSelupanItemBag->ProbabilityItemBagInit("ItemBag\\52_RaklionSelupan.txt");
-	XMasEventA->ProbabilityItemBagInit("ItemBag\\53_XMas1.txt");
-	XMasEventB->ProbabilityItemBagInit("ItemBag\\54_XMas2.txt");
-	XMasEventC->ProbabilityItemBagInit("ItemBag\\55_XMas3.txt");
-	LuckyCoin10->ProbabilityItemBagInit("ItemBag\\56_LuckyCoin10.txt");
-	LuckyCoin20->ProbabilityItemBagInit("ItemBag\\57_LuckyCoin20.txt");
-	LuckyCoin30->ProbabilityItemBagInit("ItemBag\\58_LuckyCoin30.txt");
-	//pGamblingSystemItemBag(59)
-#ifdef IMPERIAL
-	pEventDungeonItemBag->LoadScript(gDirPath.GetNewPath("ItemBag\\61_ImperialGaion.txt"));
-	pEventDungeonItemBagGaion->LoadScript(gDirPath.GetNewPath("ItemBag\\62_ImperialStatue.txt"));
-	pEventDungeonItemBagStone->LoadScript(gDirPath.GetNewPath("ItemBag\\63_ImperialBoss.txt"));
+
+	SummerEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[74]);//"eventitembag74.txt");
 #endif
-	GoldenBoxItemBag->ProbabilityItemBagInit("ItemBag\\64_GoldenBox.txt");
-	SilverBoxItemBag->ProbabilityItemBagInit("ItemBag\\65_SilverBox.txt");
-	//FireCrackerMonsterEventItemBag->ProbabilityItemBagInit("ItemBag\\eventitembag66.txt");
-	ShineJewelleryCaseItemBag->ProbabilityItemBagInit("ItemBag\\67_ShineJewelleryCase.txt");
-	RefinedJewelleryCaseItemBag->ProbabilityItemBagInit("ItemBag\\68_RefinedJewelleryCase.txt");
-	IronJewelleryCaseItemBag->ProbabilityItemBagInit("ItemBag\\69_IronJewelleryCase.txt");
-	OldJewelleryCaseItemBag->ProbabilityItemBagInit("ItemBag\\70_OldJewelleryCase.txt");
-	NewMonsterItemBag->ProbabilityItemBagInit("ItemBag\\74_NewMonster.txt");
-	BoxOfGreenColorItemBag->ProbabilityItemBagInit("ItemBag\\76_BoxOfGreen.txt");
-	BoxOfRedColorItemBag->ProbabilityItemBagInit("ItemBag\\77_BoxOfRed.txt");
-	BoxOfPurpleColorItemBag->ProbabilityItemBagInit("ItemBag\\78_BoxOfPurple.txt");
-	// ----
-	g_LuckyItemManager.LoadLuckyItemInfo("..\\Data\\ItemBag\\00_LuckyItem1.txt");
-	g_LuckyItemManager.LoadLuckyItemInfo("..\\Data\\ItemBag\\00_LuckyItem2.txt");
+
+#if (PACK_EDITION>=2)
+	if ( HalloweenPKEventItemBag != FALSE )	
+	{
+		delete HalloweenPKEventItemBag;
+	}
+
+	HalloweenPKEventItemBag = new CItemBagEx;
+
+	if ( HalloweenPKEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	HalloweenPKEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[75]);//"eventitembag75.txt");
+#endif
+	if ( HellMainItemBag != FALSE )	
+	{
+		delete HellMainItemBag;
+	}
+
+	HellMainItemBag = new CItemBagEx;
+
+	if ( HellMainItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	HellMainItemBag->Init(ReadConfig.ConnEventDropDataFiles[76]);//"eventitembag76.txt");
+
+	if ( IllusionItemBag != FALSE )	
+	{
+		delete IllusionItemBag;
+	}
+
+	IllusionItemBag = new CItemBag;
+
+	if ( IllusionItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IllusionItemBag->Init(ReadConfig.ConnEventDropDataFiles[77]);//"eventitembag77.txt");
+	//NEW
+
+	if ( GreenBoxEventItemBag != FALSE )	
+	{
+		delete GreenBoxEventItemBag;
+	}
+
+	GreenBoxEventItemBag = new CItemBagEx;
+
+	if ( GreenBoxEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	GreenBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[78]);//"eventitembag78.txt");
+	//NEW
+
+	if ( RedBoxEventItemBag != FALSE )	
+	{
+		delete RedBoxEventItemBag;
+	}
+
+	RedBoxEventItemBag = new CItemBagEx;
+
+	if ( RedBoxEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	RedBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[79]);//"eventitembag79.txt");
+	//NEW
+
+	if ( PurpleBoxEventItemBag != FALSE )	
+	{
+		delete PurpleBoxEventItemBag;
+	}
+
+	PurpleBoxEventItemBag = new CItemBagEx;
+
+	if ( PurpleBoxEventItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	PurpleBoxEventItemBag->Init(ReadConfig.ConnEventDropDataFiles[80]);//"eventitembag80.txt");
+
+	//NEW STATUE
+
+	if ( IGStatueItemBag != FALSE )	
+	{
+		delete IGStatueItemBag;
+	}
+
+	IGStatueItemBag = new CItemBagEx;
+
+	if ( IGStatueItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	IGStatueItemBag->Init(ReadConfig.ConnEventDropDataFiles[81]);
+
+	if ( CrywolfPedestalRewardItemBag != FALSE )
+	{
+		delete CrywolfPedestalRewardItemBag;
+	}
+
+	CrywolfPedestalRewardItemBag = new CItemBagEx;
+
+	if ( CrywolfPedestalRewardItemBag == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	CrywolfPedestalRewardItemBag->Init(ReadConfig.ConnEventDropDataFiles[82]);
+
+	//NEW
+
+	if ( RainItemsEvent != FALSE )	
+	{
+		delete RainItemsEvent;
+	}
+
+	RainItemsEvent = new CItemBagEx;
+
+	if ( RainItemsEvent == NULL )
+	{
+		MsgBox( "CItemBag %s", lMsg.Get(MSGGET(0, 110)));
+		return;
+	}
+
+	RainItemsEvent->Init(ReadConfig.ConnEventDropDataFiles[83]);//"eventitembag78.txt");
+
 }
+
+
 
 void SetMapName()
 {
@@ -3954,11 +3389,12 @@ void SetMapName()
 	strcat(gMapName[16], "6");
 }
 
+/*
 struct ST_EVENT_FLAG
 {
 	BOOL bDevilSquare : 1;
 	BOOL bBloodCastle : 1;
-BOOL			  : 6;
+	BOOL			  : 6;
 	BOOL bXMaxEvent   : 1;
 	BOOL bFireCracker : 1;
 	BOOL bHeartOfLove : 1;
@@ -3966,7 +3402,8 @@ BOOL			  : 6;
 	BOOL bRingEvent   : 1;
 	BOOL bEventChip   : 1;
 	BOOL bEledorado   : 1;
-BOOL			  : 1;
+	BOOL bEledorado2  : 1;
+	BOOL			  : 1;
 	BOOL bNPGGChecksum: 1;
 };
 
@@ -3976,6 +3413,9 @@ union STU_EVENT_FLAG
 	DWORD AllData;
 };
 
+
+// Check what functions are enabled to send 
+// Authentication Server (KOREA NON_REGISTERED SERVERS)
 int GetEventFlag()
 {
 	STU_EVENT_FLAG flag;
@@ -4023,461 +3463,488 @@ int GetEventFlag()
 		flag.EventData.bNPGGChecksum=1;
 	}	
 
+
+#if (WL_PROTECT==1)  
+	VM_START_WITHLEVEL(7)
+	if(WLRegGetStatus(NULL) != 1)
+	{
+		ReadConfig.SkillBerserkerTimeDiv = 0;
+		ReadConfig.SkillBerserkerDefDiv = 0;
+		ReadConfig.SkillBerserkerDefDiv = 0;	
+		
+		
+		for(int i=0;i<OBJ_MAXMONSTER;i++)
+		{
+			gObj[i].m_SkillSleep = 1;
+			gObj[i].TargetNumber = -1;
+			gObj[i].m_SkillSleep_MoveRange = 0;
+			gObj[i].m_SkillSleep_AttackRange = 0;
+			gObj[i].m_SkillSleep_ViewRange = 0;
+
+			gObj[i].m_MoveRange = 0;
+			gObj[i].m_AttackRange = 0;
+			gObj[i].m_ViewRange = 0;
+		}
+	}
+	VM_END
+#endif
 	return flag.AllData;	
 }
+*/
 
 void ReadEventInfo(MU_EVENT_TYPE eEventType)
 {
 	char szTemp[256];
 	switch(eEventType)
 	{
-	case 0: //All Events
-		g_DevilSquare.Load(gDirPath.GetNewPath("Event\\DevilSquare.dat"));
-		gDevilSquareEvent = GetPrivateProfileInt("GameServerInfo","DevilSquareEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gEyesOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","EyesOfDevilSquareDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gKeyOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","KeyOfDevilSquareDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gDevilSquareAllowingPlayers = GetPrivateProfileInt("GameServerInfo","DevilSquareAllowingPlayers", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		g_BloodCastle.Load(gDirPath.GetNewPath("Event\\BloodCastle.dat"));
-		g_bBloodCastle = GetPrivateProfileInt("GameServerInfo","BloodCastleEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_StartHour = GetPrivateProfileInt("GameServerInfo","BloodCastleStartHour", 1, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iAngelKingsPaperDropRate = GetPrivateProfileInt("GameServerInfo","AngelKingsPaperDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodBoneDropRate = GetPrivateProfileInt("GameServerInfo","BloodBoneDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iStoneDropRate = GetPrivateProfileInt("GameServerInfo","StoneDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_Prize = GetPrivateProfileInt("GameServerInfo","BloodCastlePrize", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_OddEvenHour = GetPrivateProfileInt("GameServerInfo","BloodCastleOddEvenHour", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		gBloodCastleAllowingPlayers = GetPrivateProfileInt("GameServerInfo","BloodCastleAllowingPlayers", 0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		gIsDropDarkLordItem = GetPrivateProfileInt("GameServerInfo","IsDropDarkLordItem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gSleeveOfLordDropRate = GetPrivateProfileInt("GameServerInfo","SleeveOfLordDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gSleeveOfLordDropLevel = GetPrivateProfileInt("GameServerInfo","SleeveOfLordDropLevel", 86, gDirPath.GetNewPath("commonserver.cfg"));
-		gSoulOfDarkHorseDropRate = GetPrivateProfileInt("GameServerInfo","SoulOfDarkHorseDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gSoulOfDarkHorseropLevel = GetPrivateProfileInt("GameServerInfo","SoulOfDarkHorseropLevel", 125, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iAngelKingsPaperDropRate = GetPrivateProfileInt("GameServerInfo","AngelKingsPaperDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gSoulOfDarkSpiritDropRate = GetPrivateProfileInt("GameServerInfo","SoulOfDarkSpiritDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gSoulOfDarkSpiritDropLevel = GetPrivateProfileInt("GameServerInfo","SoulOfDarkSpiritDropLevel", 96, gDirPath.GetNewPath("commonserver.cfg"));
-		GetPrivateProfileString("GameServerInfo", "DarkSpiritAddExperience", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gDarkSpiritAddExperience = (float)atof(szTemp);
-
-		gIsDropGemOfDefend = GetPrivateProfileInt("GameServerInfo","IsDropGemOfDefend", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gGemOfDefendDropRate = GetPrivateProfileInt("GameServerInfo","GemOfDefendDropRate", 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGemOfDefendDropLevel = GetPrivateProfileInt("GameServerInfo","GemOfDefendDropLevel", 75, gDirPath.GetNewPath("commonserver.cfg"));
-
-		//#if (_GSCS==1)
-		gIsDropSetItemInCastleHuntZone = GetPrivateProfileInt("GameServerInfo","IsDropSetItemInCastleHuntZone", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gSetItemInCastleHuntZoneDropRate = GetPrivateProfileInt("GameServerInfo","SetItemInCastleHuntZoneDropRate", 1, gDirPath.GetNewPath("commonserver.cfg"));
-		gSetItemInCastleHuntZoneDropLevel = GetPrivateProfileInt("GameServerInfo","SetItemInCastleHuntZoneDropLevel", 75, gDirPath.GetNewPath("commonserver.cfg"));
-		//#endif
-		gAttackEventRegenTime = GetPrivateProfileInt("GameServerInfo","AttackEventRegenTime", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gIsEledoradoEvent = GetPrivateProfileInt("GameServerInfo","IsEledoradoEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoTitanRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconRegenTime", 720, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingRegenTime", 360, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosRegenTime", 360, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		//blue event
-		g_bDoBlueEvent = GetPrivateProfileInt("GameServerInfo", "BlueEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_BlueEvent.Load(gDirPath.GetNewPath("Event\\BlueEvent.dat"));
-		g_BlueEvent.SetEnable(g_bDoBlueEvent);
-		//Season 4.5 addon
-		gEledoradoGoldenRabbitRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenRabbitRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenDarkKnightRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenDarkKnightRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenDevilRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenDevilRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenMonsterRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenMonsterRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenCrustRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenCrustRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenSatirosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenSatirosRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenTwintailRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenTwintailRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenIronKnightRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenIronKnightRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenNeipinRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenNeipinRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenGreatDragonRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenGreatDragonRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		//Season 3.0 moved
-		gEledoradoEvent.SetEventState(gIsEledoradoEvent);
-		gEledoradoEvent.Init();
-
-		GetPrivateProfileString("GameServerInfo", "RingAttackEvent", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		g_bDoRingEvent = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "RingOrcKillGiftRate", "10000", szTemp, 10, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRingOrcKillGiftRate = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "RingDropGiftRate", "10000", szTemp, 10, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRingDropGiftRate = atoi(szTemp);
-		g_RingAttackEvent.Load(gDirPath.GetNewPath("Event\\RingAttack.dat"));
-		//#if (_GSCS==1)
-		//			g_bDoRingEvent = FALSE; //HermeX Fix
-		//#endif
-		g_RingAttackEvent.EnableEvent(g_bDoRingEvent);
-
-		//Season4 add-on
-		g_bDoXMasAttackEvent = GetPrivateProfileInt("GameServerInfo","XMasAttackEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iXMasAttackEventDropRate = GetPrivateProfileInt("GameServerInfo","XMasAttackEvent_DropRate", 50, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iXMasAttackEventDropZen = GetPrivateProfileInt("GameServerInfo","XMasAttackEvent_DropZen", 10000, gDirPath.GetNewPath("commonserver.cfg"));
-
-		g_XMasAttackEvent.Load(gDirPath.GetNewPath("Event\\XMasAttack.dat"));
-		g_XMasAttackEvent.EnableEvent(g_bDoXMasAttackEvent);
-
-		g_iXMasEvent_LuckNumber1st = GetPrivateProfileInt("GameServerInfo","XMasEvent_LuckNumber1st", 100, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iXMasEvent_LuckNumber2nd = GetPrivateProfileInt("GameServerInfo","XMasEvent_LuckNumber2nd", 200, gDirPath.GetNewPath("commonserver.cfg"));
-
-
-		//#if (_GSCS==1)
-		GetPrivateProfileString("GameServerInfo", "CastleDeepEvent", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		g_bDoCastleDeepEvent = atoi(szTemp);
-		g_CastleDeepEvent.Load(gDirPath.GetNewPath("Event\\CastleDeep.dat"));
-		g_CastleDeepEvent.EnableEvent(g_bDoCastleDeepEvent);
-		//#endif
-
-		GetPrivateProfileString("GameServerInfo", "EVENT1", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1 = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayMax", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1ItemDropTodayCount = 0;
-		gEvent1ItemDropTodayMax = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayPercent", "10000000", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1ItemDropTodayPercent = atoi(szTemp);
-		gFireCrackerEvent = GetPrivateProfileInt("GameServerInfo","FireCrackerEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gFireCrackerDropRate = GetPrivateProfileInt("GameServerInfo","FireCrackerDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForgFireCracker = GetPrivateProfileInt("GameServerInfo","ItemDropRateForFireCracker", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gOnlyFireCrackerEffectUse = GetPrivateProfileInt("GameServerInfo","OnlyFireCrackerEffectUse", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gMedalEvent = GetPrivateProfileInt("GameServerInfo","MedalEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gGoldMedalDropRate = GetPrivateProfileInt("GameServerInfo","GoldMedalDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gSilverMedalDropRate = GetPrivateProfileInt("GameServerInfo","SilverMedalDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForGoldMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForGoldMedal", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForSilverMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForSilverMedal", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gXMasEvent = GetPrivateProfileInt("GameServerInfo","XMasEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_XMasEvent_StarOfXMasDropRate = GetPrivateProfileInt("GameServerInfo","XMasEvent_StarOfXMasDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_XMasEvent_ItemDropRateForStarOfXMas = GetPrivateProfileInt("GameServerInfo","XMasEvent_ItemDropRateForStarOfXMas", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gHeartOfLoveEvent = GetPrivateProfileInt("GameServerInfo","HeartOfLoveEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gHeartOfLoveDropRate = GetPrivateProfileInt("GameServerInfo","HeartOfLoveDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForgHeartOfLove = GetPrivateProfileInt("GameServerInfo","ItemDropRateForHeartOfLove", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		GetPrivateProfileString("GameServerInfo", "HappyNewYearTalkNpc", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gHappyNewYearNpcEvent = atoi(szTemp);
-
-		if(gHappyNewYearNpcEvent != 0)
+		case 0: //All Events
 		{
-			// (Option) Happy-new-year NPC speaks
-			LogAddTD(lMsg.Get(MSGGET(2, 61)));
-		}
+			//Devil Square Event
+			//if ( gDevilSquareEvent == FALSE )
+			g_DevilSquare.SetClose();
+			g_DevilSquare.Load(ReadConfig.ConnDataFiles[13]);
+			gDevilSquareEvent = GetPrivateProfileInt("GameServerInfo","DevilSquareEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gEyesOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","EyesOfDevilSquareDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			gKeyOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","KeyOfDevilSquareDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			DevilSquareEventConnect = GetPrivateProfileInt("GameServerInfo","DevilSquareEventConnect", 1, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "DevilSquareEventServer", "127.0.0.1", gDevilSquareEventServerIp, 20, ReadConfig.ConnDataFiles[0]);
 
-		GetPrivateProfileString("GameServerInfo", "MerryXMasTalkNpc", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gMerryXMasNpcEvent = atoi(szTemp);
+			//TamaJJang Event
+			gTamaJJangEvent = GetPrivateProfileInt("GameServerInfo", "TamaJJangEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gTamaJJangKeepTime = GetPrivateProfileInt("GameServerInfo", "TamaJJangKeepTime", 0, ReadConfig.ConnDataFiles[0]);
+			gTamaJJangDisappearTime = GetPrivateProfileInt("GameServerInfo", "TamaJJangDisappearTime", 1800, ReadConfig.ConnDataFiles[0]);
+			gTamaJJangDisappearTimeRandomRange = GetPrivateProfileInt("GameServerInfo", "TamaJJangDisappearTimeRandomRange", 1800, ReadConfig.ConnDataFiles[0]);
+			gTamaJJangTime = 10;
 
-		if(gMerryXMasNpcEvent != 0)
-		{
-			// (Option) Christmas NPC speaks
-			LogAddTD(lMsg.Get(MSGGET(2, 60)));
-		}
+			//Blood Castle Event
+			g_BloodCastle.LoadItemDropRate();
 
-		g_ChaosCastle.Load(gDirPath.GetNewPath("Event\\ChaosCastle.dat"));
-		g_bChaosCastle = GetPrivateProfileInt("GameServerInfo","ChaosCastleEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gChaosCastleAllowingPlayers = GetPrivateProfileInt("GameServerInfo","ChaosCastleAllowingPlayers", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			//Event Chip Event
+			gEventChipEvent = GetPrivateProfileInt("GameServerInfo","EventChipEvent",0, ReadConfig.ConnDataFiles[0]);
+			gBoxOfGoldDropRate = GetPrivateProfileInt("GameServerInfo","BoxOfGoldDropRate",2, ReadConfig.ConnDataFiles[0]);
+			gBoxOfGoldMinMobLevel = GetPrivateProfileInt("GameServerInfo","BoxOfGoldMinMobLevel",10, ReadConfig.ConnDataFiles[0]);
+			gBoxOfGoldMaxMobLevel = GetPrivateProfileInt("GameServerInfo","BoxOfGoldMaxMobLevel",100, ReadConfig.ConnDataFiles[0]);
 
-		gSellHarmonyItemShop = GetPrivateProfileInt("GameServerInfo","SellHarmonyItemShop", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			g_ItemDropRateForBoxOfGold = GetPrivateProfileInt("GameServerInfo","ItemDropRateForBoxOfGold",2, ReadConfig.ConnDataFiles[0]);
+			g_ItemEXDropRateForBoxOfGold = GetPrivateProfileInt("GameServerInfo","ItemExDropRateForBoxOfGold",2, ReadConfig.ConnDataFiles[0]);
+			g_EventChipDropRateForBoxOfGold = GetPrivateProfileInt("GameServerInfo","EventChipDropRateForBoxOfGold",2, ReadConfig.ConnDataFiles[0]);
+			EventChipServerConnect = GetPrivateProfileInt("GameServerInfo","EventChipServerConnect", 0, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "EventChipServerIp", "127.0.0.1", gEventChipServerIp, 20, ReadConfig.ConnDataFiles[0]);
 
-		g_iKundunMarkDropRate = GetPrivateProfileInt("GameServerInfo","KundunMarkDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			// Janpan UNIQUE
+			g_iJapan1StAnivItemDropRate = GetPrivateProfileInt("GameServerInfo","Japan1StAnivItemDropRate", 0, ReadConfig.ConnDataFiles[0]);
 
-		g_iMysteriousBeadDropRate1 = GetPrivateProfileInt("GameServerInfo","MysteriouseBeadDropRate1", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iMysteriousBeadDropRate2 = GetPrivateProfileInt("GameServerInfo","MysteriouseBeadDropRate2", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			// Mark  of the Lord
+			g_iMarkOfTheLord = GetPrivateProfileInt("GameServerInfo","MarkOfTheLord",0, ReadConfig.ConnDataFiles[0]);
 
-		g_iHiddenTreasureBoxOfflineRate = GetPrivateProfileInt("GameServerInfo","HiddenTreasureBoxOfflineRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			// KUNDUN Settings
+			giKundunRefillHPSec = GetPrivateProfileInt("GameServerInfo","KundunRefillHPSec",500, ReadConfig.ConnDataFiles[0]);
+			giKundunRefillHP = GetPrivateProfileInt("GameServerInfo","KundunRefillHP",10000, ReadConfig.ConnDataFiles[0]);
+			giKundunRefillHPTime = GetPrivateProfileInt("GameServerInfo","KundunRefillHPTime",600, ReadConfig.ConnDataFiles[0]);
+			giKundunHPLogSaveTime = GetPrivateProfileInt("GameServerInfo","KundunHPLogSaveTime",120, ReadConfig.ConnDataFiles[0]);
 
-		//GetPrivateProfileString("GameServerInfo", "EventManagerOn", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		g_bEventManagerOn = 1;//atoi(szTemp);
-		g_EventManager.Load(gDirPath.GetNewPath("Event\\EventManager.dat"));
-		g_EventManager.RegEvent(0, DragonEvent);
-		g_EventManager.RegEvent(1, AttackEvent);
-		g_EventManager.RegEvent(2, &gEledoradoEvent);
-		g_EventManager.RegEvent(3, &g_RingAttackEvent);
-		g_EventManager.RegEvent(4, &g_XMasAttackEvent);//Season 4.5 addon
-		g_EventManager.Init(g_bEventManagerOn);
+			// Crywolf Dark Elf Item drop Settingss
+			g_bCrywolfMonsterDarkElfItemDrop = GetPrivateProfileInt("GameServerInfo","CrywolfMonsterDarkElfItemDrop",0, ReadConfig.ConnDataFiles[0]);
 
-		g_iDarkLordHeartDropRate = GetPrivateProfileInt("GameServerInfo","DarkLordHeartDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDarkLordHeartOffEventRate = GetPrivateProfileInt("GameServerInfo","DarkLoadHeartOffEventRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			// Crywolf Boss Monster Item drop Settingss
+			g_bCrywolfBossMonsterItemDrop = GetPrivateProfileInt("GameServerInfo","CrywolfBossMonsterItemDrop",0, ReadConfig.ConnDataFiles[0]);
 
-		// Ribbon Box Event
-		g_bRibbonBoxEvent = GetPrivateProfileInt("GameServerInfo","RibbonBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
+			// Crywolf Benefit
+			g_iCrywolfApplyMvpBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfApplyMvpBenefit",0, ReadConfig.ConnDataFiles[0]);
+				int iCrywolfPlusChaosRateBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfPlusChaosRateBenefit",0, ReadConfig.ConnDataFiles[0]);
+				int iCrywolfMonHPRateBenefit = GetPrivateProfileInt("GameServerInfo","CrywolfMonHPRateBenefit", 100, ReadConfig.ConnDataFiles[0]);
+				int iCrywolfKundunHPRefillState = GetPrivateProfileInt("GameServerInfo","CrywolfKundunHPRefillBenefit", 1, ReadConfig.ConnDataFiles[0]);
 
-		// Red Ribbon Box
-		g_iRedRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+				g_CrywolfSync.SetKundunHPRefillState(iCrywolfKundunHPRefillState);
+				g_CrywolfSync.SetPlusChaosRate(iCrywolfPlusChaosRateBenefit);
+				g_CrywolfSync.SetMonHPBenefitRate(iCrywolfMonHPRateBenefit);
 
-		// Green Ribbon Box
-		g_iGreenRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+			// Crywolf Penalty
+			g_iCrywolfApplyMvpPenalty = GetPrivateProfileInt("GameServerInfo","CrywolfApplyMvpPenalty",0, ReadConfig.ConnDataFiles[0]);
+				int iCrywolfGemDropPenaltyRate = GetPrivateProfileInt("GameServerInfo","CrwyolfGemDropPenaltyRate",100, ReadConfig.ConnDataFiles[0]);
+				int iCrywolfGettingExpPenaltyRate = GetPrivateProfileInt("GameServerInfo","CrwyolfGettingExpPenaltyRate",100, ReadConfig.ConnDataFiles[0]);
 
-		// Blue Ribbon Box
-		g_iBlueRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+				g_CrywolfSync.SetGemDropPenaltiyRate(iCrywolfGemDropPenaltyRate);
+				g_CrywolfSync.SetGettingExpPenaltyRate(iCrywolfGettingExpPenaltyRate);
 
+			// Kanturu Event
+			#if (GS_CASTLE==0)
+			int iKanturuEnableValue = GetPrivateProfileInt("GameServerInfo","KanturuEvent",0, ReadConfig.ConnDataFiles[0]);
+			g_Kanturu.SetKanturuEnable(iKanturuEnableValue);
+			#endif
+				// Map Enter Settings
+				g_iBlockKanturuMapEnter = GetPrivateProfileInt("GameServerInfo","BlockKanturuMapEnter",0, ReadConfig.ConnDataFiles[0]);
+				g_iBlockCastleSiegeMapEnter = GetPrivateProfileInt("GameServerInfo","BlockCastleSiegeMapEnter",0, ReadConfig.ConnDataFiles[0]);
+				// Drops Maya Hand
+				g_bKanturuMayaHandItemDrop = GetPrivateProfileInt("GameServerInfo","KanturuMayaHandItemDrop",0, ReadConfig.ConnDataFiles[0]);
+				// Drops Nightmare
+				g_bKanturuNightmareItemDrop = GetPrivateProfileInt("GameServerInfo","KanturuNightmareItemDrop",0, ReadConfig.ConnDataFiles[0]);
+				// Special Drop
+				g_bKanturuSpecialItemDropOn = GetPrivateProfileInt("GameServerInfo","KanturuSpecialItemDropOn",0, ReadConfig.ConnDataFiles[0]);
+				// Other
+				g_iKanturuMoonStoneDropRate = GetPrivateProfileInt("GameServerInfo","KanturuMoonStoneDropRate",0, ReadConfig.ConnDataFiles[0]);
+				g_iKanturuJewelOfHarmonyDropRate = GetPrivateProfileInt("GameServerInfo","KanturuJewelOfHarmonyDropRate",0, ReadConfig.ConnDataFiles[0]);
 
-		// Chocolate Event
-		g_bChocolateBoxEvent = GetPrivateProfileInt("GameServerInfo","ChocolateEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
+			g_bHellMainItemDrop = GetPrivateProfileInt("GameServerInfo","HellMainItemDrop",0, ReadConfig.ConnDataFiles[0]);
+			gIsDropDarkLordItem = GetPrivateProfileInt("GameServerInfo","IsDropDarkLordItem", 0, ReadConfig.ConnDataFiles[0]);
+			gSleeveOfLordDropRate = GetPrivateProfileInt("GameServerInfo","SleeveOfLordDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gSleeveOfLordDropLevel = GetPrivateProfileInt("GameServerInfo","SleeveOfLordDropLevel", 86, ReadConfig.ConnDataFiles[0]);
+			gSoulOfDarkHorseDropRate = GetPrivateProfileInt("GameServerInfo","SoulOfDarkHorseDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gSoulOfDarkHorseropLevel = GetPrivateProfileInt("GameServerInfo","SoulOfDarkHorseropLevel", 125, ReadConfig.ConnDataFiles[0]);
+			gSoulOfDarkSpiritDropRate = GetPrivateProfileInt("GameServerInfo","SoulOfDarkSpiritDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gSoulOfDarkSpiritDropLevel = GetPrivateProfileInt("GameServerInfo","SoulOfDarkSpiritDropLevel", 96, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "DarkSpiritAddExperience", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gDarkSpiritAddExperience = (float)atof(szTemp);
 
-		// Pink Chocolate Box
-		g_iPinkChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+			gIsDropGemOfDefend = GetPrivateProfileInt("GameServerInfo","IsDropGemOfDefend", 0, ReadConfig.ConnDataFiles[0]);
+			gGemOfDefendDropRate = GetPrivateProfileInt("GameServerInfo","GemOfDefendDropRate", 5, ReadConfig.ConnDataFiles[0]);
+			gGemOfDefendDropLevel = GetPrivateProfileInt("GameServerInfo","GemOfDefendDropLevel", 75, ReadConfig.ConnDataFiles[0]);
 
-		// Red Chocolate Box
-		g_iRedChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+#if (GS_CASTLE==1)
+			gIsDropSetItemInCastleHuntZone = GetPrivateProfileInt("GameServerInfo","IsDropSetItemInCastleHuntZone", 0, ReadConfig.ConnDataFiles[0]);
+			gSetItemInCastleHuntZoneDropRate = GetPrivateProfileInt("GameServerInfo","SetItemInCastleHuntZoneDropRate", 1, ReadConfig.ConnDataFiles[0]);
+			gSetItemInCastleHuntZoneDropLevel = GetPrivateProfileInt("GameServerInfo","SetItemInCastleHuntZoneDropLevel", 75, ReadConfig.ConnDataFiles[0]);
+#endif
+			gChaosEvent = GetPrivateProfileInt("GameServerInfo","ChaosEvent",0, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "ChaosEventServer", "127.0.0.1", gChaosEventServerIp, 20, ReadConfig.ConnDataFiles[0]);
+			gUdpSocCE.SendSet(gChaosEventServerIp, 60005);
+			LogAdd("[Option] ChaosEvent = %d", gChaosEvent);
+			LogAdd("[Option] ChaosEventServer = %s", gChaosEventServerIp);
 
-		// Blue Chocolate Box
-		g_iBlueChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+			//Eldorado Event
+			gIsEledoradoEvent = GetPrivateProfileInt("GameServerInfo","IsEledoradoEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoTitanRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
 
-		// Candy Event
-		g_bCandyBoxEvent = GetPrivateProfileInt("GameServerInfo","CandyBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
+			//Eldorado Event 2
+			gIsEledorado2Event = GetPrivateProfileInt("GameServerInfo","IsEledorado2Event", 0, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustItemRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
 
-		// LightPurple Candy Box
-		g_iLightPurpleCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Vermilion Candy Box
-		g_iVermilionCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// DeepBlue Candy Box
-		g_iDeepBlueCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 1: //Devil Square
-		g_DevilSquare.Load(gDirPath.GetNewPath("Event\\DevilSquare.dat"));
-		gDevilSquareEvent = GetPrivateProfileInt("GameServerInfo","DevilSquareEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gEyesOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","EyesOfDevilSquareDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gKeyOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","KeyOfDevilSquareDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 2: //Blood Castle
-		g_BloodCastle.Load(gDirPath.GetNewPath("Event\\BloodCastle.dat"));
-		g_bBloodCastle = GetPrivateProfileInt("GameServerInfo","BloodCastleEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_StartHour = GetPrivateProfileInt("GameServerInfo","BloodCastleStartHour", 1, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iAngelKingsPaperDropRate = GetPrivateProfileInt("GameServerInfo","AngelKingsPaperDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodBoneDropRate = GetPrivateProfileInt("GameServerInfo","BloodBoneDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iStoneDropRate = GetPrivateProfileInt("GameServerInfo","StoneDropRate", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_Prize = GetPrivateProfileInt("GameServerInfo","BloodCastlePrize", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBloodCastle_OddEvenHour = GetPrivateProfileInt("GameServerInfo","BloodCastleOddEvenHour", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gBloodCastleAllowingPlayers = GetPrivateProfileInt("GameServerInfo","BloodCastleAllowingPlayers", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 3: //Attack Event
-		gAttackEventRegenTime = GetPrivateProfileInt("GameServerInfo","AttackEventRegenTime", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 4: //Eledorado Event
-		gIsEledoradoEvent = GetPrivateProfileInt("GameServerInfo","IsEledoradoEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoTitanRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconRegenTime", 720, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingRegenTime", 360, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosRegenTime", 360, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldGoblenExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoTitanExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldDerconExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilLizardKingExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoDevilTantarosExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosExItemDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenRabbitRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenRabbitRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenDarkKnightRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenDarkKnightRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenDevilRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenDevilRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenMonsterRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenMonsterRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenCrustRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenCrustRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenSatirosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenSatirosRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenTwintailRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenTwintailRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenIronKnightRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenIronKnightRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenNeipinRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenNeipinRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		gEledoradoGoldenGreatDragonRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldenGreatDragonRegenTime", 180, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 5: //Ring Event
-		{
-			char szTemp[256];
-
-			GetPrivateProfileString("GameServerInfo", "RingAttackEvent", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
+			//Ring Attack Event
+			GetPrivateProfileString("GameServerInfo", "RingAttackEvent", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
 			g_bDoRingEvent = atoi(szTemp);
-			GetPrivateProfileString("GameServerInfo", "RingOrcKillGiftRate", "10000", szTemp, 10, gDirPath.GetNewPath("commonserver.cfg"));
+			GetPrivateProfileString("GameServerInfo", "RingOrcKillGiftRate", "10000", szTemp, 10, ReadConfig.ConnDataFiles[0]);
 			g_iRingOrcKillGiftRate = atoi(szTemp);
-			GetPrivateProfileString("GameServerInfo", "RingDropGiftRate", "10000", szTemp, 10, gDirPath.GetNewPath("commonserver.cfg"));
+			GetPrivateProfileString("GameServerInfo", "RingDropGiftRate", "10000", szTemp, 10, ReadConfig.ConnDataFiles[0]);
 			g_iRingDropGiftRate = atoi(szTemp);
-			g_RingAttackEvent.Load(gDirPath.GetNewPath("Event\\RingAttack.dat"));
+			g_iRingDropItemWhiteWizType	= GetPrivateProfileInt("GameServerInfo", "SCFRingEventWizardRewardItemType",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemWhiteWizIndex = GetPrivateProfileInt("GameServerInfo", "SCFRingEventWizardRewardItemIndex",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingEventOrcRewardDropRate =  GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardDropRate",10, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemOrcType = GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardItemType",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemOrcIndex = GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardItemIndex",20, ReadConfig.ConnDataFiles[0]) ;
 
-			//#if(_GSCS == 1)//Crazzy-fix
-			//g_bDoRingEvent = FALSE;
-			//#endif
+			g_RingAttackEvent.Load(ReadConfig.ConnDataFiles[17]);
+			g_RingAttackEvent.EnableEvent(g_bDoRingEvent);
 
+#if (GS_CASTLE==1)
+			GetPrivateProfileString("GameServerInfo", "CastleDeepEvent", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			g_bDoCastleDeepEvent = atoi(szTemp);
+			g_CastleDeepEvent.Load(ReadConfig.ConnDataFiles[19]);
+			g_CastleDeepEvent.EnableEvent(g_bDoCastleDeepEvent);
+#endif
+
+			GetPrivateProfileString("GameServerInfo", "EVENT1", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1 = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayMax", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1ItemDropTodayCount = 0;
+			gEvent1ItemDropTodayMax = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayPercent", "10000000", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1ItemDropTodayPercent = atoi(szTemp);
+
+			gFireCrackerEvent = GetPrivateProfileInt("GameServerInfo","FireCrackerEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gFireCrackerDropRate = GetPrivateProfileInt("GameServerInfo","FireCrackerDropRate", 5000, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForgFireCracker = GetPrivateProfileInt("GameServerInfo","ItemDropRateForFireCracker", 2, ReadConfig.ConnDataFiles[0]);
+			
+			gMedalEvent = GetPrivateProfileInt("GameServerInfo","MedalEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gGoldMedalDropRate = GetPrivateProfileInt("GameServerInfo","GoldMedalDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			gSilverMedalDropRate = GetPrivateProfileInt("GameServerInfo","SilverMedalDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForGoldMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForGoldMedal", 2, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForSilverMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForSilverMedal", 2, ReadConfig.ConnDataFiles[0]);
+			
+			gHeartOfLoveEvent = GetPrivateProfileInt("GameServerInfo","HeartOfLoveEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gHeartOfLoveDropRate = GetPrivateProfileInt("GameServerInfo","HeartOfLoveDropRate", 5000, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForgHeartOfLove = GetPrivateProfileInt("GameServerInfo","ItemDropRateForHeartOfLove", 2, ReadConfig.ConnDataFiles[0]);
+
+			// NPC Event Talk
+			gEnableEventNPCTalk = GetPrivateProfileInt("GameServerInfo","EnableEventNPCTalk", 0, ReadConfig.ConnDataFiles[0]);
+
+			g_ChaosCastle.Load(ReadConfig.ConnDataFiles[15]);
+			g_bChaosCastle = GetPrivateProfileInt("GameServerInfo","ChaosCastleEvent", 0, ReadConfig.ConnDataFiles[0]);
+			g_iCheckCanStartPlayCCMinPlayers = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleMinStart",2, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType1 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward1Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex1 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward1Index",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType2 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward2Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex2 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward2Index",22, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType3 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward3Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex3 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward3Index",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType4 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward4Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex4 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward4Index",16, ReadConfig.ConnDataFiles[0]) ;
+
+			g_bCC1SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle1AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC2SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle2AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC3SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle3AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC4SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle4AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC5SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle5AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC6SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle6AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC7SetDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle7AncientDropPercent",5, ReadConfig.ConnDataFiles[0]) ;
+
+			g_bCC1TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle1Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC2TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle2Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC3TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle3Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC4TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle4Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC5TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle5Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC6TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle6Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+			g_bCC7TypeDropRate = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastle7Type1Type2DropPercent",50, ReadConfig.ConnDataFiles[0]) ;
+
+			g_iKundunMarkDropRate = GetPrivateProfileInt("GameServerInfo","KundunMarkDropRate", 0, ReadConfig.ConnDataFiles[0]);
+
+			g_iMysteriousBeadDropRate1 = GetPrivateProfileInt("GameServerInfo","MysteriouseBeadDropRate1", 0, ReadConfig.ConnDataFiles[0]);
+			g_iMysteriousBeadDropRate2 = GetPrivateProfileInt("GameServerInfo","MysteriouseBeadDropRate2", 0, ReadConfig.ConnDataFiles[0]);
+
+			g_iHiddenTreasureBoxOfflineRate = GetPrivateProfileInt("GameServerInfo","HiddenTreasureBoxOfflineRate", 0, ReadConfig.ConnDataFiles[0]);
+     
+			GetPrivateProfileString("GameServerInfo", "EventManagerOn", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			g_bEventManagerOn = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "SCFEventManagerOn", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			g_bSCFEventManagerOn = 0;
+			g_bSCFEventManagerOn = atoi(szTemp);
+
+			g_EventManager.Load(ReadConfig.ConnDataFiles[18]);
+			g_EventManager.RegEvent(0, DragonEvent);
+			g_EventManager.RegEvent(1, AttackEvent);
+			g_EventManager.RegEvent(2, &gEledoradoEvent);
+			g_EventManager.RegEvent(3, &g_RingAttackEvent);
+			g_EventManager.Init(g_bEventManagerOn);
+			g_EventManager.SCFInit(g_bSCFEventManagerOn);
+
+			g_iDarkLordHeartDropRate = GetPrivateProfileInt("GameServerInfo","DarkLordHeartDropRate", 0, ReadConfig.ConnDataFiles[0]);
+			g_iDarkLordHeartOffEventRate = GetPrivateProfileInt("GameServerInfo","DarkLoadHeartOffEventRate", 0, ReadConfig.ConnDataFiles[0]);
+
+			// Box Events
+			g_bChocolateBoxEvent = GetPrivateProfileInt("GameServerInfo","ChocolateEvent",0, ReadConfig.ConnDataFiles[0]);
+			g_bCandyBoxEvent = GetPrivateProfileInt("GameServerInfo","CandyBoxEvent",0, ReadConfig.ConnDataFiles[0]);
+			g_bMysteryBoxEvent = GetPrivateProfileInt("GameServerInfo","MysteryBoxEvent",0, ReadConfig.ConnDataFiles[0]);
+		}
+		break;
+
+		case 1: //Devil Square
+		{
+			g_DevilSquare.Load(ReadConfig.ConnDataFiles[13]);
+			gDevilSquareEvent = GetPrivateProfileInt("GameServerInfo","DevilSquareEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gEyesOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","EyesOfDevilSquareDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			gKeyOfDevilSquareDropRate = GetPrivateProfileInt("GameServerInfo","KeyOfDevilSquareDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			DevilSquareEventConnect = GetPrivateProfileInt("GameServerInfo","DevilSquareEventConnect", 1, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "DevilSquareEventServer", "127.0.0.1", gDevilSquareEventServerIp, 20, ReadConfig.ConnDataFiles[0]);
+		}
+		break;
+
+		case 2: //Blood Castle
+		{
+			g_BloodCastle.LoadItemDropRate();
+		}
+		break;
+
+		case 3: //Attack Event
+			break;
+
+		case 4: //Eledorado Event
+		{
+			gIsEledoradoEvent = GetPrivateProfileInt("GameServerInfo","IsEledoradoEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoTitanRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosRegenTime = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldGoblenExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGoblenExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoTitanExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoTitanExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoGoldDerconExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDerconExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilLizardKingExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilLizardKingExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledoradoDevilTantarosExItemDropRate = GetPrivateProfileInt("GameServerInfo","EledoradoDevilTantarosExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+
+			gIsEledorado2Event = GetPrivateProfileInt("GameServerInfo","IsEledorado2Event", 0, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustItemRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightRegenTime", 180, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinRegenTime", 720, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventRegenTime[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitRegenTime", 360, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventItemDropRate[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[0] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDarkKnightExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[1] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldDevilExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[2] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldStoneGolemExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[3] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldCrustExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[4] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldSatyrosExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[5] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldTwinTaleExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[6] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldIronKnightExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[7] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldNapinExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[8] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldGreatDragonExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+			gEledorado2EventExItemDropRate[9] = GetPrivateProfileInt("GameServerInfo","EledoradoGoldRabbitExItemDropRate", 10, ReadConfig.ConnDataFiles[0]);
+
+		}
+		break;
+
+		case 5: //Ring Event
+		{
+			GetPrivateProfileString("GameServerInfo", "RingAttackEvent", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			g_bDoRingEvent = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "RingOrcKillGiftRate", "10000", szTemp, 10, ReadConfig.ConnDataFiles[0]);
+			g_iRingOrcKillGiftRate = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "RingDropGiftRate", "10000", szTemp, 10, ReadConfig.ConnDataFiles[0]);
+			g_iRingDropGiftRate = atoi(szTemp);
+			g_iRingDropItemWhiteWizType	= GetPrivateProfileInt("GameServerInfo", "SCFRingEventWizardRewardItemType",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemWhiteWizIndex = GetPrivateProfileInt("GameServerInfo", "SCFRingEventWizardRewardItemIndex",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingEventOrcRewardDropRate =  GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardDropRate",10, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemOrcType = GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardItemType",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iRingDropItemOrcIndex = GetPrivateProfileInt("GameServerInfo", "SCFRingEventOrcRewardItemIndex",20, ReadConfig.ConnDataFiles[0]) ;
+			
+			g_RingAttackEvent.Load(ReadConfig.ConnDataFiles[17]);
 			g_RingAttackEvent.EnableEvent(g_bDoRingEvent);
 		}
 		break;
 
-	case 6: //Event 1
-		GetPrivateProfileString("GameServerInfo", "EVENT1", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1 = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayMax", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1ItemDropTodayCount = 0;
-		gEvent1ItemDropTodayMax = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayPercent", "10000000", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gEvent1ItemDropTodayPercent = atoi(szTemp);
-		break;
-	case 7: //Fire Cracker
-		gFireCrackerEvent = GetPrivateProfileInt("GameServerInfo","FireCrackerEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gFireCrackerDropRate = GetPrivateProfileInt("GameServerInfo","FireCrackerDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForgFireCracker = GetPrivateProfileInt("GameServerInfo","ItemDropRateForFireCracker", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gOnlyFireCrackerEffectUse = GetPrivateProfileInt("GameServerInfo","OnlyFireCrackerEffectUse", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 8: //Medal Event
-		gMedalEvent = GetPrivateProfileInt("GameServerInfo","MedalEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gGoldMedalDropRate = GetPrivateProfileInt("GameServerInfo","GoldMedalDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		gSilverMedalDropRate = GetPrivateProfileInt("GameServerInfo","SilverMedalDropRate", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForGoldMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForGoldMedal", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForSilverMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForSilverMedal", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 9: //XMax Event
-		gXMasEvent = GetPrivateProfileInt("GameServerInfo","XMasEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_XMasEvent_StarOfXMasDropRate = GetPrivateProfileInt("GameServerInfo","XMasEvent_StarOfXMasDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_XMasEvent_ItemDropRateForStarOfXMas = GetPrivateProfileInt("GameServerInfo","XMasEvent_ItemDropRateForStarOfXMas", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 10: //Heart Of Love Event
-		gHeartOfLoveEvent = GetPrivateProfileInt("GameServerInfo","HeartOfLoveEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gHeartOfLoveDropRate = GetPrivateProfileInt("GameServerInfo","HeartOfLoveDropRate", 5000, gDirPath.GetNewPath("commonserver.cfg"));
-		g_ItemDropRateForgHeartOfLove = GetPrivateProfileInt("GameServerInfo","ItemDropRateForHeartOfLove", 2, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 11: //Happy New Year Event
-		GetPrivateProfileString("GameServerInfo", "HappyNewYearTalkNpc", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gHappyNewYearNpcEvent = atoi(szTemp);
-
-		if(gHappyNewYearNpcEvent != 0)
-		{
-			// (Option) Happy-new-year NPC speaks
-			LogAddTD(lMsg.Get(MSGGET(2, 61)));
-		}
-		break;
-	case 12: //Merry  XMax Event NPC talk
-		GetPrivateProfileString("GameServerInfo", "MerryXMasTalkNpc", "0", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gMerryXMasNpcEvent = atoi(szTemp);
-
-		if(gMerryXMasNpcEvent != 0)
-		{
-			// (Option) Christmas NPC speaks
-			LogAddTD(lMsg.Get(MSGGET(2, 60)));
-		}
-		break;
-	case 13: //Chaos Castle
-		g_ChaosCastle.Load(gDirPath.GetNewPath("Event\\ChaosCastle.dat"));
-		g_bChaosCastle = GetPrivateProfileInt("GameServerInfo","ChaosCastleEvent", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 14:
-		// Ribbon Box Event
-		g_bRibbonBoxEvent = GetPrivateProfileInt("GameServerInfo","RibbonBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Red Ribbon Box
-		g_iRedRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Green Ribbon Box
-		g_iGreenRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iGreenRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","GreenRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Blue Ribbon Box
-		g_iBlueRibbonBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueRibbonBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueRibbonBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		case 6: //Event 1
+			GetPrivateProfileString("GameServerInfo", "EVENT1", "0", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1 = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayMax", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1ItemDropTodayCount = 0;
+			gEvent1ItemDropTodayMax = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "Event1ItemDropTodayPercent", "10000000", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gEvent1ItemDropTodayPercent = atoi(szTemp);
 		break;
 
-	case 15:
-		// Chocolate Event
-		g_bChocolateBoxEvent = GetPrivateProfileInt("GameServerInfo","ChocolateEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Pink Chocolate Box
-		g_iPinkChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iPinkChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","PinkChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Red Chocolate Box
-		g_iRedChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iRedChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","RedChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
-
-		// Blue Chocolate Box
-		g_iBlueChocolateBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iBlueChocolateBoxDropZen = GetPrivateProfileInt("GameServerInfo","BlueChocolateBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		case 7: //Fire Cracker
+			gFireCrackerEvent = GetPrivateProfileInt("GameServerInfo","FireCrackerEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gFireCrackerDropRate = GetPrivateProfileInt("GameServerInfo","FireCrackerDropRate", 5000, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForgFireCracker = GetPrivateProfileInt("GameServerInfo","ItemDropRateForFireCracker", 2, ReadConfig.ConnDataFiles[0]);
 		break;
 
-	case 16:
-		// Candy Event
-		g_bCandyBoxEvent = GetPrivateProfileInt("GameServerInfo","CandyBoxEvent",0, gDirPath.GetNewPath("commonserver.cfg"));
+		case 8: //Medal Event
+			gMedalEvent = GetPrivateProfileInt("GameServerInfo","MedalEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gGoldMedalDropRate = GetPrivateProfileInt("GameServerInfo","GoldMedalDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			gSilverMedalDropRate = GetPrivateProfileInt("GameServerInfo","SilverMedalDropRate", 2, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForGoldMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForGoldMedal", 2, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForSilverMedal = GetPrivateProfileInt("GameServerInfo","ItemDropRateForSilverMedal", 2, ReadConfig.ConnDataFiles[0]);
+		break;
 
-		// LightPurple Candy Box
-		g_iLightPurpleCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iLightPurpleCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","LightPurpleCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		//case 9: //XMax Event
+			//gXMasEvent = GetPrivateProfileInt("GameServerInfo","XMasEvent", 0, ReadConfig.ConnDataFiles[0]);
+		//break;
 
-		// Vermilion Candy Box
-		g_iVermilionCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iVermilionCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","VermilionCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		case 10: //Heart Of Love Event
+			gHeartOfLoveEvent = GetPrivateProfileInt("GameServerInfo","HeartOfLoveEvent", 0, ReadConfig.ConnDataFiles[0]);
+			gHeartOfLoveDropRate = GetPrivateProfileInt("GameServerInfo","HeartOfLoveDropRate", 5000, ReadConfig.ConnDataFiles[0]);
+			g_ItemDropRateForgHeartOfLove = GetPrivateProfileInt("GameServerInfo","ItemDropRateForHeartOfLove", 2, ReadConfig.ConnDataFiles[0]);
+		break;
 
-		// DeepBlue Candy Box
-		g_iDeepBlueCandyBoxDropLevelMin = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Min",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropLevelMax = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropLv_Max",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropZenRate = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZenRate",0, gDirPath.GetNewPath("commonserver.cfg"));
-		g_iDeepBlueCandyBoxDropZen = GetPrivateProfileInt("GameServerInfo","DeepBlueCandyBoxDropZen",0, gDirPath.GetNewPath("commonserver.cfg"));
+		/*case 11: //Happy New Year Event
+			gHappyNewYearNpcEvent = GetPrivateProfileInt("GameServerInfo", "HappyNewYearTalkNpc", 0, ReadConfig.ConnDataFiles[0]);
+			gHappyNewYearNpcEvent = atoi(szTemp);
+
+			if(gHappyNewYearNpcEvent != 0)	//Happy-new-year NPC speaks
+			{
+				LogAddTD(lMsg.Get(MSGGET(2, 61)));
+			}
+		break;
+
+		case 12: //Merry  XMax Event NPC talk
+			gMerryXMasNpcEvent = GetPrivateProfileInt("GameServerInfo", "MerryXMasTalkNpc", 0, ReadConfig.ConnDataFiles[0]);
+
+			if(gMerryXMasNpcEvent != 0)		//Christmas NPC speaks
+			{
+				LogAddTD(lMsg.Get(MSGGET(2, 60)));
+			}
+		break;*/
+
+		case 13: //Chaos Castle
+			g_ChaosCastle.Load(ReadConfig.ConnDataFiles[15]);
+			g_bChaosCastle = GetPrivateProfileInt("GameServerInfo","ChaosCastleEvent", 0, ReadConfig.ConnDataFiles[0]);
+			g_iCheckCanStartPlayCCMinPlayers = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleMinStart",2, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType1 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward1Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex1 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward1Index",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType2 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward2Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex2 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward2Index",22, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType3 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward3Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex3 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward3Index",13, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCType4 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward4Type",14, ReadConfig.ConnDataFiles[0]) ;
+			g_iGiveWinnerItemCCIndex4 = GetPrivateProfileInt("GameServerInfo", "SCFChaosCastleReward4Index",16, ReadConfig.ConnDataFiles[0]) ;
+		break;
+
+#if (PACK_EDITION>=2)
+		case 14:	// XMAS Event
+			XMasEvent.Init("..\\SCFData\\EventsConfig\\SCF_XMasEvent.ini");
+		break;
+#endif
+
+		case 15:	// Chocolate Event
+			g_bChocolateBoxEvent = GetPrivateProfileInt("GameServerInfo","ChocolateEvent",0, ReadConfig.ConnDataFiles[0]);
+		break;
+
+		case 16:	// Candy Event
+			g_bCandyBoxEvent = GetPrivateProfileInt("GameServerInfo","CandyBoxEvent",0, ReadConfig.ConnDataFiles[0]);
 		break;
 	}
 }
+
 
 void ReadGameEtcInfo(MU_ETC_TYPE eGameEtcType)
 {
@@ -4485,186 +3952,93 @@ void ReadGameEtcInfo(MU_ETC_TYPE eGameEtcType)
 
 	switch ( eGameEtcType )
 	{
-	case 0:
-		GetPrivateProfileString("GameServerInfo", "AddExperience", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gAddExperience				= atof(szTemp);
-		GetPrivateProfileString("GameServerInfo", "WelcomeMessage", "zGameServer", gWelcomeMessage, 255, gDirPath.GetNewPath("commonserver.cfg"));
-		GetPrivateProfileString("GameServerInfo", "AddZen", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gAddZen						= atof(szTemp);
-		GetPrivateProfileString("GameServerInfo", "AddZenDiv", "5", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gAddZenDiv = atof(szTemp);	
-		gMonsterAttackRateIncrease	= GetPrivateProfileInt("GameServerInfo","AttackRateIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gMonsterDamageMinIncrease	= GetPrivateProfileInt("GameServerInfo","DamageMinIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gMonsterDamageMaxIncrease	= GetPrivateProfileInt("GameServerInfo","DamageMaxIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gMonsterDefenseIncrease		= GetPrivateProfileInt("GameServerInfo","DefenseIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gMonsterLifeIncrease		= GetPrivateProfileInt("GameServerInfo","LifeIncrease", 0, gDirPath.GetNewPath("commonserver.cfg"));
+		case 0:
+			GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gCreateCharacter = atoi(szTemp);
 
-		GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateCharacter = atoi(szTemp);
+			GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildCreate = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);
+			GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildDestroy = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);
+			GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildCreateLevel = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);
 
-		gCreateMGLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateMGLevel", 220, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateDLLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateDLLevel", 250, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateSUMLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateSUMLevel", 150, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateMONKLevel	= GetPrivateProfileIntA("GameServerInfo", "CreateMONKLevel", 180, gDirPath.GetNewPath("commonserver.cfg"));
+			GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			bCanTrade = atoi(szTemp);
 
-		GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildCreate = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);
-		GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildDestroy = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);
-		GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildCreateLevel = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);
+			bCanChaosBox = GetPrivateProfileInt("GameServerInfo", "ChaosBox", 0, ReadConfig.ConnDataFiles[0]);
+			GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gItemDropPer = atoi(szTemp);
+			gDoPShopOpen = GetPrivateProfileInt("GameServerInfo", "PersonalShopOpen", 0, ReadConfig.ConnDataFiles[0]);
 
-		g_bCastleGuildDestoyLimit = GetPrivateProfileInt("GameServerInfo", "CastleOwnerGuildDestroyLimit", 1, gDirPath.GetNewPath("commonserver.cfg"));
+			gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo", "AttackSpeedTimeLimit", 800, ReadConfig.ConnDataFiles[0]);
+			bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo", "IsIgnorePacketHackDetect", 0, ReadConfig.ConnDataFiles[0]);
+			gHackCheckCount = GetPrivateProfileInt("GameServerInfo", "HackCheckCount", 5, ReadConfig.ConnDataFiles[0]);
+			gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo", "MinimumAttackSpeedTime", 200 , ReadConfig.ConnDataFiles[0]);
+			gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo", "DetectedHackKickCount", 10, ReadConfig.ConnDataFiles[0]);
+			gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo", "IsKickDetecHackCountLimit", 0, ReadConfig.ConnDataFiles[0]);
+			break;
 
-		GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		bCanTrade = atoi(szTemp);
+		case 1:
+			GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gCreateCharacter = atoi(szTemp);
 
-		bCanChaosBox = GetPrivateProfileInt("GameServerInfo", "ChaosBox", 0, gDirPath.GetNewPath("commonserver.cfg"));
+			break;
 
-		GetPrivateProfileString("GameServerInfo", "PKItemDrop", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gPkItemDrop = atoi(szTemp);
+		case 2:
+			GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildCreate = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);
+			GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildDestroy = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);
+			GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gGuildCreateLevel = atoi(szTemp);
+			LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);
+			break;
 
-		GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gItemDropPer = atoi(szTemp);
+		case 3:
+			GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			bCanTrade = atoi(szTemp);
 
-		GetPrivateProfileString("GameServerInfo", "ItemLuckDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gItemLuckyDropPer = atoi(szTemp);
+			break;
+		case 4:
+			bCanChaosBox = GetPrivateProfileInt("GameServerInfo", "ChaosBox", 0, ReadConfig.ConnDataFiles[0]);
 
-		gExcItemDropRate = GetPrivateProfileInt("GameServerInfo", "ItemExcDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
+			break;
 
-		gDoPShopOpen = GetPrivateProfileInt("GameServerInfo", "PersonalShopOpen", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo", "AttackSpeedTimeLimit", 800, gDirPath.GetNewPath("commonserver.cfg"));
-		bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo", "IsIgnorePacketHackDetect", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gHackCheckCount = GetPrivateProfileInt("GameServerInfo", "HackCheckCount", 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo", "MinimumAttackSpeedTime", 200 , gDirPath.GetNewPath("commonserver.cfg"));
-		gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo", "DetectedHackKickCount", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo", "IsKickDetecHackCountLimit", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
+		case 5:
+			gDoPShopOpen = GetPrivateProfileInt("GameServerInfo", "PersonalShopOpen", 0, ReadConfig.ConnDataFiles[0]);
 
-	case 1:
-		GetPrivateProfileString("GameServerInfo", "CreateCharacter", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateCharacter = atoi(szTemp);
+			break;
 
-		gCreateMGLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateMGLevel", 220, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateDLLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateDLLevel", 250, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateSUMLevel		= GetPrivateProfileIntA("GameServerInfo", "CreateSUMLevel", 150, gDirPath.GetNewPath("commonserver.cfg"));
-		gCreateMONKLevel	= GetPrivateProfileIntA("GameServerInfo", "CreateMONKLevel", 180, gDirPath.GetNewPath("commonserver.cfg"));
+		case 6:
+			PvP.Read(".\\SCF_PvPSystem.ini");
+			break;
 
-		break;
+		case 7:
+			GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, ReadConfig.ConnDataFiles[0]);
+			gItemDropPer = atoi(szTemp);
 
-	case 2:
-		GetPrivateProfileString("GameServerInfo", "GuildCreate", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildCreate = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 57)), gGuildCreate);
-		GetPrivateProfileString("GameServerInfo", "GuildDestroy", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildDestroy = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 58)), gGuildDestroy);
-		GetPrivateProfileString("GameServerInfo", "GuildCreateLevel", "100", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gGuildCreateLevel = atoi(szTemp);
-		LogAdd(lMsg.Get(MSGGET(2, 59)), gGuildCreateLevel);
-		g_bCastleGuildDestoyLimit = GetPrivateProfileInt("GameServerInfo", "CastleOwnerGuildDestroyLimit", 1, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 3:
-		GetPrivateProfileString("GameServerInfo", "Trade", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		bCanTrade = atoi(szTemp);
-		break;
-	case 4:
-		bCanChaosBox = GetPrivateProfileInt("GameServerInfo", "ChaosBox", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 5:
-		gDoPShopOpen = GetPrivateProfileInt("GameServerInfo", "PersonalShopOpen", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 6:
-		GetPrivateProfileString("GameServerInfo", "PKItemDrop", "1", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gPkItemDrop = atoi(szTemp);
-		break;
-	case 7:
-		GetPrivateProfileString("GameServerInfo", "ItemDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gItemDropPer = atoi(szTemp);
-		GetPrivateProfileString("GameServerInfo", "ItemLuckDropPer", "10", szTemp, 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gItemLuckyDropPer = atoi(szTemp);
-		gExcItemDropRate = GetPrivateProfileInt("GameServerInfo", "ItemExcDropRate", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 8:
-		gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo", "AttackSpeedTimeLimit", 800, gDirPath.GetNewPath("commonserver.cfg"));
-		bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo", "IsIgnorePacketHackDetect", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		gHackCheckCount = GetPrivateProfileInt("GameServerInfo", "HackCheckCount", 5, gDirPath.GetNewPath("commonserver.cfg"));
-		gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo", "MinimumAttackSpeedTime", 200 , gDirPath.GetNewPath("commonserver.cfg"));
-		gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo", "DetectedHackKickCount", 10, gDirPath.GetNewPath("commonserver.cfg"));
-		gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo", "IsKickDetecHackCountLimit", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	case 9:
-		gUseNPGGChecksum = GetPrivateProfileInt("GameServerInfo", "UseNPGGChecksum", 0, gDirPath.GetNewPath("commonserver.cfg"));
-		break;
-	}
-}
+			break;
 
-void SetEventOff() //0058C4F0
-{
-	if(gEventOff == TRUE)
-	{
-		//Lucky Coin Event
-		g_bLuckyCoinEventOn = FALSE;
-		g_iLuckyCoinDropRate = 0;
+		case 8:
+			gAttackSpeedTimeLimit = GetPrivateProfileInt("GameServerInfo", "AttackSpeedTimeLimit", 800, ReadConfig.ConnDataFiles[0]);
+			bIsIgnorePacketSpeedHackDetect = GetPrivateProfileInt("GameServerInfo", "IsIgnorePacketHackDetect", 0, ReadConfig.ConnDataFiles[0]);
+			gHackCheckCount = GetPrivateProfileInt("GameServerInfo", "HackCheckCount", 5, ReadConfig.ConnDataFiles[0]);
+			gMinimumAttackSpeedTime = GetPrivateProfileInt("GameServerInfo", "MinimumAttackSpeedTime", 200 , ReadConfig.ConnDataFiles[0]);
+			gDetectedHackKickCount = GetPrivateProfileInt("GameServerInfo", "DetectedHackKickCount", 10, ReadConfig.ConnDataFiles[0]);
+			gIsKickDetecHackCountLimit = GetPrivateProfileInt("GameServerInfo", "IsKickDetecHackCountLimit", 0, ReadConfig.ConnDataFiles[0]);
 
-		//Ribbon Box Event
-		g_bRibbonBoxEvent = FALSE;
-		g_iRedRibbonBoxDropLevelMin = 0;
-		g_iRedRibbonBoxDropLevelMax = 0;
-		g_iRedRibbonBoxDropRate = 0;
-		g_iRedRibbonBoxDropZenRate = 0;
-		g_iRedRibbonBoxDropZen = 0;
-		g_iGreenRibbonBoxDropLevelMin = 0;
-		g_iGreenRibbonBoxDropLevelMax = 0;
-		g_iGreenRibbonBoxDropRate = 0;
-		g_iGreenRibbonBoxDropZenRate = 0;
-		g_iGreenRibbonBoxDropZen = 0;
-		g_iBlueRibbonBoxDropLevelMin = 0;
-		g_iBlueRibbonBoxDropLevelMax = 0;
-		g_iBlueRibbonBoxDropRate = 0;
-		g_iBlueRibbonBoxDropZenRate = 0;
-		g_iBlueRibbonBoxDropZen = 0;
+			break;
 
-		//Pouch of Blessing
-		g_bNewYearLuckyBagMonsterEventOn = FALSE;
+		case 9:
+			gUseNPGGChecksum = GetPrivateProfileInt("GameServerInfo", "UseNPGGChecksum", 0, ReadConfig.ConnDataFiles[0]);
 
-		//Chocolate Event
-		g_bChocolateBoxEvent = FALSE;
-		g_iPinkChocolateBoxDropLevelMin = 0;
-		g_iPinkChocolateBoxDropLevelMax = 0;
-		g_iPinkChocolateBoxDropRate = 0;
-		g_iPinkChocolateBoxDropZenRate = 0;
-		g_iPinkChocolateBoxDropZen = 0;
-		g_iRedChocolateBoxDropLevelMin = 0;
-		g_iRedChocolateBoxDropLevelMax = 0;
-		g_iRedChocolateBoxDropRate = 0;
-		g_iRedChocolateBoxDropZenRate = 0;
-		g_iRedChocolateBoxDropZen = 0;
-		g_iBlueChocolateBoxDropLevelMin = 0;
-		g_iBlueChocolateBoxDropLevelMax = 0;
-		g_iBlueChocolateBoxDropRate = 0;
-		g_iBlueChocolateBoxDropZenRate = 0;
-		g_iBlueChocolateBoxDropZen = 0;
+			break;
 
-		//Candy Box Event
-		g_bCandyBoxEvent = FALSE;
-		g_iLightPurpleCandyBoxDropLevelMin = 0;
-		g_iLightPurpleCandyBoxDropLevelMax = 0;
-		g_iLightPurpleCandyBoxDropRate = 0;
-		g_iLightPurpleCandyBoxDropZenRate = 0;
-		g_iLightPurpleCandyBoxDropZen = 0;
-		g_iVermilionCandyBoxDropLevelMin = 0;
-		g_iVermilionCandyBoxDropLevelMax = 0;
-		g_iVermilionCandyBoxDropRate = 0;
-		g_iVermilionCandyBoxDropZenRate = 0;
-		g_iVermilionCandyBoxDropZen = 0;
-		g_iDeepBlueCandyBoxDropLevelMin = 0;
-		g_iDeepBlueCandyBoxDropLevelMax = 0;
-		g_iDeepBlueCandyBoxDropRate = 0;
-		g_iDeepBlueCandyBoxDropZenRate = 0;
-		g_iDeepBlueCandyBoxDropZen = 0;
 	}
 }

@@ -1,7 +1,7 @@
 // TMonsterAI.cpp: implementation of the TMonsterAI class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-N	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x0055A7A0	-	Completed
 //////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "gObjMonster.h"
 #include "TMonsterAI.h"
@@ -11,10 +11,11 @@
 #include "CrywolfUtil.h"
 
 #include "user.h"
-#include "BuffEffectSlot.h"
 
 static TMonsterAIUtil MONSTER_UTIL;
+#if (GS_CASTLE==1)
 static CCrywolfUtil UTIL;
+#endif
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -30,7 +31,8 @@ TMonsterAI::~TMonsterAI()
 
 }
 
-//005E4800
+
+
 void TMonsterAI::MonsterAIProc()
 {
 	TMonsterAIRule::MonsterAIRuleProc();
@@ -139,19 +141,22 @@ void TMonsterAI::ProcessStateMsg(LPOBJ lpObj, int iMsgCode, int iIndex, int aMsg
 			break;
 
 		case 55:
-			gObjAttack(lpObj, &gObj[iIndex], NULL, FALSE, FALSE, 0, FALSE, 0, 0);
+			gObjAttack(lpObj, &gObj[iIndex], NULL, FALSE, FALSE, 0, FALSE);
 			break;
 
 		case 56:
 			{
 				LPOBJ lpTargetObj = &gObj[iIndex];
 				
-				if(gObjCheckUsedBuffEffect(lpTargetObj, AT_POISON) == 0)
+				if ( lpTargetObj->m_PoisonType == 0 )
 				{
-					if ( retResistance(lpTargetObj, 1) == FALSE )
+					if ( retResistance(lpTargetObj, R_POISON) == FALSE )
 					{
+						lpTargetObj->m_PoisonType = 1;
+						lpTargetObj->m_PoisonBeattackCount = aMsgSubCode;
 						lpTargetObj->lpAttackObj = lpObj;
-						gObjAddBuffEffect(lpTargetObj, AT_POISON, 19, 3, 0, 0, aMsgSubCode);
+						lpTargetObj->m_ViewSkillState |= 1;
+						GCSkillInfoSend(lpTargetObj, 1, 0x37);
 					}
 				}
 			}
@@ -193,7 +198,7 @@ BOOL TMonsterAI::UpdateCurrentAIUnit(int iIndex)
 
 	if ( iOldCurrentAI != iCurrentAI )
 	{
-		UTIL.SendCrywolfChattingMsg(lpObj->m_Index, "★AI %s 에서 %s 로 바꾼다!!", TMonsterAIUnit::FindAIUnit(iOldCurrentAI)->m_szUnitName, TMonsterAIUnit::FindAIUnit(iCurrentAI)->m_szUnitName);
+		//Tracer here to find AI unit
 	}
 
 	return TRUE;
@@ -226,7 +231,8 @@ void TMonsterAI::MonsterMove(int iIndex)
 		lpObj->PathStartEnd = 0;
 		memset(lpObj->PathX, 0, sizeof(lpObj->PathX));
 		memset(lpObj->PathY, 0, sizeof(lpObj->PathY));
-		memset(lpObj->PathDir, 0, sizeof(lpObj->PathY)); //check this out
+		//memset(lpObj->PathDir, 0, sizeof(lpObj->PathY));	// #error Cahgne this to PatDir
+		memset(lpObj->PathDir, 0, sizeof(lpObj->PathDir));	// FIXED
 
 		return ;
 	}
@@ -278,5 +284,5 @@ void TMonsterAI::MonsterMove(int iIndex)
 	lpObj->PathStartEnd = 0;
 	memset(lpObj->PathX, 0, sizeof(lpObj->PathX));
 	memset(lpObj->PathY, 0, sizeof(lpObj->PathY));
-	memset(lpObj->PathDir, 0, sizeof(lpObj->PathY)); //check this out
+	memset(lpObj->PathDir, 0, sizeof(lpObj->PathDir));	// FIXED
 }

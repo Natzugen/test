@@ -135,17 +135,12 @@ BOOL wsJoinServerCli::DataSend(PCHAR buf, int len)
 				return FALSE;
 			}
 
-			if( (*sendbuflen + nLeft) > 819200 )
+			if ( (*sendbuflen + nLeft) > 819200 )
 			{
 				LogAddC(2,"error-L3 : buffer error closed %d, %d", (*sendbuflen+nLeft), 819200);
 				*sendbuflen = 0;
 				this->Close(this->m_socket);
 				return FALSE;
-			}
-
-			if( !this->m_SendBufLen )
-			{
-				return false;
 			}
 
 			if ( nDx >= 0 )
@@ -217,7 +212,8 @@ BOOL wsJoinServerCli::FDWRITE_MsgDataSend()
 		if (nResult <= 0)
 		{
 			LogAdd("send() result is zero %d", WSAGetLastError());
-			break;
+			continue;//w2k3 sp2 fix
+			//break;
 		}
 		LogAdd("error-L3 : nDx %d m_SendBufLen %d", nDx, this->m_SendBufLen );
 
@@ -243,7 +239,7 @@ int wsJoinServerCli::DataRecv()
 	int size;
 	BYTE headcode;
 
-	recvbuf= (LPBYTE)&this->m_RecvBuf[0]   ; //original (UCHAR*)
+	recvbuf= (UCHAR*)&this->m_RecvBuf[0]   ;
 	recvbuflen=&this->m_RecvBufLen ;
 	nResult=recv(this->m_socket , (CHAR*)&recvbuf[*recvbuflen], (819200-*recvbuflen), 0);
 
@@ -279,13 +275,13 @@ int wsJoinServerCli::DataRecv()
 		
 		if (recvbuf[lOfs] == 0xC1 )	// Type packet handling C1 Type
 		{
-			unsigned char* c1subbase = (LPBYTE)&recvbuf[lOfs]; //ORIGINAL (UCHAR*)
+			unsigned char* c1subbase = (UCHAR*)&recvbuf[lOfs];
 			size=c1subbase[1];
 			headcode=c1subbase[2];
 		}
 		else if ( recvbuf[lOfs] == 0xC2 ) // Type packet handling C2 Type
 		{
-			unsigned char* c2subbase=(LPBYTE)&recvbuf[lOfs]; //ORIGINAL (UCHAR*)
+			unsigned char* c2subbase=(UCHAR*)&recvbuf[lOfs];
 			size = c2subbase[1] * 256;
 			size |= c2subbase[2];
 			headcode = c2subbase[3];

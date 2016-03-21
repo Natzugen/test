@@ -1,8 +1,11 @@
-//GameServer 1.00.90 finished
 #include "stdafx.h"
 #include "MultiAttackHackCheck.h"
 #include "SkillAdditionInfo.h"
 
+// GS-N 0x00452273 - 0.99.60T
+// GS-N	1.00.18	JPN	0x00461400	-	Completed
+
+// sizeof ( this->class = 0x2858 )
 CMultiAttackHackCheck gMultiAttackHackCheck[OBJMAX];
 
 
@@ -32,7 +35,7 @@ void CMultiAttackHackCheck::Init()
 
 
 
-BOOL CMultiAttackHackCheck::Insert(int aTargetIndex, BYTE skillnum, BYTE serial)
+BOOL CMultiAttackHackCheck::Insert(int aTargetIndex, WORD skillnum, BYTE serial)
 {
 	if ( gObj[aTargetIndex].Type == OBJ_MONSTER )
 	{
@@ -85,7 +88,7 @@ BOOL CMultiAttackHackCheck::Insert(int aTargetIndex, BYTE skillnum, BYTE serial)
 
 
 
-BOOL CMultiAttackHackCheck::CheckPenetrationSkill(int aTargetIndex, BYTE skillnum, BYTE serial)
+BOOL CMultiAttackHackCheck::CheckPenetrationSkill(int aTargetIndex, WORD skillnum, BYTE serial)
 {
 	if ( skillnum != 52 )
 	{
@@ -131,12 +134,12 @@ BOOL CMultiAttackHackCheck::CheckPenetrationSkill(int aTargetIndex, BYTE skillnu
 
 
 
-BOOL CMultiAttackHackCheck::CheckFireScreamSkill(int iTargetIndex, BYTE btSkillNum, BYTE btSerial)
+BOOL CMultiAttackHackCheck::CheckFireScreamSkill(int iTargetIndex, WORD btSkillNum, BYTE btSerial)
 {
 	if ( g_SkillAdditionInfo.GetCheckFireScreamSkill() == FALSE )
 		return TRUE;
 
-	if ( btSerial > g_SkillAdditionInfo.GetFireScreamSerialInitCount()- 4)//NEW 
+	if ( btSerial > g_SkillAdditionInfo.GetFireScreamSerialInitCount() )
 		this->Init();
 
 	for ( int iCount = 0 ; iCount < MAX_MULTI_ATTACK_INFO ; iCount++)
@@ -149,8 +152,6 @@ BOOL CMultiAttackHackCheck::CheckFireScreamSkill(int iTargetIndex, BYTE btSkillN
 			{
 				return FALSE;
 			}
-
-			return TRUE;//NEW
 		}
 	}
 

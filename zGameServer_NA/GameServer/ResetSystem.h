@@ -1,65 +1,66 @@
-#pragma once
-// -------------------------------------------------------------------------
+#include "stdafx.h"
+#include "user.h"
 
-#ifdef __CUSTOMS__
-// -------------------------------------------------------------------------
+#if (DSGN_RESET_SYSTEM==0)
+#if (PACK_EDITION>=2)
 
-#include "ResetSystemDefine.h"
-// -------------------------------------------------------------------------
+struct ResetStruct
+{
+	BOOL Enabled;
+	BOOL ClearResets;
+	BOOL ClearMasterPoints;
+	BOOL EnabledWriteLog;
+	int LimitCount;
+#if (PACK_EDITION>=3)
+	BOOL EnabledDBLog;
+#endif
+	BYTE System;
+	int Level;
+	BOOL ClearStats;
+	BOOL ClearQuests;
+	BOOL ClearEvolutions;
+	BOOL ClearSkills;
+	BOOL ClearInventory;
+	BOOL ZenAutoIncrement;
+	BOOL ClearLevelUpPoint;
+	int AddPoints;
+	int AddVIPPoints;
+	int AddPCPoints;
+	int  Zen;
 
-class ResetSystem
+	BOOL MailSend;
+	char MailString[2048];
+
+	BOOL ItemNeed;
+	int ItemNeedType[7];
+	int ItemNeedIndex[7];
+	int ItemNeedLevel[7];
+	int ItemNeedOpt[7];
+	BOOL ItemNeedLuck[7];
+	BOOL ItemNeedSkill[7];
+	int ItemNeedCount[7];
+
+	int System2Level[7];
+	int System2Points[7];
+};
+
+class cResetSystem
 {
 public:
-			ResetSystem();
-	virtual ~ResetSystem();
-	// ----
-	void	Init();
-	void	Load();
-	void	ReadGroupData(char * File);
-	void	ReadMainData(char * File);
-	// ----
-	int		GetResetMoney(LPOBJ lpUser);
-	int		GetResetGroup(LPOBJ lpUser);
-	bool	SearchQuestItem(LPOBJ lpUser, BYTE QuestItemID);
-	bool	DeleteQuestItem(LPOBJ lpUser, BYTE QuestItemID);
-	bool	CheckAllReq(LPOBJ lpUser);
-	// ----
-	bool	Dialog(LPOBJ lpUser, LPOBJ lpNpc);
-	// ----
-	void	SendResetData(LPOBJ lpUser, bool ByDialog);
-	void	FinishResetReq(LPOBJ lpUser);
-	// ----
-	float	GetPrivateProfileFloat(char * Section, char * Key, float DefaultValue, char * File);
-	float	GetDynamicExp(LPOBJ lpUser);
-	// ----
-private:
-	int		m_GroupLoadedCount;
-	int		m_MaxMoney;
-	bool	m_ReqCleanInventory;
-	bool	m_ResetStats;
-	bool	m_ResetPoints;
-	WORD	m_NpcID;
-	BYTE	m_NpcMap;
-	BYTE	m_NpcX;
-	BYTE	m_NpcY;
-	RESET_GROUP_DATA	m_GroupData[MAX_RESET_GROUP];
-	bool	m_DynamicExp;
-	float	m_DynamicExpMin;
-	float	m_DynamicExpPercent;
-	int		m_BonusCommand;
-	// ----
-	bool	m_ResetSkill;
-	bool	m_ResetMasterLevel;
-	bool	m_ResetMasterStats;
-	bool	m_ResetMasterSKill;
-public:
-	bool	m_ShopCleaning;
-	bool	m_MarlonReset;
-	WORD	m_MarlonStatMinLevel;
-	WORD	m_MarlonComboMinLevel;
-	// ----
-}; extern ResetSystem g_ResetSystem;
-// -------------------------------------------------------------------------
+	void Init(char * FilePath, BYTE ResetType);
+	void Start(LPOBJ lpObj);
+	void SetPoints(LPOBJ lpObj, ResetStruct ResetTmp, int ResetNum, int & LvlUpPoint);
+	void CheckSendMail(LPOBJ lpObj);
+	void SendMail(LPOBJ lpObj);
+//vars:
+	
+	ResetStruct Normal;
+	ResetStruct Masters;
+};
 
-#endif
-// -------------------------------------------------------------------------
+extern cResetSystem ResetChar;
+
+#endif	//PACK_EDITION
+#else
+
+#endif	//DSGN_RESET_SYSTEM

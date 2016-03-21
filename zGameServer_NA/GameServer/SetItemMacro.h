@@ -9,7 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-
+/*
 #define MAX_SET_ITEM_MACRO	50
 
 struct SETITEMLIST
@@ -38,7 +38,7 @@ public:
 	~CSetItemMacro();
 
 	BOOL Load(char* szFileName);
-	BOOL MakeItem(int aIndex, char* szSetName);
+	int MakeItem(int aIndex, char* szSetName);
 
 private:
 
@@ -47,5 +47,5 @@ private:
   char sMakeItemName[MAX_SET_ITEM_MACRO][255];	// 8D68
 
 };
-
+*/
 #endif // !defined(AFX_SETITEMMACRO_H__068E3238_E18F_4890_AB7D_8E7E63BD3F91__INCLUDED_)

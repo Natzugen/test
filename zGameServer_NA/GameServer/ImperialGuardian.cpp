@@ -1,2543 +1,1363 @@
-// ------------------------------
-// Decompiled by Hybrid
-// 1.01.00
-// ------------------------------
-
 #include "stdafx.h"
-#include "ImperialGuardian.h"
-#include "gamemain.h"
-#include "logproc.h"
-#include "MapClass.h"
+#include "GameServer.h"
+#include "LogProc.h"
+#include "GameMain.h"
+#include "TNotice.h"
+#include "..\include\readscript.h"
 #include "gObjMonster.h"
-#include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
-#include "BloodCastle.h"
+#include "MapServerManager.h"
 #include "DSProtocol.h"
+#include "Event.h"
+#include "ImperialGuardian.h"
+#include "ExServerProtocol.h"
+#include "SCFExDB_Defines.h"
+#include "..\common\winutil.h"
+
 #include "LogToFile.h"
-#include "globalfunc.h"
-#include "MonsterStatCalc.h"
-#include <atltime.h>
-#ifdef __CUSTOMS__
-#include "ShopPointEx.h"
-#include "ResetSystem.h"
-#endif
+extern CLogToFile ANTI_HACK_LOG;
 
-CImperialGuardian g_ImperialGuardian;
+cImperialGuardian g_ImperialGuardian;
+BYTE cImperialGuardian__Map[MAX_IG_EVENT_DAYS]	= {72,69,70,71,69,70,71};//0 its sunday;
+BYTE cImperialGuardian__Stages[MAX_IG_EVENT_DAYS]= {4, 3, 3, 3, 3, 3, 3};//0 its sunday;
 
-CImperialGuardian::CImperialGuardian(void)
+static const struct IG_GATES
 {
-	Init();
-}
+	int stage1Start;
+	int stage1Finish;
+	int stage2Start;
+	int stage2Finish;
+	int stage3Start;
+	int stage3Finish;
+	int stage4Start;
 
+} cImperialGuardian_Gates[MAX_IG_EVENT_DAYS] = {
 
-CImperialGuardian::~CImperialGuardian(void)
+	322,323,324,325,326,327,328,
+	307,308,309,310,311,-1,-1,
+	312,313,314,315,316,-1,-1,
+	317,318,319,320,321,-1,-1,
+	307,308,309,310,311,-1,-1,
+	312,313,314,315,316,-1,-1,
+	317,318,319,320,321,-1,-1
+};
+
+static const struct IGUARDIAN_ZONE
 {
-}
+	BYTE btStartX;
+	BYTE btStartY;
+	BYTE btEndX;
+	BYTE btEndY;
 
-
-void CImperialGuardian::Init()	//OK
+} g_iGuardianDoorMapXY[MAX_IG_EVENT_STAGES][10]= 
 {
-	this->m_DayOfWeekGM = -1;
-	this->MixNeedZen = -1;
-	this->m_CheatModeGM = 0;
-	this->m_nDayOfWeek = -1;
-	this->ukn0Ch = 0;
-	this->m_bScriptLoad = false;
-	this->m_bEventOn = false;
-	InitializeCriticalSection(&m_cs);
-}
+	//Map 69
+	219, 28, 243, 55,  // Zone 1-A
+	216, 55, 234, 85,  // Zone 1-B
+	209, 78, 215, 83,  // Zone 1-C	216,83 => 215, 83 [DaRKav]
 
-void CImperialGuardian::InitEventDungeon()	//OK
+	166, 15, 194, 38,  // Zone 2-A
+	152, 23, 166, 53,  // Zone 2-B
+	152, 53, 156, 59,  // Zone 2-C
+
+	172, 79, 187, 102, // Zone 3-A
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+
+	//Map 70
+	51, 53, 75, 74,	   // Zone 1-A
+	19, 62, 50, 67,	   // Zone 1-B
+	13, 64, 19, 66,	   // Zone 1-C
+
+	26, 93, 48, 117,   // Zone 2-A
+	38, 117, 55, 154,  // Zone 2-B
+	53, 154, 57, 160,  // Zone 2-C
+
+	84, 104, 107, 118, // Zone 3-A
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+
+	//Map 71
+	136, 180, 146, 204,// Zone 1-A
+	111, 185, 119, 200,// Zone 1-B
+	83, 193, 89, 197,  // Zone 1-C
+
+	212, 134, 232, 144,// Zone 2-A
+	170, 160, 220, 193,// Zone 2-B
+	222, 193, 224, 200,// Zone 2-C
+
+	157, 217, 176, 239,// Zone 3-A
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+	-1,-1,-1,-1,
+
+	//Map 72
+	66, 59, 81, 78,	   // Zone 1-A
+	42, 66, 50, 90,    // Zone 1-B
+	29, 90, 32, 96,    // Zone 1-C
+
+	30, 176, 40, 185,  // Zone 2-A
+	52, 189, 60, 193,  // Zone 2-B
+	65, 160, 72, 166,  // Zone 2-C
+
+	156, 127, 197, 139,// Zone 3-A
+	197, 131, 226, 159,// Zone 3-B
+	220, 159, 226, 166,// Zone 3-C
+	
+	180, 20, 214, 32   // Zone 4-A
+};
+
+BOOL IMPERIALGUARDIAN_MAP_RANGE(int Map)
 {
-	for (int i = 0; i < MAX_EVENTZONE; ++i )
+	if ((Map < MAP_INDEX_EMPIREGUARDIAN1) || (Map > MAP_INDEX_EMPIREGUARDIAN4))
 	{
-		InitZone(i);
+		return FALSE;
 	}
+	return TRUE;
 }
 
-void CImperialGuardian::LoadScript(LPCSTR lpFileName)	//OK
+void cImperialGuardian::ReadConfigs(char * FilePath)
 {
-	m_bEventOn = GetPrivateProfileIntA("GameServerInfo", "IGEventOn", 0, lpFileName);
-	m_LootTime = GetPrivateProfileIntA("GameServerInfo", "LootTime", 20, lpFileName);
-	m_WaitPlayerTime = GetPrivateProfileIntA("GameServerInfo", "WaitPlayerTime", 20, lpFileName);
-	TimeAttackTime = GetPrivateProfileIntA("GameServerInfo", "TimeAttackTime", 600, lpFileName);
-	MixNeedZen = GetPrivateProfileIntA("GameServerInfo", "MixNeedZen", 1000000, lpFileName);
-	g_nMysteriousPaperDropRate = GetPrivateProfileIntA("GameServerInfo", "MysteriousPaperDropRate", 0, lpFileName);
-	m_bPromotionOn = GetPrivateProfileIntA("GameServerInfo", "IGPromotionOn", 0, lpFileName);
+	this->Enabled = GetPrivateProfileInt("Common", "SCFImperialGuardianEventEnabled",0, FilePath) ;
+	this->DifMaxLvl = GetPrivateProfileInt("Common", "SCFImperialGuardianMaxLevelDifficulty",ReadConfig.Max_Normal_Level,FilePath);
+	this->SaveInDB =  GetPrivateProfileInt("Events", "SCFImperialGuardianSaveInDB",0,RANKINGINI);
 
-	char* szFileName = gDirPath.GetNewPath("Event\\ImperialGuardianReward.dat");
-	m_RewardExpInfo.LoadScript(szFileName);
+	if(this->DifMaxLvl == 0)
+		this->DifMaxLvl = ReadConfig.Max_Normal_Level;
 
-	m_bScriptLoad = 1;
+	InitializeCriticalSection(&mobKill);
 
-	if ( m_bEventOn )
-		InitEventDungeon();
+	LogAddTD("[SCF Imperial Guardian] - %s file is Loaded",FilePath);
 }
 
-void CImperialGuardian::Run()	//OK
+BOOL cImperialGuardian::DoorAttack(LPOBJ mObj)
 {
-	if ( !this->m_bEventOn )
+	if(IMPERIALGUARDIAN_MAP_RANGE(mObj->MapNumber) == TRUE)
 	{
-		return;
-	}
+		int MobId = mObj->Class;
 
-	for ( int zoneNum = 0; zoneNum < MAX_EVENTZONE; ++zoneNum )
-	{
-		switch ( m_ZoneInfo[zoneNum].m_State )
+		if (this->WaitPeriod == TRUE)
+			return FALSE;
+
+		if(MobId == 526)
+			return FALSE;
+
+		if(MobId == 524 || MobId == 525 || MobId == 527 || MobId == 528)
 		{
-		case STATE_READY:
-			ProcReady(zoneNum);
-			break;
+			int stage = this->OnStage;
+			int day = this->ActiveDay;
 
-		case STATE_TIMEATTACK:
-			ProcBeginTimeAttack(zoneNum);
-			break;
+			if(this->Start == FALSE)
+				return FALSE;
 
-		case STATE_LOOTTIME:
-			ProcBeginLootTime(zoneNum);
-			break;
+			if(this->MonsterStageKillCount[day][stage] >= this->MonsterStageCount[day][stage])
+				return TRUE;
 
-		case STATE_WAITPLAYER:
-			ProcBeginWaitPlayer(zoneNum);
-			break;
+			if ((this->KillDoor == 0) || 
+				(this->KillDoor == 3) || 
+				(this->KillDoor == 6) || 
+				(this->KillDoor == 9))
+				return TRUE;
 
-		case STATE_WARPNEXTZONE:
-			ProcAllWarpNextZone(zoneNum);
-			break;
-
-		case STATE_ALLKICK:
-			ProcAllKick(zoneNum);
-			break;
-
-		case STATE_MISSIONFAIL:
-			ProcMissionFail(zoneNum);
-			break;
-
-		case STATE_MISSIONCLEAR:
-			ProcMissionClear(zoneNum);
-			break;
-
-		default:
-			break;
+			return FALSE;
+			//if((this->KillDoor == 0) || (this->KillDoor == 3) || (this->KillDoor == 6) || (this->KillDoor == 9))
+			//	return TRUE;
+			//else
+			//{
+			//	int day = this->ActiveDay;
+			//	int stage = this->OnStage;
+			//	if(MonsterStageKillCount[day][stage] >= MonsterStageCount[day][stage])
+			//	{
+			//		return TRUE;
+			//	}else
+			//	{
+			//		return FALSE;
+			//	}
+			//}
+		}else
+		{
+			return TRUE;
 		}
-
-		ProcCheckDungeon(zoneNum);
+	}else
+	{
+		return TRUE;
 	}
-
-	KickInvalidUser();
 }
-
-void CImperialGuardian::ProcReady(int nZoneIndex)	//OK
+BOOL cImperialGuardian::gObjMoveGateCheck(LPOBJ lpObj, int Gate)
 {
-	if(!IsGoodZone(nZoneIndex))
+	if(IMPERIALGUARDIAN_MAP_RANGE(lpObj->MapNumber) == TRUE)
 	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-
-	if ( GetPlayerCount(nZoneIndex) > 0 )
-		SetZoneState(nZoneIndex, 6);
-}
-
-void CImperialGuardian::ProcBeginTimeAttack(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-	if ( m_ZoneInfo[nZoneIndex].m_bTimeAttack )
-	{
-		int iTickSec = GetTickCount() - m_ZoneInfo[nZoneIndex].m_TimeAttack_TickCount;
-
-		if ( !m_ZoneInfo[nZoneIndex].ukn0Eh )
+		if(this->Enabled == 1 && this->Occuped == 1)
 		{
-			if ( m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec <= 60000u )
+			if(Gate == cImperialGuardian_Gates[this->ActiveDay].stage1Finish)
 			{
-				char szText[256] = {0};
-				wsprintf(szText, lMsg.Get(3440));
-
-				GCSendServerMsgAll(nZoneIndex, szText);
-				m_ZoneInfo[nZoneIndex].ukn0Eh = true;
-			}
-		}
-
-		if ( (signed int)iTickSec >= 1000 )
-		{
-			if ( m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec > iTickSec )
-				m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec -= iTickSec;
-			else
-				m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec = 0;
-
-			m_ZoneInfo[nZoneIndex].m_TimeAttack_TickCount = GetTickCount();
-			GCNotifyRemainTickCount(nZoneIndex, 2, m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec);
-		}
-
-		if ( IsLastZone(nZoneIndex) )
-		{
-			if ( GetLiveMonsterCount(nZoneIndex) < 1 )
-				m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec = 0;
-		}
-		else
-		{
-			if ( m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec >= 60000u )
-			{
-				int nRemainMin = m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec / 60000u + 1;
-				if ( nRemainMin != m_ZoneInfo[nZoneIndex].ukn18h )
+				if(this->Stage >= 1)
 				{
-					char szText[256] = {0};
-					wsprintf(szText, lMsg.Get(3441), nRemainMin);
-					GCSendServerMsgAll(nZoneIndex, szText);
-					m_ZoneInfo[nZoneIndex].ukn18h = nRemainMin;
+					if(this->OnStage<2)
+					{
+						this->OnStage = 1;
+						this->WaitPeriod = TRUE;
+					}
+					goto Continue;
+				}else
+				{
+					goto Error;
 				}
 			}
-		}
-
-		if ( m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec == 0)
-		{
-			m_ZoneInfo[nZoneIndex].m_bTimeAttack = 0;
-
-			if (GetLiveMonsterCount(nZoneIndex) >= 1 )
+			else if(Gate == cImperialGuardian_Gates[this->ActiveDay].stage2Finish)
 			{
-				SetZoneState(nZoneIndex, 5);
-				DeleteMonster(nZoneIndex, m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex);
-			}
-			else
-			{
-				if ( IsLastZone(nZoneIndex) )
-					SetZoneState(nZoneIndex, 7);
-				else
-					SetZoneState(nZoneIndex, 3);
-
-				m_ZoneInfo[nZoneIndex].ukn0Ch = 1;
-			}
-
-			LogAddTD("[IMPERIALGUARDIAN] END TIMEATTACK -> [ZONE]:%d ", nZoneIndex + 1);
-		}
-	}
-	else
-	{
-		m_ZoneInfo[nZoneIndex].m_TimeAttack_TickCount = GetTickCount();
-		m_ZoneInfo[nZoneIndex].m_bTimeAttack = true;
-
-		char szText[256] = {0};
-		wsprintf(szText, lMsg.Get(3435));
-
-		GCSendServerMsgAll(nZoneIndex, szText);
-		SetAtackAbleState(nZoneIndex, 525, 1);
-		SetAtackAbleState(nZoneIndex, 528, 1);
-
-		int nMonsterRegenTable = m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex;
-		int nMaxLevel = m_ZoneInfo[nZoneIndex].m_nMaxUserLevel;
-		int nMaxReset = m_ZoneInfo[nZoneIndex].m_nMaxUserReset;
-
-		RegenMonster(nZoneIndex, nMonsterRegenTable, nMaxLevel, nMaxReset, 0);
-		GCNotifyRemainTickCount(nZoneIndex, 2, m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec);
-
-		LogAddTD("[IMPERIALGUARDIAN] BEGIN TIMEATTACK -> [ZONE]:%d ", nZoneIndex + 1);
-		LogAddTD("[IMPERIALGUARDIAN] OBJECT COUNT -> [ZONE]:%d [COUNT]:%d", nZoneIndex + 1, m_ZoneInfo[nZoneIndex].vtMonsterInfo.size());
-	}
-
-}
-
-
-void CImperialGuardian::ProcBeginLootTime(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-	if ( m_ZoneInfo[nZoneIndex].m_bLootTime )
-	{
-		int iTickCount = GetTickCount() - m_ZoneInfo[nZoneIndex].m_LootTime_TickCount;
-
-		if ( iTickCount >= 1000 )
-		{
-			if ( m_ZoneInfo[nZoneIndex].m_LootTime_MSec > iTickCount )
-				m_ZoneInfo[nZoneIndex].m_LootTime_MSec -= iTickCount;
-			else
-				m_ZoneInfo[nZoneIndex].m_LootTime_MSec = 0;
-
-			m_ZoneInfo[nZoneIndex].m_LootTime_TickCount = GetTickCount();
-			GCNotifyRemainTickCount(nZoneIndex, 0, m_ZoneInfo[nZoneIndex].m_LootTime_MSec);
-		}
-
-		if ( m_ZoneInfo[nZoneIndex].m_LootTime_MSec == 0)
-		{
-			m_ZoneInfo[nZoneIndex].m_bLootTime = false;
-			LogAddTD("[IMPERIALGUARDIAN] END LOOTTIME -> [ZONE]:%d ", nZoneIndex + 1);
-
-			if ( IsLastZone(nZoneIndex) )
-				SetZoneState(nZoneIndex, 6);
-			else
-				SetZoneState(nZoneIndex, 5);
-
-			DeleteMonster(nZoneIndex, m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex);
-		}
-	}
-	else
-	{
-		m_ZoneInfo[nZoneIndex].m_LootTime_TickCount = GetTickCount();
-		m_ZoneInfo[nZoneIndex].m_bLootTime = true;
-		GCNotifyRemainTickCount(nZoneIndex, 0, m_ZoneInfo[nZoneIndex].m_LootTime_MSec);
-
-		LogAddTD("[IMPERIALGUARDIAN] BEGIN LOOTTIME -> [ZONE]:%d ", nZoneIndex + 1);
-
-		GCNotifyRemainTickCount(nZoneIndex, 0, m_ZoneInfo[nZoneIndex].m_LootTime_MSec);
-		if ( !IsLastZone(nZoneIndex) )
-		{
-			char szText[256] = {0};
-			wsprintf(szText, lMsg.Get(3436));
-			GCSendServerMsgAll(nZoneIndex, szText);
-
-			wsprintf(szText, lMsg.Get(3437));
-			GCSendServerMsgAll(nZoneIndex, szText);
-		}
-	}
-}
-
-
-void CImperialGuardian::ProcBeginWaitPlayer(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-	if ( m_ZoneInfo[nZoneIndex].m_bWaitPlayer )
-	{
-		int iTickCount = GetTickCount() - m_ZoneInfo[nZoneIndex].m_WaitPlayer_TickCount;
-
-		if ( iTickCount >= 1000 )
-		{
-			if ( m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec > iTickCount )
-				m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec -= iTickCount;
-			else
-				m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec = 0;
-
-			m_ZoneInfo[nZoneIndex].m_WaitPlayer_TickCount = GetTickCount();
-			GCNotifyRemainTickCount(nZoneIndex, 1, m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec);
-		}
-
-		if ( m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec == 0 )
-			SetZoneState(nZoneIndex, 1);
-	}
-	else
-	{
-		m_ZoneInfo[nZoneIndex].m_WaitPlayer_TickCount = GetTickCount();
-		m_ZoneInfo[nZoneIndex].m_bWaitPlayer = 1;
-		LogAddTD("[IMPERIALGUARDIAN] BEGIN WAITPLAYER -> [ZONE]:%d ", nZoneIndex + 1);
-
-		GCNotifyRemainTickCount(nZoneIndex, 1, m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec);
-
-		int nRemainMin = m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec / 60000;
-
-		char szText[256]={0};
-		wsprintf(szText, lMsg.Get(3434), nRemainMin);
-		GCSendServerMsgAll(nZoneIndex, szText);
-	}
-}
-
-void CImperialGuardian::ProcAllWarpNextZone(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-	int nPartyNumber = m_ZoneInfo[nZoneIndex].m_nPartyNumber;
-	int nPartyCount = gParty.m_PartyS[nPartyNumber].Count;
-
-	if ( (nZoneIndex + 1) < 4 )
-	{
-		std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-		for ( auto it = vtTemp.begin(); it != vtTemp.end();	++it )
-		{
-			int nResult = *it;
-			if ( gObj[nResult].Connected > 0 )
-				gObjMoveGate(nResult, 22);
-		}
-	}
-	else
-	{
-		std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-		for ( auto it = vtTemp.begin(); it != vtTemp.end();	++it )
-		{
-			int nResult = *it;
-			gObjMoveGate(nResult, 22);
-		}
-	}
-}
-
-void CImperialGuardian::ProcAllKick(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-	for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-	{
-		int nResult = *it;
-
-		if ( gObj[nResult].Connected > 0 )
-		{
-			gObjMoveGate(nResult, 22);
-			LogAddTD("[IMPERIALGUARDIAN] Leave Player Zone -> [ZONE]:%d [AccountID]:%s [Name]:%s ",
-				nZoneIndex + 1, gObj[nResult].AccountID, gObj[nResult].Name);
-		}
-	}
-
-	InitZone(nZoneIndex);
-	SetZoneState(nZoneIndex, 0);
-
-	LogAddTD("[IMPERIALGUARDIAN] ALL KICK USER -> [ZONE]:%d ", nZoneIndex + 1);
-}
-
-void CImperialGuardian::ProcMissionFail(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-	GCMissionFail(nZoneIndex);
-
-	LogAddTD("[IMPERIALGUARDIAN] MISSION FAIL -> [ZONE]:%d ", nZoneIndex + 1);
-
-	SetZoneState(nZoneIndex, 6);
-}
-
-
-void CImperialGuardian::ProcMissionClear(int nZoneIndex)	//OK
-{
-	GCNotifyAllZoneClear(nZoneIndex);
-
-	LogAddTD("[IMPERIALGUARDIAN] SUCCESS MISSION CLEAR  -> [ZONE]:%d ", nZoneIndex + 1);
-
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-
-	for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-	{
-		int nResult = *it;
-
-		if ( gObj[nResult].Connected > 0 )
-		{
-
-			if ( gObj[nResult].MapNumber >= 69 && gObj[nResult].MapNumber <= 72 )
-			{
-				LogAddTD("[IMPERIALGUARDIAN] MISSION CLEAR USER ->[AccountID]:%s [Name]:%s ",
-					gObj[nResult].AccountID, gObj[nResult].Name);
-
-				if ( nZoneIndex == 3 )
+				if(this->Stage >= 2)
 				{
-					if ( m_bPromotionOn )
-						;//GEReqRegIGMissionClear(nResult);
+					if(this->OnStage<3)
+					{
+						this->OnStage = 2;
+						this->WaitPeriod = TRUE;
+					}
+					goto Continue;
+				}else
+				{
+					goto Error;
+				}
+			}
+			else if(Gate == cImperialGuardian_Gates[this->ActiveDay].stage3Finish)
+			{
+				if(this->Stage >= 3)
+				{
+					if(this->OnStage<4)
+					{
+						this->OnStage = 3;
+						this->WaitPeriod = TRUE;
+					}
+					goto Continue;
+				}else
+				{
+					goto Error;
+				}
+			}else
+			{
+				return TRUE;
+			}
+		}else
+		{
+			return TRUE;
+		}
+	}else
+	{
+		return TRUE;
+	}
+
+Error:
+	//YOU NEED TO KILL ALL MOBS BEFORE PROCEED TO NEXT STAGE!
+	g_ImperialGuardian.GCServerMsgStringSend("You must kill all monsters before continue!",1);
+	return FALSE;
+
+Continue:
+	
+	LogAddC(12, "[Imperial Guardian] (Day:%d) State -> Moving To Stage %d PartyNumber: %d, User: %s", this->ActiveDay,(this->Stage+1),this->m_UserData.PartyIndex,lpObj->Name);
+	return TRUE;
+}
+
+BYTE cImperialGuardian::CheckOverlapPaperMark(int iIndex)
+{
+	for ( int x = 0;x<ReadConfig.MAIN_INVENTORY_SIZE(iIndex,false);x++ )
+	{
+		if ( gObj[iIndex].pInventory[x].IsItem() == TRUE )
+		{
+			if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(14,101) )
+			{
+				int iITEM_DUR = gObj[iIndex].pInventory[x].m_Durability;
+
+				if ( IMPERIAL_MARK_RANGE(iITEM_DUR) != FALSE )
+				{
+					return x;
 				}
 			}
 		}
 	}
 
-	SetZoneState(nZoneIndex, STATE_LOOTTIME);
+	return -1;
 }
 
-bool CImperialGuardian::IsEmptyZone(int nZoneIndex)	//OK
+void cImperialGuardian::SetMonsters(BYTE iStage)
 {
-	if(!IsGoodZone(nZoneIndex))
-		return false;
-
-
-	if ( this->m_ZoneInfo[nZoneIndex].m_State == STATE_READY )
+	if(this->Enabled == 1 && this->Occuped == 1)
 	{
-		if ( GetPlayerCount(nZoneIndex) )
-			return false;
-		else
-			return true;
-	}
-	else
-	{
-		return false;
-	}
-}
+		this->MonsterStageCount[this->ActiveDay][iStage] = 0;
 
-void CImperialGuardian::KickInvalidUser()	//OK
-{
-	for (int iCount = OBJ_STARTUSERINDEX; iCount < OBJMAX; ++iCount )
-	{
-		if ( (gObj[iCount].Connected == 3 || gObj[iCount].Connected == 4)
-			&& gObj[iCount].Type == OBJ_USER
-			&& (gObj[iCount].MapNumber >= 69 && gObj[iCount].MapNumber <= 72 ))
-		{
-			if ( (gObj[iCount].Authority & 2) == 2 )
+		for(int MobCount=0; MobCount < MAX_IG_EVENT_STAGE_MOB_COUNT ;MobCount++)
+		{	
+			if (this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos < 0)
 			{
 				continue;
 			}
 
-			if ( CheckValidUser(iCount) )
+			int MobID = gObjAddMonster(gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_MapNumber);
+			if(MobID >= 0)
 			{
-				if ( !this->m_CheatModeGM )
+				short MobNumber = gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_Type;
+
+				this->m_MonsterData[this->ActiveDay][iStage][MobCount].ID = MobID;
+				BOOL retSetPos = gObjSetPosMonster(MobID, this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos);
+				if (retSetPos == FALSE)
 				{
-					if ( gObj[iCount].PartyNumber < 0 )
-					{
-						gObjMoveGate(iCount, 22);
-						LogAddTD("[IMPERIALGUARDIAN][ Invalid User ] User is not a party [%s][%s]",
-							gObj[iCount].AccountID, gObj[iCount].Name);
-					}
+					LogAddTD("[Imperial Guardian][retSetPos] - Cant add monster Pos:%d,Number:%d [%d,%d,%d]",
+						this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos,
+						this->m_MonsterData[this->ActiveDay][iStage][MobCount].Number,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_MapNumber,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_X,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_Y
+					);
+
+					continue;
 				}
-			}
-			else
-			{
-				if ( !gObj[iCount].RegenOk )
+
+				BOOL retSetMon = gObjSetMonster(MobID, MobNumber,"cImperialGuardian::SetMonsters");
+				if (retSetMon == FALSE)
 				{
-					if ( gObj[iCount].m_State == 2 && gObj[iCount].Live == 1)
-					{
-						gObjMoveGate(iCount, 22);
-						LogAddTD("[IMPERIALGUARDIAN][ Invalid User ] [%s][%s]", 
-							gObj[iCount].AccountID, gObj[iCount].Name);
-					}
+					LogAddTD("[Imperial Guardian][retSetMon] - Cant add monster Pos:%d,Number:%d [%d,%d,%d]",
+						this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos,
+						this->m_MonsterData[this->ActiveDay][iStage][MobCount].Number,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_MapNumber,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_X,
+						gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_Y
+					);
+
+					continue;
 				}
+
+				//if((MobID >= 100 && MobID <= 106) || (MobID == 523))
+				//{
+				//	//gObj[MobID].m_ViewSkillState |= 0x10000000;
+				//	//GCSkillInfoSend(&gObj[MobID], 1, 0x1B);
+				//	gObj[MobID].isInvisible = 1;
+				//}
+				this->SetMonsterDifficulty(MobID);
+				if (MobNumber == 523 || //Trap
+					MobNumber == 524 || 
+					MobNumber == 525 || 
+					MobNumber == 526 || //Statue
+					MobNumber == 527 || 
+					MobNumber == 528)
+				{
+				}
+				else
+				{
+					this->MonsterStageCount[this->ActiveDay][iStage]++;
+				}
+				LogAddTD("[Imperial Guardian][OK] - Add monster Pos:%d, Number:%d [%d,%d,%d] (%d)",
+					this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos,
+					this->m_MonsterData[this->ActiveDay][iStage][MobCount].Number,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_MapNumber,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_X,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_Y,
+					this->MonsterStageCount[this->ActiveDay][iStage]
+				);
+			} else {
+				LogAddTD("[Imperial Guardian][MobID] - Cant add monster Pos:%d,Number:%d [%d,%d,%d]",
+					this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos,
+					this->m_MonsterData[this->ActiveDay][iStage][MobCount].Number,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_MapNumber,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_X,
+					gMSetBase.m_Mp[this->m_MonsterData[this->ActiveDay][iStage][MobCount].Pos].m_Y
+				);
 			}
 		}
-		else
+	}
+}
+
+void cImperialGuardian::ReadMonsters(char * FilePath)
+{
+	//this->Enabled = 1;
+	if(this->Enabled == 1)
+	{
+		int Token;
+		int iStage;
+		int Trap;
+		int MobNum;
+		int X;
+		int Y;
+		int Count;
+		int Dir;
+
+		SMDFile = fopen(FilePath, "r");
+
+		if ( SMDFile == NULL )
 		{
-			if ( CheckValidUser(iCount) )
-				RemoveUserInAllZone(iCount);
-		}
-	}
-}
-
-bool CImperialGuardian::CheckValidUser(int nUserNumber)	//OK
-{
-	return (GetCurrentZoneIndex(nUserNumber) > -1);
-}
-
-int CImperialGuardian::GetZoneState(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return STATE_INVALID;
-
-	return this->m_ZoneInfo[nZoneIndex].m_State;
-}
-
-bool CImperialGuardian::SetZoneState(int nZoneIndex, int nState)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return false;
-
-	if ( nState <= STATE_CHECKDUNGEON )
-	{
-		this->m_ZoneInfo[nZoneIndex].m_State = nState;
-		return true;
-	}
-
-	return false;
-}
-
-struct PMSG_IG_CURRENT_STATE
-{
-	PBMSG_HEAD2 h;
-	BYTE ukn05;
-	BYTE DayOfWeek;
-	BYTE ZoneIndex;
-	BYTE EventEnded;
-	int RemainTick;
-};
-
-void CImperialGuardian::CGEnterPortal(int nUserIndex, int nDestZoneIndex)	//OK
-{
-	if( !OBJMAX_RANGE(nUserIndex) )
-	{
-		return;
-	}
-
-	if( !IsGoodZone(nDestZoneIndex) )
-	{
-		return;
-	}
-
-	OBJECTSTRUCT *lpObj = &gObj[nUserIndex];
-
-	if ( gObj[nUserIndex].m_IfState.use && lpObj->m_IfState.type != 12 )
-	{
-		return;
-	}
-
-	if ( /*gFreeServer &&*/ lpObj->Level < 150 )
-	{
-		PMSG_IG_CURRENT_STATE pMsg = {0};
-		pMsg.ukn05 = 6;
-		PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x02, sizeof(pMsg));
-
-		DataSend(nUserIndex, (LPBYTE)&pMsg, pMsg.h.size);
-		return;
-	}
-
-	if ( lpObj->m_bPShopOpen == 1 )
-		CGPShopReqClose(lpObj->m_Index);
-
-	int nEnterItemPos = -1;
-	PMSG_IG_CURRENT_STATE pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x02, sizeof(pMsg));
-	pMsg.ukn05 = 0;
-	pMsg.ZoneIndex = nDestZoneIndex + 1;
-
-	pMsg.RemainTick = m_ZoneInfo[nDestZoneIndex].m_WaitPlayer_MSec
-		+ m_ZoneInfo[nDestZoneIndex].m_LootTime_MSec
-		+ m_ZoneInfo[nDestZoneIndex].m_TimeAttack_RemainMSec;
-
-	if ( !m_bEventOn )
-	{
-		return;
-	}
-
-
-	CTime tCurrentTime(CTime::GetTickCount());
-	int nDayOfWeek = tCurrentTime.GetDayOfWeek();
-
-	if ( m_CheatModeGM )
-	{
-		if ( m_DayOfWeekGM > -1 )
-			nDayOfWeek = m_DayOfWeekGM;
-	}
-
-	if ( m_CheatModeGM != 1 )
-	{
-		if ( gParty.m_PartyS[gObj[nUserIndex].PartyNumber].Count < 1 || gObj[nUserIndex].PartyNumber < 0)
-		{
-			pMsg.ukn05 = 5;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
+			MsgBox("Imperial Guardian data load error %s", FilePath);
 			return;
 		}
 
-		if ( nDestZoneIndex == 0)
+		for(int Stages = 0; Stages < MAX_IG_EVENT_STAGES; Stages++)
 		{
-			if ( nDayOfWeek == 1 )
+			for(int Level = 0; Level < MAX_IG_EVENT_DAYS; Level++)
 			{
-				nEnterItemPos = CheckFullSecromicon(nUserIndex);
-				if ( nEnterItemPos < 0 && nEnterItemPos == -1 )
+				this->MonsterStageCount[Level][Stages] = 0;
+			}
+		}
+
+		for(int iL = 0; iL < MAX_IG_EVENT_DAYS; iL++)
+		{
+			for (int iS = 0; iS < MAX_IG_EVENT_STAGES; iS++)
+			{
+				for (int iM = 0; iM <MAX_IG_EVENT_STAGE_MOB_COUNT; iM++)
 				{
-					pMsg.ukn05 = 2;
-					GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-					return;
+					this->m_MonsterData[iL][iS][iM].ID = -1;
+					this->m_MonsterData[iL][iS][iM].Pos = -1;
+					this->m_MonsterData[iL][iS][iM].Number = -1;
 				}
 			}
-			else
+		}
+
+		for(int iDay = 0; iDay < MAX_IG_EVENT_DAYS; iDay++)
+		{
+			int iType = GetToken();
+			while(true)
 			{
-				nEnterItemPos = CheckGaionOrderPaper(nUserIndex);
-				if ( nEnterItemPos < 0 && nEnterItemPos == -1 )
+				Token = GetToken();
+				if ( strcmp("end", TokenString) == 0 )
 				{
-					pMsg.ukn05 = 2;
-					GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-					return;
+					break;
+				}
+				iStage = TokenNumber;
+
+				Token = GetToken();
+				Trap = TokenNumber;
+
+				Token = GetToken();
+				MobNum = TokenNumber;
+
+				Token = GetToken();
+				X = TokenNumber;
+
+				Token = GetToken();
+				Y = TokenNumber;
+
+				Token = GetToken();
+				Count = TokenNumber;
+
+				Token = GetToken();
+				Dir = TokenNumber;
+
+				int Map = cImperialGuardian__Map[iDay];
+
+				if (g_MapServerManager.CheckMapCanMove(Map) == FALSE )
+				{
+					LogAddCTD(3,"[Imperial Guardian] No need to load monster base file!");
+					continue;
+				}
+
+				for(int i=0;i<Count;i++)
+				{
+					int MobCount = this->MonsterStageCount[iDay][iStage];
+
+					if (iStage < MAX_IG_EVENT_STAGES &&
+						MobCount < MAX_IG_EVENT_STAGE_MOB_COUNT)
+					{
+						int MobPos = gObjMonsterAdd(MobNum,Map,X,Y);
+						if(MobPos >= 0)
+						{
+							if(Trap != 1)
+							{
+								//if(Trap == 0)
+								this->MonsterStageCount[iDay][iStage]++;
+
+								this->m_MonsterData[iDay][iStage][MobCount].ID = -1;
+								this->m_MonsterData[iDay][iStage][MobCount].Pos = MobPos;
+								this->m_MonsterData[iDay][iStage][MobCount].Number = MobNum;
+								gMSetBase.m_Mp[MobPos].m_Dir = Dir;
+							} else {
+								gMSetBase.m_Mp[MobPos].m_Dir = Dir;
+
+								int MobID = gObjAddMonster(gMSetBase.m_Mp[MobPos].m_MapNumber);
+								if(MobID >= 0)
+								{
+									gObjSetPosMonster(MobID, MobPos);
+									gObjSetMonster(MobID, gMSetBase.m_Mp[MobPos].m_Type,"cImperialGuardian::SetTraps");
+								} else {
+									LogAddTD("[Imperial Guardian][Trap] - Cant add Trap to Day:%d, Stage:%d, [ID:%d:,Map:%d,X:%d,Y:%d]",
+										iDay,iStage,MobNum,Map,X,Y);
+								}
+							}
+						} else {
+							LogAddTD("[Imperial Guardian][MobPos] - Cant add monster to Day:%d, Stage:%d, Count:%d [ID:%d:,Map:%d,X:%d,Y:%d]",
+								iDay,iStage,MobCount,MobNum,Map,X,Y);
+						}
+					} else {
+						LogAddTD("[Imperial Guardian][Overflow] - Cant add monster to Day:%d, Stage:%d, Count:%d [ID:%d:,Map:%d,X:%d,Y:%d]",
+							iDay,iStage,MobCount,MobNum,Map,X,Y);
+					}
+				}
+			}
+		}
+			
+		fclose(SMDFile);
+		LogAddC(11, "[Imperial Guardian] - %s file is Loaded",FilePath);
+	}
+}
+
+BOOL cImperialGuardian::MonsterAttack(LPOBJ lpMon)
+{
+	if(IMPERIALGUARDIAN_MAP_RANGE(lpMon->MapNumber) == TRUE)
+	{
+		if (this->WaitPeriod == FALSE)
+		{
+			return TRUE;
+		}
+
+		return FALSE;
+	} else {
+		return TRUE;
+	}
+}
+
+void cImperialGuardian::MonsterDieRemove(LPOBJ lpMon)
+{
+	if(IMPERIALGUARDIAN_MAP_RANGE(lpMon->MapNumber) == TRUE)
+	{
+		int day = this->ActiveDay;
+		int stage = this->OnStage;
+
+		int MobId = lpMon->Class;
+
+		if( (MobId >= 100 && MobId <= 106) || 
+			(MobId == 523) )
+		{
+			//Do Nothing
+		}else
+		{
+			LogAddTD("[Imperial Guardian][MobDie] Stage:%d-%d => Monster:%d, Map:%d [%d,%d] Count:%d/%d",
+				day, stage,
+				MobId, lpMon->MapNumber, lpMon->X, lpMon->Y,
+				MonsterStageKillCount[day][stage], MonsterStageCount[day][stage]
+			);
+
+			lpMon->m_Attribute = 60;	//Mark Mob to be deleted
+			//gObjDel(lpMon->m_Index);
+		}
+	}
+}
+
+void cImperialGuardian::MonsterDiePoint(LPOBJ lpMon)
+{
+	if(IMPERIALGUARDIAN_MAP_RANGE(lpMon->MapNumber) == TRUE)
+	{
+		int day = this->ActiveDay;
+		int stage = this->OnStage;
+
+		int MobId = lpMon->Class;
+
+		//Help Mob counter work properly
+		EnterCriticalSection(&mobKill);
+
+		if ((MobId >= 100 && MobId <= 106) || 
+			(MobId == 523 || //Trap
+			 MobId == 524 || 
+			 MobId == 525 || 
+			 MobId == 526 || //Statue
+			 MobId == 527 || 
+			 MobId == 528))
+		{
+		}else
+		{
+			if (MonsterStageKillCount[day][stage] < MonsterStageCount[day][stage])
+				this->MonsterStageKillCount[day][stage]++;
+			
+			LogAddC(12, "[Imperial Guardian] (Day:%d) State -> Monster Killed (%d/%d)(%d:%d,%d,%d) In Stage: %d PartyNumber: %d, PartyLeader:(%d) %s", 
+				this->ActiveDay,
+				this->MonsterStageKillCount[day][stage], MonsterStageCount[day][stage], 
+				lpMon->Class, lpMon->MapNumber, lpMon->X, lpMon->Y, 
+				this->Stage,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name
+			);
+
+			if(MonsterStageKillCount[day][stage] >= MonsterStageCount[day][stage])
+			{
+				LogAddC(12, "[Imperial Guardian] (Day:%d) State -> ALL Monsters Killed In Stage: %d PartyNumber: %d, PartyLeader:(%d) %s", this->ActiveDay,this->Stage,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+				this->Stage++;
+
+				if (cImperialGuardian__Stages[day] > this->Stage)
+				{
+					this->SetMonsters(this->Stage);
+				}
+			}
+		}
+
+		if(MobId == 526)
+		{
+			LogAddC(12, "[Imperial Guardian] (Day:%d) State -> Broken Statue (%d/%d)(%d:%d,%d,%d) In Stage: %d PartyNumber: %d, PartyLeader:(%d) %s", 
+				this->ActiveDay,
+				this->MonsterStageKillCount[day][stage], MonsterStageCount[day][stage], 
+				lpMon->Class, lpMon->MapNumber, lpMon->X, lpMon->Y, 
+				this->Stage,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name
+			);
+		}
+
+		if(MobId == 524 || MobId == 525 || MobId == 527 || MobId == 528)
+		{
+			LogAddC(12, "[Imperial Guardian] (Day:%d) State -> Broken Door (%d)(%d:%d,%d,%d) In Stage: %d PartyNumber: %d, PartyLeader:(%d) %s", 
+				this->ActiveDay,
+				this->KillDoor, lpMon->Class, lpMon->MapNumber, lpMon->X, lpMon->Y, 
+				this->Stage,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name
+			);
+				
+			//this->ReleaseCastleDoor(KillDoor);
+			this->DoorBlocked[KillDoor] = false;
+			this->KillDoor++;
+		}
+		LeaveCriticalSection(&mobKill);
+
+		lpMon->DieRegen = FALSE;
+	}
+}
+
+bool cImperialGuardian::CanWalk(BYTE TX, BYTE TY)
+{
+	int Gate = this->KillDoor;
+	if((this->ActiveDay != 0) && (Gate > 6))
+		return true;
+
+	int Index = cImperialGuardian__Map[this->ActiveDay] - MAP_INDEX_EMPIREGUARDIAN1;
+	if(TX > ::g_iGuardianDoorMapXY[Index][Gate].btStartX && TX <= ::g_iGuardianDoorMapXY[Index][Gate].btEndX)
+	{
+		if(TY > ::g_iGuardianDoorMapXY[Index][Gate].btStartY && TY <= ::g_iGuardianDoorMapXY[Index][Gate].btEndY)
+		{
+			if(this->DoorBlocked[Gate]==true)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+BYTE cImperialGuardian::IsPartyAlive()
+{
+	// 0 = No Party
+	// 1 = Some ppl left or are not inside map
+	// 2 = OK
+	int pIndex = this->m_UserData.PartyIndex;
+
+	if(gParty.IsParty(pIndex) == FALSE)
+	{
+		return 0;
+	}
+
+	if(gObjIsConnected(this->m_UserData.PartyLeaderUserNumber) == TRUE)
+	{
+		if(gParty.Isleader(pIndex,this->m_UserData.PartyLeaderUserNumber,this->m_UserData.PartyLeaderDBNumber) == FALSE)
+		{
+			return 0;
+		}
+	}else
+	{
+		return 0;
+	}
+
+	int Active = 0;
+	for(int i = 0; i < MAX_USER_IN_PARTY; i++)
+	{
+		int pId = gParty.m_PartyS[pIndex].Number[i];
+
+		if ( pId < 0 || pId > (OBJMAX-1) )
+		{
+			
+		}else
+		{
+			if(gObjIsConnected(gParty.m_PartyS[pIndex].Number[i]) == TRUE)
+			{
+				if(gObj[pId].MapNumber == cImperialGuardian__Map[this->ActiveDay])
+				{
+					Active++;
 				}
 			}
 		}
 	}
+	if(this->m_UserData.PartyCount > Active)
+	{
+		return 1;
+	}
+	return 2;
+}
 
-	if (m_CheatModeGM != 1 && nDestZoneIndex > 0 && GetCurrentZoneIndex(nUserIndex) != nDestZoneIndex - 1 )
+void cImperialGuardian::DataSendInside(LPBYTE pMsg, int size)
+{
+	int pIndex = this->m_UserData.PartyIndex;
+
+	if(gParty.IsParty(pIndex) == FALSE)
 	{
 		return;
 	}
 
-	if ( GetZoneState(nDestZoneIndex) != STATE_READY && GetZoneState(nDestZoneIndex) != STATE_WAITPLAYER )
+	if(gObjIsConnected(this->m_UserData.PartyLeaderUserNumber) == TRUE)
 	{
-		GCServerMsgStringSend( lMsg.Get(3464), nUserIndex, 1);
-
-		if ( nDestZoneIndex != 0 )
+		if(gParty.Isleader(pIndex,this->m_UserData.PartyLeaderUserNumber,this->m_UserData.PartyLeaderDBNumber) == FALSE)
 		{
-			RollBackUserPos(nUserIndex);
+			return;
 		}
-		else
-		{
-			pMsg.ukn05 = 1;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-		}
+	}else
+	{
 		return;
 	}
 
-
-	if ( nDestZoneIndex == 0 && m_CheatModeGM == 0)
+	for(int i = 0; i < MAX_USER_IN_PARTY; i++)
 	{
-		bool bFlag = 0;
-		for ( int i = 1; i < MAX_EVENTZONE; ++i )
+		int pId = gParty.m_PartyS[pIndex].Number[i];
+
+		if ( pId < 0 || pId > (OBJMAX-1) )
 		{
-			if ( m_ZoneInfo[i].m_nPartyNumber == gObj[nUserIndex].PartyNumber )
+			
+		}else
+		{
+			if(gObjIsConnected(gParty.m_PartyS[pIndex].Number[i]) == TRUE)
 			{
-				bFlag = true;
+				if(gObj[pId].MapNumber == cImperialGuardian__Map[this->ActiveDay])
+				{
+					::DataSend(gObj[pId].m_Index,pMsg,size);
+				}
+			}
+		}
+	}
+}
+
+void cImperialGuardian::DataSend(LPBYTE pMsg, int size)
+{
+	int pIndex = this->m_UserData.PartyIndex;
+
+	if(gParty.IsParty(pIndex) == FALSE)
+	{
+		return;
+	}
+
+	if(gObjIsConnected(this->m_UserData.PartyLeaderUserNumber) == TRUE)
+	{
+		if(gParty.Isleader(pIndex,this->m_UserData.PartyLeaderUserNumber,this->m_UserData.PartyLeaderDBNumber) == FALSE)
+		{
+			return;
+		}
+	}else
+	{
+		return;
+	}
+
+	for(int i = 0; i < MAX_USER_IN_PARTY; i++)
+	{
+		int pId = gParty.m_PartyS[pIndex].Number[i];
+
+		if ( pId < 0 || pId > (OBJMAX-1) )
+		{
+			
+		}else
+		{
+			if(gObjIsConnected(gParty.m_PartyS[pIndex].Number[i]) == TRUE)
+			{
+				::DataSend(gObj[pId].m_Index,pMsg,size);
+			}
+		}
+	}
+}
+
+void cImperialGuardian::GateState(bool Open)
+{
+	PMSG_ATTSTATE_IMPERIALGUARDIAN pMsg;
+	PHeadSubSetB((LPBYTE)&pMsg, 0xBF, 0x09, sizeof(pMsg));
+	pMsg.State = 1;
+
+	if(Open == true)
+	{
+		LogAddC(13, "[Imperial Guardian] (Day:%d) State -> START: OPEN_GATES",this->ActiveDay);
+		pMsg.Type  = 2;
+	}
+	else
+	{
+		LogAddC(13, "[Imperial Guardian] (Day:%d) State -> FINISH: CLOSE_GATES",this->ActiveDay);
+		pMsg.Type  = 3;
+	}
+
+	this->DataSendInside((BYTE*)&pMsg,sizeof(pMsg));
+}
+
+void cImperialGuardian::CheckLetterItem(LPOBJ lpObj)
+{
+	if ( OBJMAX_RANGE(lpObj->m_Index) == FALSE )
+		return;
+
+	if (lpObj->m_IfState.type != 98)
+	{
+		if (lpObj->m_IfState.type != 0 || lpObj->m_IfState.state != 0)
+		{
+			ANTI_HACK_LOG.Output("[ANTI-HACK][Imperial][Enter] User in map(%d) [%s][%s] State(u:%d,t:%d,s:%d)",
+				lpObj->MapNumber, lpObj->AccountID, lpObj->Name,
+				lpObj->m_IfState.use,lpObj->m_IfState.type,lpObj->m_IfState.state);
+
+			return;
+		}
+	}
+
+	lpObj->m_IfState.use = 0;
+	lpObj->m_IfState.type = 0;
+
+	int bItemPosition = this->GetEnterItemPosition(lpObj->m_Index);
+
+	if ( bItemPosition != -1 )
+	{
+		int bEnterResult = this->CheckEnter(lpObj);
+
+		switch ( bEnterResult )
+		{
+			case -3:
+			{
+				TNotice::GCServerMsgStringSend("All Party Users must be lvl 15 or higher!",lpObj->m_Index, 0x01);
+			}break;
+			case -2:
+			{
+				TNotice::GCServerMsgStringSend("Event Only For Party!",lpObj->m_Index, 0x01);
+			}break;
+			case -1:
+			{
+				TNotice::GCServerMsgStringSend("Event Dissabled!",lpObj->m_Index, 0x01);
+			}break;
+			case 0:
+			{
+				TNotice::GCServerMsgStringSend("Room Not Availiable!",lpObj->m_Index, 0x01);
+			}break;
+			case 1:
+			{
+				TNotice::GCServerMsgStringSend("Entering Imperial Guardian Event!",lpObj->m_Index, 0x01);
+
+				LogAddTD("[Imperial Guardian] (Account:%s, Name:%s) Delete Entrance Tiket (%d) [Serial:%d]",
+					lpObj->AccountID, lpObj->Name, 
+					lpObj->pInventory[bItemPosition].m_Type, lpObj->pInventory[bItemPosition].m_Number);
+
+				if ((lpObj->pInventory[bItemPosition].m_Durability > 1.0f && lpObj->pInventory[bItemPosition].m_Type == ITEMGET(13,126)) ||
+					(lpObj->pInventory[bItemPosition].m_Durability > 1.0f && lpObj->pInventory[bItemPosition].m_Type == ITEMGET(13,127)) )
+				{
+					lpObj->pInventory[bItemPosition].m_Durability -= 1.0f;
+					GCItemDurSend2(lpObj->m_Index, bItemPosition, lpObj->pInventory[bItemPosition].m_Durability, 0);
+				} else {
+					gObjInventoryDeleteItem(lpObj->m_Index, bItemPosition);
+					GCInventoryItemDeleteSend(lpObj->m_Index, bItemPosition, TRUE);
+				}
+			}break;
+		}
+	} else {
+		TNotice::GCServerMsgStringSend("Lacking ticket to enter!",lpObj->m_Index, 0x01);
+		CGAnsImperialNoItem(lpObj->m_Index);
+	}
+}
+
+int cImperialGuardian::GetEnterItemPosition(int iIndex)
+{
+	if ( OBJMAX_RANGE(iIndex) == FALSE )
+	{
+		return -1;
+	}
+
+	if ( gObj[iIndex].Type != OBJ_USER || gObj[iIndex].Connected <= PLAYER_LOGGED )
+	{
+		return -1;
+	}
+
+	SYSTEMTIME sysTime;
+	GetLocalTime(&sysTime);
+
+	for ( int x=0;x<ReadConfig.MAIN_INVENTORY_SIZE(iIndex,false);x++)
+	{
+		if ( gObj[iIndex].pInventory[x].IsItem() == TRUE )
+		{
+			if (sysTime.wDayOfWeek == 0)
+			{	
+				if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(14,109) ) //Imperial Guardian Sunday Letter
+				{
+					return x;
+				}
+				if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(13,127) ) //Imperial Guardian Sunday Free
+				{
+					return x;
+				}
+			} else {
+				if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(14,102) ) //Imperial Guardian Letter
+				{
+					return x;
+				}
+				if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(13,126) ) //Imperial Guardian Sunday Free
+				{
+					return x;
+				}
+			}
+		}
+	}
+
+	return -1;
+}
+
+int cImperialGuardian::CheckEnter(LPOBJ lpObj)
+{
+	/*
+	return -3  =  All Party Users must be lvl 15 or higher
+	return -2  =  Event Only For Party
+	return -1  =  Event Dissabled
+	return  0  =  Room Not Availiable
+	return  1  =  Enter
+	*/
+
+	int pMaxLvl=0;
+	int pMinLvl=0;
+
+	if(this->Enabled == 0)
+	{
+		return -1;
+	}
+	if ( lpObj->PartyNumber < 0  )
+	{
+		return -2;
+	}
+
+	gParty.GetLevel(lpObj->PartyNumber,pMaxLvl,pMinLvl);
+	
+	if ( pMinLvl < 15  )
+	{
+		return -3;
+	}
+	
+	if(this->Occuped == 0)
+	{
+		this->Difficulty = ( ( (((pMaxLvl + pMinLvl)/2) * 100) / this->DifMaxLvl) / 100.0f);
+		SYSTEMTIME sysTime;
+		GetLocalTime(&sysTime);
+		this->ActiveDay = sysTime.wDayOfWeek;
+		this->StartEvent(lpObj);
+		return 1;
+	}
+
+	return 0;
+}
+
+void cImperialGuardian::Fail(int Status)
+{
+	if(Status == 0)
+	{
+		//NO PARTY
+		LogAddC(13, "[Imperial Guardian] (Day:%d) State -> FAIL: NO PARTY INSIDE",this->ActiveDay);
+	}else if (Status == 1)
+	{
+		//SOME USER DIE OR LEFT
+		LogAddC(13, "[Imperial Guardian] (Day:%d) State -> FAIL: PARTY MEMBER DIE OR LEFT",this->ActiveDay);
+	}else if (Status == -1)
+	{
+		//time exceed
+		LogAddC(13, "[Imperial Guardian] (Day:%d) State -> FAIL: TIME EXCEED",this->ActiveDay);
+	}
+	
+	PMSG_STATE_IMPERIALGUARDIAN failMsg;
+	PHeadSubSetB((LPBYTE)&failMsg, 0xF7, 0x06, sizeof(failMsg));
+	failMsg.State = 0;
+	this->DataSend((BYTE*)&failMsg,sizeof(failMsg));
+}
+
+void cImperialGuardian::Success()
+{
+	LogAddC(13, "[Imperial Guardian] (Day:%d) State -> SUCCESS PartyNumber: %d, PartyLeader:(%d) %s",this->ActiveDay,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+	
+	PMSG_STATE_IMPERIALGUARDIAN winMsg;
+	PHeadSubSetB((LPBYTE)&winMsg, 0xF7, 0x06, sizeof(winMsg));
+	winMsg.State = 2;
+
+	unsigned long Exp = gObj[this->m_UserData.PartyLeaderUserNumber].Experience - this->m_UserData.PlayerExp;
+	
+	WORD Tmp1 = HIWORD(Exp);
+	WORD Tmp2 = LOWORD(Exp);
+	winMsg.Exp[3] = HIBYTE(Tmp1);
+	winMsg.Exp[4] = LOBYTE(Tmp1);
+	winMsg.Exp[5] = HIBYTE(Tmp2);
+	winMsg.Exp[6] = LOBYTE(Tmp2);
+
+	//winMsg.Exp = Exp;
+	this->DataSend((BYTE*)&winMsg,sizeof(winMsg));
+}
+
+void cImperialGuardian::Timer(int Seconds, BYTE tState)
+{
+	PMSG_TIMER_IMPERIALGUARDIAN Time;
+	PHeadSubSetB((LPBYTE)&Time, 0xF7, 0x04, sizeof(Time));
+
+	int day = this->ActiveDay;
+	int stage = this->OnStage;
+	int Remating = 0;
+	int MonstersLeft = 0;
+
+	if (tState == 0)
+	{
+		Remating = (ImperialGuardian_WaitTime * 60) - Seconds;
+		Time.State = 1;
+	} else {
+		Remating = (ImperialGuardian_MaxTime * 60) - Seconds;
+		MonstersLeft = MonsterStageCount[day][stage] - MonsterStageKillCount[day][stage];
+		Time.State = 2;
+	}
+
+	int toTimer=0;
+	if(Remating == 34)
+	{
+		toTimer = (Remating * 3.911) + 1;
+	}else
+	{
+		toTimer = Remating * 3.911;
+	}
+	Time.Time1 = LOBYTE(toTimer);
+	Time.Time2 = HIBYTE(toTimer);
+	Time.Time3 = 0;
+
+	Time.MonstersLeft = MonstersLeft;
+	this->DataSendInside((BYTE*)&Time,sizeof(Time));
+}
+
+
+void cImperialGuardian::GCServerMsgStringSend(LPSTR szMsg, BYTE type) 
+{
+	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+	
+	TNotice::MakeNoticeMsg((TNotice*)&pNotice, type, szMsg);
+
+
+	for ( int n = OBJ_STARTUSERINDEX ; n < OBJMAX ; n++)
+	{
+		if ( gObj[n].Connected == PLAYER_PLAYING )
+		{
+			if ( gObj[n].Type  == OBJ_USER )
+			{
+				if (gObj[n].MapNumber >= cImperialGuardian__Map[this->ActiveDay])
+					::DataSend(n, (UCHAR*)&pNotice, pNotice.h.size);
+			}
+		}
+	}
+}
+
+void cImperialGuardian__InsideTrigger(void *  lpParam)
+{
+	g_ImperialGuardian.Start = FALSE;
+	g_ImperialGuardian.Stage = 0;
+	g_ImperialGuardian.OnStage = 0;
+	BYTE pAlive = 0;
+	g_ImperialGuardian.SetMonsters(g_ImperialGuardian.Stage);
+	int IngameSeconds = 0;
+	int WaitSeconds = 0;
+
+	g_ImperialGuardian.GCServerMsgStringSend("Imperial Guardian will start in 60 seconds.",1);
+	g_ImperialGuardian.Start = TRUE;
+	g_ImperialGuardian.WaitPeriod = TRUE;
+	g_ImperialGuardian.GateState(true);
+
+	while(true)
+	{
+		//Check Finish
+		if( cImperialGuardian__Stages[g_ImperialGuardian.ActiveDay] <= g_ImperialGuardian.Stage )
+		{
+			//FINISHED SUCCESS
+			break;
+		}
+
+		if (g_ImperialGuardian.WaitPeriod == TRUE)
+		{
+			g_ImperialGuardian.Timer(WaitSeconds, 0);
+			if(WaitSeconds >= (ImperialGuardian_WaitTime * 60))
+			{
+				g_ImperialGuardian.WaitPeriod = FALSE;
+				//g_ImperialGuardian.WarpedNextStage = TRUE;	//Keep counter at 0, untill warped to next stage
+			}
+
+			IngameSeconds = 0;
+			WaitSeconds++;
+		} else {
+			g_ImperialGuardian.Timer(IngameSeconds, 1);
+
+			//g_ImperialGuardian.WarpedNextStage = FALSE;		//Keep counter at 0, untill warped to next stage
+			if(IngameSeconds >= (ImperialGuardian_MaxTime * 60))
+			{
+				//time exceed
+				g_ImperialGuardian.Fail(-1);
 				break;
 			}
+
+			IngameSeconds++;
+			WaitSeconds = 0;
 		}
 
-		if(bFlag)
+		//Check Party
+		pAlive = g_ImperialGuardian.IsPartyAlive();
+		if(pAlive != 2)
 		{
-			GCServerMsgStringSend(lMsg.Get(3465), nUserIndex, 1);
-			pMsg.ukn05 = 1;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
+			g_ImperialGuardian.Fail(pAlive);			
+			break;
+		}
+		
+		Sleep(1000);
+	}
 
-			if ( nDestZoneIndex != 0)
-			{
-				RollBackUserPos(nUserIndex);
-			}
+	g_ImperialGuardian.GateState(false);
+
+	Sleep(5000);
+	g_ImperialGuardian.ClearAllMonsters();
+
+	if(pAlive != 0)
+	{
+		g_ImperialGuardian.GCServerMsgStringSend("Imperial Guardian will close in 30 seconds.",1);
+		if(pAlive == 2)
+		{
+			//Success
+			g_ImperialGuardian.Success();
+			g_ImperialGuardian.SendRanking();
+		}
+		Sleep(30000);
+	}
+	g_ImperialGuardian.WarpOutside();
+	LogAddC(13, "[Imperial Guardian] (Day:%d) State -> CLOSED",g_ImperialGuardian.ActiveDay);
+	g_ImperialGuardian.Occuped = 0;
+	_endthread();
+
+}
+
+
+
+void cImperialGuardian::SendRanking()
+{
+	if(this->SaveInDB == 1)
+	{
+		int pIndex = this->m_UserData.PartyIndex;
+
+		if(gParty.IsParty(pIndex) == FALSE)
+		{
 			return;
 		}
 
-	}
-
-	pMsg.DayOfWeek = nDayOfWeek - 1;
-	if ( nDayOfWeek - 1 < 1 )
-		pMsg.DayOfWeek = 7;
-
-	if ( m_ZoneInfo[nDestZoneIndex].m_nPartyNumber < 0
-		&& m_ZoneInfo[nDestZoneIndex].vtPlayers.size() < 1 )
-	{
-		/*
-		if ( nDestZoneIndex > 0 && m_CheatModeGM != 1 && !m_ZoneInfo[nDestZoneIndex - 1].ukn0Ch )
+		if(gObjIsConnected(this->m_UserData.PartyLeaderUserNumber) == TRUE)
 		{
-		GCServerMsgStringSend(lMsg.Get(3466), nUserIndex, 1);
-		RollBackUserPos(nUserIndex);
-		return;
-		}
-		*/
-		int nTest = gObj[nUserIndex].PartyNumber;
-		m_ZoneInfo[nDestZoneIndex].m_nPartyNumber = gObj[nUserIndex].PartyNumber;
-		if ( nDestZoneIndex != 0)
-		{
-			if ( m_ZoneInfo[nDestZoneIndex - 1].m_nMonsterRegenTableIndex <= 0 || m_CheatModeGM )
+			if(gParty.Isleader(pIndex,this->m_UserData.PartyLeaderUserNumber,this->m_UserData.PartyLeaderDBNumber) == FALSE)
 			{
-				m_ZoneInfo[nDestZoneIndex].m_nMonsterRegenTableIndex = nDayOfWeek;
+				return;
 			}
-			else
-			{
-				m_ZoneInfo[nDestZoneIndex].m_nMonsterRegenTableIndex = m_ZoneInfo[nDestZoneIndex - 1].m_nMonsterRegenTableIndex;
-				m_ZoneInfo[nDestZoneIndex].m_nMaxUserLevel = m_ZoneInfo[nDestZoneIndex - 1].m_nMaxUserLevel;
-				m_ZoneInfo[nDestZoneIndex].m_nMaxUserReset = m_ZoneInfo[nDestZoneIndex - 1].m_nMaxUserReset;
-			}
-		}
-		else
+		}else
 		{
-			m_ZoneInfo[0].m_nMonsterRegenTableIndex = nDayOfWeek;
-		}
-
-		int nMaxLevel = 0;
-		int nMaxReset = 0;
-
-		if ( gParty.m_PartyS[m_ZoneInfo[nDestZoneIndex].m_nPartyNumber].m_MaxLevel != 0)
-		{
-			gGetPartyMaxLevelAndReset(m_ZoneInfo[nDestZoneIndex].m_nPartyNumber, nMaxLevel, nMaxReset);
-		}
-		else
-		{
-			nMaxLevel = gObj[nUserIndex].m_nMasterLevel + gObj[nUserIndex].Level;
-			nMaxReset = gObj[nUserIndex].Reset;
-		}
-
-		m_ZoneInfo[nDestZoneIndex].m_nMaxUserLevel = nMaxLevel;
-		m_ZoneInfo[nDestZoneIndex].m_nMaxUserReset = nMaxReset;
-		RegAllPartyUser(nDestZoneIndex, nUserIndex);
-		RegenMonster(nDestZoneIndex, m_ZoneInfo[nDestZoneIndex].m_nMonsterRegenTableIndex, nMaxLevel, nMaxReset, 1);
-		SetZoneState(nDestZoneIndex, 2);
-	}
-	else
-	{
-		if ( m_ZoneInfo[nDestZoneIndex].m_nPartyNumber != gObj[nUserIndex].PartyNumber )
-		{
-			GCServerMsgStringSend(lMsg.Get(3467), nUserIndex, 1);
-			pMsg.ukn05 = 1;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
 			return;
 		}
 
-		if ( !m_CheatModeGM && !nDestZoneIndex && !IsRegPartyUser(0, nUserIndex) )
+		for(int i = 0; i < MAX_USER_IN_PARTY; i++)
 		{
-			GCServerMsgStringSend(lMsg.Get(3467), nUserIndex, 1);
-			pMsg.ukn05 = 1;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-			return;
-		}
+			int pId = gParty.m_PartyS[pIndex].Number[i];
 
-		if ( GetPlayerCount(nDestZoneIndex) > 5 )
-		{
-			GCServerMsgStringSend(lMsg.Get(3468), nUserIndex, 1u);
-			pMsg.ukn05 = 3;
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-			return;
+			if ( pId < 0 || pId > (OBJMAX-1) )
+			{
+				
+			}else
+			{
+				if(gObjIsConnected(gParty.m_PartyS[pIndex].Number[i]) == TRUE)
+				{
+					PMSG_ANS_IGSCORE pMsg = {0};
+					PHeadSetB((LPBYTE)&pMsg, SCFExDB_GSSend_IGScore, sizeof(pMsg));
+
+					memcpy(pMsg.AccountID, gObj[pId].AccountID, MAX_ACCOUNT_LEN);
+					memcpy(pMsg.Name, gObj[pId].Name, MAX_ACCOUNT_LEN);
+					pMsg.ServerCode = gGameServerCode;
+					pMsg.Day = this->ActiveDay;
+
+					wsExServerCli.DataSend((char*)&pMsg, pMsg.h.size);
+				}
+			}
 		}
 	}
+}
 
-
-	pMsg.EventEnded = this->ukn0Ch;
-
-	if ( nDestZoneIndex > 0 )
-		RemoveUserInZone(nDestZoneIndex - 1, nUserIndex);
-
-	int nGateIndex = GetGateNumber(nDestZoneIndex, m_ZoneInfo[nDestZoneIndex].m_nMonsterRegenTableIndex);
-	if ( nGateIndex != -1 )
+void cImperialGuardian::ClearAllMonsters()
+{		
+	for(int iStage = 0; iStage < MAX_IG_EVENT_STAGES; iStage++)
 	{
-		AddUserInZone(nDestZoneIndex, nUserIndex);
-		pMsg.ukn05 = 0;
-
-		GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-
-		if ( gObjCheckUsedBuffEffect(lpObj, 3) == 1 )
-			gObjRemoveBuffEffect(lpObj, 3);
-
-		gObjMoveGate(nUserIndex, nGateIndex);
-		if ( m_CheatModeGM != 1 )
+		for(int MobCount=0; MobCount < MAX_IG_EVENT_STAGE_MOB_COUNT ;MobCount++)
 		{
-			if ( nDestZoneIndex == 0)
+			if (this->m_MonsterData[this->ActiveDay][iStage][MobCount].ID >= 0)
 			{
-				if ( nEnterItemPos >= 0 )
+				int aIndex = this->m_MonsterData[this->ActiveDay][iStage][MobCount].ID;
+				
+				if (gObj[aIndex].Class == this->m_MonsterData[this->ActiveDay][iStage][MobCount].Number)
 				{
-					if ( lpObj->pInventory[nEnterItemPos].m_Type != ITEMGET(14, 102)
-						&& lpObj->pInventory[nEnterItemPos].m_Type != ITEMGET(14, 109) )
+					if ( IMPERIALGUARDIAN_MAP_RANGE(gObj[aIndex].MapNumber) )
 					{
-						if ( lpObj->pInventory[nEnterItemPos].m_Type == ITEMGET(13, 126)
-							|| lpObj->pInventory[nEnterItemPos].m_Type == ITEMGET(13, 127) )
-						{
-							lpObj->pInventory[nEnterItemPos].m_Durability = lpObj->pInventory[nEnterItemPos].m_Durability - 1.0;
-							if ( lpObj->pInventory[nEnterItemPos].m_Durability > 0.0 )
-							{
-								GCItemDurSend2(nUserIndex, nEnterItemPos, 
-									gObj[nUserIndex].pInventory[nEnterItemPos].m_Durability, 0);
-							}
-							else
-							{
-								gObjInventoryDeleteItem(nUserIndex, nEnterItemPos);
-								GCInventoryItemDeleteSend(nUserIndex, nEnterItemPos, 1u);
-							}
-						}
-					}
-					else
-					{
-						gObjInventoryDeleteItem(nUserIndex, nEnterItemPos);
-						GCInventoryItemDeleteSend(nUserIndex, nEnterItemPos, 1u);
+						LogAddC(12, "[Imperial Guardian] (Day:%d) Deliting Monster: %d [%d,%d,%d] Life:%d Live:%d Attr:%d [S:%d, DR:%d]",
+							this->ActiveDay,
+							gObj[aIndex].Class, 
+							gObj[aIndex].MapNumber, gObj[aIndex].X, gObj[aIndex].Y,
+							(int)gObj[aIndex].Life, gObj[aIndex].Live, gObj[aIndex].m_Attribute,
+							gObj[aIndex].m_State, gObj[aIndex].DieRegen
+						);
+						gObjDel(aIndex);
 					}
 				}
+
+				this->m_MonsterData[this->ActiveDay][iStage][MobCount].ID = -1;
 			}
 		}
-
-		LogAddTD("[IMPERIALGUARDIAN] Enter Zone User -> [AccountID]:%s [NAME]:%s [ZONE]:%d ",
-			gObj[nUserIndex].AccountID, gObj[nUserIndex].Name, nDestZoneIndex + 1);
-
-		LogAddTD("[IMPERIALGUARDIAN] [%d ZONE USER COUNT] : %d  ", nDestZoneIndex + 1, GetPlayerCount(nDestZoneIndex));
 	}
+	LogAddC(12, "[Imperial Guardian] (Day:%d) State -> FINISH: CLEAR_MONSTERS",this->ActiveDay);
 }
 
-void CImperialGuardian::RegenMonster(int nZoneIndex, int nMonsterRegenTableIndex, int nMaxUserLevel, int nMaxUserReset, char bOnlyCreateGate)	//OK
+void cImperialGuardian::StartEvent(LPOBJ lpObj)
 {
-	if( !IsGoodZone(nZoneIndex) )
+	if((this->Occuped == 0) && (this->Enabled == 1))
 	{
-		LogAddTD("[IMPERIALGUARDIAN][RegenMonsterFunc] Invalid zone index => %d  ", nZoneIndex + 1);
-		return;
-	}
-
-	if ( nMonsterRegenTableIndex < 1 || nMonsterRegenTableIndex > 7 )
-	{
-		LogAddTD("[IMPERIALGUARDIAN][RegenMonsterFunc] Invalid MonsterRegenTable Index => %d  ", nMonsterRegenTableIndex);
-		return;
-	}
-
-	//    int nMaxLevel = gParty.m_PartyS[m_ZoneInfo[nZoneIndex].m_nPartyNumber].m_MaxLevel;
-	//				int nMaxReset = gParty.m_PartyS[m_ZoneInfo[nZoneIndex].m_nPartyNumber].m_MaxReset;
-
-	int nMaxLevel = 0;
-	int nMaxReset = 0;
-	gGetPartyMaxLevelAndReset(m_ZoneInfo[nZoneIndex].m_nPartyNumber, nMaxLevel, nMaxReset);
-
-	if ( nMaxUserLevel )
-		nMaxLevel = nMaxUserLevel;
-
-	if( nMaxUserReset )
-		nMaxReset = nMaxUserReset;
-
-	for (int i = 0; i < gMSetBase.m_Count; ++i )
-	{
-
-		if ( gMSetBase.m_Mp[i].m_ArrangeType == 5
-			&& gMSetBase.m_Mp[i].m_IG_ZoneIndex == nZoneIndex
-			&& gMSetBase.m_Mp[i].m_IG_ZoneIndex == nZoneIndex
-			&& gMSetBase.m_Mp[i].m_IG_RegenTable == nMonsterRegenTableIndex )
+		if (( lpObj->PartyNumber >= 0  ) && (gParty.GetCount(lpObj->PartyNumber) > 0))
 		{
-			if ( bOnlyCreateGate )
+			this->Occuped = 1;
+			this->m_UserData.PartyIndex				 = lpObj->PartyNumber;
+			this->m_UserData.PartyLeaderUserNumber	 = gParty.m_PartyS[lpObj->PartyNumber].Number[0];
+			this->m_UserData.PartyLeaderDBNumber	 = gParty.m_PartyS[lpObj->PartyNumber].DbNumber[0];
+			this->m_UserData.PlayerExp				 = lpObj->Experience;
+			this->m_UserData.PartyCount				 = gParty.GetCount(lpObj->PartyNumber);
+			this->KillDoor							 = 0;
+			
+			for(int i=0;i<10;i++)
+				this->DoorBlocked[i] = true;
+			
+			for(int i=0;i<MAX_IG_EVENT_STAGES;i++)
 			{
-				if ( gMSetBase.m_Mp[i].m_Type < 524 || gMSetBase.m_Mp[i].m_Type > 528 )
-					continue;
+				this->MonsterStageKillCount[this->ActiveDay][i]=0;
 			}
-			else
-			{
-				if ( gMSetBase.m_Mp[i].m_Type >= 524 && gMSetBase.m_Mp[i].m_Type <= 528 )
-					continue;
-			}
-
-			int nResult = gObjAddMonster(gMSetBase.m_Mp[i].m_MapNumber);
-
-			if ( nResult < 0 )
-			{
-				LogAddTD("[IMPERIALGUARDIAN][RegenMonsterFunc] gObjAddMonster fail (ErrorCode: %d, MonsterClass: %d)",
-					nResult, gMSetBase.m_Mp[i].m_Type);
-				continue;
-			}
-
-			if ( gObjSetPosMonster(nResult, i) )
-			{
-				if ( SetMonster(nResult, gMSetBase.m_Mp[i].m_Type, nMaxLevel, nMaxReset) )
-				{
-
-					gObj[nResult].m_ImperialZoneID = nZoneIndex;
-					stMonsterIndexInfo stMonsterIndex;
-					if ( gMSetBase.m_Mp[i].m_Type < 523 || gMSetBase.m_Mp[i].m_Type > 528 )
-					{
-						stMonsterIndex.bLive = 1;
-						stMonsterIndex.bState = 1;
-						stMonsterIndex.ObjIndex = nResult;
-
-						m_ZoneInfo[nZoneIndex].ukn0Dh = 1;
-						LogAddTD("[IMPERIALGUARDIAN] AddMonster => %s, MapNumber => %d ,Zone => %d PosX => %d, PosY => %d, Connected => %d, STATE => %d ",
-							gObj[nResult].Name, gObj[nResult].MapNumber, gObj[nResult].m_ImperialZoneID + 1,
-							gObj[nResult].X, gObj[nResult].Y, gObj[nResult].Connected, gObj[nResult].m_State);
-					}
-					else
-					{
-						stMonsterIndex.bLive = 0;
-						stMonsterIndex.bState = 0;
-						stMonsterIndex.ObjIndex = nResult;
-
-						if (gMSetBase.m_Mp[i].m_Type == 523)
-						{
-							OBJECTSTRUCT *lpObj = &gObj[nResult];
-							gObjAddBuffEffect(lpObj, AT_CW_NPC_TRANSPARENCY, 0, 0, 0, 0, -10); //TRAP WIP
-						}
-
-						if ( gMSetBase.m_Mp[i].m_Type >= 524 && gMSetBase.m_Mp[i].m_Type <= 528
-							&& gMSetBase.m_Mp[i].m_Type != 526)
-						{
-							LogAddTD("[IMPERIALGUARDIAN] AddGate => %s, MapNumber => %d ,Zone => %d PosX => %d, PosY => %d ",
-								gObj[nResult].Name, gObj[nResult].MapNumber, gObj[nResult].m_ImperialZoneID + 1,
-								gObj[nResult].X, gObj[nResult].Y);
-						}
-					}
-
-					this->m_ZoneInfo[nZoneIndex].vtMonsterInfo.push_back(stMonsterIndex);
-
-					if ( gMSetBase.m_Mp[i].m_Type >= 524 && gMSetBase.m_Mp[i].m_Type <= 528
-						&& gMSetBase.m_Mp[i].m_Type != 526)
-					{
-						SetGateBlockState(gMSetBase.m_Mp[i].m_MapNumber, nZoneIndex,
-							gMSetBase.m_Mp[i].m_X, gMSetBase.m_Mp[i].m_Y, 1, gMSetBase.m_Mp[i].m_Dir);
-
-					}
-				}
-				else
-				{
-					gObjDel(nResult);
-					LogAdd("error : %s %d", __FILE__, __LINE__);
-				}
-			}
-			else
-			{
-				gObjDel(nResult);
-				LogAdd("error : %s %d", __FILE__, __LINE__);
-			}
-
-		}
-	}
-}
-
-void CImperialGuardian::DeleteMonster(int nZoneIndex, int nMonsterRegenTableIndex)	//OK
-{
-	int nCount = 0;
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtMonsterInfo.begin();
-		it != m_ZoneInfo[nZoneIndex].vtMonsterInfo.end();
-		++it)
-	{
-		stMonsterIndexInfo& stMonsterIndex = *it;
-		if ( gObjDel(stMonsterIndex.ObjIndex) )
-		{
-			gObj[stMonsterIndex.ObjIndex].m_ImperialZoneID = -1;
-			++nCount;
-		}
-	}
-
-	m_ZoneInfo[nZoneIndex].vtMonsterInfo.clear();
-	LogAddTD("[IMPERIALGUARDIAN] DELETE ALL MONSTER -> [ZONE]:%d [COUNT]:%d ", nZoneIndex + 1, nCount);
-}
-
-void CImperialGuardian::InitZone(int nZoneIndex)	//OK
-{
-	if ( !m_bScriptLoad )
-	{
-		MsgBox("[EVENTDUNGEON] script file not loaded");
-		return;
-	}
-
-	this->m_ZoneInfo[nZoneIndex].m_bLootTime = 0;
-	this->m_ZoneInfo[nZoneIndex].m_bWaitPlayer = 0;
-	this->m_ZoneInfo[nZoneIndex].m_bTimeAttack = 0;
-	this->m_ZoneInfo[nZoneIndex].ukn0Ch = 0;
-	this->m_ZoneInfo[nZoneIndex].ukn0Dh = 0;
-	this->m_ZoneInfo[nZoneIndex].ukn0Eh = 0;
-
-	if ( nZoneIndex )
-		this->m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec = 1000 * this->m_WaitPlayerTime;
-	else
-		this->m_ZoneInfo[0].m_WaitPlayer_MSec = 1000 * this->m_WaitPlayerTime /*+ 120000*/;
-
-	this->m_ZoneInfo[nZoneIndex].m_LootTime_MSec = 1000 * this->m_LootTime;
-	this->m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec = 1000 * this->TimeAttackTime;
-	this->m_ZoneInfo[nZoneIndex].m_WaitPlayer_TickCount = 0;
-	this->m_ZoneInfo[nZoneIndex].m_LootTime_TickCount = 0;
-	this->m_ZoneInfo[nZoneIndex].m_TimeAttack_TickCount = 0;
-	this->m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex = -1;
-	this->m_ZoneInfo[nZoneIndex].m_nPartyNumber = -1;
-	this->m_ZoneInfo[nZoneIndex].m_nMaxUserLevel = 0;
-	this->m_ZoneInfo[nZoneIndex].m_nMaxUserReset = -1;
-	this->m_ZoneInfo[nZoneIndex].m_State = 0;
-	this->m_ZoneInfo[nZoneIndex].ukn18h = m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec / 60000u + 1;
-	this->m_ZoneInfo[nZoneIndex].vtUkn3Ch.clear();
-	this->m_ZoneInfo[nZoneIndex].vtPlayers.clear();
-
-	m_ZoneInfo[nZoneIndex].vtMonsterInfo.clear();
-	m_ZoneInfo[nZoneIndex].vtGateInfo.clear();
-}
-
-bool CImperialGuardian::SetMonster(int nIndex, int MonsterClass, int nMaxLevel, int nMaxUserReset)	//OK
-{
-	if( !OBJMAX_RANGE(nIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return false;
-	}
-
-	OBJECTSTRUCT *lpObj = &gObj[nIndex];
-
-	lpObj->ConnectCheckTime = GetTickCount();
-	lpObj->ShopNumber = -1;
-	lpObj->TargetNumber = -1;
-	lpObj->m_RecallMon = -1;
-	lpObj->Connected = 3;
-	lpObj->Live = 1;
-	lpObj->m_State = 1;
-	lpObj->DieRegen = 0;
-	lpObj->Type = OBJ_MONSTER;
-	lpObj->Class = MonsterClass;
-	lpObj->LastAttackerID = -1;
-
-	g_MonsterStatCalc.ConvertMonsterStat(lpObj, nMaxLevel, nMaxUserReset);
-
-	*(BYTE *)lpObj->pInventoryCount = 0;
-
-	if ( lpObj->m_AttackType )
-	{
-		gObjMonsterMagicAdd(lpObj, lpObj->m_AttackType, 1);
-	}
-
-	gObjMonsterHitDamageInit(lpObj);
-	gObjSetInventory1Pointer(lpObj);
-	CreateFrustrum(lpObj->X, lpObj->Y, nIndex);
-
-	MapC[lpObj->MapNumber].SetStandAttr(lpObj->X, lpObj->Y);
-
-	lpObj->m_OldX = lpObj->X;
-	lpObj->m_OldY = lpObj->Y;
-
-	return true;
-}
-
-int CImperialGuardian::GetGateNumber(int nZoneIndex, int nDayOfWeek)	//OK
-{
-	int nGateNumber = -1;
-
-	switch ( nZoneIndex )
-	{
-	case 0:
-		if ( nDayOfWeek == 1 )
-		{
-			nGateNumber = 322;
-		}
-		else if ( nDayOfWeek == 2 || nDayOfWeek == 5 )
-		{
-			nGateNumber = 307;
-		}
-		else if ( nDayOfWeek == 3 || nDayOfWeek == 6 )
-		{
-			nGateNumber = 312;
-		}
-		else if ( nDayOfWeek == 4 || nDayOfWeek == 7 )
-		{
-			nGateNumber = 317;
-		}
-		break; // case 0
-
-	case 1:
-		if ( nDayOfWeek == 1 )
-		{
-			nGateNumber = 324;
-		}
-		else if ( nDayOfWeek == 2 || nDayOfWeek == 5 )
-		{
-			nGateNumber = 309;
-		}
-		else if ( nDayOfWeek == 3 || nDayOfWeek == 6 )
-		{
-			nGateNumber = 314;
-		}
-		else if ( nDayOfWeek == 4 || nDayOfWeek == 7 )
-		{
-			nGateNumber = 319;
-		}
-		break; // case 1
-
-	case 2:
-		if ( nDayOfWeek == 1 )
-		{
-			nGateNumber = 326;
-		}
-		else if ( nDayOfWeek == 2 || nDayOfWeek == 5 )
-		{
-			nGateNumber = 311;
-		}
-		else if ( nDayOfWeek == 3 || nDayOfWeek == 6 )
-		{
-			nGateNumber = 316;
-		}
-		else if ( nDayOfWeek == 4 || nDayOfWeek == 7 )
-		{
-			nGateNumber = 321;
-		}
-		break; // case 2
-
-	case 3:
-		if ( nDayOfWeek == 1 )
-			nGateNumber = 328;
-		break;
-
-	default:
-		LogAddTD("[IMPERIALGUARDIAN][GetGateNumberFunc] Invalid zoneIndex : %d ", nZoneIndex + 1);
-		break;
-	}
-
-
-	return nGateNumber;
-}
-
-int CImperialGuardian::GetMapNumber(int nDayOfWeek)	//OK
-{
-	int nMapNumber = -1;
-
-	if ( nDayOfWeek == 1 )
-	{
-		nMapNumber = 72;
-	}
-	else if ( nDayOfWeek == 2 || nDayOfWeek == 5 )
-	{
-		nMapNumber = 69;
-	}
-	else if ( nDayOfWeek == 3 || nDayOfWeek == 6 )
-	{
-		nMapNumber = 70;
-
-	}
-	else if ( nDayOfWeek == 4 || nDayOfWeek == 7 )
-	{
-		nMapNumber = 71;
-	}
-
-	return nMapNumber;
-}
-
-void CImperialGuardian::ProcCheckDungeon(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return;
-
-
-	CTime tCurrentTime(CTime::GetTickCount());
-	int nDayOfWeek = tCurrentTime.GetDayOfWeek();
-
-	if ( m_nDayOfWeek != nDayOfWeek )
-	{
-		m_nDayOfWeek = nDayOfWeek;
-		this->ukn0Ch = rand() % 4;
-	}
-
-	CheckLiveMonster(nZoneIndex);
-
-	if ( GetZoneState(nZoneIndex) == STATE_READY )
-		return;
-
-
-	if ( GetZoneState(nZoneIndex) == STATE_TIMEATTACK )
-	{
-		if ( m_ZoneInfo[nZoneIndex].ukn0Dh == 1 )
-		{
-			if ( GetLiveMonsterCount(nZoneIndex) < 1 )
-			{
-				SetAtackAbleState(nZoneIndex, 524, 1);
-				SetAtackAbleState(nZoneIndex, 527, 1);
-				SetAtackAbleState(nZoneIndex, 528, 1);
-			}
-		}
-	}
-
-	if ( GetPlayerCount(nZoneIndex) < 1 )
-	{
-		int nMonsterRegenTable = m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex;
-		DeleteMonster(nZoneIndex, nMonsterRegenTable);
-		InitZone(nZoneIndex);
-	}
-}
-
-int CImperialGuardian::GetLiveMonsterCount(int nZoneIndex)	//OK
-{
-	int nCount = 0;
-
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtMonsterInfo.begin(); 
-		it != m_ZoneInfo[nZoneIndex].vtMonsterInfo.end();
-		++it)
-	{
-		stMonsterIndexInfo& stMonsterIndex = *it;
-
-		if ( stMonsterIndex.bLive )
-			++nCount;
-	}
-
-	return nCount;
-}
-
-void CImperialGuardian::CheckLiveMonster(int nZoneIndex)	//OK
-{
-	for ( auto it = this->m_ZoneInfo[nZoneIndex].vtMonsterInfo.begin();
-		it != this->m_ZoneInfo[nZoneIndex].vtMonsterInfo.end();
-		++it )
-	{
-		stMonsterIndexInfo& stMonsterIndex = *it;
-
-		int ObjIndex = stMonsterIndex.ObjIndex;
-
-		if ( !gObj[ObjIndex].Live && stMonsterIndex.bLive == 1 || gObj[ObjIndex].Connected != 3 )
-			stMonsterIndex.bLive = false;
-
-		if ( gObj[ObjIndex].Live )
-		{
-			if ( gObj[ObjIndex].m_State != 1 && gObj[ObjIndex].m_State != 2)
-			{
-				LogAddTD("[IMPERIALGUARDIAN][RESTORE] [NAME]:%s [INDEX]:%d [TYPE]:%d [STATE]:%d",
-					gObj[ObjIndex].Name, ObjIndex, gObj[ObjIndex].Class, gObj[ObjIndex].m_State);
-
-				gObj[ObjIndex].m_State = 1;
-			}
-		}
-	}
-
-}
-
-int CImperialGuardian::GetCurrentZoneIndex(int nUserNumber)	//OK
-{
-	int nResult = -1;
-	for ( int i = 0; i < MAX_EVENTZONE; ++i )
-	{
-		EnterCriticalSection(&m_cs);
-		std::vector<int> vtTemp(m_ZoneInfo[i].vtPlayers);
-
-		for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-		{
-			if ( *it == nUserNumber )
-			{
-				LeaveCriticalSection(&m_cs);
-				nResult = i;
-				return nResult;
-			}
-		}
-
-		LeaveCriticalSection(&m_cs);
-	}
-
-	return -1;
-}
-
-
-bool CImperialGuardian::AddUserInZone(int nZoneIndex, int nUserNumber)	//OK
-{
-	EnterCriticalSection(&this->m_cs);
-
-	bool bAddUser = true;
-
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtPlayers.begin();
-		it != m_ZoneInfo[nZoneIndex].vtPlayers.end();
-		++it )
-	{
-		if ( *it == nUserNumber )
-		{
-			bAddUser = false;
-			break;
-		}
-	}
-
-
-	if ( bAddUser )
-	{
-		m_ZoneInfo[nZoneIndex].vtPlayers.push_back(nUserNumber);
-		LeaveCriticalSection(&this->m_cs);
-		return true;
-	}
-	else
-	{
-		LeaveCriticalSection(&this->m_cs);
-		return false;
-	}
-
-}
-
-void CImperialGuardian::RemoveUserInZone(int nZoneIndex, int nUserNumber)	//OK
-{
-	EnterCriticalSection(&this->m_cs);
-
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtPlayers.begin();
-		it != m_ZoneInfo[nZoneIndex].vtPlayers.end();
-		++it)
-	{
-		if ( *it == nUserNumber )
-		{
-			m_ZoneInfo[nZoneIndex].vtPlayers.erase(it);
-			LogAddTD("[IMPERIALGUARDIAN] Leave Player Zone [ZONE]:%d, [AccountID]:%s, [Name]:%s",
-				nZoneIndex + 1, gObj[nUserNumber].AccountID, gObj[nUserNumber].Name);
-			break;
-		}
-	}
-
-	LeaveCriticalSection(&this->m_cs);
-}
-
-void CImperialGuardian::RemoveUserInAllZone(int nUserNumber)	//OK
-{
-	for ( int i = 0; i < MAX_EVENTZONE; ++i )
-		RemoveUserInZone(i, nUserNumber);
-}
-
-int CImperialGuardian::GetPlayerCount(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return 0;
-
-	return m_ZoneInfo[nZoneIndex].vtPlayers.size();
-}
-
-int CImperialGuardian::GetTotalPlayerCount()	//OK
-{
-	int nCount = 0;
-
-	for (int i = 0; i < MAX_EVENTZONE; ++i )
-		nCount += GetPlayerCount(i);
-
-	return nCount;
-}
-
-bool CImperialGuardian::IsLastZone(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return false;
-
-	if ( this->m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex == 1 && nZoneIndex == 3 )
-		return true;
-
-	if(this->m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex != 1 && nZoneIndex == 2)
-		return true;
-	else
-		return false;
-}
-
-struct PMSG_IG_ZONE_CLEAR
-{
-	PBMSG_HEAD2 h;
-	BYTE ClearType;
-	int RewardExp;
-};
-
-
-bool CImperialGuardian::GCNotifyZoneClear(int nZoneIndex)	//OK
-{
-	if(!IsGoodZone(nZoneIndex))
-		return false;
-
-	PMSG_IG_ZONE_CLEAR pMsg={0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x06, sizeof(pMsg));
-
-	pMsg.ClearType = 1;
-
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers); 
-
-	for ( auto it = vtTemp.begin();	it != vtTemp.end();	++it )
-	{
-		int nResult = *it;
-
-		if(IsEventMap(gObj[nResult].MapNumber))
-			GCSendDataToUser(nResult, (LPBYTE)&pMsg, sizeof(pMsg));
-	}
-
-	return true;
-}
-
-bool CImperialGuardian::GCNotifyAllZoneClear(int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-		return false;
-
-	PMSG_IG_ZONE_CLEAR pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x06, sizeof(pMsg));
-
-	pMsg.ClearType = 2;
-
-	std::vector<int> vtTemp(this->m_ZoneInfo[nZoneIndex].vtPlayers);
-
-	for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-	{
-		int nResult = *it;
-
-		if ( IsEventMap(gObj[nResult].MapNumber) )
-		{
-//#if defined __REEDLAN__ || __BEREZNUK__
-			g_ShopPointEx.AddEventBonus(nResult, ShopPointExEvent::IG);
-//#endif
-			pMsg.RewardExp = m_RewardExpInfo.GetRewardExp(nResult);
-
-			if ( nZoneIndex == 3 )
-				pMsg.RewardExp *= 2;
-
-			if ( gObjCheckUsedBuffEffect(&gObj[nResult], 42)
-				|| gObjCheckUsedBuffEffect(&gObj[nResult], 31) )
-			{
-				pMsg.RewardExp = 0;
-			}
-
-			ImperialGuardianLevelUp(nResult, pMsg.RewardExp);
-
-			LogAddTD("[IMPERIALGUARDIAN] [ACCOUNTID]:%s, [NAME]:%s, [Reward Exp] : %d ",
-				gObj[nResult].AccountID, gObj[nResult].Name, pMsg.RewardExp);
-
-			//if ( !g_MasterLevelSystem.IsMasterLevelUser(&gObj[nResult]) )
-			//	GCSendExp_INT64(nResult, -1, pMsg.RewardExp, 0, 0);
-
-			if( !g_MasterLevelSystem.IsMasterLevelUser(&gObj[nResult]) )
-				GCSendExp_INT64(nResult, -1, pMsg.RewardExp, 0, 0);
-
-			GCSendDataToUser(nResult, (LPBYTE)&pMsg, sizeof(pMsg));
-
-			char szText[256] = {0};
-
-			wsprintf(szText, lMsg.Get(3438));
-			GCServerMsgStringSend(szText, nResult, 0);
-		}
-	}
-
-
-	return true;
-}
-
-void CImperialGuardian::GCMissionFail(int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-		return;
-
-	PMSG_IG_ZONE_CLEAR pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x06, sizeof(pMsg));
-	pMsg.ClearType = 0;
-
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-	for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-	{
-		int nResult = *it;
-
-		if ( IsEventMap(gObj[nResult].MapNumber) )
-			GCSendDataToUser(nResult, (LPBYTE)&pMsg, sizeof(pMsg));
-
-		char szText[256] = {0};
-
-		wsprintf(szText, lMsg.Get(3439));
-		GCServerMsgStringSend(szText, nResult, 0);
-	}
-}
-
-void CImperialGuardian::GCMissionFailUseDie(int nUserIndex)	//OK
-{
-	if( !OBJMAX_RANGE(nUserIndex) )
-		return;
-
-	PMSG_IG_ZONE_CLEAR pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x06, sizeof(pMsg));
-	pMsg.ClearType = 0;
-
-	GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-
-	char szText[256] = {0};
-
-	wsprintf(szText, lMsg.Get(3439));
-	GCServerMsgStringSend(szText, nUserIndex, 0);
-}
-
-void CImperialGuardian::GCSendDataToUser(int nIndex, LPBYTE lpMsg, DWORD nSize)	//OK
-{
-	if( !OBJMAX_RANGE(nIndex) )
-		return;
-
-	if ( gObj[nIndex].Connected == 3 )
-	{
-		if ( gObj[nIndex].Type == OBJ_USER )
-			DataSend(nIndex, lpMsg, nSize);
-	}
-}
-
-
-struct PMSG_IG_REMAIN_TICK
-{
-	PBMSG_HEAD2 h;
-	BYTE TickType;
-	BYTE MonsterTableIndex;
-	BYTE ZoneIndex;
-	int RemainTick;
-	BYTE LiveMonsterCount;
-};
-
-bool CImperialGuardian::GCNotifyRemainTickCount(int nZoneIndex, BYTE btMsgType, DWORD dwRemainTick)	//OK
-{
-	PMSG_IG_REMAIN_TICK pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x04, sizeof(pMsg));
-
-	pMsg.TickType = btMsgType;
-	pMsg.ZoneIndex = nZoneIndex + 1;
-	pMsg.LiveMonsterCount = GetLiveMonsterCount(nZoneIndex);
-	pMsg.MonsterTableIndex = m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex - 1;
-
-	if ( pMsg.MonsterTableIndex < 1 )
-		pMsg.MonsterTableIndex = 7;
-
-	switch(btMsgType)
-	{
-	case 0:	pMsg.RemainTick = m_ZoneInfo[nZoneIndex].m_LootTime_MSec;			break;
-	case 1: pMsg.RemainTick = m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec;			break;
-	case 2: pMsg.RemainTick = m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec;	break;
-
-	default:
-		LogAddTD("[IMPERIALGUARDIAN][GCNotifyRemainTickCountFunc] Invalid MsgType : %d ", btMsgType);
-		return false;
-
-	}
-
-	std::vector<int> vtTtemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-	for (auto it = vtTtemp.begin(); it != vtTtemp.end(); ++it )
-	{
-		int nResult = *it;
-
-		if ( IsEventMap(gObj[nResult].MapNumber) )
-			GCSendDataToUser(nResult, (LPBYTE)&pMsg, sizeof(pMsg));
-	}
-
-	return true;
-}
-
-void CImperialGuardian::SetGateBlockState(int nMapNumber, int nZoneIndex, signed int nX, signed int nY, int nGateState, int nDir)	//OK
-{
-	if ( nX < 0 || nX > 255 )
-		return;
-
-	if ( nY < 0 || nY > 255 )
-		return;
-
-	if( nGateState == 0 )
-	{
-		switch ( nDir )
-		{
-		case 3:
-			for ( int i = nX - 3; i <= nX; ++i )
-			{
-				for ( int j = nY - 2; j <= nY + 2; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] &= (~16);
-				}
-			}
-			break;
-
-		case 1:
-			for ( int i = nX - 2; i <= nX + 2; ++i )
-			{
-				for ( int j = nY; j <= nY + 3; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] &= (~16);
-				}
-			}
-			break;
-
-		case 5:
-			for ( int i = nX - 2; i <= nX + 2; ++i )
-			{
-				for ( int j = nY - 3; j <= nY; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] &= (~16);
-				}
-			}
-			break;
-
-		case 7:
-			for ( int i = nX; i <= nX + 3; ++i )
-			{
-				for ( int j = nY - 2; j <= nY + 2; ++j )
-				{
-					if ( i != nX || j != nY ) { }
-					MapC[nMapNumber].m_attrbuf[i + (j *256)] &= (~16);
-				}
-			}
-			break;
-		}
-	}
-	else if ( nGateState == 1 )
-	{
-		switch ( nDir )
-		{
-		case 3:
-			for ( int i = nX - 3; i <= nX; ++i )
-			{
-				for ( int j = nY - 2; j <= nY + 2; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] |= 16;
-				}
-			}
-			break;
-
-		case 1:
-			for ( int i = nX - 2; i <= nX + 2; ++i )
-			{
-				for ( int j = nY; j <= nY + 3; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] |= 16;
-				}
-			}
-			break;
-
-		case 5:
-			for ( int i = nX - 2; i <= nX + 2; ++i )
-			{
-				for ( int j = nY; j <= nY - 3; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] |= 16;
-				}
-			}
-			break;
-
-		case 7:
-			for ( int i = nX; i <= nX + 3; ++i )
-			{
-				for ( int j = nY - 2; j <= nY + 2; ++j )
-				{
-					if ( i != nX || j != nY )
-						MapC[nMapNumber].m_attrbuf[i + (j *256)] |= 16;
-				}
-			}
-			break;
-		}
-
-	}
-}
-
-
-void CImperialGuardian::GCSendCastleGateInfo(int nGateIndex, int nZoneIndex, int nUserIndex)	//OK
-{
-	char cTEMP_BUF[256];
-	PMSG_SETMAPATTR_COUNT * lpMsg = (PMSG_SETMAPATTR_COUNT *)cTEMP_BUF;
-
-	PHeadSetB((LPBYTE)lpMsg, 0x46, sizeof(PMSG_SETMAPATTR_COUNT)+sizeof(PMSG_SETMAPATTR)*6);
-	PMSG_SETMAPATTR * lpMsgBody = (PMSG_SETMAPATTR *)&cTEMP_BUF[7];
-	lpMsg->btType = 0;
-	lpMsg->btCount = 1;
-	lpMsg->btMapAttr = 16;
-
-
-	int iGateState = 0;
-
-	if ( gObj[nGateIndex].Live )
-		iGateState = 1;
-	else
-		iGateState = 0;
-
-	int nDir = gObj[nGateIndex].Dir;
-	int nY = gObj[nGateIndex].X;
-	int nX = gObj[nGateIndex].Y;
-
-	if( iGateState == 0 )
-	{
-		switch ( nDir )
-		{
-		case 3:
-			lpMsg->btMapSetType = 1;
-			lpMsgBody[0].btX = nY - 3;
-			lpMsgBody[0].btY = nX - 2;
-			lpMsgBody[1].btX = nY;
-			lpMsgBody[1].btY = nX + 2;
-			break;
-
-		case 1:
-			lpMsg->btMapSetType = 1;
-			lpMsgBody[0].btX = nY - 2;
-			lpMsgBody[0].btY = nX;
-			lpMsgBody[1].btX = nY + 2;
-			lpMsgBody[1].btY = nX + 3;
-			break;
-
-		case 5:
-			lpMsg->btMapSetType = 1;
-			lpMsgBody[0].btX = nY - 2;
-			lpMsgBody[0].btY = nX - 3;
-			lpMsgBody[1].btX = nY + 2;
-			lpMsgBody[1].btY = nX;
-			break;
-
-		case 7:
-			lpMsg->btMapSetType = 1;
-			lpMsgBody[0].btX = nY;
-			lpMsgBody[0].btY = nX - 2;
-			lpMsgBody[1].btX = nY + 3;
-			lpMsgBody[1].btY = nX + 2;
-			break;
-		}	
-	}
-	else if( iGateState == 1 )
-	{
-		switch ( nDir )
-		{
-		case 3:
-			lpMsg->btMapSetType = 0;
-			lpMsgBody[0].btX = nY - 3;
-			lpMsgBody[0].btY = nX - 2;
-			lpMsgBody[1].btX = nY;
-			lpMsgBody[1].btY = nX + 2;
-			break;
-
-		case 1:
-			lpMsg->btMapSetType = 0;
-			lpMsgBody[0].btX = nY - 2;
-			lpMsgBody[0].btY = nX;
-			lpMsgBody[1].btX = nY + 2;
-			lpMsgBody[1].btY = nX + 3;
-			break;
-
-		case 5:
-			lpMsg->btMapSetType = 0;
-			lpMsgBody[0].btX = nY - 2;
-			lpMsgBody[0].btY = nX - 3;
-			lpMsgBody[1].btX = nY + 2;
-			lpMsgBody[1].btY = nX;
-			break;
-
-		case 7:
-			lpMsg->btMapSetType = 0;
-			lpMsgBody[0].btX = nY;
-			lpMsgBody[0].btY = nX - 2;
-			lpMsgBody[1].btX = nY + 3;
-			lpMsgBody[1].btY = nX + 2;
-			break;
-		}
-	}
-
-	if ( gObj[nUserIndex].Connected == 3 )
-	{
-		if ( DataSend(nUserIndex, (LPBYTE)lpMsg, lpMsg->h.size) )
-		{
-			LogAddTD("[IMPERIALGUARDIAN] SEND GATE STATE -> [ZONE]:%d [AccountID]:%s, [NAME]:%s [STATE]:%d",
-				nZoneIndex + 1, gObj[nUserIndex].AccountID, gObj[nUserIndex].Name, iGateState);
-
-			LogAddTD("[IMPERIALGUARDIAN] beginX : %d, beginY : %d , endX :%d , endY : %d",
-				lpMsgBody[0].btX, lpMsgBody[0].btY, lpMsgBody[1].btX, lpMsgBody[1].btY);
-		}
-	}
-
-}
-
-
-void CImperialGuardian::DropItem(int nIndex, int nMonsterIndex)	//OK
-{
-	int nZoneIndex = GetCurrentZoneIndex(nIndex);
-
-	if( !IsGoodZone(nZoneIndex) )
-		return;
-
-	int nMaxLevel = m_ZoneInfo[nZoneIndex].m_nMaxUserLevel;
-	int nMaxReset = m_ZoneInfo[nZoneIndex].m_nMaxUserReset;
-	int nType = 0;
-
-	if( nMaxReset == -1 )
-	{
-		nMaxReset = gObj[nIndex].Reset;
-	}
-
-	if ( nMaxLevel == 0)
-		nMaxLevel = gObj[nIndex].Level + gObj[nIndex].m_nMasterLevel;
-#ifdef IMPERIAL
-	if ( gObj[nMonsterIndex].Class == 504 )
-	{
-		LogAddTD("[IMPERIALGUARDIAN] Kill the boss monster => %s [ZONE]:%d [AccountID]:%s [Name]:%s",
-			gObj[nMonsterIndex].Name, gObj[nMonsterIndex].m_ImperialZoneID + 1, 
-			gObj[nIndex].AccountID, gObj[nIndex].Name);
-		pEventDungeonItemBagGaion->DropEventItem(nIndex, nMaxLevel, nMaxReset);
-	}
-	else if ( gObj[nMonsterIndex].Class == 526 )
-	{
-		LogAddTD("[IMPERIALGUARDIAN] Broken Statue => %s [ZONE]:%d [AccountID]:%s [Name]:%s",
-			gObj[nMonsterIndex].Name, gObj[nMonsterIndex].m_ImperialZoneID + 1,
-			gObj[nIndex].AccountID, gObj[nIndex].Name);
-
-		pEventDungeonItemBagStone->DropEventItem(nIndex, nMaxLevel, nMaxReset);
-	}
-	else
-	{
-		LogAddTD("[IMPERIALGUARDIAN] Kill the boss monster => %s [ZONE]:%d [AccountID]:%s [Name]:%s",
-			gObj[nMonsterIndex].Name, gObj[nMonsterIndex].m_ImperialZoneID + 1,
-			gObj[nIndex].AccountID, gObj[nIndex].Name);
-
-		pEventDungeonItemBag->DropEventItem(nIndex, nMaxLevel, nMaxReset);
-	}
-#endif
-
-	if ( m_ZoneInfo[nZoneIndex].m_nMonsterRegenTableIndex != 1 )
-	{
-		switch ( gObj[nMonsterIndex].Class )
-		{
-		case 508:
-			nType = ItemGetNumberMake(14, 103);
-			break;
-
-		case 509:
-			nType = ItemGetNumberMake(14, 104);
-			break;
-
-		case 510:
-			nType = ItemGetNumberMake(14, 105);
-			break;
-
-		case 511:
-			nType = ItemGetNumberMake(14, 106);
-			break;
-
-		case 507:
-			nType = ItemGetNumberMake(14, 107);
-			break;
-
-		case 506:
-			nType = ItemGetNumberMake(14, 108);
-			break;
-
-		default:
-			return;
-		}
-
-		int nCount = 0;
-		int nRand = rand() % 100;
-
-		if( nRand >=0 && nRand < 50)
-		{
-			nCount = 1;
-		}
-		else if( nRand >= 50 && nRand < 79 )
-		{
-			nCount = 2;
-		}
-		else
-		{
-			nCount = 3;
-		}
-
-
-		for (int i = 0; i < nCount; ++i )
-		{
-			BYTE btDropX = gObj[nIndex].X;
-			BYTE btDropY = gObj[nIndex].Y;
-
-			if ( !gObjGetRandomItemDropLocation(gObj[nIndex].MapNumber, btDropX, btDropY, 2, 2, 10) )
-			{
-				btDropX = gObj[nIndex].X;
-				btDropY = gObj[nIndex].Y;
-			}
-
-			ItemSerialCreateSend(nIndex, gObj[nIndex].MapNumber, btDropX, btDropY,
-				nType, 0, 0, 0, 0, 0, nIndex, 0, 0);
-
-			LogAddTD("[IMPERIALGUARDIAN] Drop Item : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d",
-				gObj[nIndex].MapNumber, btDropX, btDropY, &ItemAttribute[nType], nType, 0, 0, 0, 0);
-		}
-	}
-}
-
-int CImperialGuardian::CheckOverlapMysteriousPaper(int nIndex, int nItem_nMasterLevel)	//OK
-{
-	for( int i = INVETORY_WEAR_SIZE; i < MAIN_INVENTORY_SIZE; i++ )
-	{
-		if ( gObj[nIndex].pInventory[i].IsItem() )
-		{
-			if ( gObj[nIndex].pInventory[i].m_Type == ITEMGET(14, 101) )
-			{
-				if ( gObj[nIndex].pInventory[i].m_Level == nItem_nMasterLevel )
-				{
-					int nItemDur = gObj[nIndex].pInventory[i].m_Durability;
-
-					if ( nItemDur >= 0 && nItemDur <= 4 )
-						return i;
-				}
-			}
-		}
-	}
-
-	return -1;
-}
-
-
-void CImperialGuardian::RollBackUserPos(int nUserNumber)	//OK
-{
-	if ( gObj[nUserNumber].Type == OBJ_USER )
-	{
-		if ( gObj[nUserNumber].Connected > 2 )
-		{
-			int x = gObj[nUserNumber].X;
-			int y = gObj[nUserNumber].Y;
-			int mapNumber = gObj[nUserNumber].MapNumber;
-
-			gObj[nUserNumber].RegenMapNumber = gObj[nUserNumber].MapNumber;
-			gObj[nUserNumber].RegenMapX = x;
-			gObj[nUserNumber].RegenMapY = y;
-
-			gObjClearViewport(&gObj[nUserNumber]);
-
-			GCTeleportSend(&gObj[nUserNumber], -1, mapNumber, 
-				gObj[nUserNumber].X, gObj[nUserNumber].Y, gObj[nUserNumber].Dir);
-
-			if ( gObj[nUserNumber].m_Change >= 0 )
-				gObjViewportListProtocolCreate(&gObj[nUserNumber]);
-
-			gObj[nUserNumber].RegenOk = 1;
-		}
-	}
-}
-
-int CImperialGuardian::CheckGaionOrderPaper(int nIndex)	//OK
-{
-	if( !OBJMAX_RANGE(nIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return -2;
-	}
-
-	OBJECTSTRUCT *lpObj = &gObj[nIndex];
-	if ( gObj[nIndex].m_IfState.use )
-	{
-		return  -3;
-	}
-
-	if ( gObj[nIndex].Type == OBJ_USER && gObj[nIndex].Connected > 2 )
-	{
-		for ( int nPos = 0; nPos < INVENTORY_SIZE; ++nPos )
-		{
-			if ( gObj[nIndex].pInventory[nPos].IsItem() && gObj[nIndex].pInventory[nPos].m_Type == ITEMGET(14, 102) )
-				return nPos;
-		}
-
-		for ( int nPos = 0; nPos < INVENTORY_SIZE; ++nPos )
-		{
-			if ( lpObj->pInventory[nPos].m_Type == ITEMGET(13, 126) && lpObj->pInventory[nPos].m_Durability > 0.0 )
-				return nPos;
-		}
-
-		return -1;
-	}
-
-	return -2;
-}
-
-
-int CImperialGuardian::CheckFullSecromicon(int nIndex)	//OK
-{
-	if( !OBJMAX_RANGE(nIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return -2;
-	}
-
-	OBJECTSTRUCT *lpObj = &gObj[nIndex];
-	if ( gObj[nIndex].m_IfState.use )
-	{
-		return  -3;
-	}
-
-	if ( gObj[nIndex].Type == OBJ_USER && gObj[nIndex].Connected > 2 )
-	{
-		for ( int nPos = 0; nPos < INVENTORY_SIZE; ++nPos )
-		{
-			if ( gObj[nIndex].pInventory[nPos].IsItem() && gObj[nIndex].pInventory[nPos].m_Type == ITEMGET(14, 109) )
-				return nPos;
-		}
-
-		for ( int nPos = 0; nPos < INVENTORY_SIZE; ++nPos )
-		{
-			if ( lpObj->pInventory[nPos].m_Type == ITEMGET(13, 127) && lpObj->pInventory[nPos].m_Durability > 0.0 )
-				return nPos;
-		}
-
-		return -1;
-	}
-
-	return -2;
-}
-
-bool CImperialGuardian::IsAttackAbleMonster(int nMonsterIndex)	//OK
-{
-	for (int i = 0; i < MAX_EVENTZONE; ++i )
-	{
-		int nSize = m_ZoneInfo[i].vtMonsterInfo.size();
-		for (int k = 0; k < nSize; ++k )
-		{
-			stMonsterIndexInfo& monsterInfo = m_ZoneInfo[i].vtMonsterInfo.at(k);
-
-			if ( monsterInfo.ObjIndex == nMonsterIndex )
-				return monsterInfo.bState;
-		}
-	}
-
-	return false;
-}
-
-void CImperialGuardian::SetAtackAbleState(int nZoneIndex, int nMonsterClass, bool bState)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-	if(m_ZoneInfo[nZoneIndex].vtMonsterInfo.size() < 1)
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtMonsterInfo.begin();
-		it != m_ZoneInfo[nZoneIndex].vtMonsterInfo.end();
-		++it)
-	{
-		stMonsterIndexInfo& stMonsterIndex = *it;
-
-		OBJECTSTRUCT* lpObj = &gObj[stMonsterIndex.ObjIndex];
-
-		if ( lpObj->Class == nMonsterClass )
-			stMonsterIndex.bState = bState;
-	}
-}
-
-void CImperialGuardian::SetDayOfWeekGM(int nDayOfWeeks)
-{
-	m_DayOfWeekGM = nDayOfWeeks;
-}
-
-void CImperialGuardian::SetCheatModeGM(int nCheatMode)
-{
-	m_CheatModeGM = nCheatMode;
-}
-
-void CImperialGuardian::WarpZoneGM(int nUserIndex, int nZoneIndex)
-{
-	if ( m_CheatModeGM )
-		CGEnterPortal(nUserIndex, nZoneIndex);
-}
-
-stZoneInfo CImperialGuardian::GetZoneInfo(int nZoneIndex)
-{
-	return this->m_ZoneInfo[nZoneIndex];
-}
-
-void CImperialGuardian::SetTargetMoveAllMonster(int nZoneIndex, int nTargetNumber)	//OK
-{
-	if( !OBJMAX_RANGE(nTargetNumber) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-	if ( gObj[nTargetNumber].Connected < 1 )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return;
-	}
-
-	for ( auto it = m_ZoneInfo[nZoneIndex].vtMonsterInfo.begin(); it != m_ZoneInfo[nZoneIndex].vtMonsterInfo.end(); ++it)
-	{
-		stMonsterIndexInfo& stMonsterIndex = *it;
-
-		if ( stMonsterIndex.bLive )
-		{
-			OBJECTSTRUCT* lpObj = &gObj[stMonsterIndex.ObjIndex];
-			if ( gObj[stMonsterIndex.ObjIndex].TargetNumber == -1 && !(lpObj->m_ActState.Emotion) )
-			{
-				lpObj->TargetNumber = nTargetNumber;
-				lpObj->m_ActState.Emotion = 1;
-				lpObj->m_ActState.EmotionCount = 50;
-			}
-			else if ( lpObj->TargetNumber != nTargetNumber )
+			if(this->WarpInside() == 0)
 			{	
-				if ( rand() % 100 < 30 )
-				{
-					lpObj->TargetNumber = nTargetNumber;
-					lpObj->m_ActState.Emotion = 1;
-					lpObj->m_ActState.EmotionCount = 50;
-				}
+				LogAddC(11, "[Imperial Guardian] Error Tracer -> ENTRY_PARTY PartyNumber: %d, PartyLeader:(%d) %s",this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+				this->Occuped = 0;
+				this->m_UserData.PartyIndex				 = 0;
+				this->m_UserData.PartyLeaderUserNumber	 = 0;
+				this->m_UserData.PartyLeaderDBNumber	 = 0;
+				this->m_UserData.PlayerExp				 = 0;
+				this->m_UserData.PartyCount				 = 0;
+			}else
+			{
+				LogAddC(11, "[Imperial Guardian] (Day:%d) State -> StartEvent PartyNumber: %d, PartyLeader:(%d) %s", this->ActiveDay,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+				LogAddC(11, "[Imperial Guardian] (Day:%d) State -> StartEvent: DIFFICULTY: %d Percent", this->ActiveDay,(int)(this->Difficulty * 100));
+				
+				//for(int i=0;i<10;i++)
+				//	this->BlockCastleDoor(i);
+
+				_beginthread( cImperialGuardian__InsideTrigger, 0, NULL  );
 			}
 		}
 	}
 }
 
-void CImperialGuardian::DestroyGate(int nZoneIndex, int nIndex, int nTargetIndex)	//OK
+void cImperialGuardian::WarpOutside() 
 {
-	SetGateBlockState(gObj[nIndex].MapNumber, nZoneIndex, 
-		gObj[nIndex].X, gObj[nIndex].Y, 0, gObj[nIndex].Dir);
-
-	int nSize = m_ZoneInfo[nZoneIndex].vtPlayers.size();
-	for (int i = 0; i < nSize; ++i )
+	for ( int n = OBJ_STARTUSERINDEX ; n < OBJMAX ; n++)
 	{
-		int nUserIndex = m_ZoneInfo[nZoneIndex].vtPlayers.at(i);
-		GCSendCastleGateInfo(nIndex, nZoneIndex, nUserIndex);
+		if ( gObj[n].Connected == PLAYER_PLAYING )
+		{
+			if ( gObj[n].Type  == OBJ_USER )
+			{
+				if (gObj[n].MapNumber == cImperialGuardian__Map[this->ActiveDay])
+				{
+					BOOL ret = gObjMoveGate(gObj[n].m_Index, 22);
+
+					if (ret = false)
+					{
+						CloseClient(n);
+					}
+				}
+			}
+		}
 	}
-
-	m_ZoneInfo[nZoneIndex].vtGateInfo.push_back(nIndex);
-
-	LogAddTD("[IMPERIALGUARDIAN] DestroyGate -> [ZONE]:%d, [AccountID]:%s, [NAME]:%s, [GATE INDEX]:%d, [USER COUNT]:%d ",
-		nZoneIndex + 1, gObj[nTargetIndex].AccountID, gObj[nTargetIndex].Name, nIndex, nSize);
+	LogAddC(12, "[Imperial Guardian] (Day:%d) State -> FINISH: REMOVE_USERS", this->ActiveDay);
 }
 
-void CImperialGuardian::GCSendServerMsgAll(int nZoneIndex, char *szMsg)	//OK
-{
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
 
-	for ( auto it = vtTemp.begin(); it != vtTemp.end(); ++it )
-	{
-		int nResult = *it;
-		if ( gObj[nResult].Connected > 0 )
-			GCServerMsgStringSend(szMsg, nResult, 0);
-	}
-}
-
-int CImperialGuardian::ImperialGuardianLevelUp(int iIndex, int iAddExp)	//OK
+BOOL cImperialGuardian::WarpInside()
 {
-	if( !OBJMAX_RANGE(iIndex) )
+	int pIndex = this->m_UserData.PartyIndex;
+
+	if(gParty.IsParty(pIndex) == FALSE)
 	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
 		return 0;
 	}
 
-	if ( g_MasterLevelSystem.MasterLevelUp(&gObj[iIndex], iAddExp, true, 0) )
+	if(gObjIsConnected(this->m_UserData.PartyLeaderUserNumber) == TRUE)
+	{
+		if(gParty.Isleader(pIndex,this->m_UserData.PartyLeaderUserNumber,this->m_UserData.PartyLeaderDBNumber) == FALSE)
+		{
+			return 0;
+		}
+	}else
 	{
 		return 0;
 	}
 
-	gObjSetExpPetItem(iIndex, iAddExp);
-	int iLEFT_EXP = 0;
-	LogAddTD("Experience : Map[%d]-(%d,%d) [%s][%s](%d) %I64u %d ", 
-		gObj[iIndex].MapNumber, gObj[iIndex].X, gObj[iIndex].Y,
-		gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].Level, 
-		gObj[iIndex].Experience, iAddExp);
-
-
-	if ( gObj[iIndex].Level >= MAX_CHAR_LEVEL )
+	for(int i = 0; i < MAX_USER_IN_PARTY; i++)
 	{
-		GCServerMsgStringSend(lMsg.Get(1136), gObj[iIndex].m_Index, 1);
-		return 0;
-	}
+		int pId = gParty.m_PartyS[pIndex].Number[i];
 
-
-	if ( iAddExp + gObj[iIndex].Experience >= gObj[iIndex].NextExp )
-	{
-		iLEFT_EXP = iAddExp + gObj[iIndex].Experience - gObj[iIndex].NextExp;
-		gObj[iIndex].Experience = gObj[iIndex].NextExp;
-
-		++gObj[iIndex].Level;
-
-		if ( gObj[iIndex].Class != 4 && gObj[iIndex].Class != 3 && gObj[iIndex].Class != 6 )
-			gObj[iIndex].LevelUpPoint += 5;
-		else
-			gObj[iIndex].LevelUpPoint += 7;
-
-		if ( gObj[iIndex].PlusStatQuestClear && gObj[iIndex].Level >= g_ResetSystem.m_MarlonStatMinLevel )
+		if ( pId < 0 || pId > (OBJMAX-1) )
 		{
-			gObj[iIndex].LevelUpPoint++;
-			LogAddTD("[%s][%s] LevelUp PlusStatQuest Clear AddStat %d",
-				gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].LevelUpPoint);
-		}
-
-		gObj[iIndex].MaxLife = gObj[iIndex].MaxLife + DCInfo.DefClass[gObj[iIndex].Class].LevelLife;
-		gObj[iIndex].MaxMana = gObj[iIndex].MaxMana + DCInfo.DefClass[gObj[iIndex].Class].LevelMana;
-		gObj[iIndex].Life = gObj[iIndex].MaxLife;
-		gObj[iIndex].Mana = gObj[iIndex].MaxMana;
-
-		gObjNextExpCal(&gObj[iIndex]);
-		gObjSetBP(gObj[iIndex].m_Index);
-
-		GCLevelUpMsgSend(gObj[iIndex].m_Index, 1);
-
-		gObjCalcMaxLifePower(gObj[iIndex].m_Index);
-
-		LogAddTD(lMsg.Get(520), gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].Level);
-
-		if ( gObj[iIndex].Level == MAX_CHAR_LEVEL )
+			
+		}else
 		{
-			if ( gObj[iIndex].PartyNumber >= 0 )
+			if(gObjIsConnected(gParty.m_PartyS[pIndex].Number[i]) == TRUE)
 			{
-				char partyLog[256] = {0};
-
-				int partynum = gObj[iIndex].PartyNumber;
-				sprintf(partyLog, "400 LevelUp (%s)(%s) Party ", gObj[iIndex].AccountID, gObj[iIndex].Name);
-
-				for (int n = 0; n < 5; ++n )
-				{
-					int number = gParty.m_PartyS[partynum].Number[n];
-
-					if ( number >= 0 )
-					{
-						sprintf(&partyLog[strlen(partyLog)], ",(%s)(%s) ", gObj[number].AccountID, gObj[number].Name);
-					}
-				}
-
-				LogAddTD(partyLog);
+				gObjMoveGate(gParty.m_PartyS[pIndex].Number[i],cImperialGuardian_Gates[this->ActiveDay].stage1Start);
 			}
 		}
 	}
-	else
-	{
-		gObj[iIndex].Experience += iAddExp;
-	}
-
-	GJSetCharacterInfo(&gObj[iIndex], gObj[iIndex].m_Index, 0, 0);
-
-	return iLEFT_EXP;
+	LogAddC(11, "[Imperial Guardian] (Day:%d) State -> ENTRY_PARTY PartyNumber: %d, PartyLeader:(%d) %s", this->ActiveDay,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+	return 1;
 }
 
-void CImperialGuardian::RegAllPartyUser(int nZoneIndex, int nFirstEnterUserIndex)	//OK
+
+void cImperialGuardian::SetMonsterDifficulty(int MobID)
 {
-	if ( gObj[nFirstEnterUserIndex].Connected >= 1 )
-	{
-		bool bAddUser = 1;
-		int nPartyNumber = gObj[nFirstEnterUserIndex].PartyNumber;
-		int nPartyCount = gParty.GetPartyCount(nPartyNumber);
-
-		for (int i = 0; i < nPartyCount; ++i )
-		{
-			int nUserNumber = gParty.m_PartyS[nPartyNumber].Number[i];
-			m_ZoneInfo[nZoneIndex].vtUkn3Ch.push_back(nUserNumber);
-		}
-	}
+	gObj[MobID].Level = gObj[MobID].Level * this->Difficulty;
+	gObj[MobID].Life = gObj[MobID].Life * this->Difficulty;
+	gObj[MobID].MaxLife = gObj[MobID].MaxLife * this->Difficulty;
+	gObj[MobID].m_iScriptMaxLife = gObj[MobID].m_iScriptMaxLife * this->Difficulty;
+	gObj[MobID].m_AttackDamageMin = gObj[MobID].m_AttackDamageMin * this->Difficulty;
+	gObj[MobID].m_AttackDamageMax = gObj[MobID].m_AttackDamageMax * this->Difficulty;
+	gObj[MobID].m_AttackRating = gObj[MobID].m_AttackRating * this->Difficulty;
+	gObj[MobID].m_AttackSpeed = gObj[MobID].m_AttackSpeed * this->Difficulty;
+	gObj[MobID].m_Defense = gObj[MobID].m_Defense * this->Difficulty;
+	gObj[MobID].m_ItemRate = gObj[MobID].m_ItemRate * this->Difficulty;
+	gObj[MobID].m_MoneyRate = gObj[MobID].m_MoneyRate * this->Difficulty;
 }
 
-bool CImperialGuardian::IsRegPartyUser(int nZoneIndex, int nUserIndex)	//OK
-{
-	bool bFlag = false;
-
-	int nSize = m_ZoneInfo[nZoneIndex].vtUkn3Ch.size();
-	for (int i = 0; i < nSize; ++i )
-	{
-		int nResult = m_ZoneInfo[nZoneIndex].vtUkn3Ch.at(i);
-
-		if ( nResult == nUserIndex )
-			bFlag = 1;
-	}
-
-	return bFlag;
-}
-
-
-//CLogToFile IG_TEST_LOG("IG_TEST_LOG", ".\\LOG\\IMPERIALGUARDIAN_TEST_LOG", 1);
-
-
-void CImperialGuardian::UserMonsterCountCheck()	//OK
-{
-	return;
-
-	// there is a code in gs, can be decompiled, if needed
-}
-
-
-void CImperialGuardian::MonsterBaseAct(OBJECTSTRUCT *lpObj)	//OK
-{
-
-	OBJECTSTRUCT *lpTargetObj = NULL;
-
-	if ( lpObj->TargetNumber < 0 )
-	{
-		lpObj->m_ActState.Emotion = 0;
-	}
-	else
-	{
-		lpTargetObj = &gObj[lpObj->TargetNumber];
-	}
-
-
-	if(lpObj->m_ActState.Emotion == 0)
-	{
-		if ( lpObj->m_ActState.Attack )
-		{
-			lpObj->m_ActState.Attack = 0;
-			lpObj->TargetNumber = -1;
-			lpObj->NextActionTime = 500;
-		}
-
-		int actcode1 = rand() % 2;
-
-		if ( lpObj->m_MoveRange > 0 )
-		{
-			if ( !gObjCheckUsedBuffEffect(lpObj, 57) )
-				gObjMonsterMoveAction(lpObj);
-		}
-
-		if ( lpObj->m_bIsMonsterAttackFirst )
-		{
-			lpObj->TargetNumber = gObjMonsterSearchEnemy(lpObj, 1);
-
-			if ( lpObj->TargetNumber >= 0 )
-			{
-				lpObj->m_ActState.EmotionCount = 100;
-				lpObj->m_ActState.Emotion = 1;
-				SetTargetMoveAllMonster(lpObj->m_ImperialZoneID, lpObj->TargetNumber);
-			}
-		}
-
-
-	}
-	else if(lpObj->m_ActState.Emotion == 1)
-	{
-		if ( lpObj->m_ActState.EmotionCount )
-		{
-			lpObj->m_ActState.EmotionCount--;
-		}
-		else
-		{
-			lpObj->m_ActState.Emotion = 0;
-		}
-
-		if ( lpObj->TargetNumber >= 0 )
-		{
-			if ( !lpObj->PathStartEnd )
-			{
-				int dis = gObjCalDistance(lpObj, lpTargetObj);
-				int attackRange = 0;
-
-				if ( lpObj->m_AttackType < 100 )
-					attackRange = lpObj->m_AttackRange;
-				else
-					attackRange = lpObj->m_AttackRange + 2;
-
-				if ( dis > attackRange )
-				{
-					if ( gObjMonsterGetTargetPos(lpObj) == 1 )
-					{
-						if ( MapC[lpObj->MapNumber].CheckWall(
-							lpObj->X, lpObj->Y, lpObj->MTX, lpObj->MTY) == 1 )
-						{
-							lpObj->m_ActState.Move = 1;
-							lpObj->NextActionTime = 400;
-							lpObj->Dir = GetPathPacketDirPos(lpTargetObj->X - lpObj->X, lpTargetObj->Y - lpObj->Y);
-						}
-						else
-						{
-							gObjMonsterMoveAction(lpObj);
-							lpObj->m_ActState.Emotion = 3;
-							lpObj->m_ActState.EmotionCount = 10;
-						}
-					}
-					else
-					{
-						int tx = 0;
-						int ty = 0;
-						if ( lpTargetObj->Connected > 2 )
-						{
-							if ( gObjGetTargetPos(lpObj, lpTargetObj->X, lpTargetObj->Y, tx, ty) == 1 )
-							{
-								if ( MapC[lpObj->MapNumber].CheckWall(
-									lpObj->X, lpObj->Y, lpObj->MTX, lpObj->MTY) == 1 )
-								{
-									lpObj->MTX = tx;
-									lpObj->MTY = ty;
-									lpObj->m_ActState.Move = 1;
-									lpObj->NextActionTime = 400;
-									lpObj->Dir = GetPathPacketDirPos(lpTargetObj->X - lpObj->X, lpTargetObj->Y - lpObj->Y);
-								}
-								else
-								{
-									gObjMonsterMoveAction(lpObj);
-									lpObj->m_ActState.Emotion = 3;
-									lpObj->m_ActState.EmotionCount = 10;
-								}
-							}
-						}
-
-					}
-				}
-				else
-				{
-					int tuser = lpObj->TargetNumber;
-					int map = gObj[tuser].MapNumber;
-					if ( MapC[map].CheckWall(lpObj->X, lpObj->Y, gObj[tuser].X, gObj[tuser].Y) == 1 )
-					{
-						int attr = MapC[map].GetAttr(gObj[tuser].X, gObj[tuser].Y);
-
-						if ( (attr & 1) == 1 )
-						{
-							lpObj->TargetNumber = -1;
-							lpObj->m_ActState.EmotionCount = 30;
-							lpObj->m_ActState.Emotion = 1;
-						}
-						else
-						{
-							lpObj->m_ActState.Attack = 1;
-							lpObj->m_ActState.EmotionCount = rand() % 30 + 20;
-						}
-
-						lpObj->Dir = GetPathPacketDirPos(lpTargetObj->X - lpObj->X, lpTargetObj->Y - lpObj->Y);
-						lpObj->NextActionTime = lpObj->m_AttackSpeed;
-					}
-				}
-			}
-		}
-
-	}
-	else if(lpObj->m_ActState.Emotion == 3)
-	{
-		if ( lpObj->m_ActState.EmotionCount )
-		{
-			lpObj->m_ActState.EmotionCount--;
-		}
-		else
-		{
-			lpObj->m_ActState.Emotion = 0;
-		}
-
-		lpObj->m_ActState.Move = 0;
-		lpObj->m_ActState.Attack = 0;
-		lpObj->NextActionTime = 400;
-	}
-}
-
-bool CImperialGuardian::ChangeUserIndex(int nUserIndex, int nCurrentUserIndex, int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return false;
-	}
-
-	EnterCriticalSection(&m_cs);
-
-	int nTotalUserCount = m_ZoneInfo[nZoneIndex].vtPlayers.size();
-	for (int i = 0; i < nTotalUserCount; ++i )
-	{
-		if ( m_ZoneInfo[nZoneIndex].vtPlayers[i] == nUserIndex )
-		{
-			m_ZoneInfo[nZoneIndex].vtPlayers[i] = nCurrentUserIndex;
-
-			LeaveCriticalSection(&m_cs);
-
-			return true;
-		}
-	}
-
-	LeaveCriticalSection(&m_cs);
-
-	return false;
-}
-
-bool CImperialGuardian::SendCurStateToUser(int nUserIndex, int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return false;
-	}
-
-	int nTotalUserCount = m_ZoneInfo[nZoneIndex].vtPlayers.size();
-
-	for (int i = 0; i < nTotalUserCount; ++i )
-	{
-		if ( m_ZoneInfo[nZoneIndex].vtPlayers[i] == nUserIndex )
-		{
-			CTime tCurrentTime(CTime::GetTickCount());
-
-			int nDayOfWeek = tCurrentTime.GetDayOfWeek();
-			PMSG_IG_CURRENT_STATE pMsg = {0};
-
-			PHeadSubSetB((LPBYTE)&pMsg, 0xF7, 0x02, sizeof(pMsg));
-
-			pMsg.EventEnded = this->ukn0Ch;
-			pMsg.ukn05 = 0;
-			pMsg.ZoneIndex = nZoneIndex + 1;
-			pMsg.RemainTick = m_ZoneInfo[nZoneIndex].m_WaitPlayer_MSec
-				+ m_ZoneInfo[nZoneIndex].m_LootTime_MSec
-				+ m_ZoneInfo[nZoneIndex].m_TimeAttack_RemainMSec;
-
-			pMsg.DayOfWeek = nDayOfWeek - 1;
-
-			GCSendDataToUser(nUserIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool CImperialGuardian::SendCurGateInfoToUser(int nUserIndex, int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return false;
-	}
-
-	int nSize = m_ZoneInfo[nZoneIndex].vtGateInfo.size();
-	for (int i = 0; i < nSize; ++i )
-	{
-		int nGateIndex = m_ZoneInfo[nZoneIndex].vtGateInfo.at(i);
-		GCSendCastleGateInfo(nGateIndex, nZoneIndex, nUserIndex);
-	}
-
-	return true;
-}
-
-int CImperialGuardian::GetPlayUserCountRightNow(int nZoneIndex)	//OK
-{
-	if( !IsGoodZone(nZoneIndex) )
-	{
-		LogAdd("error : %s %d", __FILE__, __LINE__);
-		return -1;
-	}
-
-	int nPlayUserCount = 0;
-	std::vector<int> vtTemp(m_ZoneInfo[nZoneIndex].vtPlayers);
-
-	for(auto it = vtTemp.begin(); it != vtTemp.end(); ++it)
-	{
-		int nResult = *it;
-
-		if( OBJMAX_RANGE(nResult) )
-		{
-			if ( gObj[nResult].Connected == 3 )
-			{
-				if ( IsEventMap(gObj[nResult].MapNumber) )
-					++nPlayUserCount;
-			}
-		}
-
-	}
-
-	return nPlayUserCount;
-}
+//void cImperialGuardian::ReleaseCastleDoor(int Gate)
+//{
+//	if((this->ActiveDay != 0) && (Gate > 6))
+//		return;
+//
+//	LogAddC(4, "[Imperial Guardian] (Day:%d) State -> DOOR %d TERMINATED PartyNumber: %d, PartyLeader:(%d) %s", this->ActiveDay,Gate,this->m_UserData.PartyIndex,this->m_UserData.PartyLeaderUserNumber,gObj[this->m_UserData.PartyLeaderUserNumber].Name);
+//
+//	int Index = cImperialGuardian__Map[this->ActiveDay] - MAP_INDEX_EMPIREGUARDIAN1;
+//
+//	for ( int y=::g_iGuardianDoorMapXY[Index][Gate].btStartX; y <= ::g_iGuardianDoorMapXY[Index][Gate].btEndX ;y++)
+//	{
+//		for ( int z = ::g_iGuardianDoorMapXY[Index][Gate].btStartY; z <= ::g_iGuardianDoorMapXY[Index][Gate].btEndY ; z++)
+//		{
+//			MapC[cImperialGuardian__Map[this->ActiveDay]].m_attrbuf[z * 256 + y] &= ~4;
+//		}
+//	}
+//}
+//
+//void cImperialGuardian::BlockCastleDoor(int Gate)
+//{
+//	if((this->ActiveDay != 0) && (Gate > 6))
+//		return;
+//
+//	int Index = cImperialGuardian__Map[this->ActiveDay] - MAP_INDEX_EMPIREGUARDIAN1;
+//
+//	for ( int y=::g_iGuardianDoorMapXY[Index][Gate].btStartX; y <= ::g_iGuardianDoorMapXY[Index][Gate].btEndX ;y++)
+//	{
+//		for ( int z = ::g_iGuardianDoorMapXY[Index][Gate].btStartY; z <= ::g_iGuardianDoorMapXY[Index][Gate].btEndY ; z++)
+//		{
+//			MapC[cImperialGuardian__Map[this->ActiveDay]].m_attrbuf[z * 256 + y] |= 4;
+//		}
+//	}
+//}
+//
+//

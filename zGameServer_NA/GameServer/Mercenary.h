@@ -7,8 +7,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#define MAX_MERCENARY_COUNT	100
-
+#if (GS_CASTLE==1)
 class CMercenary
 {
 
@@ -20,17 +19,18 @@ public:
 	//int __thiscall UseLifeStoneScroll(int);
 	BOOL CreateMercenary(int iIndex, int iMercenaryTypeIndex, BYTE cTX, BYTE cTY);
 	BOOL DeleteMercenary(int iIndex);
-	BOOL SearchEnemy(struct OBJECTSTRUCT* lpObj);
+	int SearchEnemy(struct OBJECTSTRUCT* lpObj);
 	void MercenaryAct(int iIndex);
 
 
 private:
 
-	int  m_iMercenaryCount;	// 4
+	BYTE  m_iMercenaryCount;	// 4
 
 
 };
 
 extern CMercenary g_CsNPC_Mercenary;
 
+#endif
 #endif

@@ -1,4 +1,11 @@
-// GameServer 1.00.90 - finished
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// MultiCheckSum.cpp 
+// GS-N 0.99.60T 0x00523EC7 Status : Completed :)
+//	GS-N	1.00.18	JPN	0x00595CA0	-	Completed
+
 #include "stdafx.h"
 #include "MultiCheckSum.h"
 #include "logproc.h"
@@ -64,7 +71,7 @@ BOOL CMultiCheckSum::LoadFile(char* filename, int index)
 {
 	FILE* fp;
 	
-	fp=fopen(filename, "rb");	//ok
+	fp=fopen(filename, "rb");
 
 	if (fp == 0)
 	{
@@ -78,7 +85,7 @@ BOOL CMultiCheckSum::LoadFile(char* filename, int index)
 	
 int CMultiCheckSum::CompareCheckSum(int aIndex, DWORD TableNum, DWORD Key)
 {
-	int i;
+/*	int i;
 
 	for ( i=0;i<MAX_MULTICHECKSUM;i++)
 	{
@@ -95,5 +102,6 @@ int CMultiCheckSum::CompareCheckSum(int aIndex, DWORD TableNum, DWORD Key)
 			}
 		}
 	}
-	return 0;
+	return 0;*/
+	return 1;
 }

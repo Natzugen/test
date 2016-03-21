@@ -1,6 +1,9 @@
-//	GS-CS	1.00.90	JPN		-	Completed
 #include "stdafx.h"
 #include "MoveCheck.h"
+
+
+// GS-N 0.99.60T Status : Completed - Change with true Names
+//	GS-N	1.00.18	JPN	0x004A4AD0	-	Completed
 
 CMoveCheck::CMoveCheck()
 {
@@ -27,6 +30,7 @@ void CMoveCheck::Init()
 	this->m_TmpPosY=0;
 }
 
+
 BOOL CMoveCheck::Insert(int x, int y)
 {
 	if ( (this->m_TmpPosX != x) || (this->m_TmpPosY != y) )
@@ -36,7 +40,8 @@ BOOL CMoveCheck::Insert(int x, int y)
 	}
 	
 	this->m_TmpPosX=x;
-	this->m_TmpPosX=y;	// #error Change m_TmpPosX to m_TmpPosY
+	//this->m_TmpPosX=y;	// #error Change m_TmpPosX to m_TmpPosY
+	this->m_TmpPosY=y;	// #FIX
 
 	if ( (GetTickCount() - this->m_Time) < 1000)
 	{

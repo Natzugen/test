@@ -1,21 +1,24 @@
-//GameServer 1.00.77 JPN - Completed
-//GameServer 1.00.90 JPN - Completed
 #include "stdafx.h"
 #include "RingAttackEvent.h"
 #include "gObjMonster.h"
 #include "GameMain.h"
 #include "DSProtocol.h"
+#include "EProtocol.h"
 #include "protocol.h"
 #include "LogProc.h"
 #include "Event.h"
 #include "..\include\readscript.h"
 #include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
+
+// GS-N 0.99.60T 0x0045D690
+// GS-N	1.00.18	JPN	0x0046CF70	-	Completed
 
 CRingMonsterHerd::CRingMonsterHerd()
 {
 	return;
 }
+
+
 
 CRingMonsterHerd::~CRingMonsterHerd()
 {
@@ -31,32 +34,37 @@ BOOL CRingMonsterHerd::Start()
 
 BOOL CRingMonsterHerd::MonsterHerdItemDrop(LPOBJ lpObj)
 {
+	
 	if ( lpObj->Class == 135 )
 	{
 		int iIndex = gObjMonsterTopHitDamageUser(lpObj);
-		int itemnumber = ItemGetNumberMake(14, 13);
-
-		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y, itemnumber, 0, 0, 0, 0, 0, iIndex, 0, 0);
+		if ( (rand()%10000) < g_iRingDropGiftRate )
+		{
+			int itemnumber = ItemGetNumberMake(g_iRingDropItemWhiteWizType, g_iRingDropItemWhiteWizIndex);
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y,
+				itemnumber, 0, 0, 0, 0, 0, iIndex, 0, 0);
+		}
 
 		char szTemp[256];
-		wsprintf(szTemp, lMsg.Get(MSGGET(4, 181)), gObj[iIndex].Name, gMapName[lpObj->MapNumber]);
+		wsprintf(szTemp, lMsg.Get(MSGGET(4, 181)), gObj[iIndex].Name, gMapName[lpObj->MapNumber]);	// #error Apply Deathway fix here
+		AllSendServerMsg( szTemp ); 
+		LogAddTD("[Ring Event] White Wizard Killed by [%s][%s], MapNumber:%d",
+			gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].MapNumber);
 
-		AllSendServerMsg( szTemp );
-
-		LogAddTD("[Ring Event] White Wizard Killed by [%s][%s], MapNumber:%d", gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].MapNumber);
 		return TRUE;
 	}
 	
 	if ( lpObj->Class == 136 || lpObj->Class == 137)
 	{
-		if ( (rand()%100) < 30 )
+		if ( (rand()%10000) < g_iRingEventOrcRewardDropRate )
 		{
 			int iIndex = gObjMonsterTopHitDamageUser(lpObj);
-			int itemnumber = ItemGetNumberMake(13, 20);
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y, itemnumber, 0, 30, 0, 0, 0, iIndex, 0, 0);
+			int itemnumber = ItemGetNumberMake(g_iRingDropItemOrcType, g_iRingDropItemOrcIndex);	// Wizards Ring
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y,
+				itemnumber, 0, 30, 0, 0, 0, iIndex, 0, 0);
 			return TRUE;
 		}
-
+		
 		if ( (rand() % g_iRingOrcKillGiftRate) == 0 )
 		{
 			int iIndex = gObjMonsterTopHitDamageUser(lpObj);
@@ -75,17 +83,12 @@ BOOL CRingMonsterHerd::MonsterHerdItemDrop(LPOBJ lpObj)
 
 void CRingMonsterHerd::MonsterAttackAction(LPOBJ lpObj, LPOBJ lpTargetObj)
 {
-	if(gObjCheckUsedBuffEffect(lpObj, AT_ICE_ARROW) == 1)
+	if ( lpObj->m_SkillHarden != 0 )
 	{
 		return;
 	}
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_STUN) == 1)
-	{
-		return;
-	}
-
-	if(gObjCheckUsedBuffEffect(lpObj, AT_SLEEP) == 1)
+	if ( lpObj->m_iSkillStunTime > 0 )
 	{
 		return;
 	}
@@ -116,6 +119,10 @@ void CRingMonsterHerd::MonsterAttackAction(LPOBJ lpObj, LPOBJ lpTargetObj)
 	}
 }
 
+
+
+
+
 struct PMSG_REQ_REG_RINGGIFT
 {
 	PBMSG_HEAD h;	// C1:10
@@ -124,6 +131,9 @@ struct PMSG_REQ_REG_RINGGIFT
 	BYTE btGiftKind;	// 13
 };
 
+
+
+
 void CRingMonsterHerd::SendEventGiftWinner(int iIndex, int iGiftKind)
 {
 	if ( gObjIsConnected(iIndex) == FALSE )
@@ -131,28 +141,37 @@ void CRingMonsterHerd::SendEventGiftWinner(int iIndex, int iGiftKind)
 		return;
 	}
 
-	if ( gObj[iIndex].UseEventServer != FALSE )
+	if ( gObj[iIndex].UseEventServer != false )
 	{
 		return;
 	}
 
-	gObj[iIndex].UseEventServer = TRUE;
+	gObj[iIndex].UseEventServer = true;
 
 	PMSG_REQ_REG_RINGGIFT pMsg;
 
 	PHeadSetB((LPBYTE)&pMsg, 0x10, sizeof(pMsg));
 	pMsg.iINDEX  = iIndex;
 	memcpy(pMsg.szUID, gObj[iIndex].AccountID, MAX_ACCOUNT_LEN);
-	pMsg.szUID[MAX_ACCOUNT_LEN+1] = 0;
+	//pMsg.szUID[MAX_ACCOUNT_LEN+1] = 0;	// #error Remove the +1 to avoid problems
+	pMsg.szUID[MAX_ACCOUNT_LEN] = 0;	// FIXED
 	pMsg.btGiftKind = iGiftKind;
 
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
+	DataSendEventChip((PCHAR)&pMsg, sizeof(pMsg));
 
-	LogAddTD("[Ring Event] [%s][%s] Request to Register Gift - Gift Kind (%d)",	gObj[iIndex].AccountID, gObj[iIndex].Name,  iGiftKind);
+	LogAddTD("[Ring Event] [%s][%s] Request to Register Gift - Gift Kind (%d)",
+		gObj[iIndex].AccountID, gObj[iIndex].Name,  iGiftKind);
+
 }
 
-static int g_RingEventMapNum[MAX_RINGMONSTER_MAP] = { MAP_INDEX_RORENCIA,MAP_INDEX_DEVIAS,MAP_INDEX_NORIA};
 
+
+//*******************************************************
+
+
+
+
+static int g_RingEventMapNum[MAX_RINGMONSTER_MAP] = { MAP_INDEX_LORENCIA,MAP_INDEX_DEVIAS,MAP_INDEX_NORIA};
 static int g_RingMapPosition[MAX_RINGMONSTER_MAP][4] =
 {
 
@@ -186,27 +205,19 @@ CRingAttackEvent::~CRingAttackEvent()
 	DeleteCriticalSection(&this->m_critMonsterAddData);
 }
 
+
 void CRingAttackEvent::StartEvent()
 {
-	int iRandX;
-	int iRandY;
+	int iRandX=0;
+	int iRandY=0;
 
 	if ( this->m_bHasData == 0 )
 	{
 		return;
 	}
-	
-	int loc4 = 0;//Season 4.5 addon
-
-	loc4 = rand() % 3;//Season 4.5 addon
 
 	for ( int i=0;i<MAX_RINGMONSTER_MAP;i++)
 	{
-		if(loc4 == i)//Season 4.5 addon
-		{
-			continue;
-		}
-
 		int iCount = 1000;
 
 		while ( iCount-- != 0 )
@@ -232,7 +243,8 @@ void CRingAttackEvent::StartEvent()
 				continue;
 			}
 
-			LogAddTD("[Ring Event] - Monster Start Position MapNumber:%d, X:%d, Y:%d", g_RingEventMapNum[i], iRandX, iRandY);
+			LogAddTD("[Ring Event] - Monster Start Position MapNumber:%d, X:%d, Y:%d",
+				g_RingEventMapNum[i], iRandX, iRandY);
 		}
 
 		EnterCriticalSection(&this->m_critMonsterAddData);
@@ -282,7 +294,7 @@ void CRingAttackEvent::EnableEvent(BOOL bDoEvent)
 
 BOOL CRingAttackEvent::Load(char * lpszFileName)
 {
-	SMDFile = fopen(lpszFileName, "r");	//ok
+	SMDFile = fopen(lpszFileName, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -421,6 +433,7 @@ void CRingAttackEvent::Run()
 	}
 }	
 
+
 void CRingAttackEvent::CheckSync()
 {
 	if ( this->m_vtEventTime.empty() != 0 )
@@ -437,8 +450,9 @@ void CRingAttackEvent::CheckSync()
 	int iMIN_HOUR = 24;
 	int iMIN_MINUTE = 60;
 	BOOL bTIME_CHANGED = FALSE;
+	std::vector<RINGMONSTER_EVENT_TIME>::iterator it;
 
-	for ( std::vector<RINGMONSTER_EVENT_TIME>::iterator it = this->m_vtEventTime.begin(); it != this->m_vtEventTime.end() ; it++ )
+	for ( it = this->m_vtEventTime.begin(); it != this->m_vtEventTime.end() ; it++ )
 	{
 		RINGMONSTER_EVENT_TIME & pRET = *it;
 
@@ -455,7 +469,7 @@ void CRingAttackEvent::CheckSync()
 
 	if ( bTIME_CHANGED == FALSE )
 	{
-		std::vector<RINGMONSTER_EVENT_TIME>::iterator it = this->m_vtEventTime.begin();
+		it = this->m_vtEventTime.begin();
 		iMIN_HOUR = 24;
 		iMIN_MINUTE = 60;
 
@@ -721,10 +735,10 @@ void CRingAttackEvent::Move()
 		if ( this->m_bMonsterToDest )
 			return;
 
-		BYTE iRandX;
-		BYTE iRandY;
-		BYTE iCX;
-		BYTE iCY;
+		BYTE iRandX=0;
+		BYTE iRandY=0;
+		BYTE iCX=0;
+		BYTE iCY=0;
 
 		for ( int i=0;i<MAX_RINGMONSTER_MAP;i++)
 		{
@@ -775,7 +789,7 @@ void CRingAttackEvent::Start_Menual()
 	this->SetMenualStart(TRUE);
 	this->StopEvent();
 
-	LogAddTD("????[Event Management] [Start] RingAttack Event!");
+	LogAddTD("[Event Management] [Start] RingAttack Event!");
 	this->m_iTIME_MIN_PLAY = 30;
 
 	char szTemp[256];

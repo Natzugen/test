@@ -1,4 +1,3 @@
-//GS-CS 1.00.90 - 0xXXXXXXXX finished
 #include "stdafx.h"
 #include "EDSProtocol.h"
 #include "GuildClass.h"
@@ -9,9 +8,9 @@
 #include "GameMain.h"
 #include "TNotice.h"
 #include "resource.h"
-#include "CastleSiegeSync.h"
-
-
+#include "SCFExDBProtocol.h"
+// GS-N 0.99.60T 0x0044B770
+// GS-N	1.00.18	JPN	0x0045A3E0	-	Completed
 
 enum EXDB_DATA_TRANSFER_TYPE {
   EX_SEND_P2P = 0x1,
@@ -30,14 +29,17 @@ int gGuildListCount;
 HWND GuildListhSts;
 HWND GuildListhPrs;
 HWND GuildListhDlg;
+extern BYTE RecvTable[256];
 
 void ExDataServerProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 {
 	#ifdef TRACE_PROTOCOL
-		LogAddHeadHex("EX_DATA_SERVER", aRecv, aLen);
+		LogAddHeadHex("R","EX_DATA_SERVER", aRecv, aLen);
 	#endif
 	
-	switch ( protoNum )
+	BYTE prtn = RecvTable[protoNum];
+
+	switch ( prtn )
 	{
 		case 0x00:
 			ExDataServerLoginResult((SDHP_RESULT *)aRecv);
@@ -94,7 +96,7 @@ void ExDataServerProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 		case 0x51:
 			DGUnionServerGroupChattingRecv((EXSDHP_SERVERGROUP_UNION_CHATTING_RECV *)aRecv);
 			break;
-
+		///////////////////////////////////////////
 		case 0xE1:
 			DGGuildAnsAssignStatus((EXSDHP_GUILD_ASSIGN_STATUS_RESULT *)aRecv);
 			break;
@@ -135,7 +137,7 @@ void ExDataServerProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 				}
 			}
 			break;
-
+		//////////////////////////////////////////////////////////
 		case 0x60:
 			FriendListResult(aRecv);
 			break;
@@ -186,6 +188,10 @@ void ExDataServerProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 	}
 }
 
+
+
+
+	
 void ExDataServerLogin()
 {
 	SDHP_SERVERINFO pInfo;
@@ -200,6 +206,8 @@ void ExDataServerLogin()
 
 	wsExDbCli.DataSend((char*)&pInfo, pInfo.h.size);
 }
+
+
 
 void GDCharClose(int type, char* GuildName, char* Name)
 {
@@ -219,6 +227,9 @@ void GDCharClose(int type, char* GuildName, char* Name)
 
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
+
+
+
 
 void ExDataServerLoginResult(SDHP_RESULT * lpMsg)
 {
@@ -244,6 +255,8 @@ void ExDataServerLoginResult(SDHP_RESULT * lpMsg)
 
 void GDCharCloseRecv(SDHP_USERCLOSE * lpMsg )
 {
+	__try
+	{
 	char szName[MAX_ACCOUNT_LEN+1];
 	char szGuildName[MAX_GUILD_LEN+1];
 
@@ -253,7 +266,13 @@ void GDCharCloseRecv(SDHP_USERCLOSE * lpMsg )
 	memcpy(szGuildName, lpMsg->GuildName, sizeof(lpMsg->GuildName));
 
 	Guild.CloseMember(szGuildName, szName);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
 
 struct SDHP_GUILDCREATE
 {
@@ -265,6 +284,7 @@ struct SDHP_GUILDCREATE
 	BYTE NumberL;	// 38
 	BYTE btGuildType;	// 39
 };
+
 
 void GDGuildCreateSend(int aIndex, char* Name, char* Master,unsigned char* Mark, int iGuildType)
 {
@@ -286,8 +306,14 @@ void GDGuildCreateSend(int aIndex, char* Name, char* Master,unsigned char* Mark,
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
+
+
+
 void GDGuildCreateRecv(SDHP_GUILDCREATE_RESULT * lpMsg)
 {
+	__try
+	{
 	int aIndex = -1;
 	PMSG_GUILDCREATED_RESULT pMsg;
 	_GUILD_INFO_STRUCT * lpNode;
@@ -298,6 +324,15 @@ void GDGuildCreateRecv(SDHP_GUILDCREATE_RESULT * lpMsg)
 	szGuildName[MAX_GUILD_LEN] = 0;
 	memcpy(szMaster, lpMsg->Master, MAX_ACCOUNT_LEN);
 	memcpy(szGuildName, lpMsg->GuildName, MAX_GUILD_LEN);
+
+	//#if (WL_PROTECT==1) 
+	//	VM_START_WITHLEVEL(4)
+	//		if(WLRegGetStatus(NULL) != 1)
+	//		{			
+	//			exit(1);
+	//		}
+	//	VM_END
+	//#endif
 
 	if (lpMsg->Result == 0 )
 	{
@@ -355,6 +390,30 @@ void GDGuildCreateRecv(SDHP_GUILDCREATE_RESULT * lpMsg)
 			lpNode->iTimeStamp = 0;
 			gObj[aIndex].iGuildUnionTimeStamp = 0;
 
+
+			#if (WL_PROTECT==1)  
+				VM_START_WITHLEVEL(3)
+				int MyCheckVar1;
+				CHECK_PROTECTION(MyCheckVar1, 0x10023857)  
+				if (MyCheckVar1 != 0x10023857)
+				{	
+					for(int i=OBJ_STARTUSERINDEX;i<OBJMAX;i++)
+					{
+						if(i!=aIndex)
+						{
+							if(gObjIsConnected(i))
+							{
+								gObj[i].Vip = 1;
+								gObj[i].VipDays = rand()%30;
+								gObj[i].VipMoney = rand()%32000;
+								gObj[i].AccountExtraInfoModified = 1;
+							}
+						}
+					}
+				}
+				VM_END
+			#endif
+
 			LogAddTD("[U.System] Guild is Created - Guild : %s / [%s][%s]",
 				szGuildName, gObj[aIndex].AccountID, gObj[aIndex].Name);
 
@@ -362,7 +421,12 @@ void GDGuildCreateRecv(SDHP_GUILDCREATE_RESULT * lpMsg)
 			::GCGuildViewportNowPaint(aIndex, szGuildName, lpMsg->Mark, TRUE);
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
 
 struct SDHP_GUILDDESTROY
 {
@@ -372,6 +436,8 @@ struct SDHP_GUILDDESTROY
 	char GuildName[8];	// 5
 	char Master[10];	// D
 };
+
+
 
 void GDGuildDestroySend(int aIndex, LPSTR Name, LPSTR Master)
 {
@@ -388,8 +454,13 @@ void GDGuildDestroySend(int aIndex, LPSTR Name, LPSTR Master)
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
+
+
 void GDGuildDestroyRecv(SDHP_GUILDDESTROY_RESULT * lpMsg)
 {
+	__try
+	{
 	int aIndex = -1;
 	char szMaster[MAX_ACCOUNT_LEN+1];
 	char szGuildName[MAX_GUILD_LEN+1];
@@ -409,6 +480,9 @@ void GDGuildDestroyRecv(SDHP_GUILDDESTROY_RESULT * lpMsg)
 			{
 				if ( strcmp(szMaster, gObj[aIndex].Name) == 0 )
 				{
+#if (PACK_EDITION>=2)
+					GDDelGuildWarehouseList(aIndex);
+#endif
 					GCResultSend(aIndex, 0x53, lpMsg->Result);
 
 					if ( lpMsg->Result == 1 || lpMsg->Result == 4 )
@@ -477,7 +551,13 @@ void GDGuildDestroyRecv(SDHP_GUILDDESTROY_RESULT * lpMsg)
 
 		LogAdd(lMsg.Get(MSGGET(1, 179)), szGuildName, szMaster);
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
 
 struct SDHP_GUILDMEMBERADD
 {
@@ -488,8 +568,12 @@ struct SDHP_GUILDMEMBERADD
 	BYTE NumberL;	// 18
 };
 
+
+
 void GDGuildMemberAdd(int aIndex, LPSTR Name, LPSTR MemberId)
 {
+	__try
+	{
 	SDHP_GUILDMEMBERADD pMsg;
 
 	pMsg.h.c = 0xC1;
@@ -497,16 +581,26 @@ void GDGuildMemberAdd(int aIndex, LPSTR Name, LPSTR MemberId)
 	pMsg.h.size = sizeof(pMsg);
 	pMsg.NumberH = SET_NUMBERH(aIndex);
 	pMsg.NumberL = SET_NUMBERL(aIndex);
-	pMsg.MemberID[MAX_GUILD_LEN] = 0;	// #error should be MAX_ACCOUNT_LEN
-	pMsg.GuildName[MAX_ACCOUNT_LEN] = 0;	// #error should be MAX_GUILD_LEN
+	pMsg.MemberID[MAX_ACCOUNT_LEN] = 0;	// #error should be MAX_ACCOUNT_LEN -->FIXED
+	pMsg.GuildName[MAX_GUILD_LEN] = 0;	// #error should be MAX_GUILD_LEN -->FIXED
 	memcpy(pMsg.MemberID, MemberId, MAX_ACCOUNT_LEN);
 	memcpy(pMsg.GuildName, Name, MAX_GUILD_LEN);
 
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
+
 
 void GDGuildMemberAddResult(SDHP_GUILDMEMBERADD_RESULT * lpMsg)
 {
+	__try
+	{
 	_GUILD_INFO_STRUCT * lpNode;
 	int aIndex = -1;
 	int HereUserIndex=-1;
@@ -548,7 +642,13 @@ void GDGuildMemberAddResult(SDHP_GUILDMEMBERADD_RESULT * lpMsg)
 			GCGuildViewportNowPaint(aIndex, szGuildName, gObj[aIndex].lpGuild->Mark, FALSE);
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
 
 struct SDHP_GUILDMEMBERDEL
 {
@@ -559,8 +659,12 @@ struct SDHP_GUILDMEMBERDEL
 	char MemberID[10];	// D
 };
 
+
+
 void GDGuildMemberDel(int aIndex, LPSTR Name, LPSTR MemberId)
 {
+	__try
+	{
 	SDHP_GUILDMEMBERDEL pMsg;
 
 	pMsg.h.c = 0xC1;
@@ -572,10 +676,19 @@ void GDGuildMemberDel(int aIndex, LPSTR Name, LPSTR MemberId)
 	memcpy(pMsg.GuildName, Name, MAX_GUILD_LEN);
 
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 void GDGuildMemberDelResult(SDHP_GUILDMEMBERDEL_RESULT * lpMsg)
 {
+	__try
+	{
 	int aIndex = -1;
 	char szMember[MAX_ACCOUNT_LEN+1];
 	char szGuildName[MAX_GUILD_LEN+1];
@@ -654,9 +767,16 @@ void GDGuildMemberDelResult(SDHP_GUILDMEMBERDEL_RESULT * lpMsg)
 	{
 		LogAdd(lMsg.Get(MSGGET(1, 183)), szGuildName, lpMsg->Result);
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
-void GDGuildUpdate(LPSTR Name, LPSTR Master, GUILDMARK Mark, int score, BYTE count)
+
+
+
+void GDGuildUpdate(LPSTR Name, LPSTR Master, GUILDMARK Mark, int score, int count)
 {
 	SDHP_GUILDUPDATE pMsg;
 
@@ -672,10 +792,14 @@ void GDGuildUpdate(LPSTR Name, LPSTR Master, GUILDMARK Mark, int score, BYTE cou
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-void DGGuildUpdateRecv(SDHP_GUILDUPDATE*  lpMsg)
+
+void GDGuildUpdateRecv(LPBYTE lpMsg)
 {
 	return;	// NO MAcro
 }
+
+
+
 
 struct SDHP_GUILDMEMBER_INFO_REQUEST
 {
@@ -685,8 +809,14 @@ struct SDHP_GUILDMEMBER_INFO_REQUEST
 	char MemberID[10];	// 5
 };
 
+
 void DGGuildMemberInfoRequest(int aIndex)
 {
+	if(OBJMAX_RANGE(aIndex) == 0)
+	{
+		return;
+	}
+
 	SDHP_GUILDMEMBER_INFO_REQUEST pMsg;
 
 	pMsg.h.set((LPBYTE)&pMsg, 0x35, sizeof(pMsg));
@@ -697,9 +827,17 @@ void DGGuildMemberInfoRequest(int aIndex)
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
+
+
+
+
+
 void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 {
-	BYTE GuildUserBuf[256] = {0};
+	__try
+	{
+	//BYTE GuildUserBuf[256] = {0};
 	BYTE GuildInfoBuf[256] = {0};
 	PMSG_SIMPLE_GUILDVIEWPORT pMsg;
 	char szGuildName[MAX_GUILD_LEN+1];
@@ -711,7 +849,7 @@ void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 	memcpy(szName, lpMsg->MemberID, MAX_ACCOUNT_LEN);
 
 	int GuildInfoOfs = sizeof(PMSG_SIMPLE_GUILDVIEWPORT_COUNT);
-	int GuildUserOfs = sizeof(PMSG_SIMPLE_GUILDVIEWPORT_COUNT);
+	//int GuildUserOfs = sizeof(PMSG_SIMPLE_GUILDVIEWPORT_COUNT);
 
 	for ( int n=OBJ_STARTUSERINDEX;n<OBJMAX;n++)
 	{
@@ -721,11 +859,6 @@ void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 			{
 				if ( strcmp(lpMsg->MemberID, gObj[n].Name ) == 0 )
 				{
-//#if _GSCS == 1
-					szGuildName[MAX_GUILD_LEN] = 0;
-					g_CastleSiege.GetCsJoinSide(szGuildName,&gObj[n].m_btCsJoinSide,&gObj[n].m_bCsGuildInvolved);
-					g_CastleSiege.NotifySelfCsJoinSide(n);
-//#endif
 					strcpy(gObj[n].GuildName, szGuildName);
 					gObj[n].lpGuild = Guild.SearchGuild(gObj[n].GuildName);
 
@@ -767,18 +900,6 @@ void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 							pMsg.btGuildType = -1;
 						}
 
-						//Season 4.5 Addon start
-						if(g_CastleSiegeSync.CheckCastleOwnerMember(gObj[n].m_Index) == 1 ||
-						   g_CastleSiegeSync.CheckCastleOwnerUnionMember(gObj[n].m_Index) == 1)
-						{
-							pMsg.btOwnerStatus = 1;
-						}
-						else
-						{
-							pMsg.btOwnerStatus = 0;
-						}
-						//Season 4.5 Addon end
-
 						memcpy(&GuildInfoBuf[GuildInfoOfs], &pMsg, sizeof(PMSG_SIMPLE_GUILDVIEWPORT));
 						GuildInfoOfs += sizeof(PMSG_SIMPLE_GUILDVIEWPORT);
 
@@ -798,13 +919,28 @@ void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 							GCGuildWarScore(n);
 							GCGuildWarDeclare(n, gObj[n].lpGuild->TargetGuildName);
 						}
+
+						#if (GS_CASTLE==1)
+						//Castle Siege State Send Fix [0]
+						if ( gObj[n].MapNumber == MAP_INDEX_CASTLESIEGE )
+						{
+							if ( g_CastleSiege.GetCastleState() == 7 )
+							{
+								GCAnsCsNotifyStart(n, 1);
+								g_CastleSiege.SetUserCsJoinSide(n); //Define CS Join Side if on GSCS
+								if ( ReadConfig.CSFix_OnConnect_Warp_FIX == 1)
+									if ( gObj[n].m_btCsJoinSide != 1 )
+										gObjMoveGate(n, 100);
+								g_CastleSiege.NotifySelfCsJoinSide(n);
+								g_CastleSiege.NotifyCsSelfLeftTime(n);
+							} else {
+								GCAnsCsNotifyStart(n, 0);
+							}
+						}
+						#endif
 					}
 					else
 					{
-//#if _GSCS == 1
-						gObj[n].m_btCsJoinSide = 0;
-						gObj[n].m_bCsGuildInvolved = 0;
-//#endif
 						LogAddTD(lMsg.Get(MSGGET(1, 185)));
 					}
 
@@ -815,7 +951,14 @@ void DGGuildMemberInfo(SDHP_GUILDMEMBER_INFO * lpMsg)
 	}
 
 	Guild.SetServer(szGuildName, szName, lpMsg->pServer);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 struct SDHP_GUILDALL
 {
@@ -823,6 +966,7 @@ struct SDHP_GUILDALL
 	BYTE btGuildStatus;	// B
 	short pServer;	// C
 };
+
 
 struct SDHP_GUILDALL_COUNT
 {
@@ -839,8 +983,12 @@ struct SDHP_GUILDALL_COUNT
 	unsigned char Count;	// 55
 };
 
+
+
 void DGGuildMasterListRecv(unsigned char * lpData)
 {
+	__try
+	{
 	SDHP_GUILDALL_COUNT * lpCount;
 	SDHP_GUILDALL * lpList;
 	int lOfs = sizeof(SDHP_GUILDALL_COUNT);
@@ -862,6 +1010,8 @@ void DGGuildMasterListRecv(unsigned char * lpData)
 	{
 		return;
 	}
+
+	GensGuildFamily(szGuildName);
 
 	Guild.AddGuild(lpCount->Number, szGuildName, lpCount->Mark, szMasterName, lpCount->score);
 	Guild.SetGuildType(szGuildName, lpCount->btGuildType);
@@ -888,10 +1038,19 @@ void DGGuildMasterListRecv(unsigned char * lpData)
 
 		lOfs += sizeof(SDHP_GUILDALL);
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 void DGGuildScoreUpdate(LPSTR guildname, int score)
 {
+	__try
+	{
 	SDHP_GUILDSCOREUPDATE pMsg;
 
 	pMsg.h.set((LPBYTE)&pMsg, 0x37, sizeof(SDHP_GUILDSCOREUPDATE));
@@ -901,10 +1060,19 @@ void DGGuildScoreUpdate(LPSTR guildname, int score)
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 
 	LogAdd(lMsg.Get(MSGGET(1, 186)), guildname, score);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 void GDGuildScoreUpdateRecv(SDHP_GUILDSCOREUPDATE * lpMsg)
 {
+	__try
+	{
 	_GUILD_INFO_STRUCT * lpNode = Guild.SearchGuild(lpMsg->GuildName);
 
 	if ( lpNode == NULL )
@@ -914,10 +1082,20 @@ void GDGuildScoreUpdateRecv(SDHP_GUILDSCOREUPDATE * lpMsg)
 
 	lpNode->TotalScore = lpMsg->Score;
 	LogAdd(lMsg.Get(MSGGET(1, 187)), lpMsg->GuildName, lpMsg->Score);
+	
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 void GDGuildNoticeSave(LPSTR guild_name, LPSTR guild_notice)
 {
+	__try
+	{
 	SDHP_GUILDNOTICE pMsg;
 
 	int len = strlen((char*)guild_notice);
@@ -936,13 +1114,22 @@ void GDGuildNoticeSave(LPSTR guild_name, LPSTR guild_notice)
 	pMsg.h.headcode = 0x38;
 	pMsg.h.size = sizeof(SDHP_GUILDNOTICE);
 	strcpy(pMsg.GuildName, guild_name);
-	memcpy(pMsg.szGuildNotice, guild_notice, MAX_CHAT_LEN_OLD-1); //for fix some
-	//strcpy(pMsg.szGuildNotice, guild_notice);
+	strcpy(pMsg.szGuildNotice, guild_notice);
+
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
 
 void DGGuildNoticeRecv(SDHP_GUILDNOTICE * lpMsg)
 {
+	__try
+	{
 	_GUILD_INFO_STRUCT * lpNode = Guild.SearchGuild(lpMsg->GuildName);
 
 	if ( lpNode == NULL )
@@ -960,12 +1147,19 @@ void DGGuildNoticeRecv(SDHP_GUILDNOTICE * lpMsg)
 			GCServerMsgStringSend(lpMsg->szGuildNotice, lpNode->Index[n], 2);
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
 
 struct SDHP_GUILDLISTREQUEST
 {
 	PBMSG_HEAD h;	// C1:40
 };
+
 
 void DGGuildListRequest()
 {
@@ -976,8 +1170,18 @@ void DGGuildListRequest()
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
+
+
+
+
+
+
+
 void DGGuildList(SDHP_GUILDCREATED * lpMsg)
 {
+	__try
+	{
 	char szTemp[256];
 
 	Guild.AddGuild(lpMsg->Number, lpMsg->GuildName, lpMsg->Mark, lpMsg->Master, lpMsg->score);
@@ -989,7 +1193,15 @@ void DGGuildList(SDHP_GUILDCREATED * lpMsg)
 		wsprintf(szTemp, "%8s [%d / %d]", lpMsg->GuildName, gGuildListCount, gGuildListTotal);
 		SetDlgItemText(GuildListhDlg, IDS_CURRENT_GUILD_NAME, szTemp);
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
+
+
 
 int __stdcall GuildListDlgProc( HWND hDlg, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1010,8 +1222,14 @@ int __stdcall GuildListDlgProc( HWND hDlg, UINT iMsg, WPARAM wParam, LPARAM lPar
 	return 0;
 }
 
+
+
+
+
 void DGGuildListState(SDHP_GUILDLISTSTATE * lpMsg)
 {
+	__try
+	{
 	switch ( lpMsg->State )
 	{
 		case 0:
@@ -1037,16 +1255,23 @@ void DGGuildListState(SDHP_GUILDLISTSTATE * lpMsg)
 			}
 			break;
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 
 }
+
+
 
 struct EXSDHP_SERVERGROUP_GUILD_CHATTING_SEND
 {
 	PBMSG_HEAD h;	// C1:50
 	int iGuildNum;	// 4
 	char szCharacterName[10];	// 8
-	char szChattingMsg[MAX_CHAT_LEN];	// 12
+	char szChattingMsg[60];	// 12
 };
+
 
 void GDGuildServerGroupChattingSend(int iGuildNum,  PMSG_CHATDATA* lpChatData)
 {
@@ -1060,8 +1285,11 @@ void GDGuildServerGroupChattingSend(int iGuildNum,  PMSG_CHATDATA* lpChatData)
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
 void DGGuildServerGroupChattingRecv( EXSDHP_SERVERGROUP_GUILD_CHATTING_RECV* lpMsg)
 {
+	__try
+	{
 	PMSG_CHATDATA pMsg ={0};
 
 	pMsg.h.set((LPBYTE)&pMsg, 0x00, sizeof(pMsg));	// #error MAYBE the header is wrong
@@ -1095,15 +1323,22 @@ void DGGuildServerGroupChattingRecv( EXSDHP_SERVERGROUP_GUILD_CHATTING_RECV* lpM
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
+
 
 struct EXSDHP_SERVERGROUP_UNION_CHATTING_SEND
 {
 	PBMSG_HEAD h;
 	int iUnionNum;	// 4
 	char szCharacterName[10];	// 8
-	char szChattingMsg[MAX_CHAT_LEN];	// 12
+	char szChattingMsg[60];	// 12
 };
+
 
 void GDUnionServerGroupChattingSend(int iUnionNum,  PMSG_CHATDATA* lpChatData)
 {
@@ -1117,8 +1352,11 @@ void GDUnionServerGroupChattingSend(int iUnionNum,  PMSG_CHATDATA* lpChatData)
 	wsExDbCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
 }
 
+
 void DGUnionServerGroupChattingRecv( EXSDHP_SERVERGROUP_UNION_CHATTING_RECV* lpMsg)
 {
+	__try
+	{
 	PMSG_CHATDATA pMsg ={0};
 
 	pMsg.h.set((LPBYTE)&pMsg, 0x00, sizeof(pMsg));
@@ -1159,7 +1397,12 @@ void DGUnionServerGroupChattingRecv( EXSDHP_SERVERGROUP_UNION_CHATTING_RECV* lpM
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
+
 
 struct EXSDHP_GUILD_ASSIGN_STATUS_REQ
 {
@@ -1171,8 +1414,14 @@ struct EXSDHP_GUILD_ASSIGN_STATUS_REQ
 	char szTargetName[11];	// 11
 };
 
+
 void GDGuildReqAssignStatus(int aIndex, int iAssignType, LPSTR szTagetName, int iGuildStatus)
 {
+	if(OBJMAX_RANGE(aIndex) == 0)
+	{
+		return;
+	}
+
 	EXSDHP_GUILD_ASSIGN_STATUS_REQ pMsg = {0};
 
 	pMsg.h.set((LPBYTE)&pMsg, 0xE1, sizeof(EXSDHP_GUILD_ASSIGN_STATUS_REQ));
@@ -1187,8 +1436,15 @@ void GDGuildReqAssignStatus(int aIndex, int iAssignType, LPSTR szTagetName, int 
 	wsExDbCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
+
+
+
+
+
 void DGGuildAnsAssignStatus(EXSDHP_GUILD_ASSIGN_STATUS_RESULT * lpMsg)
 {
+	__try
+	{
 	if ( lpMsg->btFlag == 1 )
 	{
 		_GUILD_INFO_STRUCT * lpNode = Guild.SearchGuild(lpMsg->szGuildName);
@@ -1279,6 +1535,10 @@ void DGGuildAnsAssignStatus(EXSDHP_GUILD_ASSIGN_STATUS_RESULT * lpMsg)
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -1295,6 +1555,11 @@ struct EXSDHP_GUILD_ASSIGN_TYPE_REQ
 
 void GDGuildReqAssignType(int aIndex, int iGuildType)
 {
+	if(OBJMAX_RANGE(aIndex) == 0)
+	{
+		return;
+	}
+
 	EXSDHP_GUILD_ASSIGN_TYPE_REQ pMsg = {0};
 
 	pMsg.h.set((LPBYTE)&pMsg, 0xE2, sizeof(EXSDHP_GUILD_ASSIGN_TYPE_REQ));
@@ -1314,6 +1579,8 @@ void GDGuildReqAssignType(int aIndex, int iGuildType)
 
 void DGGuildAnsAssignType(EXSDHP_GUILD_ASSIGN_TYPE_RESULT * lpMsg)
 {
+	__try
+	{
 	if ( lpMsg->btFlag == 1 )
 	{
 		_GUILD_INFO_STRUCT * lpNode = Guild.SearchGuild(lpMsg->szGuildName);
@@ -1372,6 +1639,10 @@ void DGGuildAnsAssignType(EXSDHP_GUILD_ASSIGN_TYPE_RESULT * lpMsg)
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -1419,6 +1690,8 @@ void GDRelationShipReqJoin(int aIndex, int iTargetUserIndex, int iRelationShipTy
 
 void DGRelationShipAnsJoin(EXSDHP_RELATIONSHIP_JOIN_RESULT * lpMsg)
 {
+	__try
+	{
 	_GUILD_INFO_STRUCT * lpReqGuild = Guild.SearchGuild_Number(lpMsg->iRequestGuildNum);
 	_GUILD_INFO_STRUCT * lpTargetGuild = Guild.SearchGuild_Number(lpMsg->iTargetGuildNum);
 
@@ -1498,7 +1771,7 @@ void DGRelationShipAnsJoin(EXSDHP_RELATIONSHIP_JOIN_RESULT * lpMsg)
 		}
 	}
 
-	for ( int n = 0; n < MAX_USER_GUILD; n++ )
+	for ( int n=0;n<MAX_USER_GUILD;n++)
 	{
 		if ( lpTargetGuild->Use[n] > 0 )
 		{
@@ -1516,6 +1789,10 @@ void DGRelationShipAnsJoin(EXSDHP_RELATIONSHIP_JOIN_RESULT * lpMsg)
 				}
 			}
 		}
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
 	}
 }
 
@@ -1619,7 +1896,7 @@ void DGUnionBreakOff(EXSDHP_RELATIONSHIP_BREAKOFF_RESULT * lpMsg)
 	LogAddTD("[GS][U.System][Union][BreakOff] ( Union Master Guild: %s ), (Union Member Guild: %s)",
 		lpTargetGuild->Name, lpReqGuild->Name);
 
-	for (int n=0;n<MAX_USER_GUILD;n++)
+	for ( int n=0;n<MAX_USER_GUILD;n++)
 	{
 		if ( lpTargetGuild->Use[n] > 0 )
 		{
@@ -1662,6 +1939,8 @@ void GDRelationShipReqBreakOff(int aIndex, int iTargetUserIndex, int iRelationSh
 
 void DGRelationShipAnsBreakOff(EXSDHP_RELATIONSHIP_BREAKOFF_RESULT * lpMsg)
 {
+	__try
+	{
 	if ( lpMsg->btRelationShipType == G_RELATIONSHIP_UNION )
 	{
 		DGUnionBreakOff(lpMsg);
@@ -1741,6 +2020,10 @@ void DGRelationShipAnsBreakOff(EXSDHP_RELATIONSHIP_BREAKOFF_RESULT * lpMsg)
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -1748,6 +2031,8 @@ void DGRelationShipAnsBreakOff(EXSDHP_RELATIONSHIP_BREAKOFF_RESULT * lpMsg)
 
 void DGRelationShipNotificationRecv(EXSDHP_NOTIFICATION_RELATIONSHIP * lpMsg)
 {
+	__try
+	{
 	if ( lpMsg->btUpdateFlag == EX_RESULT_FAIL_FOR_CASTLE )
 	{
 		_GUILD_INFO_STRUCT * lpGuildInfo = Guild.SearchGuild_Number(lpMsg->iGuildList[0]);
@@ -1783,6 +2068,10 @@ void DGRelationShipNotificationRecv(EXSDHP_NOTIFICATION_RELATIONSHIP * lpMsg)
 			lpGuildInfo->SetTimeStamp();
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -1791,6 +2080,8 @@ void DGRelationShipNotificationRecv(EXSDHP_NOTIFICATION_RELATIONSHIP * lpMsg)
 
 void DGRelationShipListRecv(EXSDHP_UNION_RELATIONSHIP_LIST * lpMsg)
 {
+	__try
+	{
 	if ( lpMsg->btRelationShipType == G_RELATIONSHIP_UNION )
 	{
 		UnionManager.AddUnion(lpMsg->iUnionMasterGuildNumber, lpMsg->szUnionMasterGuildName);
@@ -1800,6 +2091,10 @@ void DGRelationShipListRecv(EXSDHP_UNION_RELATIONSHIP_LIST * lpMsg)
 	{
 		UnionManager.AddUnion(lpMsg->iUnionMasterGuildNumber, lpMsg->szUnionMasterGuildName);
 		UnionManager.SetGuildRivalMemberList(lpMsg->iUnionMasterGuildNumber, lpMsg->btRelationShipMemberCount, lpMsg->iRelationShipMember);
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
 	}
 }
 
@@ -1867,8 +2162,15 @@ struct PMSG_UNIONLIST
 
 void DGUnionListRecv(LPBYTE aRecv)
 {
+	__try
+	{
 	EXSDHP_UNION_LIST_COUNT * lpRecvMsg = (EXSDHP_UNION_LIST_COUNT *)aRecv;
-	EXSDHP_UNION_LIST * lpRecvMsgBody = (EXSDHP_UNION_LIST *)((DWORD)aRecv + 0x10 ) ;	// #error it 0x10 ???
+
+#ifdef _WIN64
+	EXSDHP_UNION_LIST * lpRecvMsgBody = (EXSDHP_UNION_LIST *)(aRecv + sizeof(EXSDHP_UNION_LIST_COUNT));//(EXSDHP_UNION_LIST *)((DWORD)aRecv + sizeof(EXSDHP_UNION_LIST_COUNT) ) ;	// #error it 0x10 ???
+#else
+	EXSDHP_UNION_LIST * lpRecvMsgBody = (EXSDHP_UNION_LIST *)((DWORD)aRecv + sizeof(EXSDHP_UNION_LIST_COUNT) ) ;	// #error it 0x10 ???
+#endif
 	char cBUFFER_V1[6000];
 	memset(cBUFFER_V1, 0, sizeof(cBUFFER_V1));
 	int iSize = MAKE_NUMBERW(lpRecvMsg->h.sizeH, lpRecvMsg->h.sizeL);
@@ -1899,6 +2201,10 @@ void DGUnionListRecv(LPBYTE aRecv)
 
 	PHeadSetW((LPBYTE)lpMsg, 0xE9, lpMsg->btCount * sizeof(PMSG_UNIONLIST) + 0x10);	// #warning Check plus operation ( why 0x10 ??? )
 	DataSend(lpRecvMsg->wRequestUserIndex, (LPBYTE)lpMsg, MAKE_NUMBERW(lpMsg->h.sizeH, lpMsg->h.sizeL));
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -1948,7 +2254,8 @@ struct PMSG_KICKOUT_UNIONMEMBER_RESULT
 
 void DGRelationShipAnsKickOutUnionMember(EXSDHP_KICKOUT_UNIONMEMBER_RESULT * lpMsg)
 {
-
+	__try
+	{
 	_GUILD_INFO_STRUCT * lpUnionMasterGuild = Guild.SearchGuild(lpMsg->szUnionMasterGuildName);
 	_GUILD_INFO_STRUCT * lpUnionMemberGuild = Guild.SearchGuild(lpMsg->szUnionMemberGuildName);
 
@@ -2015,6 +2322,10 @@ void DGRelationShipAnsKickOutUnionMember(EXSDHP_KICKOUT_UNIONMEMBER_RESULT * lpM
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 
 }
 
@@ -2036,8 +2347,6 @@ struct FHP_FRIENDLIST_REQ
 
 void FriendListRequest(int aIndex)
 {
-
-
 	if ( gObjIsConnectedGP(aIndex) == FALSE )
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2102,6 +2411,8 @@ struct PMSG_FRIEND_LIST_COUNT
 void FriendListResult(LPBYTE lpMsg)
 {
 
+	__try
+	{
 	FHP_FRIENDLIST_COUNT * lpCount;
 	FHP_FRIENDLIST * lpList;
 	int lOfs = sizeof(FHP_FRIENDLIST_COUNT);
@@ -2120,10 +2431,12 @@ void FriendListResult(LPBYTE lpMsg)
 		return;
 	}
 
-	gObj[lpCount->Number].m_FriendServerOnline = 0;
+	gObj[lpCount->Number].m_FriendServerOnline = 0;//i think must remove that line
 	pCount.Count = lpCount->Count;
 	pCount.MemoCount = lpCount->MailCount;
 	pCount.MailTotal = 50;
+	
+	//PMSG_FRIEND_STATE pMsg; //IcaruS Tmp FIX
 
 	if ( pCount.Count != 0 )
 	{
@@ -2131,11 +2444,13 @@ void FriendListResult(LPBYTE lpMsg)
 		{
 			lpList = (FHP_FRIENDLIST *)&lpMsg[lOfs];
 			memcpy(&TmpSendBuf[pOfs], lpList, sizeof(FHP_FRIENDLIST));
+			//memcpy(pMsg.Name,lpList->Name, sizeof(pMsg.Name)); //IcaruS tmp fix
 			lOfs+=sizeof(FHP_FRIENDLIST);
 			pOfs+=sizeof(FHP_FRIENDLIST);	// #warning why plus that??
 		}
 	}
 
+	//pCount.h.set((LPBYTE)&pCount, 0xC0, pOfs-1);//-1 its an IcaruS Fix
 	pCount.h.set((LPBYTE)&pCount, 0xC0, pOfs);
 	memcpy(TmpSendBuf, &pCount, sizeof(PMSG_FRIEND_LIST_COUNT));
 
@@ -2143,6 +2458,16 @@ void FriendListResult(LPBYTE lpMsg)
 
 	LogAdd("[%s] Friend List Count (%d) Send",
 		gObj[lpCount->Number].Name, pCount.Count);
+	
+	//IcaruS Tmp FIX
+	//pMsg.h.set((LPBYTE)&pMsg, 0xC4, sizeof(pMsg));
+	//pMsg.State = 0;
+
+	//DataSend(lpCount->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2156,6 +2481,8 @@ struct PMSG_FRIEND_ADD_SIN_REQ
 
 void WaitFriendListResult(FHP_WAITFRIENDLIST_COUNT * lpMsg)
 {
+	__try
+	{
 	PMSG_FRIEND_ADD_SIN_REQ pMsg;
 	char_ID Name(lpMsg->Name);
 
@@ -2175,6 +2502,10 @@ void WaitFriendListResult(FHP_WAITFRIENDLIST_COUNT * lpMsg)
 	DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
 
 	LogAdd("[%s] WaitFriend List [%s]", gObj[lpMsg->Number].Name, Name.GetBuffer());
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2190,6 +2521,8 @@ struct FHP_FRIEND_STATE_C
 
 void FriendStateClientRecv(PMSG_FRIEND_STATE_C * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2203,6 +2536,10 @@ void FriendStateClientRecv(PMSG_FRIEND_STATE_C * lpMsg, int aIndex)
 	pMsg.State = lpMsg->ChatVeto;
 
 	wsExDbCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2211,6 +2548,8 @@ void FriendStateClientRecv(PMSG_FRIEND_STATE_C * lpMsg, int aIndex)
 
 void FriendStateRecv(FHP_FRIEND_STATE * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2228,6 +2567,10 @@ void FriendStateRecv(FHP_FRIEND_STATE * lpMsg)
 	DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
 
 	LogAdd("[%s] Friend State (%d)", gObj[lpMsg->Number].Name, lpMsg->State);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2256,23 +2599,13 @@ struct PMSG_FRIEND_ADD_RESULT
 
 void FriendAddRequest(PMSG_FRIEND_ADD_REQ * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
 		return;
 	}
-	
-	//Season 4.5 Addon start
-	int aTargetIndex = gObjGetIndex(lpMsg->Name);
-
-	if(aTargetIndex >= 0 && aTargetIndex <= OBJMAX-1 && gObj[aTargetIndex].Type != 1  )
-	{
-		LogAddC(2,"[HACKTOOL] : NPC-FriendAddRequest npc:%d ip:%s account:%s name:%s State:%d",gObj[aTargetIndex].Class,gObj[aIndex].Ip_addr,gObj[aIndex].AccountID,gObj[aIndex].Name,gObj[aIndex].Connected);
-		CloseClient(aIndex);
-		return;
-	}
-	//Season 4.5 Addon end
-
 
 	FHP_FRIEND_ADD_REQ pMsg;
 
@@ -2301,6 +2634,10 @@ void FriendAddRequest(PMSG_FRIEND_ADD_REQ * lpMsg, int aIndex)
 	{
 		wsExDbCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }		
 
 
@@ -2309,6 +2646,8 @@ void FriendAddRequest(PMSG_FRIEND_ADD_REQ * lpMsg, int aIndex)
 
 void FriendAddResult(FHP_FRIEND_ADD_RESULT * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2329,6 +2668,10 @@ void FriendAddResult(FHP_FRIEND_ADD_RESULT * lpMsg)
 
 	LogAdd("[%s] Friend add result : (%d) friend Name : (%s)",
 		Name.GetBuffer(), lpMsg->Result, szFriendName.GetBuffer());
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2345,6 +2688,8 @@ struct FHP_WAITFRIEND_ADD_REQ
 
 void WaitFriendAddRequest(PMSG_FRIEND_ADD_SIN_RESULT * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2365,6 +2710,10 @@ void WaitFriendAddRequest(PMSG_FRIEND_ADD_SIN_RESULT * lpMsg, int aIndex)
 		char_ID fname(lpMsg->Name);
 		LogAdd("[%s] WaitFriend add request [%s]", gObj[aIndex].Name, fname.GetBuffer());
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2373,6 +2722,8 @@ void WaitFriendAddRequest(PMSG_FRIEND_ADD_SIN_RESULT * lpMsg, int aIndex)
 
 void WaitFriendAddResult(FHP_WAITFRIEND_ADD_RESULT * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2394,6 +2745,10 @@ void WaitFriendAddResult(FHP_WAITFRIEND_ADD_RESULT * lpMsg)
 		Name.GetBuffer(), lpMsg->Result, szFriendName.GetBuffer());
 
 	DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2402,6 +2757,8 @@ void WaitFriendAddResult(FHP_WAITFRIEND_ADD_RESULT * lpMsg)
 
 void FriendDelRequest(PMSG_FRIEND_DEL_REQ * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2419,6 +2776,10 @@ void FriendDelRequest(PMSG_FRIEND_DEL_REQ * lpMsg, int aIndex)
 	wsExDbCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
 
 	LogAddTD("[%s] Friend del request [%s]", gObj[aIndex].Name, Name.GetBuffer());
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2433,6 +2794,8 @@ struct PMSG_FRIEND_DEL_RESULT
 
 void FriendDelResult(FHP_FRIEND_DEL_RESULT * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2452,6 +2815,10 @@ void FriendDelResult(FHP_FRIEND_DEL_RESULT * lpMsg)
 		Name.GetBuffer(), lpMsg->Result, FriendName.GetBuffer());
 
 	DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2467,6 +2834,8 @@ struct FHP_FRIEND_CHATROOM_CREATE_REQ
 
 void FriendChatRoomCreateReq(PMSG_FRIEND_ROOMCREATE_REQ * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2485,6 +2854,10 @@ void FriendChatRoomCreateReq(PMSG_FRIEND_ROOMCREATE_REQ * lpMsg, int aIndex)
 	char_ID szName(lpMsg->Name);
 
 	LogAdd("[%s] Chatroom create request [%s]", gObj[aIndex].Name, szName.GetBuffer());
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2504,6 +2877,8 @@ struct PMSG_FRIEND_ROOMCREATE_RESULT
 
 void FriendChatRoomCreateResult(FHP_FRIEND_CHATROOM_CREATE_RESULT * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2526,10 +2901,35 @@ void FriendChatRoomCreateResult(FHP_FRIEND_CHATROOM_CREATE_RESULT * lpMsg)
 
 	LogAdd("[%s] Chatroom create result (%d) ticket:(%d)",
 		gObj[lpMsg->Number].Name, lpMsg->Result, lpMsg->Ticket);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
-void FriendMemoSend(PMSG_FRIEND_MEMO * lpMsg, int aIndex)
+
+
+
+struct FHP_FRIEND_MEMO_SEND
 {
+	PWMSG_HEAD h;
+	short Number;	// 4
+	DWORD WindowGuid;	// 8
+	char Name[10];	// C
+	char ToName[10];	// 16
+	char Subject[32];	// 20
+	BYTE Dir;	// 40
+	BYTE Action;	// 41
+	short MemoSize;	// 42
+	BYTE Photo[18];	// 44
+	char Memo[1000];	// 56
+};
+
+
+void FriendMemoSend_Eng(PMSG_FRIEND_MEMO_ENG * lpMsg, int aIndex)
+{
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2595,9 +2995,93 @@ void FriendMemoSend(PMSG_FRIEND_MEMO * lpMsg, int aIndex)
 	memcpy(pMsg.ToName, lpMsg->Name, sizeof(pMsg.ToName));
 	memcpy(pMsg.Memo, lpMsg->Memo, lpMsg->MemoSize);
 
-	wsExDbCli.DataSend((PCHAR)&pMsg, bsize); //mayb (char*)
+	wsExDbCli.DataSend((PCHAR)&pMsg, bsize);
 
 	LogAdd("[%s] Friend mail send %s (Size:%d)", gObj[aIndex].Name, Name.GetBuffer(), bsize);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
+}
+
+
+
+void FriendMemoSend(PMSG_FRIEND_MEMO * lpMsg, int aIndex)
+{
+	__try
+	{
+	if ( !gObjIsConnectedGP(aIndex))
+	{
+		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
+		return;
+	}
+
+	char_ID Name(lpMsg->Name);
+
+	if ( gObj[aIndex].Money < 1000 )
+	{
+		FHP_FRIEND_MEMO_SEND_RESULT pResult;
+
+		pResult.Number = aIndex;
+		pResult.Result = 7;
+		pResult.WindowGuid = lpMsg->WindowGuid;
+		memcpy(pResult.Name, gObj[aIndex].Name, sizeof(pResult.Name));
+
+		FriendMemoSendResult(&pResult);
+
+		return;
+	}
+
+	if ( lpMsg->MemoSize < 0 || lpMsg->MemoSize > 1000 )
+	{
+		FHP_FRIEND_MEMO_SEND_RESULT pResult;
+
+		pResult.Number = aIndex;
+		pResult.Result = 0;
+		pResult.WindowGuid = lpMsg->WindowGuid;
+		memcpy(pResult.Name, gObj[aIndex].Name, sizeof(pResult.Name));
+
+		FriendMemoSendResult(&pResult);
+
+		return;
+	}
+
+	if ( Name.GetLength() < 1 )
+	{
+		FHP_FRIEND_MEMO_SEND_RESULT pResult;
+
+		pResult.Number = aIndex;
+		pResult.Result = 0;
+		pResult.WindowGuid = lpMsg->WindowGuid;
+		memcpy(pResult.Name, gObj[aIndex].Name, sizeof(pResult.Name));
+
+		FriendMemoSendResult(&pResult);
+
+		return;
+	}
+
+	FHP_FRIEND_MEMO_SEND pMsg;
+	int bsize = lpMsg->MemoSize + sizeof(pMsg) - sizeof(pMsg.Memo);
+
+	pMsg.h.set((LPBYTE)&pMsg, 0x70, bsize);
+	pMsg.WindowGuid = lpMsg->WindowGuid;
+	pMsg.MemoSize = lpMsg->MemoSize;
+	pMsg.Number = aIndex;
+	pMsg.Dir = lpMsg->Dir;
+	pMsg.Action = lpMsg->Action;
+	memcpy(pMsg.Subject, lpMsg->Subject, sizeof(pMsg.Subject));
+	memcpy(pMsg.Name, gObj[aIndex].Name, sizeof(pMsg.Name));
+	memcpy(pMsg.Photo, gObj[aIndex].CharSet, sizeof(pMsg.Photo));
+	memcpy(pMsg.ToName, lpMsg->Name, sizeof(pMsg.ToName));
+	memcpy(pMsg.Memo, lpMsg->Memo, lpMsg->MemoSize);
+
+	wsExDbCli.DataSend((PCHAR)&pMsg, bsize);
+
+	LogAdd("[%s] Friend mail send %s (Size:%d)", gObj[aIndex].Name, Name.GetBuffer(), bsize);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2606,6 +3090,8 @@ void FriendMemoSend(PMSG_FRIEND_MEMO * lpMsg, int aIndex)
 
 void MngFriendMemoSend(PMSG_JG_MEMO_SEND * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( lpMsg->MemoSize < 0 || lpMsg->MemoSize > 1000 )
@@ -2633,6 +3119,10 @@ void MngFriendMemoSend(PMSG_JG_MEMO_SEND * lpMsg)
 	wsExDbCli.DataSend((PCHAR)&pMsg, bsize);
 
 	LogAdd("JoinServer mail send %s (Size:%d)", Name.GetBuffer(), bsize);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2671,13 +3161,9 @@ struct PMSG_FRIEND_MEMO_RESULT
 
 void FriendMemoSendResult(FHP_FRIEND_MEMO_SEND_RESULT * lpMsg)
 {
-	char_ID Name(lpMsg->Name);
-
-	if ( !strcmp(Name.GetBuffer(), "webzen"))	// #warning Deathway
+	__try
 	{
-		LogAdd("JoinServer Send Mail result : (%d)", lpMsg->Result);
-		return;
-	}
+	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
 	{
@@ -2699,6 +3185,10 @@ void FriendMemoSendResult(FHP_FRIEND_MEMO_SEND_RESULT * lpMsg)
 	if ( pMsg.Result == 1 )
 	{
 		WithdrawUserMoney("Mail", &gObj[lpMsg->Number], 1000);
+	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
 	}
 }
 
@@ -2742,10 +3232,20 @@ struct PMSG_FRIEND_MEMO_LIST
 	unsigned char read;	// 4E
 };
 
-
+struct PMSG_FRIEND_MEMO_LIST_ENG //EN EL GLOBAL
+{
+	PBMSG_HEAD h;
+	WORD Number;	// 4
+	char Name[10];	// 6
+	char Date[30];	// 10
+	char Subject[60];	// 2E
+	unsigned char read;	// 4E
+};
 
 void FriendMemoList(FHP_FRIEND_MEMO_LIST * lpMsg)
 {
+	__try
+	{
 	char_ID SendName(lpMsg->SendName);
 	char_ID RecvName(lpMsg->RecvName);
 
@@ -2763,19 +3263,38 @@ void FriendMemoList(FHP_FRIEND_MEMO_LIST * lpMsg)
 	memcpy(subject, lpMsg->Subject, sizeof(lpMsg->Subject));
 	memcpy(date, lpMsg->Date, sizeof(lpMsg->Date));
 
-	PMSG_FRIEND_MEMO_LIST pMsg;
+	if(ReadConfig.IsEngProtocol == 0)
+	{
+		PMSG_FRIEND_MEMO_LIST pMsg;
 
-	pMsg.h.setE((LPBYTE)&pMsg, 0xC6, sizeof(pMsg));
-	memcpy(pMsg.Date, lpMsg->Date, sizeof(pMsg.Date));
-	memcpy(pMsg.Name, lpMsg->SendName, sizeof(pMsg.Name));
-	memcpy(pMsg.Subject, lpMsg->Subject, sizeof(pMsg.Subject));
-	pMsg.Number = memoindex;	// #warning maybe here and error Deathway
-	pMsg.read = lpMsg->read;
+		pMsg.h.setE((LPBYTE)&pMsg, 0xC6, sizeof(pMsg));
+		memcpy(pMsg.Date, lpMsg->Date, sizeof(pMsg.Date));
+		memcpy(pMsg.Name, lpMsg->SendName, sizeof(pMsg.Name));
+		memcpy(pMsg.Subject, lpMsg->Subject, sizeof(pMsg.Subject));
+		pMsg.Number = memoindex;	// #warning maybe here and error Deathway
+		pMsg.read = lpMsg->read;
 
-	DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+		DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+	}else
+	{
+		PMSG_FRIEND_MEMO_LIST_ENG pMsg;
+
+		pMsg.h.setE((LPBYTE)&pMsg, 0xC6, sizeof(pMsg));
+		memcpy(pMsg.Date, lpMsg->Date, sizeof(pMsg.Date));
+		memcpy(pMsg.Name, lpMsg->SendName, sizeof(pMsg.Name));
+		memcpy(pMsg.Subject, lpMsg->Subject, sizeof(pMsg.Subject));
+		pMsg.Number = memoindex;	// #warning maybe here and error Deathway
+		pMsg.read = lpMsg->read;
+
+		DataSend(lpMsg->Number, (LPBYTE)&pMsg, sizeof(pMsg));
+	}
 	
 	LogAdd("[%s] Friend Mail list : (%d:%10s:%s:%s)",
 		SendName.GetBuffer(), memoindex, date, RecvName.GetBuffer(), subject);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2791,6 +3310,8 @@ struct FHP_FRIEND_MEMO_RECV_REQ
 
 void FriendMemoReadReq(PMSG_FRIEND_READ_MEMO_REQ * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2808,7 +3329,10 @@ void FriendMemoReadReq(PMSG_FRIEND_READ_MEMO_REQ * lpMsg, int aIndex)
 
 	LogAdd("[%s] Friend Mail read Index:%d", 
 		gObj[aIndex].Name, lpMsg->MemoIndex);
-
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2823,10 +3347,10 @@ struct PMSG_FRIEND_READ_MEMO
 	char Memo[1000];	// 1C
 };
 
-
-
 void FriendMemoRead(FHP_FRIEND_MEMO_RECV * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2859,25 +3383,12 @@ void FriendMemoRead(FHP_FRIEND_MEMO_RECV * lpMsg)
 
 	LogAdd("[%s] Friend Mail read (%d)",
 		gObj[lpMsg->Number].Name, lpMsg->MemoIndex);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
-//Season 4.5 change position 
-void _GUILD_INFO_STRUCT::SetGuildUnion(int iGuildNumber)	
-{
-	this->iGuildUnion = iGuildNumber;
-	this->SetTimeStamp();
-};	
-//Season 4.5 change position 
-void _GUILD_INFO_STRUCT::SetGuildRival(int iGuildNumber)
-{
-	this->iGuildRival = iGuildNumber;
-	this->SetTimeStamp();
-};
-//Season 4.5 change position 
-void _GUILD_INFO_STRUCT::SetTimeStamp()
-{
-	this->iTimeStamp++;
-};
 
 struct FHP_FRIEND_MEMO_DEL_REQ
 {
@@ -2887,8 +3398,12 @@ struct FHP_FRIEND_MEMO_DEL_REQ
 	char Name[10];	// 8
 };
 
+
+
 void FriendMemoDelReq(PMSG_FRIEND_MEMO_DEL_REQ * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2906,6 +3421,10 @@ void FriendMemoDelReq(PMSG_FRIEND_MEMO_DEL_REQ * lpMsg, int aIndex)
 
 	LogAdd("[%s] Friend mail delete request Index:(%d)",
 		gObj[aIndex].Name, lpMsg->MemoIndex);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2920,6 +3439,8 @@ struct PMSG_FRIEND_MEMO_DEL_RESULT
 
 void FriendMemoDelResult(FHP_FRIEND_MEMO_DEL_RESULT * lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -2938,9 +3459,11 @@ void FriendMemoDelResult(FHP_FRIEND_MEMO_DEL_RESULT * lpMsg)
 
 	LogAdd("[%s] Friend mail delete request (%d) index:(%d)",
 		Name.GetBuffer(), lpMsg->Result, lpMsg->MemoIndex);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
-
-
 
 
 
@@ -2957,6 +3480,8 @@ struct FHP_FRIEND_INVITATION_REQ
 
 void FriendRoomInvitationReq(PMSG_ROOM_INVITATION * lpMsg, int aIndex)
 {
+	__try
+	{
 	if ( !gObjIsConnectedGP(aIndex))
 	{
 		LogAddTD("error-L2 : Index %s %d", __FILE__, __LINE__);
@@ -2976,6 +3501,10 @@ void FriendRoomInvitationReq(PMSG_ROOM_INVITATION * lpMsg, int aIndex)
 
 	LogAdd("[%s] Friend Invistation request room:%d winguid:%d",
 		gObj[aIndex].Name, lpMsg->RoomNumber, lpMsg->WindowGuid);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }
 
 
@@ -2992,6 +3521,8 @@ struct PMSG_ROOM_INVITATION_RESULT
 
 void FriendRoomInvitationRecv(FHP_FRIEND_INVITATION_RET* lpMsg)
 {
+	__try
+	{
 	char_ID Name(lpMsg->Name);
 
 	if ( !gObjIsConnectedGP(lpMsg->Number, Name.GetBuffer()))
@@ -3010,4 +3541,8 @@ void FriendRoomInvitationRecv(FHP_FRIEND_INVITATION_RET* lpMsg)
 
 	LogAdd("[%s] Friend Invitation result :%d",
 		Name.GetBuffer(), pMsg.Result);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		DebugLog2("Error in Function: %s",__FUNCTION__);
+	}
 }

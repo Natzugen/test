@@ -1,38 +1,39 @@
 #include "stdafx.h"
 #include "ObjBaseAttack.h"
+#include "ObjAttack.h"
 #include "GameMain.h"
 #include "LogProc.h"
 #include "DevilSquare.h"
 #include "BloodCastle.h"
 #include "ChaosCastle.h"
+#include "DuelManager.h"
+#include "SCFPvPSystem.h"
+#include "CastleSiege.h"
+#include "IllusionTemple.h"
+#include "CustomWings.h"
+
 #include "CrywolfAltar.h"
-#include "CrywolfStatue.h"
-#include "IllusionTempleEvent.h"
-#include "MasterLevelSystem.h"
-#include "BuffEffectSlot.h"
-#include "MasterLevelSkillTreeSystem.h"
-#include "ItemAddOption.h"
-#ifdef __CUSTOMS__
-#include "ClassCalc.h"
-#endif
-// -------------------------------------------------------------------------------
+// GS-N 0.99.60T 0x00499B40
+//	GS-N	1.00.18	JPN	0x004B5E50	-	Completed
+
+#include "LogToFile.h"
+extern CLogToFile ANTI_HACK_LOG;	// line : 68
 
 CObjBaseAttack::CObjBaseAttack()
 {
-	
+	return;
 }
-// -------------------------------------------------------------------------------
+
 
 CObjBaseAttack::~CObjBaseAttack()
 {
-
+	return;
 }
-// -------------------------------------------------------------------------------
 
-//0051d8a0	-> Checked
+
 BOOL CObjBaseAttack::DecreaseArrow(LPOBJ lpObj)
 {
-	if (lpObj->Class == CLASS_ELF && lpObj->Type == OBJ_USER )
+	if ( lpObj->Class == CLASS_ELF && lpObj->Type == OBJ_USER )
 	{
 		CItem * Right = &lpObj->pInventory[0];
 		CItem * Left  = &lpObj->pInventory[1];
@@ -68,7 +69,7 @@ BOOL CObjBaseAttack::DecreaseArrow(LPOBJ lpObj)
 				   Left->m_Type == ITEMGET(4,21) ||
 				   Left->m_Type == ITEMGET(4,22) ||
 				   Left->m_Type == ITEMGET(4,23) ||
-				   Left->m_Type == ITEMGET(4,24)) //season4.6 add-on
+				   Left->m_Type == ITEMGET(4,24) )
 		{
 			if ( Right->m_Type == ITEMGET(4,15) )
 			{
@@ -95,101 +96,218 @@ BOOL CObjBaseAttack::DecreaseArrow(LPOBJ lpObj)
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//0051db90	-> Checked
-BOOL CObjBaseAttack::CheckAttackArea(LPOBJ lpObj, LPOBJ lpTargetObj) //Identical gs-cs 56
+
+
+BOOL CObjBaseAttack::CheckAttackArea(LPOBJ lpObj, LPOBJ lpTargetObj)
 {
+#if (GS_CASTLE==1)
+	if(lpTargetObj->Class == 277 && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)			//Castle Gate
+	{
+		return TRUE;
+	}
+	if(lpTargetObj->Class == 283 && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)	//Guardian Statue
+	{
+		return TRUE;
+	}
+#endif
+
 	if ( lpTargetObj->Type == OBJ_USER || lpTargetObj->m_RecallMon >= 0 )
 	{
 		BYTE attr = MapC[lpTargetObj->MapNumber].GetAttr(lpTargetObj->X, lpTargetObj->Y);
 
-//#if (__ONLYMU__ == 1)
-		if ( (attr&1) == 1 && lpObj->Type != OBJ_MONSTER )
+		if (( (attr&1) == 1 ) && ( BC_MAP_RANGE(lpObj->MapNumber) == FALSE)) 
 		{
+			if ( lpObj->Type == OBJ_USER )
+			{
+				if(ReadConfig.AHLog == TRUE)
+				{
+					ANTI_HACK_LOG.Output("[%s][%s] Try Attack In Not Attack Area (%d,%d,%d) attr = %d",
+						lpObj->AccountID, lpObj->Name, 
+						lpObj->MapNumber, lpObj->X, lpObj->Y, attr);
+				}
+				GCServerMsgStringSend("[Anti-Hack] Attack In Non-Attack Area!",lpObj->m_Index, 0x01);
+			}
 			return FALSE;
 		}
-//#else
-		//if ( (attr&1) == 1 )
-		//{
-		//	return FALSE;
-		//}
-//#endif
 	}
 
 	if ( lpObj->Type == OBJ_USER )
 	{
 		int iRet = gObjCheckAttackArea(lpObj->m_Index, lpTargetObj->m_Index);
-
 		if ( iRet != 0 )
 		{
-			//LogAddC(2, "[DEBUG] Point 3");
-			//LogAddTD("[%s][%s] Try Attack In Not Attack Area (%s,%d,%d) errortype = %d",
-			///	lpObj->AccountID, lpObj->Name, lMsg.Get(MSGGET(7, 208) + lpObj->MapNumber),
-			//	lpObj->X, lpObj->Y, iRet);
-
-			if ( bIsIgnorePacketSpeedHackDetect != FALSE )
+			if ((lpObj->m_Index >= OBJ_STARTUSERINDEX)&&(lpObj->m_Index <= OBJMAX))
 			{
-				return FALSE;
+				/*
+				if(ReadConfig.AHLog == TRUE)
+				{
+					ANTI_HACK_LOG.Output("[%s][%s] Try Attack In Not Attack Area (%d,%d,%d) errortype = %d",
+						lpObj->AccountID, lpObj->Name, lpObj->MapNumber,
+						lpObj->X, lpObj->Y, iRet);
+				}
+				GCServerMsgStringSend("Monster has dodged the attack!",lpObj->m_Index, 0x01);*/
 			}
+
+			return FALSE;
 		}
 	}
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//0051dcd0	->
+
+bool CheckUnionGuild(LPOBJ lpObj, LPOBJ lpTargetObj)
+{	
+	if(gObjIsConnected(lpObj->m_Index) == false || gObjIsConnected(lpTargetObj->m_Index) == false)
+	{
+		return false;
+	}
+
+	if ( lpObj->GuildNumber == lpTargetObj->GuildNumber )
+	{
+		return true;
+	}
+
+	if ( lpObj->lpGuild == NULL )
+	{
+		return false;
+	}
+
+	if ( lpObj->lpGuild->iGuildUnion == 0 )
+	{
+		return false;
+	}
+
+	if ( lpTargetObj->lpGuild == NULL )
+	{
+		return false;
+	}
+
+	if ( lpTargetObj->lpGuild->iGuildUnion == 0 )
+	{
+		return false;
+	}
+
+	if ( lpObj->lpGuild->iGuildUnion == lpTargetObj->GuildNumber )
+	{
+		return true;
+	}
+
+	if ( lpTargetObj->lpGuild->iGuildUnion == lpObj->GuildNumber )
+	{
+		return true;
+	}
+
+	if ( lpObj->lpGuild->iGuildUnion == lpTargetObj->lpGuild->iGuildUnion )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+
 BOOL CObjBaseAttack::PkCheck(LPOBJ lpObj, LPOBJ lpTargetObj)
 {
-	if ( gLanguage == 0 || gLanguage == 2 || gLanguage == 4)
+	if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER)
 	{
-		if ( lpObj->Type == OBJ_USER )
+#if (GS_CASTLE==1)
+		//CryWolf Elf Altar Fix from PK abuse
+		if ( CRYWOLF_MAP_RANGE(lpObj->MapNumber) != FALSE )
 		{
-			BOOL bPlayerKiller = FALSE; //Season 2.5 add-on
-	
-			if(lpObj->PartyNumber >= 0) //Season 2.5 add-on
+			if ( lpTargetObj->Class == CLASS_ELF ) // Elf
 			{
-				if(gParty.GetPKPartyPenalty(lpObj->PartyNumber) >= 6)
+				for ( int iAltar = 205 ; iAltar <= 209 ; iAltar ++ )
 				{
-					bPlayerKiller = TRUE;
-				}
-			}
-			else if(lpObj->m_PK_Level >= 6)
-			{
-				bPlayerKiller = TRUE;
-			}
+					int iUserIndex = g_CrywolfNPC_Altar.GetAltarUserIndex(iAltar);
 
-			if(bPlayerKiller == TRUE) //Season 2.5 add-on
-			{
-				if (lpObj->PartyNumber >= 0 )
-				{
-					if ( gPkLimitFree == FALSE )
+					if ( iUserIndex == lpTargetObj->m_Index )
 					{
-						return FALSE;
-					}
-				}
-				else if ( lpObj->m_PK_Count >= 3 )
-				{
-					if ( gPkLimitFree == FALSE )
-					{
+						LogAddTD("[PVP][Crywolf][%d] User:[%s][%s] try kill Altar owner:[%s][%s]",
+							iAltar, 
+							lpObj->AccountID, lpObj->Name, 
+							lpTargetObj->AccountID, lpTargetObj->Name
+						);
 						return FALSE;
 					}
 				}
 			}
 		}
-	}
+		if( ReadConfig.CSFix_Same_Team_FIX == 1)
+		{
+			if ( lpObj->MapNumber == MAP_INDEX_CASTLESIEGE )
+			{
+				if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE) //Good
+				{
+					if(CheckUnionGuild(lpObj,lpTargetObj) == true)
+						return FALSE;
+				}
+			}
+		}
+#endif	
+		if(gObjItsInSafeZone(lpTargetObj->m_Index) == 1)
+		{
+			return FALSE;
+		}
 
-	if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER)
-	{
 		if ( lpTargetObj->Level <= 5 || lpObj->Level <= 5 )
 		{
 			return FALSE;
 		}
 
+		if ( gObjTargetGuildWarCheck(lpObj, lpTargetObj) == FALSE && lpTargetObj->lpGuild != NULL && lpTargetObj->lpGuild->WarState != 0)
+		{
+			if ( lpTargetObj->lpGuild->WarType == 1 )
+			{
+				if ( lpTargetObj->MapNumber != 6 )
+				{					
+					if(PvP.Check(lpTargetObj->MapNumber) == FALSE)
+					{
+						return TRUE;
+					}
+				}
+			}
+
+			if ( CC_MAP_RANGE(lpTargetObj->MapNumber) == FALSE )
+			{
+				return FALSE;
+			}
+		}
+
+		if ( IT_MAP_RANGE(lpObj->MapNumber) != FALSE ) // DEvil
+		{
+			if (lpObj->m_Change != lpTargetObj->m_Change)
+			{
+				return TRUE;
+			} else {
+				
+				LogAddTD("[Illusion Temple][Skill] %s(%d) using skill %d on teammate",
+					lpObj->Name, lpObj->Class, lpObj->UseMagicNumber
+
+				);
+
+				return FALSE;
+			}
+		}
+
+		if ( CC_MAP_RANGE(lpObj->MapNumber) != FALSE )
+		{
+			int CCRest = MAP_INDEX_CHAOSCASTLE1;
+			if (lpObj->MapNumber == MAP_INDEX_CHAOSCASTLE7)
+				CCRest = 47;
+			if ( g_ChaosCastle.GetCurrentState(lpObj->MapNumber-CCRest) != 2 )
+			{
+				return FALSE;
+			} else {
+				return TRUE;
+			}
+		}
+		
+
 		if ( gObjGetRelationShip(lpObj, lpTargetObj) == 2 ) // Rivals
 		{
-			if ( gNonPK == FALSE )
+			if(PvP.Check(lpObj->MapNumber) == FALSE)
 			{
 				return TRUE;
 			}
@@ -206,41 +324,22 @@ BOOL CObjBaseAttack::PkCheck(LPOBJ lpObj, LPOBJ lpTargetObj)
 			}
 		}
 
-		if ( gObjTargetGuildWarCheck(lpObj, lpTargetObj) == FALSE && lpTargetObj->lpGuild != NULL && lpTargetObj->lpGuild->WarState != 0)
-		{
-			if ( lpTargetObj->lpGuild->WarType == 1 )
-			{
-				if ( lpTargetObj->MapNumber != 6 )
-				{
-					if ( !gNonPK )
-					{
-						return TRUE;
-					}
-				}
-			}
-
-			if ( CC_MAP_RANGE(lpTargetObj->MapNumber) == FALSE )
-			{
-				return FALSE;
-			}
-		}
-
-		if ( IT_MAP_RANGE(lpObj->MapNumber) != FALSE ) //season2.5 add-on
-		{
-			//
-		}
-		else if ( CC_MAP_RANGE(lpObj->MapNumber) != FALSE )
-		{
-			if ( g_ChaosCastle.GetCurrentState(g_ChaosCastle.GetChaosCastleIndex(lpObj->MapNumber)) != 2 )
-			{
-				return FALSE;
-			}
-		}
-		else if ( gNonPK != FALSE )
+		if(PvP.Check(lpObj->MapNumber) != FALSE)
 		{
 			return FALSE;
 		}
 
+		if(PvP.GetType(lpObj->MapNumber) == 4)
+		{
+			if((lpObj->GensFam != 0 && lpTargetObj->GensFam != 0) && (lpObj->GensFam == lpTargetObj->GensFam))
+			{
+				return FALSE;
+			}else
+			{
+			}
+		}
+
+		/*
 		if ( DS_MAP_RANGE(lpObj->MapNumber) ) // DEvil
 		{
 			return FALSE;
@@ -249,190 +348,167 @@ BOOL CObjBaseAttack::PkCheck(LPOBJ lpObj, LPOBJ lpTargetObj)
 		if ( BC_MAP_RANGE(lpObj->MapNumber) )
 		{
 			return FALSE;
-		}
-
-		if ( gObjDuelCheck(lpObj, lpTargetObj) == FALSE )
+		}*/
+		
+		if ( g_DuelManager.gObjDuelCheck(lpObj, lpTargetObj) == FALSE )
 		{
-			if ( gObjDuelCheck(lpTargetObj) )
+			if ( g_DuelManager.gObjDuelCheck(lpTargetObj) )
 			{
 				return FALSE;
 			}
 		}
 
-		if ( gLanguage == 0 || gLanguage == 2 )
+		if (lpObj->m_PK_Level >= 6 )
 		{
-			BOOL bPlayerKiller = FALSE; //Season 2.5 add-on
-	
-			if(lpObj->PartyNumber >= 0) //Season 2.5 add-on
+			if ( PvP.gPkLimitFree == FALSE )
 			{
-				if(gParty.GetPKPartyPenalty(lpObj->PartyNumber) >= 6)
-				{
-					bPlayerKiller = TRUE;
-				}
+				return FALSE;
 			}
-			else if(lpObj->m_PK_Level >= 6)
+		}
+			
+		if (lpTargetObj->m_PK_Level >= 6 )
+		{
+			if ( PvP.gPkLimitFree == FALSE )
 			{
-				bPlayerKiller = TRUE;
+				return FALSE;
 			}
-
-			if(bPlayerKiller == TRUE) //Season 2.5 add-on
-			{
-				if (lpObj->PartyNumber >= 0 )
-				{
-					if ( gPkLimitFree == FALSE )
-					{
-						return FALSE;
-					}
-				}
-				else if ( lpObj->m_PK_Count >= 3 )
-				{
-					if ( gPkLimitFree == FALSE )
-					{
-						return FALSE;
-					}
-				}
-			}
-
-			bPlayerKiller = FALSE; //Season 2.5 add-on
-	
-			if(lpTargetObj->PartyNumber >= 0) //Season 2.5 add-on
-			{
-				if(gParty.GetPKPartyPenalty(lpTargetObj->PartyNumber) >= 6)
-				{
-					bPlayerKiller = TRUE;
-				}
-			}
-			else if(lpTargetObj->m_PK_Level >= 6)
-			{
-				bPlayerKiller = TRUE;
-			}
-
-			if(bPlayerKiller == 1) //Season 2.5 add-on
-			{
-				if (lpTargetObj->PartyNumber >= 0 )
-				{
-					if ( gPkLimitFree == FALSE )
-					{
-						if(g_CastleSiege.GetCastleState() != CASTLESIEGE_STATE_STARTSIEGE)
-						{
-							return FALSE;
-						}
-					}
-				}
-				else if ( lpTargetObj->m_PK_Count >= 3 )
-				{
-					if ( gPkLimitFree == FALSE )
-					{
-						if(g_CastleSiege.GetCastleState() != CASTLESIEGE_STATE_STARTSIEGE)
-						{
-							return FALSE;
-						}
-					}
-				}
-			}
-
-
 		}
 	}
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//
+
+
+
+
 BOOL CObjBaseAttack::ResistanceCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill)
 {
-	//missing objects? maybe from _CS side or deleted in 1.01.00
-	if( lpTargetObj->Type != OBJ_USER)	
+	if (lpTargetObj->Type != OBJ_USER)
 	{
-		if(lpTargetObj->Class == 277 || lpTargetObj->Class == 283 || lpTargetObj->Class == 288 || lpTargetObj->Class == 278 || lpTargetObj->Class == 215 || lpTargetObj->Class == 216 || lpTargetObj->Class == 217 || lpTargetObj->Class == 218 || lpTargetObj->Class == 219)
+		//Castle Siege NPC and Objects
+		if (lpTargetObj->Class == 277 || 
+			lpTargetObj->Class == 283 || //Guardian Statue
+			lpTargetObj->Class == 285 || //Guardian
+			lpTargetObj->Class == 288 || 
+			lpTargetObj->Class == 278 || 
+			lpTargetObj->Class == 215 || 
+			lpTargetObj->Class == 216 || 
+			lpTargetObj->Class == 217 || 
+			lpTargetObj->Class == 218 || 
+			lpTargetObj->Class == 219)
+		{
+			return FALSE;
+		}
+
+		//CryWolf Altars
+		if ((lpTargetObj->Class >= 205)&&(lpTargetObj->Class <= 209))
+			return FALSE;
+
+		//CryWolf Wolf Statue
+		if (lpTargetObj->Class == 204)
+			return FALSE;
+
+		//Imperial Statues, Gates
+		if ((lpTargetObj->Class >= 524)&&(lpTargetObj->Class <= 528))
+			return FALSE;
+	}
+
+	int resistanceType = MagicDamageC.GetSkillResistance(skill);
+	if ( resistanceType != -1 )
+	{
+		if ( retResistance(lpTargetObj, resistanceType) > 0 )
 		{
 			return FALSE;
 		}
 	}
 
-	if( lpTargetObj->Type != OBJ_USER)
-	{
-		if( CRYWOLF_ALTAR_CLASS_RANGE(lpTargetObj->Class) != FALSE || CRYWOLF_STATUE_CHECK(lpTargetObj->Class) != FALSE ) //HermeX Fix @28/01/2010
-		{
-			return FALSE;
-		}
-	}
-
-	if ( skill == 62 )
-	{
-		gObjBackSpring2(lpTargetObj, lpObj, 3);
-	}
-
-	if(g_MasterSkillSystem.GetBaseMasterLevelSkill(skill) == 512) //Earth Quake Master
-	{
-		gObjBackSpring2(lpTargetObj, lpObj, 3);
-	}
-
-	if( skill == 516)
-	{
-		gObjBackSpring2(lpTargetObj, lpObj, 3);
-	}
-
-	if ( skill == 19
-		|| skill == 20
-		|| skill == 21
-		|| skill == 22
-		|| skill == 23
-		|| skill == 260
-		|| skill == 261
-		|| skill == 262
-		|| skill == 270
-		|| skill == 326
-		|| skill == 327
-		|| skill == 328
-		|| skill == 329
-		|| skill == 479 )
+	if (skill == AT_SKILL_FALLINGSLASH || 
+		skill == AT_SKILL_LUNGE || 
+		skill == AT_SKILL_UPPERCUT || 
+		skill == AT_SKILL_CYCLONE || 
+		skill == AT_SKILL_SLASH)
 	{
 		gObjAddMsgSendDelay(lpTargetObj, 2, lpObj->m_Index, 150, 0);
 	}
-	else if ( skill == 3 || skill == 379 || skill == 480 )	// Poison
+	else if(skill == AT_SKILL_THUNDER || 
+			skill == AT_SKILL_CHAIN_LIGHTING || 
+			skill == AT_SKILL_ELECTRIC_SURGE || 
+			skill == AT_SKILL_LIGHTING_STORM || 
+			(skill >= 540 && skill <= 549))	// Lighting
 	{
-		if ( retResistance(lpTargetObj, 2) == 0 )
-		{
+		//if ( retResistance(lpTargetObj, R_LIGHTNING) == 0 )
+		//{
 			gObjAddMsgSendDelay(lpTargetObj, 2, lpObj->m_Index, 150, 0);
 			return TRUE;
-		}
-		return FALSE;
+		//}
+
+		//return FALSE;
 	}
-	else if ( skill == 1 || skill == 384 )
+	else if (skill == AT_SKILL_DARKHORSE_ATTACK || 
+			(skill >= 515 && skill <= 519) )
 	{
-		if(gObjCheckUsedBuffEffect(lpObj, AT_POISON) == 0)
+		gObjBackSpring2(lpTargetObj, lpObj, 3);
+
+#if (GS_CASTLE==1)
+		if(lpObj->MapNumber == MAP_INDEX_CASTLESIEGE)
 		{
-			if ( retResistance(lpTargetObj, 1) == 0 )
+			if (ReadConfig.DarkHorseMovePlayerInCS == 0)
 			{
-				lpTargetObj->lpAttackObj = lpObj;
-				gObjAddBuffEffect(lpTargetObj, AT_POISON, 19, 3, 0, 0, 20);
+				//Horse Skill on DL does not PUSH people away from the attacker
+				gObjAddMsgSendDelay(lpTargetObj, 2, lpObj->m_Index, 150, 0); 
 				return TRUE;
 			}
-			else
-			{
-				return FALSE;
-			}	
+		}
+#endif
+	}
+	else if ( skill == AT_SKILL_ELECTRICSPARK)	// Lighting
+	{
+		/*if ( retResistance(lpTargetObj, R_LIGHTNING) == 0 )
+		{
+		}else
+		{
+			return FALSE;
+		}*/
+	}
+	else if ( skill == AT_SKILL_POISON )	//Poison
+	{
+		if ( lpTargetObj->m_PoisonType == 0 )
+		{
+			//if ( retResistance(lpTargetObj, R_POISON) == 0 )
+			//{
+				lpTargetObj->m_PoisonType = AT_SKILL_POISON;
+				lpTargetObj->m_PoisonAdd = 0;
+				lpTargetObj->m_PoisonBeattackCount = 20;
+				lpTargetObj->lpAttackObj = lpObj;
+				lpTargetObj->m_ViewSkillState |= 1;
+			//}
+			//else
+			//{
+			//	return FALSE;
+			//}	
 		}
 		else
 		{
 			return FALSE;
 		}
 	}
-	else if ( skill == 38 || skill == 387 ) // Death Poison
+	else if ( skill == AT_SKILL_EXPPOISON ) // Death Poison
 	{
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_POISON) == 0)
+		if ( lpTargetObj->m_PoisonType == 0 || lpTargetObj->m_PoisonType == 1 )
 		{
-			if ( retResistance(lpTargetObj, 1) == 0 )
-			{
+			//if ( retResistance(lpTargetObj, R_POISON) == 0 )
+			//{
+				lpTargetObj->m_PoisonType = AT_SKILL_EXPPOISON;
+				lpTargetObj->m_PoisonBeattackCount = 10;
 				lpTargetObj->lpAttackObj = lpObj;
-				gObjAddBuffEffect(lpTargetObj, AT_POISON, 19, 3, 0, 0, 10);
-				return TRUE;
-			}
-			else
-			{
-				return FALSE;
-			}
+				lpTargetObj->m_ViewSkillState |= 1;
+
+				GCSkillInfoSend(lpTargetObj, 1, 0x37);
+			//}
+			//else
+			//{
+			//	return FALSE;
+			//}
 		}
 		else
 		{
@@ -441,478 +517,508 @@ BOOL CObjBaseAttack::ResistanceCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill)
 
 		return TRUE;
 	}
-	else if ( skill == 7 || skill == 39 || 
-		g_MasterSkillSystem.GetBaseMasterLevelSkill(skill) == 450 || skill == 389 || skill == 489 ) //Season4 add-on
+	else if( skill == AT_SKILL_SLOW || 
+			 skill == AT_SKILL_EXPICE ||
+			 skill == AT_SKILL_CHAINDRIVE ||
+			(skill >= 450 && skill <= 454))
 	{
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_ICE) == 0)
+		if (lpTargetObj->m_ColdBeattackCount == 0 )
 		{
-			if ( retResistance(lpTargetObj, 0) == 0 )
-			{
+			//if ( retResistance(lpTargetObj, R_ICE) == 0 )
+			//{
+				lpTargetObj->m_ColdBeattackCount = 10;
 				lpTargetObj->lpAttackObj = lpObj;
 				lpTargetObj->DelayActionTime = 800;
 				lpTargetObj->DelayLevel = 1;
-				gObjAddBuffEffect(lpTargetObj, AT_ICE, 20, 0, 0, 0, 10);
-			}
-			else
-			{
-				return FALSE;
-			}
+				lpTargetObj->m_ViewSkillState |= 2;
+
+				if ( skill == AT_SKILL_CHAINDRIVE ||
+					(skill >= 450 && skill <= 454))
+					lpTargetObj->m_IceType = AT_SKILL_EXPICE;
+				else
+					lpTargetObj->m_IceType = skill;
+
+				if ( skill == AT_SKILL_EXPICE || 
+					 skill == AT_SKILL_CHAINDRIVE || 
+					(skill >= 450 && skill <= 454))
+				{
+					GCSkillInfoSend(lpTargetObj, 1, 0x38);
+				}
+			//}
+			//else
+			//{
+			//	return FALSE;
+			//}
 		}
 		else
 		{
 			return FALSE;
 		}
 	}
-	else if ( skill == 51 || skill == 424 ) // Ice Arrow
+	else if ( skill == AT_SKILL_ICEARROW ) // Ice Arrow
 	{
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_ICE_ARROW) == 0)
+		if ( lpTargetObj->m_SkillHardenTime <= 0 )
 		{
-			if ( retResistance(lpTargetObj, 0) == 0 )
-			{
-				gObjAddBuffEffect(lpTargetObj, AT_ICE_ARROW, 0, 0, 0, 0, 7);
-				lpTargetObj->PathCount = 0;
-				lpTargetObj->PathStartEnd = 0; //Season3 add-on
-				gObjSetPosition(lpTargetObj->m_Index, lpTargetObj->X, lpTargetObj->Y);
-			}
-			else
-			{
-				return FALSE;
-			}
+			//if ( retResistance(lpTargetObj, R_ICE) == 0 )
+			//{
+				//Do nothing
+				//Implemented in ObjAttack.cpp
+			//}
+			//else
+			//{
+			//	return FALSE;
+			//}
 		}
 		else
 		{
 			return FALSE;
 		}
+	}
+	else if (  skill == AT_SKILL_METEO
+			|| skill == AT_SKILL_FIREBALL
+			|| skill == AT_SKILL_FLAME
+			|| skill == AT_SKILL_HELL
+			|| skill == AT_SKILL_INFERNO
+			|| skill == AT_SKILL_KNIGHTDINORANT
+			|| skill == AT_SKILL_FIRESLASH
+			|| skill == AT_SKILL_SPACE_SPLIT
+			|| skill == AT_SKILL_FIRESCREAM
+			|| skill == AT_SKILL_SWORD_SLASH
+			|| (skill >= 440 && skill <= 444)
+			|| (skill >= 500 && skill <= 504)
+			|| (skill >= 520 && skill <= 529))
+	{
+		//if ( retResistance(lpTargetObj, R_FIRE) == 0 )
+		//{
+			//Do nothing
+		//}else
+		//{
+		//	return FALSE;
+		//}
+	}
+	else if (  skill == AT_SKILL_STORM
+			|| skill == AT_SKILL_DEATHSTAB
+			|| (skill >= 460 && skill <= 464))
+	{
+		//if ( retResistance(lpTargetObj, R_WIND) == 0 )
+		//{
+			//Do nothing
+		//}else
+		//{
+		//	return FALSE;
+		//}
+	}
+	else if (skill == AT_SKILL_BLOWOFFURY || 
+			(skill >= 465 && skill <= 469))
+	{
+		//if ( retResistance(lpTargetObj, R_EARTH) == 0 )
+		//{
+			//Do nothing
+		//}else
+		//{
+		//	return FALSE;
+		//}
+	}
+	else if ( skill == AT_SKILL_FLASH)
+	{
+		//if ( retResistance(lpTargetObj, R_WATER) == 0 )
+		//{
+			//Do nothing
+		//}else
+		//{
+		//	return FALSE;
+		//}
 	}
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//0051e940	-> Revised
-BOOL CObjBaseAttack::MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill, int skillSuccess, int magicsend, BOOL& bAllMiss, BYTE byBarrageCount)
+
+
+
+
+BOOL CObjBaseAttack::MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill, int skillSuccess, int magicsend, BOOL& bAllMiss)
 {
 	__try
 	{
-		int SuccessAttackRate			= 0;	//ebp-20
-		int TargetSuccessfulBlocking	= lpTargetObj->m_SuccessfulBlocking;	//ebp-24
-		int MsgDamage					= 0;	//ebp-28
-		// ----
-		if( IT_MAP_RANGE(lpTargetObj->MapNumber) )
+		int iAttackRate = 0;	// lc20
+		int iDefenseRate = lpTargetObj->m_SuccessfulBlocking;	// lc24
+		//int iMSBDamage = 0;	// MonsterSetBasse Damage MISS
+
+		if ( lpTargetObj->m_SkillIT_Time > 0 )
 		{
-			if( g_IllusionTempleEvent.GetIllusionTempleState(lpTargetObj->MapNumber) == 2 )
+			if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
 			{
-				if( lpTargetObj->Type == OBJ_USER )
+				bAllMiss = TRUE;
+
+				//GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, iMSBDamage, 0);
+				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+				skillSuccess = 0;
+
+				if (magicsend != 0 )
 				{
-					if( g_IllusionTempleEvent.CheckSkillProdection(lpTargetObj->m_iIllusionTempleIndex, lpTargetObj->MapNumber) )
-					{
-						GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-						return false;
-					}	
+					GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index, skillSuccess);
 				}
-				// ----
-				if( lpObj->PartyNumber == lpTargetObj->PartyNumber )
-				{
-					GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-					return false;
-				}
+
+				return FALSE;
 			}
 		}
-		// ----
-		if( lpObj->Type == OBJ_USER )
+
+		if ( lpObj->Type == OBJ_USER )	// Miss for Users
 		{
-			int iTotalLevel = lpObj->Level + lpObj->m_nMasterLevel;
-			// ----
-			if( lpObj->Class == CLASS_DARKLORD )
+			if ( lpObj->Class == CLASS_DARKLORD ) // DL
 			{
-				SuccessAttackRate = iTotalLevel * 5 + ((lpObj->Dexterity + lpObj->AddDexterity) * 6) / 2 + ( lpObj->Strength + lpObj->AddStrength) / 4  + ((lpObj->Leadership + lpObj->AddLeadership)/10);
-				SuccessAttackRate += SuccessAttackRate * lpObj->SetOpImproveSuccessAttackRate / 100;
+				iAttackRate = lpObj->Level * 5 + ((lpObj->Dexterity + lpObj->AddDexterity) * 6) / 2 + ( lpObj->Strength + lpObj->AddStrength) / 4  + ((lpObj->Leadership + lpObj->AddLeadership)/10);
+				iAttackRate += iAttackRate * lpObj->SetOpImproveSuccessAttackRate / 100;
+			}
+			else if ( lpObj->Class == CLASS_RAGEFIGHTER ) // RF
+			{
+				iAttackRate = lpObj->Level * 5 + ((lpObj->Dexterity + lpObj->AddDexterity) * 2.5f) + ( lpObj->Vitality + lpObj->Vitality) / 6  + ((lpObj->Energy + lpObj->AddEnergy)/4);
+				iAttackRate += iAttackRate * lpObj->SetOpImproveSuccessAttackRate / 100;
 			}
 			else
 			{
-				SuccessAttackRate = iTotalLevel * 5 + ((lpObj->Dexterity + lpObj->AddDexterity) * 3) / 2 + ( lpObj->Strength + lpObj->AddStrength) / 4 ;
-				SuccessAttackRate += SuccessAttackRate * lpObj->SetOpImproveSuccessAttackRate / 100;
+				iAttackRate = lpObj->Level * 5 + ((lpObj->Dexterity + lpObj->AddDexterity) * 3) / 2 + ( lpObj->Strength + lpObj->AddStrength) / 4 ;
+				iAttackRate += iAttackRate * lpObj->SetOpImproveSuccessAttackRate / 100;
 			}
+			iAttackRate += lpObj->MasterCharacterInfo->AttackSucRate;
 		}
-		else
+		else	// Miss for Monsters
 		{
-			SuccessAttackRate = lpObj->m_AttackRating;
+			iAttackRate = lpObj->m_AttackRating;
 		}
-		// ----
-		SuccessAttackRate += lpObj->m_MPSkillOpt.MpsAttackSuccessRate;//lpObj->m_MLPassiveSkill.m_iML_IncreaseAttackSuccessRate;
-		// ----
-		if( SuccessAttackRate < TargetSuccessfulBlocking )
+
+		if ( lpTargetObj->Type == OBJ_USER )	// Miss for Uses
 		{
-			bAllMiss = true;
-		}
-		// ----
-		if( bAllMiss )
-		{
-			if( (rand()%100) >= 5 )
+			if(lpTargetObj->m_SkillDefSuccessRateIncTime > 0)
 			{
-#ifdef MONK
-				if( lpObj->Class == CLASS_MONK && byBarrageCount )
-				{
-					if( skill != 261 && skill != 263 )
-					{
-						if( byBarrageCount % 4 )
-						{
-							MsgDamage |= 0x10u;
-						}
-						else
-						{
-							MsgDamage |= 0x20;
-						}
-					}
-					else
-					{
-						if( byBarrageCount % 2 )
-						{
-							MsgDamage |= 0x10u;
-						}
-						else
-						{
-							MsgDamage |= 0x20;
-						}
-					}
-				}
-#endif
-				// ----
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
-				// ----
-				if( magicsend != 0 )
+				iDefenseRate += lpTargetObj->m_SkillDefSuccessRateIncNum;
+			}
+			iDefenseRate += (iDefenseRate * (lpTargetObj->MasterCharacterInfo->DefenseSucRate / 100));
+		}
+
+
+		if ( iAttackRate < iDefenseRate )
+		{
+			bAllMiss = TRUE;
+		}
+
+		if ( bAllMiss != FALSE )	// When All Miss
+		{
+			if ( (rand()%100) >= 5 )
+			{
+				//GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, iMSBDamage, 0);
+				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+
+				if (magicsend != 0 )
 				{
 					GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index, skillSuccess);
 				}
-				// ----
-				return false;
+
+				return FALSE;
 			}
 		}
-		else
+		else	// if the is a chance  ot hit the target
 		{
-			if( (rand() % SuccessAttackRate) < TargetSuccessfulBlocking )
+			if ( (rand()%iAttackRate) < iDefenseRate)
 			{
-#ifdef MONK
-				if( lpObj->Class == CLASS_MONK && byBarrageCount )
+				//GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, iMSBDamage, 0);
+				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+
+				if ( magicsend != 0 )
 				{
-					if( skill != 261 && skill != 263 )
-					{
-						if( byBarrageCount % 4 )
-						{
-							MsgDamage |= 0x10u;
-						}
-						else
-						{
-							MsgDamage |= 0x20;
-						}
-					}
-					else
-					{
-						if( byBarrageCount % 2 )
-						{
-							MsgDamage |= 0x10u;
-						}
-						else
-						{
-							MsgDamage |= 0x20;
-						}
-					}
+					GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index,  skillSuccess);
 				}
-#endif
-				// ----
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
-				// ----
-				if( magicsend != 0 )
-				{
-					GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index, skillSuccess);
-				}
-				// ----
-				return false;
+
+				return FALSE;
 			}
 		}
 	}
-	__except( lpObj->Level = 1,-1 )
+	__except (lpObj->Level=1,-1)
 	{
 		LogAdd(lMsg.Get(MSGGET(2, 12)), lpObj->Name);
-		return false;
+		return FALSE;
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//0051f060 -> Revised
-BOOL CObjBaseAttack::MissCheckPvP(LPOBJ lpObj , LPOBJ lpTargetObj, int skill, int skillSuccess, int magicsend, BOOL & bAllMiss, BYTE byBarrageCount)
+	return TRUE;
+}
+
+
+
+
+BOOL CObjBaseAttack::MissCheckPvP(LPOBJ lpObj , LPOBJ lpTargetObj, int skill, int skillSuccess, int magicsend, BOOL & bAllMiss)
 {
-	float iAttackRate		= 0;	//ebp-8
-	float iDefenseRate		= 0;	//ebp-0c
-	int	iAttackSuccessRate	= 0;	//ebp-10
-	// ----
-	if( IT_MAP_RANGE(lpTargetObj->MapNumber) )
+	float iAttackRate = 0;
+	float iDefenseRate = 0;
+	int iAttackSuccessRate = 0;
+
+	if ( lpTargetObj->m_SkillIT_Time > 0 )
 	{
-		if( g_IllusionTempleEvent.GetIllusionTempleState(lpTargetObj->MapNumber) == 2 )
+		if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
 		{
-			if( lpTargetObj->Type == OBJ_USER )
+			bAllMiss = TRUE;
+
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+
+			if ( g_bShieldComboMissOptionOn == TRUE )
 			{
-				if( g_IllusionTempleEvent.CheckSkillProdection(lpTargetObj->m_iIllusionTempleIndex, lpTargetObj->MapNumber ) != FALSE)
+				if ( lpObj->comboSkill.ProgressIndex >= 0 )
 				{
-					GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-					return false;
-				}	
+					LogAddTD("[Shield] ComboSkill Cancel! [%s][%s]",
+						lpObj->AccountID, lpObj->Name);
+
+					lpObj->comboSkill.Init();
+				}
 			}
-			// ----
-			if( lpObj->PartyNumber == lpTargetObj->PartyNumber )
+
+			return FALSE;
+		}
+	}
+
+	if ( lpObj->Class == CLASS_KNIGHT )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 45) / 10;	// #formula
+	}
+	else if ( lpObj->Class == CLASS_DARKLORD )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
+	}
+	else if ( lpObj->Class == CLASS_ELF )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 6 ) / 10;	// #formula
+	}
+	else if ( lpObj->Class == CLASS_RAGEFIGHTER )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
+	}
+	else if ( lpObj->Class == CLASS_MAGICGLADIATOR )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 35 ) / 10;	// #formula
+	}
+	else if ( lpObj->Class == CLASS_WIZARD )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
+	}
+	else if ( lpObj->Class == CLASS_SUMMONER )
+	{
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
+	}
+
+	if (lpObj->Class == CLASS_KNIGHT || lpObj->Class == CLASS_MAGICGLADIATOR)
+	{
+		if(ReadConfig.S6E2 == 1)
+		{
+			CItem * Right = &lpObj->pInventory[0];
+			if ( Right->IsItem() == TRUE )
 			{
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-				return false;
+				if((Right->m_Type >= ITEMGET(0,0)) && (Right->m_Type < ITEMGET(1,0)))
+				{
+					if(Right->m_TwoHand == 1)
+					{
+						iAttackRate += lpObj->MasterCharacterInfo->IncPhysicalAttackPowerTwoHandPvP;
+					}
+				}
 			}
 		}
 	}
-	// ----
-#ifdef __CUSTOMS__
-	int iTotalLevel = lpObj->Level + lpObj->m_nMasterLevel;
-	// ----
-	if( lpObj->Class == CLASS_KNIGHT )
+
+	if (lpObj->Class == CLASS_ELF)
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2) / g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateDiv);
+		if(ReadConfig.S6E2 == 1)
+		{
+			CItem * Right = &lpObj->pInventory[0];
+			if ( Right->IsItem() == TRUE )
+			{
+				if((Right->m_Type >= ITEMGET(4,0) && Right->m_Type < ITEMGET(5,0)) && Right->m_Type != ITEMGET(4,15))
+				{
+					iAttackRate += lpObj->MasterCharacterInfo->IncPhysicalAttackPowerTwoHandPvP;
+				}
+			}
+		}
 	}
-	else if( lpObj->Class == CLASS_DARKLORD )
+
+	if (lpObj->Class == CLASS_WIZARD || lpObj->Class == CLASS_MAGICGLADIATOR || lpObj->Class == CLASS_SUMMONER)
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2 ));
+		if(ReadConfig.S6E2 == 1)
+		{
+			CItem * Right = &lpObj->pInventory[0];
+			if ( Right->IsItem() == TRUE )
+			{
+				if((Right->m_Type >= ITEMGET(5,0)) && (Right->m_Type < ITEMGET(6,0)))
+				{
+					if(Right->m_TwoHand == 1)
+					{
+						iAttackRate += lpObj->MasterCharacterInfo->IncStaffPvPAttackTwoHand;
+					}
+				}
+			}
+		}
 	}
-	else if( lpObj->Class == CLASS_ELF )
+
+	if (lpObj->Class == CLASS_DARKLORD)
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2 ) / g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateDiv);
+		if(ReadConfig.S6E2 == 1)
+		{
+			CItem * Right = &lpObj->pInventory[0];
+			if ( Right->IsItem() == TRUE )
+			{
+				if((Right->m_Type >= ITEMGET(2,8)) && (Right->m_Type < ITEMGET(3,0)))
+				{
+					iAttackRate += lpObj->MasterCharacterInfo->IncStaffPvPAttackTwoHand;
+				}
+			}
+		}
 	}
-	else if( lpObj->Class == CLASS_MAGUMSA )
+
+	if ( lpTargetObj->Class == CLASS_KNIGHT )
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2 ) / g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateDiv);
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 2;	// #formula
 	}
-	else if( lpObj->Class == CLASS_WIZARD )
+	else if ( lpTargetObj->Class == CLASS_DARKLORD )
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2 ));
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 2;	// #formula
 	}
-	else if( lpObj->Class == CLASS_SUMMONER )
+	else if ( lpTargetObj->Class == CLASS_ELF )
 	{
-		iAttackRate = (float)(iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1 + ( lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2 ) / g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateDiv);
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 10;	// #formula
 	}
-	else if( lpObj->Class == CLASS_MONK )
+	else if ( lpTargetObj->Class == CLASS_RAGEFIGHTER )
 	{
-		iAttackRate = (float)((iTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact1RF) + (lpObj->Dexterity * g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateFact2) / g_ClassCalc.m_Data[lpObj->Class].PvPAttackRateDiv);
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 8;	// #formula
 	}
-#else
-	int iTotalLevel = lpObj->Level + lpObj->m_nMasterLevel;
-	// ----
-	if( lpObj->Class == CLASS_KNIGHT )
+	else if ( lpTargetObj->Class == CLASS_MAGICGLADIATOR )
 	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 45) / 10);
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-	else if( lpObj->Class == CLASS_DARKLORD )
+	else if ( lpTargetObj->Class == CLASS_WIZARD )
 	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 4 ));
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-	else if( lpObj->Class == CLASS_ELF )
+	else if ( lpTargetObj->Class == CLASS_SUMMONER )
 	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 6 ) / 10);
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-	else if( lpObj->Class == CLASS_MAGUMSA )
-	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 35 ) / 10);
-	}
-	else if( lpObj->Class == CLASS_WIZARD )
-	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 4 ));
-	}
-	else if( lpObj->Class == CLASS_SUMMONER )
-	{
-		iAttackRate = (float)(iTotalLevel * 3 + ( lpObj->Dexterity * 35 ) / 10);
-	}
-	else if( lpObj->Class == CLASS_MONK )
-	{
-		iAttackRate = (float)(iTotalLevel * 2.6f + ( lpObj->Dexterity * 36 ) / 10);
-	}
-#endif
-	// ----
-#ifdef __CUSTOMS__
-	int iTargetTotalLevel = lpTargetObj->Level + lpTargetObj->m_nMasterLevel;
-	// ----
-	if( lpTargetObj->Class == CLASS_KNIGHT )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_DARKLORD )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_ELF )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_MAGUMSA )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_WIZARD )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_SUMMONER )
-	{
-		iDefenseRate = (float)(iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFact + lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv);
-	}
-	else if( lpTargetObj->Class == CLASS_MONK )
-	{
-		iDefenseRate = (float)((iTargetTotalLevel * g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateFactRF) + (lpTargetObj->Dexterity / g_ClassCalc.m_Data[lpObj->Class].PvPDefenseRateDiv));
-	}
-#else
-	int iTargetTotalLevel = lpTargetObj->Level + lpTargetObj->m_nMasterLevel;
-	// ----
-	if( lpTargetObj->Class == CLASS_KNIGHT )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 2;
-	}
-	else if( lpTargetObj->Class == CLASS_DARKLORD )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 2;
-	}
-	else if( lpTargetObj->Class == CLASS_ELF )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 10;
-	}
-	else if( lpTargetObj->Class == CLASS_MAGUMSA )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 4;
-	}
-	else if( lpTargetObj->Class == CLASS_WIZARD )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 4;
-	}
-	else if( lpTargetObj->Class == CLASS_SUMMONER )
-	{
-		iDefenseRate = iTargetTotalLevel * 2 + lpTargetObj->Dexterity / 2;
-	}
-	else if( lpTargetObj->Class == CLASS_MONK )
-	{
-		iDefenseRate = (iTargetTotalLevel * 1.5f) + lpTargetObj->Dexterity / 5;
-	}
-#endif
-	// ----
-	if( iAttackRate <= 0.0f || iDefenseRate <= 0.0f || lpObj->Level <= 0 || lpTargetObj->Level <= 0 )
-	{
-		return false;
-	}
-	// ----
-	iAttackRate		+= lpObj->m_ItemOptionExFor380.OpAddAttackSuccessRatePVP;
-	iDefenseRate	+= lpTargetObj->m_ItemOptionExFor380.OpAddDefenseSuccessRatePvP;
-	// ----
-	iAttackRate		+= lpObj->m_JewelOfHarmonyEffect.HJOpAddAttackSuccessRatePVP;
-	iDefenseRate	+= lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddDefenseSuccessRatePvP;
-	// ----
-	iAttackRate		+= lpObj->m_MPSkillOpt.MpsPVPAttackDmgRate;//lpObj->m_MLPassiveSkill.m_iML_AttackRate;
-	iDefenseRate	+= lpTargetObj->m_MPSkillOpt.MpsPVPBlockingRate;//lpTargetObj->m_MLPassiveSkill.m_iML_IncreasePvPDefenceRate;
-	// ----
-	float iExpressionA = (iAttackRate * 10000.0f) / (iAttackRate + iDefenseRate);
-	float iExpressionB = (iTotalLevel * 10000) / (iTotalLevel + iTargetTotalLevel);
-	// ----
+
+	if ( iAttackRate <= 0.0f || iDefenseRate <= 0.0f || lpObj->Level <= 0 || (DWORD)lpTargetObj <= 0 )	// #error lpTargetObj
+		return FALSE;
+
+	iAttackRate += lpObj->m_ItemOptionExFor380.OpAddAttackSuccessRatePVP;
+	iDefenseRate += lpTargetObj->m_ItemOptionExFor380.OpAddDefenseSuccessRatePvP;
+
+	iAttackRate += lpObj->m_JewelOfHarmonyEffect.HJOpAddAttackSuccessRatePVP;
+	iDefenseRate += lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddDefenseSuccessRatePvP;
+
+	iAttackRate += lpObj->MasterCharacterInfo->AttackSucRatePVP;
+	iDefenseRate += lpObj->MasterCharacterInfo->DefenseSucRatePVP;
+
+	float iExpressionA = ( iAttackRate * 10000.0f ) / ( iAttackRate + iDefenseRate );	// #formula
+	float iExpressionB = ( lpObj->Level * 10000 ) / ( lpObj->Level + lpTargetObj->Level );	// #formula
+
 	iExpressionA /= 10000.0f;
 	iExpressionB /= 10000.0f;
-	// ----
+
 	iAttackSuccessRate = 100.0f * iExpressionA * g_fSuccessAttackRateOption * iExpressionB;
-	// ----
-	if( (iTargetTotalLevel - iTotalLevel) >= 100 )
+
+	if ( (lpTargetObj->Level - lpObj->Level) >= 100 )
 	{
 		iAttackSuccessRate -= 5;
 	}
-	else if( (iTargetTotalLevel - iTotalLevel) >= 200 )
+	else if ( (lpTargetObj->Level - lpObj->Level) >= 200 )
 	{
 		iAttackSuccessRate -= 10;
 	}
-	else if( (iTargetTotalLevel - iTotalLevel) >= 300 )
+	else if ( (lpTargetObj->Level - lpObj->Level) >= 300 )
 	{
 		iAttackSuccessRate -= 15;
 	}
-	// ----
+
 	DWORD dwRate = rand() % 100;
-	// ----
-	if( dwRate > iAttackSuccessRate )
+
+	if ( dwRate > iAttackSuccessRate )
 	{
-		int MsgDamage = 0;	//1.01.00 update
-		// ----
-		if( lpObj->Class == CLASS_MONK && byBarrageCount )
+		GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+
+		if ( g_bShieldComboMissOptionOn == TRUE )
 		{
-			if( skill != 261 && skill != 263 )
+			if ( lpObj->comboSkill.ProgressIndex >= 0 )
 			{
-				if( byBarrageCount % 4 )
-				{
-					MsgDamage |= 0x10;
-				}
-				else
-				{
-					MsgDamage |= 0x20;
-				}
-			}
-			else
-			{
-				if( byBarrageCount % 2 )
-				{
-					MsgDamage |= 0x10;
-				}
-				else
-				{
-					MsgDamage |= 0x20;
-				}
-			}
-		}
-		// ----
-		GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
-		// ----
-		if( g_bShieldComboMissOptionOn )
-		{
-			if( lpObj->comboSkill.ProgressIndex >= 0 )
-			{
-				LogAddTD("[Shield] ComboSkill Cancel! [%s][%s]", lpObj->AccountID, lpObj->Name);
+				LogAddTD("[Shield] ComboSkill Cancel! [%s][%s]",
+					lpObj->AccountID, lpObj->Name);
+
 				lpObj->comboSkill.Init();
 			}
 		}
-		// ----
-		return false;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-int CObjBaseAttack::GetTargetDefense(LPOBJ lpObj, LPOBJ lpTargetObj, BYTE & MsgDamage) //Identical gs-cs 56
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+
+
+
+
+int  CObjBaseAttack::GetTargetDefense(LPOBJ lpObj, LPOBJ lpTargetObj, unsigned char& MsgDamage)
 {
-	int targetdefense = lpTargetObj->m_Defense;
+	int skilldefense = lpTargetObj->m_SkillDefense;
+	int skillReducedefense = lpTargetObj->m_SkillReduceDefense + lpTargetObj->m_RFBufReduceDefense;
+	int targetdefense = lpTargetObj->m_Defense + skilldefense - skillReducedefense;
+
+	if(lpObj->Type == OBJ_USER)
+	{
+		if(lpObj->m_SkillRedArmorIgnoreTime > 0)
+		{
+			targetdefense = (targetdefense * (100 - lpObj->m_SkillRedArmorIgnoreNum)/100);
+		}
+	}
+
 
 	if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 	{
 		targetdefense += lpTargetObj->m_ItemOptionExFor380.OpAddDefense / 2;
 	}
 
-	int iSkillMagumReduceDefense = 0;
-	iSkillMagumReduceDefense = gObjGetTotalValueOfEffect(lpTargetObj, ADD_OPTION_REDUCE_DEFENSE);
-	targetdefense -= (targetdefense * iSkillMagumReduceDefense)/100;
+	targetdefense -= (targetdefense * lpTargetObj->m_SkillMagumReduceDefense)/100;
 	
 	if ( lpObj->m_MonsterSkillElementInfo.m_iSkillElementDefenseTime > 0 )
 	{
 		targetdefense += lpObj->m_MonsterSkillElementInfo.m_iSkillElementDefense;
 
 		if ( targetdefense <0 )
-		{
 			targetdefense = 0;
-		}
+
 	}
 
-	int percentdamage = 0; //loc4
+	if(targetdefense < 0) 
+		targetdefense = 0;
 
-	if ( lpObj->pInventory[7].IsItem() != FALSE )
+	int percentdamage = 0;
+
+	if ( lpObj->pInventory[7].IsItem() != FALSE && 
+		((lpObj->pInventory[7].m_Type >= ITEMGET(12,0) && lpObj->pInventory[7].m_Type <= ITEMGET(12,6)) || 
+		(lpObj->pInventory[7].m_Type >= ITEMGET(12,130) && lpObj->pInventory[7].m_Type <= ITEMGET(12,135)) || 
+		lpObj->pInventory[7].m_Type == ITEMGET(13,30) || 
+		lpObj->pInventory[7].m_Type == ITEMGET(12,49) || 
+		lpObj->pInventory[7].m_Type == ITEMGET(12,41) || 
+		lpObj->pInventory[7].m_Type == ITEMGET(12,42)))
 	{
 		percentdamage = lpObj->pInventory[7].IsWingOpGetOnePercentDamage();
-		percentdamage += lpObj->pInventory[7].IsThirdWingOpGetOnePercentDamage();
-#ifdef NEWWINGS
-		percentdamage += lpObj->pInventory[7].IsNewWingOpGetOnePercentDamage();
+	}
+
+	//3rd Wings Ignore Opponents Deffence / Successful Blocking
+	if ( lpObj->pInventory[7].IsItem() != FALSE && 
+		((lpObj->pInventory[7].m_Type >= ITEMGET(12,36) && lpObj->pInventory[7].m_Type <= ITEMGET(12,40)) || 
+#if (CRYSTAL_EDITION == 1)
+		(lpObj->pInventory[7].m_Type >= ITEMGET(12,200) && lpObj->pInventory[7].m_Type <= ITEMGET(12,254)) || 
+#endif
+		lpObj->pInventory[7].m_Type == ITEMGET(12,43) || lpObj->pInventory[7].m_Type == ITEMGET(12,50)) && 
+		lpObj->pInventory[7].CheckThirdWingsSuccessfulBlocking() ) //Third Wings
+	{
+		percentdamage = g_iWings3SuccessfullBlockingRate;
+#if (CRYSTAL_EDITION == 1)
+		if(lpObj->pInventory[7].m_Type >= ITEMGET(12,200) && lpObj->pInventory[7].m_Type <= ITEMGET(12,254))
+			percentdamage = CWings.GetExcOption(lpObj->pInventory[7].m_Type,4);
 #endif
 	}
 
@@ -923,15 +1029,20 @@ int CObjBaseAttack::GetTargetDefense(LPOBJ lpObj, LPOBJ lpTargetObj, BYTE & MsgD
 		if ( (rand()%100) <= percentdamage)
 		{
 			targetdefense = 0;
-			MsgDamage = 1;
+			MsgDamage = MSG_DAMAGE_REGULAR;
 		}
 	}
 
 	return targetdefense;
 }
-// -------------------------------------------------------------------------------
 
-int CObjBaseAttack::GetPartyMemberCount(LPOBJ lpObj)
+
+
+
+
+
+
+int  CObjBaseAttack::GetPartyMemberCount(LPOBJ lpObj)
 {
 	LPOBJ lpPartyObj;
 	int partynum = lpObj->PartyNumber;
@@ -942,7 +1053,7 @@ int CObjBaseAttack::GetPartyMemberCount(LPOBJ lpObj)
 		return 0;
 	}
 
-	int partycount = gParty.m_PartyS[partynum].Count;
+	//int partycount = gParty.m_PartyS[partynum].Count;
 	int retcount = 0;
 
 	for ( int n=0;n<MAX_USER_IN_PARTY;n++)
@@ -967,14 +1078,6 @@ int CObjBaseAttack::GetPartyMemberCount(LPOBJ lpObj)
 
 	return retcount;
 }
-// -------------------------------------------------------------------------------
+		
 
-void ComboSkillData::Init() //forced location
-{
-	this->dwTime = 0;
-	this->Skill[0] = -1;
-	this->Skill[1] = -1;
-	this->Skill[2] = -1;
-	this->ProgressIndex = -1;
-}
-// -------------------------------------------------------------------------------
+

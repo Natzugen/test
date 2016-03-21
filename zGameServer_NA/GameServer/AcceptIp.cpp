@@ -1,11 +1,19 @@
-//GameServer 1.00.90 - complete
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x00482ED0 Completed
+// GS-N 1.00.18	0x0049E440	JPN - Completed
 #include "stdafx.h"
 #include "AcceptIp.h"
 #include "GameMain.h"
 #include "logproc.h"
 #include "..\include\readscript.h"
 
+
+
 CAcceptIp acceptIP;
+
 
 CAcceptIp::CAcceptIp()
 {
@@ -46,16 +54,13 @@ void CAcceptIp::Load(LPSTR filename)
 	int count=0;
 	int Token;
 	
-	SMDFile=fopen(filename, "r");	//ok
+	SMDFile=fopen(filename, "r");
 
 	if (SMDFile == NULL)
 	{
 		MsgBox(lMsg.Get(MSGGET(0, 112)), filename);
 		return;
 	}
-
-
-	int n=0;
 
 	while ( true )
 	{

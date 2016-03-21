@@ -1,9 +1,19 @@
-//	GS-CS	1.00.90	0xXXXXXXXX	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
+
+
+// GS-N 0.99.60T 0x0041C820 Status : Completed
+//	GS-N	1.00.18	0x004232A0	-	Completed
+
 #include "stdafx.h"
 #include "DbSave.h"
 #include "WZQueue.h"
 #include "logproc.h"
 #include "GameMain.h"
+
+
 
 static LRESULT WINAPI cSaveThreadProc(CDbSave * pThis);
 
@@ -64,13 +74,10 @@ BOOL CDbSave::Begin()
 		this->End();
 	}
 
-	// Set Active
 	this->m_bIsRunning=TRUE;
 
-	// Create Thread
 	this->m_ThreadHandle=CreateThread( NULL, 0, (LPTHREAD_START_ROUTINE)cSaveThreadProc, this, 0, &this->m_dwThreadID  );
 
-	// Check if is success
 	if ( this->m_ThreadHandle == 0 )
 	{
 		MsgBox(lMsg.Get(MSGGET(0, 113)), __FILE__, __LINE__);

@@ -37,15 +37,15 @@ public:
 
   char m_szTeamName1[9];	// 4
   char m_szTeamName2[9];	// D
-  int m_Score1;	// 18
-  int m_Score2;	// 1C
+  short m_Score1;	// 18
+  short m_Score2;	// 1C
   char m_szID1[11];	// 20
   char m_szID2[11];	// 2B
   RECT m_rect;	// 38
   BOOL m_Set;	// 48
   BOOL m_Type;	// 4C
-  int m_Used;	// 50
-  int m_MapNumber;	// 54
+  BOOL m_Used;	// 50
+  BYTE m_MapNumber;	// 54
   int m_nTimer;	// 58
   unsigned long m_dwCurTimer;	// 5C
 

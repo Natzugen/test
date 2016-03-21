@@ -22,7 +22,7 @@ public:
 	BOOL FindPathToMoveMonster(LPOBJ lpObj, int iTargetX, int iTargetY, int iMaxPathCount, BOOL bPreventOverMoving);
 	BOOL SendMonsterMoveMsg(LPOBJ lpObj);
 	BOOL CheckMovingCondition(LPOBJ lpObj);
-	void SendMonsterV2Msg(LPOBJ lpObj, LPBYTE lpMsg, int size);
+	void SendMonsterV2Msg(LPOBJ lpObj, unsigned char* lpMsg, int size);
 	BOOL CheckMoveRange(LPOBJ lpObj, int iTargetX, int iTargetY);
 	BOOL GetXYToPatrol(LPOBJ lpObj);
 	BOOL GetXYToEascape(LPOBJ lpObj);

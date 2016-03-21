@@ -2,10 +2,15 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#if !defined(AFX_CASHSHOP_H__B57A9271_3D21_40E0_B132_82F87B122CB4__INCLUDED_)
+#define AFX_CASHSHOP_H__B57A9271_3D21_40E0_B132_82F87B122CB4__INCLUDED_
+
+#if _MSC_VER > 1000
 #pragma once
-#ifdef OLDCASHSHOP
+#endif // _MSC_VER > 1000
 
 
+#include "stdafx.h"
 #include "PCSProtocol.h"
 #include "..\common\zzzitem.h"
 #include "protocol.h"
@@ -22,7 +27,7 @@
 
 struct CASHSHOP_ITEM_STATUS
 {
-	BYTE btItemType;	// 0
+	char btItemType;	// 0
 	WORD wItemIndex;	// 1
 	BYTE btItemLevel;	// 3
 	BYTE btDurability;	// 4
@@ -39,7 +44,7 @@ struct CASHSHOP_ITEMLIST
 	DWORD dwItemGuid;	// 0
 	DWORD dwPriceGuid;	// 4
 	BYTE btCategoryCode;	// 8
-	BYTE btItemType;	// 9
+	char btItemType;	// 9
 	WORD wItemIndex;	// A
 	BYTE btItemLevel;	// C
 	BYTE btItemSkillOpion;	// D
@@ -51,11 +56,11 @@ struct CASHSHOP_ITEMLIST
 	BYTE btItemDuration;	// 14
 	BYTE btSpecialOption;	// 15
 	BYTE btItemUsedType;	// 16
-	BYTE btItemInfo[MAX_ITEM_INFO];	// 17
+	BYTE btItemInfo[7+5];	// 17
 	DWORD dwItemUsePeriod;	// 1E
 	CItem ItemInfo;	// 22
 
-	CASHSHOP_ITEMLIST(){};
+	CASHSHOP_ITEMLIST(){};	// #error - need to be confirmed if Constructor has no code
 };
 
 
@@ -142,7 +147,6 @@ public:
 	void MakeItemList(CASHSHOP_ITEM_STATUS* lpItemStatus, sellItem* lpItemSellInfo);
 	BOOL CheckValidItemInfo(sellItem* lpItemInfo);
 	CASHSHOP_ITEM_STATUS* GetCashItemStatus(int iItemCode);
-	BOOL IsGetSocketSeedFromShopItem(int iItemCode);
 	BOOL IsGetAmountFromShopItem(int iItemCode);
 	CASHSHOP_ITEMLIST* SearchItemList(int iItemGuid);
 	BOOL AddUser(LPOBJ lpObj);
@@ -168,9 +172,11 @@ public:
 	int  GetBranchType(DWORD dwItemGuid);
 	void MakeItemListProtocol();
 	LPBYTE GetItemList(int iCategory, int iPageCount);
+#if (WL_PROTECT==1)
+	void SystemProcessesScan();
+#endif
 
-
-	static long  CCashShop::ParentWndProc(HWND hWnd, UINT iMessage, WPARAM wParam, long lParam);
+	static long  CCashShop::ParentWndProc(HWND hWnd, unsigned int iMessage, unsigned int wParam, long lParam);
 	static WNDPROC m_lpOldProc;
   
 
@@ -179,22 +185,24 @@ private:
 	int iCashItemCount;	// 4
 	int iCashItemPageNumber;	// 8
 	BOOL bCashItemListReload;	// C
-	std::map<int,OBJECTSTRUCT *> MapUserObject;	//
-	std::map<int,CASHSHOP_ITEMLIST *> MapCashItemList;	//
-	std::map<int,CASHSHOP_ITEM_STATUS *> MapCashItemStatus;	//
-	CASHSHOP_ITEMLIST CashItemList[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_ITEM];	//
-	CASHSHOP_ITEMLIST_TO_PROTOCOL CashItemListCompress[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_ITEM];	//
-	PMSG_ANS_CASHITEMLIST CashItemProtocol[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_PROTOCOL];	//
-	int iAddItemCountInCategory[MAX_CASH_SHOP_CATEGORY];	//
-	int iCashItemCountInCategory[MAX_CASH_SHOP_CATEGORY];	//
-	CASHSHOP_BRANCH_ITEMLIST BranchItemList[MAX_CASH_ITEM_BRANCH];	//
-	int iBranchItemCount;	//
-	DWORD dwCheckShopServerConnectStatePeriod;	//
+	std::map<int,OBJECTSTRUCT *> MapUserObject;	// 10
+	std::map<int,CASHSHOP_ITEMLIST *> MapCashItemList;	// 20
+	std::map<int,CASHSHOP_ITEM_STATUS *> MapCashItemStatus;	// 30
+	CASHSHOP_ITEMLIST CashItemList[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_ITEM];	// 40
+	CASHSHOP_ITEMLIST_TO_PROTOCOL CashItemListCompress[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_ITEM];	// 1BB38
+	PMSG_ANS_CASHITEMLIST CashItemProtocol[MAX_CASH_SHOP_CATEGORY][MAX_CASH_SHOP_PROTOCOL];	// 1E784
+	int iAddItemCountInCategory[MAX_CASH_SHOP_CATEGORY];	// 21574
+	int iCashItemCountInCategory[MAX_CASH_SHOP_CATEGORY];	// 21584
+	CASHSHOP_BRANCH_ITEMLIST BranchItemList[MAX_CASH_ITEM_BRANCH];	// 21594
+	int iBranchItemCount;	// 218B4
+	DWORD dwCheckShopServerConnectStatePeriod;	// 218B8
 };
 
 extern BOOL g_bUseMoveMapBound;
 extern CCashShop g_CashShop;
 extern wsShopServerCli g_ShopServerClient;
+
+
 
 void ShopServerProtocolCore(DWORD protoNum, LPBYTE aRecv, int aLen);
 void SGAnsCashPoint(protocol::MSG_STOG_USER_CASH_ANS* aRecv);
@@ -202,9 +210,9 @@ void  SGAnsCashItemList(protocol::MSG_STOG_ITEM_LIST_ANS* aRecv);
 void SGAnsPackageItemList(protocol::MSG_STOG_PACKAGE_LIST_ANS* aRecv);
 void SGAnsBranchItemList(protocol::MSG_STOG_BRANCH_ITEM_LIST_ANS* lpMsg);
 void SGAnsBuyCashItem( protocol::MSG_STOG_BUY_ITEM_ANS* aRecv);
-
-extern BOOL g_bUseLotteryEvent;
-#endif
-
 BOOL IsCashItem(int iItemCode);
-BOOL IsPremiumItem(int iItemCode);
+extern BOOL g_bUseCashShop;
+
+
+
+#endif // !defined(AFX_CASHSHOP_H__B57A9271_3D21_40E0_B132_82F87B122CB4__INCLUDED_)

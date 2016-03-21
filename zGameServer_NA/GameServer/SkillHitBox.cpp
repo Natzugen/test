@@ -1,6 +1,12 @@
-//	GS-N	1.00.90		JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #include "stdafx.h"
 #include "SkillHitBox.h"
+
+// GS-N 0.99.60T 0x46E710
+//	GS-N	1.00.18	JPN	0x004856C0	-	Completed
 
 CSkillHitBox SkillSpearHitBox;
 CSkillHitBox SkillElectricSparkHitBox;
@@ -61,7 +67,6 @@ int CSkillHitBox::HitCheck(int dir, int x, int y, int tx, int ty)
 
 BOOL CSkillHitBox::Load(char * filename )
 {
-
 	OFSTRUCT ofst;
 	HFILE hfile;
 	int filesize;
@@ -97,6 +102,5 @@ BOOL CSkillHitBox::Load(char * filename )
 	}
 
 	_lclose( hfile);
-
 	return true;
 }

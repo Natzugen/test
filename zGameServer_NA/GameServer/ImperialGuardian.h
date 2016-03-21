@@ -1,174 +1,141 @@
-// ------------------------------
-// Decompiled by Hybrid
-// 1.01.00
-// ------------------------------
+#include "stdafx.h"
+#include "user.h"
 
-#pragma once
+#define IMPERIAL_MARK_COUNT	5
+#define IMPERIAL_MARK_RANGE(x) ( ((x) <0)?FALSE:((x) > IMPERIAL_MARK_COUNT-1)?FALSE:TRUE)
 
-#include "ImperialGuardianRewardExp.h"
-
-typedef struct _stMonsterIndexInfo
+struct ImperialGuardianEventUser
 {
-	int ObjIndex;
-	bool bLive;
-	bool bState;
-}stMonsterIndexInfo;
-
-typedef struct _stZoneInfo
-{
-  int m_State;
-  int m_nPartyNumber;
-  char ukn08h;
-  bool m_bTimeAttack;
-  bool m_bLootTime;
-  bool m_bWaitPlayer;
-  bool ukn0Ch;
-  char ukn0Dh;
-  bool ukn0Eh;
-  char ukn0Fh;
-  __int16 m_nMonsterRegenTableIndex;
-  int m_nMaxUserLevel;
-  int ukn18h;
-  std::vector<stMonsterIndexInfo> vtMonsterInfo;
-  std::vector<int> vtPlayers;
-  std::vector<int> vtUkn3Ch;
-  int m_TimeAttack_RemainMSec;
-  int m_LootTime_MSec;
-  int m_WaitPlayer_MSec;
-  int m_WaitPlayer_TickCount;
-  int m_LootTime_TickCount;
-  int m_TimeAttack_TickCount;
-  std::vector<int> vtGateInfo;
-
-		int m_nMaxUserReset;
-}stZoneInfo;
-
-
-struct OBJECTSRUCT;
-
-class CImperialGuardian
-{
-public:
-
-	static const int MAX_EVENTZONE = 4;
-	inline static bool IsGoodZone(int nZoneIndex) { return (nZoneIndex >= 0 && nZoneIndex < MAX_EVENTZONE);};
-	inline static bool IsEventMap(int MapNumber) { return (MapNumber >= 69 && MapNumber <= 72); }
-
-	enum IG_STATE
-	{ 
-		STATE_INVALID = -1,
-		STATE_READY = 0, 
-		STATE_TIMEATTACK = 1, 
-		STATE_WAITPLAYER = 2,
-		STATE_LOOTTIME = 3, 
-		STATE_WARPNEXTZONE = 4,
-		STATE_MISSIONFAIL = 5,
-		STATE_ALLKICK = 6,
-		STATE_MISSIONCLEAR = 7,
-		STATE_CHECKDUNGEON = 8,
-	};
-
-	CImperialGuardian(void);
-	virtual ~CImperialGuardian(void);
-
-	bool IsEnableEvent() { return this->m_bEventOn; }
-
-	void Init();
-	void InitEventDungeon();
-	void LoadScript(LPCSTR lpFileName);
-
-	void Run();
-	void ProcReady(int nZoneIndex);
-	void ProcBeginTimeAttack(int nZoneIndex);
-	void ProcBeginLootTime(int nZoneIndex);
-	void ProcBeginWaitPlayer(int nZoneIndex);
-	void ProcAllWarpNextZone(int nZoneIndex);
-	void ProcAllKick(int nZoneIndex);
-	void ProcMissionFail(int nZoneIndex);
-	void ProcMissionClear(int nZoneIndex);
-
-	bool IsEmptyZone(int nZoneIndex);
-	void KickInvalidUser();
-	bool CheckValidUser(int nUserNumber);
-	int GetZoneState(int nZoneIndex);
-	bool SetZoneState(int nZoneIndex, int nState);
-
-	void CGEnterPortal(int nUserIndex, int nDestZoneIndex);
-	void RegenMonster(int nZoneIndex, int nMonsterRegenTableIndex, int nMaxUserLevel, int nMaxUserReset, char bOnlyCreateGate);
-	void DeleteMonster(int nZoneIndex, int nMonsterRegenTableIndex);
-	void InitZone(int nZoneIndex);
-	bool SetMonster(int nIndex, int MonsterClass, int nMaxLevel, int nMaxUserReset);
-
-	int GetGateNumber(int nZoneIndex, int nDayOfWeek);
-	int GetMapNumber(int nDayOfWeek);
-	void ProcCheckDungeon(int nZoneIndex);
-	int GetLiveMonsterCount(int nZoneIndex);
-	void CheckLiveMonster(int nZoneIndex);
-	int GetCurrentZoneIndex(int nUserNumber);
-	bool AddUserInZone(int nZoneIndex, int nUserNumber);
-	void RemoveUserInZone(int nZoneIndex, int nUserNumber);
-	void RemoveUserInAllZone(int nUserNumber);
-	int GetPlayerCount(int nZoneIndex);
-	int GetTotalPlayerCount();
-	bool IsLastZone(int nZoneIndex);
-
-	bool GCNotifyZoneClear(int nZoneIndex);
-	bool GCNotifyAllZoneClear(int nZoneIndex);
-	void GCMissionFail(int nZoneIndex);
-	void GCMissionFailUseDie(int nUserIndex);
-
-	void GCSendDataToUser(int nIndex, LPBYTE lpMsg, DWORD nSize);
-	bool GCNotifyRemainTickCount(int nZoneIndex, BYTE btMsgType, DWORD dwRemainTick);
-	void SetGateBlockState(int nMapNumber, int nZoneIndex, signed int nX, signed int nY, int nGateState, int nDir);
-
-	void GCSendCastleGateInfo(int nGateIndex, int nZoneIndex, int nUserIndex);
-	void DropItem(int nIndex, int nMonsterIndex);
-	int CheckOverlapMysteriousPaper(int nIndex, int nItemLevel);
-	void RollBackUserPos(int nUserNumber);
-	int CheckGaionOrderPaper(int nIndex);
-	int CheckFullSecromicon(int nIndex);
-	bool IsAttackAbleMonster(int nMonsterIndex);
-	void SetAtackAbleState(int nZoneIndex, int nMonsterClass, bool bState);
-
-	void SetDayOfWeekGM(int nDayOfWeeks);
-	void SetCheatModeGM(int nCheatMode);
-	void WarpZoneGM(int nUserIndex, int nZoneIndex);
-	stZoneInfo GetZoneInfo(int nZoneIndex);
-	void SetTargetMoveAllMonster(int nZoneIndex, int nTargetNumber);
-	void DestroyGate(int nZoneIndex, int nIndex, int nTargetIndex);
-	void GCSendServerMsgAll(int nZoneIndex, char *szMsg);
-	int ImperialGuardianLevelUp(int iIndex, int iAddExp);
-	void RegAllPartyUser(int nZoneIndex, int nFirstEnterUserIndex);
-	bool IsRegPartyUser(int nZoneIndex, int nUserIndex);
-	
-	void UserMonsterCountCheck();
-	void MonsterBaseAct(struct OBJECTSTRUCT *lpObj);
-	bool ChangeUserIndex(int nUserIndex, int nCurrentUserIndex, int nZoneIndex);
-	bool SendCurStateToUser(int nUserIndex, int nZoneIndex);
-	bool SendCurGateInfoToUser(int nUserIndex, int nZoneIndex);
-
-	int GetPlayUserCountRightNow(int nZoneIndex);
-	int GetMixNeedZen() { return MixNeedZen; }
-private:
-
-	__int16 m_CheatModeGM;
-	int m_nDayOfWeek;
-	int ukn0Ch;
-	bool m_bScriptLoad;
-	bool m_bEventOn;
-	bool m_bPromotionOn;
-	char ukn13h;
-	_stZoneInfo m_ZoneInfo[MAX_EVENTZONE];
-	__int16 m_DayOfWeekGM;
-
-	DWORD m_LootTime;
-	DWORD m_WaitPlayerTime;
-	DWORD TimeAttackTime;
-
-	int MixNeedZen;
-	CImperialGuardianRewardExp m_RewardExpInfo;
-
-	CRITICAL_SECTION m_cs;
+    short PartyIndex;
+	short PartyLeaderUserNumber;
+	short PartyLeaderDBNumber;
+	BYTE PartyCount;
+	unsigned long PlayerExp;
 };
 
-extern CImperialGuardian g_ImperialGuardian;
+struct PMSG_ATTSTATE_IMPERIALGUARDIAN
+{
+	PBMSG_HEAD h;	// C1:BF
+	BYTE subcode;	// 3
+	BYTE State;	// 4
+	BYTE Type;	// 5
+};
+
+struct PMSG_TIMER_IMPERIALGUARDIAN
+{
+	PBMSG_HEAD h;	// C1:F7:04
+	BYTE subcode;	// 3
+	BYTE State;	// 4 // (1 = Students exceed; 2 = Time Left(Monster in South); 3 = no text)
+	BYTE unk1;	// 5
+	BYTE unk2;	// 5
+	BYTE unk3;	// 5
+	BYTE unk4;	// 5
+	BYTE Time1;	// 5
+	BYTE Time2;	// 5
+	BYTE Time3;	// 5
+	BYTE MonstersLeft;
+};
+
+struct PMSG_STATUS_IMPERIALGUARDIAN
+{
+	PBMSG_HEAD h;	// C1:F7:02
+	BYTE subcode;	// 3 
+	BYTE State;	// 4 (1 = Expected Admission Time: 1 Min After the Entry;3 = Quest Failed; 4 = Jhon Success 5 = Success)
+	DWORD unk1;	// 5 
+	BYTE unk2;	// 5 
+	BYTE Minutes; //
+};
+
+struct PMSG_STATE_IMPERIALGUARDIAN
+{
+	PBMSG_HEAD h;	// C1:F7:06
+	BYTE subcode;	// 3 
+	BYTE State;	// 4 (0 = Fail; 1 = Item Lack of quest item; 2 = Success)
+	BYTE Type;	// 5 	
+	char Exp[7];
+	//unsigned long Exp;
+};
+
+struct ImperialGuardianEventMob
+{
+	short Number;
+	short ID;
+	short Pos;
+};
+
+BOOL IMPERIALGUARDIAN_MAP_RANGE(int Map);
+
+const BYTE ImperialGuardian_MaxTime = 10;
+const BYTE ImperialGuardian_WaitTime = 1;
+
+#define MAX_IG_EVENT_DAYS 7
+#define MAX_IG_EVENT_STAGES 4
+#define MAX_IG_EVENT_STAGE_MOB_COUNT 255
+
+class cImperialGuardian
+{
+public:
+	void ReadConfigs(char * FilePath);
+	void StartEvent(LPOBJ lpObj);
+	void SetMonsters(BYTE iStage);
+	void ClearAllMonsters();
+	void ReadMonsters(char * FilePath);
+	void MonsterDiePoint(LPOBJ lpMon);
+	void MonsterDieRemove(LPOBJ lpMon);
+	BOOL MonsterAttack(LPOBJ lpMon);
+	int CheckEnter(LPOBJ lpObj);
+	BOOL gObjMoveGateCheck(LPOBJ lpObj, int Gate);
+	void GateState(bool Open);
+	void DataSendInside(LPBYTE pMsg, int size);
+	void DataSend(LPBYTE pMsg, int size);
+	BYTE IsPartyAlive();
+	BOOL WarpInside();
+	void WarpOutside();
+	BYTE CheckOverlapPaperMark(int iIndex);
+	void CheckLetterItem(LPOBJ lpObj);
+	int GetEnterItemPosition(int iIndex);
+	void Fail(int Status);
+	void Success();
+	void Timer(int Seconds, BYTE tState);
+	void GCServerMsgStringSend(LPSTR szMsg, BYTE type);
+	void SetMonsterDifficulty(int MobID);
+	void SendRanking();
+	//void ReleaseCastleDoor(int Gate);
+	//void BlockCastleDoor(int Gate);
+	BOOL DoorAttack(LPOBJ mObj);
+	bool DoorBlocked[10];
+	bool CanWalk(BYTE TX, BYTE TY);
+
+	ImperialGuardianEventUser m_UserData;
+	ImperialGuardianEventMob m_MonsterData[MAX_IG_EVENT_DAYS][MAX_IG_EVENT_STAGES][MAX_IG_EVENT_STAGE_MOB_COUNT];
+	int MonsterStageCount[MAX_IG_EVENT_DAYS][MAX_IG_EVENT_STAGES];
+	//int MonsterStageTotalCount[MAX_IG_EVENT_DAYS][MAX_IG_EVENT_STAGES];
+	int MonsterStageKillCount[MAX_IG_EVENT_DAYS][MAX_IG_EVENT_STAGES];
+	BOOL Enabled;
+	BOOL Occuped;
+	BOOL Start;
+	BOOL WaitPeriod;
+	BYTE ActiveDay;
+	BYTE Stage;
+	BYTE OnStage;
+	BYTE KillDoor;
+	short DifMaxLvl;
+	float Difficulty;
+
+private:
+	CRITICAL_SECTION mobKill;
+	BYTE SaveInDB;
+};
+
+struct PMSG_ANS_IGSCORE
+{
+	PBMSG_HEAD h;
+	int ServerCode;
+	char AccountID[10];
+	char Name[10];
+	BYTE Day;
+};
+
+extern cImperialGuardian g_ImperialGuardian;
+void cImperialGuardian__InsideTrigger(void *  lpParam);
+//extern int cImperialGuardian__Map[MAX_IG_EVENT_DAYS];

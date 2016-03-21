@@ -11,12 +11,17 @@
 
 #define MAX_MONSTER_AI_AGRO	100
 
-struct TMonsterAIAgroInfo
+class TMonsterAIAgroInfo
 {
+
+public:
+
 	TMonsterAIAgroInfo()
 	{
+		// Clean Data
 		this->Reset();
 	}
+
 	void Reset()
 	{
 		this->m_iUserIndex = -1;
@@ -62,12 +67,12 @@ struct TMonsterAIAgroInfo
 
 private:
 
-	int m_iUserIndex;	// 0
-	int m_iAgroValue;	// 4
+	short m_iUserIndex;	// 0
+	short m_iAgroValue;	// 4
 
 };
 
-
+//#pragma auto_inline(on)
 
 class TMonsterAIAgro
 {

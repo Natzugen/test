@@ -1,9 +1,11 @@
-//GameServer 1.00.77 JPN - Completed
 #include "stdafx.h"
 #include "CallStackTrace.h"
-#include "DBGHELP.H"
+#include "IMAGEHLP.H"
 
-#pragma comment( lib, "dbghelp.lib" )
+// GS-Normal 0x0048D6B1
+//	GS-N	1.00.18	JPN	0x004A84F0
+
+#pragma comment( lib , "Imagehlp.lib" )
 
 CCallStackTrace::CCallStackTrace(char * const szLogID,char * const szLogFileName, char * const szLogDirectoryName)
 {
@@ -15,13 +17,15 @@ CCallStackTrace::CCallStackTrace(char * const szLogID,char * const szLogFileName
 
 	strcpy(this->m_szLogID, szLogID);
 
+	////////////////////////////////
 	if ( !strcmp(szLogFileName, ""))
 		strcpy(this->m_szLogFileName, "LOGDATA");
 	else
 		strcpy(this->m_szLogFileName, szLogFileName);
 
+	////////////////////////////////
 	if ( !strcmp(szLogDirectoryName, ""))
-		strcpy(this->m_szLogDirectoryName, "Logs");
+		strcpy(this->m_szLogDirectoryName, "LOG");
 	else
 		strcpy(this->m_szLogDirectoryName, szLogDirectoryName);
 
@@ -29,13 +33,19 @@ CCallStackTrace::CCallStackTrace(char * const szLogID,char * const szLogFileName
 	InitializeCriticalSection(&this->m_critLogToFile);
 }
 
+
+
 CCallStackTrace::~CCallStackTrace()
 {
 	DeleteCriticalSection(&this->m_critLogToFile);
 }
 
+
+
 void CCallStackTrace::Output()
 {
+	__try
+	{
 	if ( !strcmp(this->m_szLogID, ""))
 	{
 		MessageBox(NULL, "NO LOG-ID !!!", "ERROR", 0);
@@ -47,28 +57,36 @@ void CCallStackTrace::Output()
 
 	GetLocalTime(&strSystime);
 
-	wsprintf(szLogFileName, "%s\\%s %04d-%02d-%02d.txt", this->m_szLogDirectoryName, this->m_szLogFileName, strSystime.wYear, strSystime.wMonth, strSystime.wDay);
+	wsprintf(szLogFileName, "%s\\%s %04d-%02d-%02d.txt", this->m_szLogDirectoryName, this->m_szLogFileName,
+		strSystime.wYear, strSystime.wMonth, strSystime.wDay);
 
 	this->m_fLogFile = fopen(szLogFileName, "a+");
 
 	if ( this->m_fLogFile == NULL )
-	{
 		return;
-	}
 
-	fprintf(this->m_fLogFile, "\nCallStack Trace Infomation (DATE:%04d-%02d-%02d %02d:%02d:%02d / ID:%s)\n", strSystime.wYear, strSystime.wMonth, strSystime.wDay, strSystime.wHour, strSystime.wMinute,	strSystime.wSecond, this->m_szLogID);
-	fprintf(this->m_fLogFile, "\n*-----> CallStack List <-----*\n", this->m_szLogID);
+	fprintf(this->m_fLogFile, "\nCallStack Trace Infomation (DATE:%04d-%02d-%02d %02d:%02d:%02d / ID:%s)\n",
+		strSystime.wYear, strSystime.wMonth, strSystime.wDay, strSystime.wHour, strSystime.wMinute,
+		strSystime.wSecond, this->m_szLogID);
+
+	fprintf(this->m_fLogFile, "\n*-----> CallStack List <-----*\n", this->m_szLogID);	// #error, delete last argument
 
 	for ( int iC=0;iC<this->m_strCallStackLog.size(); iC++)
-	{
 		fputc(this->m_strCallStackLog[iC], this->m_fLogFile);
-	}
 
 	fclose(this->m_fLogFile);
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
+
+
+
 
 DWORD CCallStackTrace::ConvertAddress(HANDLE hProcess, DWORD address, LPSTR output_buffer)
 {
+	__try
+	{
 	char* current_pointer = output_buffer;
 	IMAGEHLP_MODULE imagehlp_module;
 	memset(&imagehlp_module, 0, sizeof(imagehlp_module));
@@ -90,7 +108,12 @@ DWORD CCallStackTrace::ConvertAddress(HANDLE hProcess, DWORD address, LPSTR outp
 		current_pointer += sprintf(current_pointer, "<unknown module> : ");
 	}
 
+#ifdef _WIN64
+	DWORD64 displacement;
+#else
 	DWORD displacement;
+#endif
+
 	char temp[0x11c];
 	IMAGEHLP_SYMBOL * imagehlp_symbol = (IMAGEHLP_SYMBOL *)temp;
 	memset(imagehlp_symbol, 0, sizeof(temp));
@@ -106,10 +129,18 @@ DWORD CCallStackTrace::ConvertAddress(HANDLE hProcess, DWORD address, LPSTR outp
 		memset(&imagehlp_line, 0, sizeof(imagehlp_line));
 		imagehlp_line.SizeOfStruct = sizeof(IMAGEHLP_LINE);
 
+#ifdef _WIN64
+		DWORD displacement2 = (DWORD) displacement;
+		if ( SymGetLineFromAddr(hProcess, address, &displacement2, &imagehlp_line) != FALSE )
+#else
 		if ( SymGetLineFromAddr(hProcess, address, &displacement, &imagehlp_line) != FALSE )
+#endif
 		{
 			current_pointer += sprintf(current_pointer, "// %s(%i)", imagehlp_line.FileName, imagehlp_line.LineNumber);
 		}
+#ifdef _WIN64
+		displacement =  displacement2;
+#endif
 	}
 	else
 	{
@@ -118,12 +149,21 @@ DWORD CCallStackTrace::ConvertAddress(HANDLE hProcess, DWORD address, LPSTR outp
 	
 	current_pointer += sprintf(current_pointer, "\r\n");
 	return current_pointer - output_buffer;
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return 0;
+	}
 }
+
 
 int CCallStackTrace::SaveCallStack(BOOL bWriteInFile)
 {
 	return this->TraceStack(bWriteInFile);
 }
+
+
+// START REVIEW HERE
+
 
 int CCallStackTrace::TraceStack(BOOL bWriteInFile)
 {
@@ -143,7 +183,7 @@ int CCallStackTrace::TraceStack(BOOL bWriteInFile)
 		HANDLE hThread  = GetCurrentThread();
 		DWORD option = SymGetOptions();
 		option |= 0x10;
-		option &= ~2;
+		option &= 0xFD;
 		SymSetOptions(option|0x10);
 
 		if (SymInitialize(hProcess, NULL, TRUE) == FALSE )
@@ -164,34 +204,37 @@ int CCallStackTrace::TraceStack(BOOL bWriteInFile)
 
 		STACKFRAME stackframe;
 		memset(&stackframe, 0, sizeof(stackframe));
-
-		stackframe.AddrPC.Mode = AddrModeFlat;
-		stackframe.AddrPC.Offset = context.Eip;
-
-		stackframe.AddrStack.Offset = context.Esp;
-		stackframe.AddrStack.Mode = AddrModeFlat;
+		stackframe.Params[0] = 3;
+		stackframe.Far = context.ContextFlags;
+#ifdef _WIN64
+		stackframe.Far = context.Rbp;
+		stackframe.Far = context.Rip;
+#else
+		stackframe.Far = context.Ebp;
+		stackframe.Far = context.Eip;
+#endif
+		stackframe.Far = 3;
+		stackframe.Virtual = 3;
 		
-		stackframe.AddrFrame.Offset = context.Ebp;
-		stackframe.AddrFrame.Mode = AddrModeFlat;
-
-		for ( UINT i=0; i<512; i++ )
+		for ( UINT i=0;i<512;i++ )
 		{
-			if ( StackWalk( 332, hProcess, hThread, &stackframe, &context, NULL, SymFunctionTableAccess, (PGET_MODULE_BASE_ROUTINE)CCallStackTrace::GetModuleBase, NULL) == FALSE )
+			if ( StackWalk( 0x14C, hProcess, hThread, &stackframe, &context, NULL,
+				SymFunctionTableAccess, (PGET_MODULE_BASE_ROUTINE)CCallStackTrace::GetModuleBase, NULL) == FALSE )
 			{
 				break;
 			}
 
-			if ( i > 1 )
+			if ( stackframe.Far > 1 )
 			{
-				 if ( stackframe.AddrPC.Offset != 0 )
+				 if ( stackframe.Far )
 				 {
-					 addresses[address_count] = stackframe.AddrPC.Offset;
+					 addresses[address_count] = stackframe.Far;
 					 address_count++;
 				 }
 			}
 		}
 
-		for ( UINT addr_index =0 ;addr_index < address_count ; addr_index++ )
+		for ( UINT addr_index =0 ;addr_index < stackframe.Far ; addr_index++ )
 		{
 			char symbol[0x504] ={0};
 			DWORD symbol_size = this->ConvertAddress(hProcess, addresses[addr_index], symbol);
@@ -212,7 +255,28 @@ int CCallStackTrace::TraceStack(BOOL bWriteInFile)
 		LeaveCriticalSection(&this->m_critLogToFile);
 		return this->m_strCallStackLog.size();
 	}
+		/*
+Data           :     ebp Relative, [0xffffffe0], Local, Type: void *, hProcess
+Data           :     ebp Relative, [0xffffffdc], Local, Type: void *, hThread
+Data           :     ebp Relative, [0xffffffd8], Local, Type: unsigned long, option
+Data           :     ebp Relative, [0xffff7fd8], Local, Type: unsigned long[0x2000], addresses
+Data           :     ebp Relative, [0xffff7fd4], Local, Type: unsigned int, address_count
+
+
+Data           :     ebp Relative, [0xffff7d08], Local, Type: struct _CONTEXT, context
+Data           :     ebp Relative, [0xffff7c64], Local, Type: struct _tagSTACKFRAME, stackframe
+
+
+Data           :     ebp Relative, [0xffff7c60], Local, Type: unsigned int, i
+Data           :     ebp Relative, [0xffff7c5c], Local, Type: unsigned int, addr_index
+
+
+Data           :       ebp Relative, [0xffff7758], Local, Type: char[0x504], symbol
+Data           :       ebp Relative, [0xffff7754], Local, Type: unsigned long, symbol_size*/
+
 }
+
+
 
 DWORD __stdcall CCallStackTrace::GetModuleBase(HANDLE hProcess, DWORD address)
 {
@@ -261,3 +325,4 @@ DWORD __stdcall CCallStackTrace::GetModuleBase(HANDLE hProcess, DWORD address)
 
 	return (DWORD)memory_basic_information.AllocationBase;
 }
+

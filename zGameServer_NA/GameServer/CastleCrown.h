@@ -10,18 +10,20 @@
 #endif // _MSC_VER > 1000
 
 
+#if (GS_CASTLE==1)
 
-//#if (_GSCS==1)
-
-class CCastleCrown {
+class CCastleCrown  
+{
 public:
 	CCastleCrown();
 	virtual ~CCastleCrown();
-	void CastleCrownAct(int iIndex);
+
+public:
+	void CalcAccessCrownTime(int iCrownIndex);
 };
 
-extern CCastleCrown g_CsNPC_CastleCrown;
+extern CCastleCrown g_CastleCrown;
 
-//#endif
+#endif
 
 #endif // !defined(AFX_CASTLECROWN_H__1494B89A_2CEA_41C6_9B1A_C5CF4064943F__INCLUDED_)

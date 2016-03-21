@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 class CKanturuEntranceNPC
 {
 
@@ -26,4 +28,5 @@ private:
 
 extern CKanturuEntranceNPC g_KanturuEntranceNPC;
 
+#endif
 #endif // !defined(AFX_KANTURUENTRANCENPC_H__A062469A_13C1_449C_A227_A97ECE1B50C2__INCLUDED_)

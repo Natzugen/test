@@ -1,359 +1,295 @@
-// ------------------------------
-// Decompiled by Hybrid
-// 1.01.00
-// ------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------
+#pragma once /* DoppelGanger.h */
+//-------------------------------------------------------------------------------------------------------------------------------
 
-#pragma once
+#define DG_MARK_COUNT	5
+#define DG_MARK_RANGE(x) ( ((x) <0)?FALSE:((x) > DG_MARK_COUNT-1)?FALSE:TRUE)
 
-#include "MonsterHerd.h"
-#include "MuLua.h"
-#include "DoppelgangerPosInfo.h"
-#include "DoppelgangerEventInfo.h"
-#include "DoppelgangerItemBag.h"
-#include "MonsterAttr.h"
-#include "PartyClass.h"
+#define MAX_DG_STATS				1000
 
-class CDoppelgangerMonsterHerd : public MonsterHerd
+#define DG_RESULT_SUCCESS			0
+#define DG_RESULT_DEAD_PLAYER		1
+#define DG_RESULT_DEFENSE_FAIL		2
+
+#define DG_MAX_MONSTERS				300
+
+//-------------------------------------------------------------------------------------------------------------------------------
+
+#define DG_MAP_RANGE(mapnumber) ( ((mapnumber) < MAP_INDEX_DOUBLE_GOER1)?FALSE:((mapnumber) > MAP_INDEX_DOUBLE_GOER4 )?FALSE:TRUE )
+//-------------------------------------------------------------------------------------------------------------------------------
+
+enum
 {
+	DG_STATE_NONE,
+	DG_STATE_OPEN,
+	DG_STATE_WAITING,
+	DG_STATE_STARTED,
+	DG_STATE_ENDED
+};
+//-------------------------------------------------------------------------------------------------------------------------------
+
+enum
+{
+	DG_PHAZE_NORMAL,
+	DG_PHAZE_BUTCHER,
+	DG_PHAZE_ANGRYBUTCHER,
+	DG_PHAZE_ICEWALKER
+};
+//-------------------------------------------------------------------------------------------------------------------------------
+
+struct DOPPELGANGEREVENT
+{
+	void Clear()
+	{
+		this->PlayerCount	= 0;
+		this->MonsterCount	= 0;
+		this->CreateMonsterDelay = 0;
+		this->MoveProcDelay = 0;
+		this->GoldBoxIndex  = -1;
+		this->PhazesPassed	= 0;
+		this->eDuration = 0;
+		this->IceWalkerPhazeTime = 0;
+		this->btPhaze = 0;
+		this->btPlayState = 0;
+		this->TickCount = 0;
+		// ----
+		memset(PlayerIndex, -1, sizeof(PlayerIndex));
+		memset(MonsterIndex, -1, sizeof(MonsterIndex));	
+		memset(SilverBoxIndex,-1,sizeof(SilverBoxIndex));
+		this->FinalBoxIndex = -1;
+		// ----
+		this->IceWalkerLive	= 0;
+		this->MapNumber = -1;
+		this->PartyNumber = -1;
+		this->HalfTimeInfoSent = false;
+		this->IceWalkerIndex = -1;
+		this->AngryButcherIndex = -1;
+		this->ButcherIndex = -1;
+	};
+
+	// ----
+	BYTE	PlayerCount;
+	BYTE	MonsterCount;
+	BYTE	MonsterPassed;
+	BYTE	CreateMonsterDelay;
+	BYTE	MoveProcDelay;
+	BYTE	btPlayState;
+	BYTE	btPhaze;
+	// ----
+	short	GoldBoxIndex;
+	short	ButcherIndex;
+	short	AngryButcherIndex;
+	short	IceWalkerIndex;
+	int		PlayerIndex[5];
+	short	MonsterIndex[DG_MAX_MONSTERS+5];
+	short	SilverBoxIndex[3];
+	short	FinalBoxIndex;
+	int		eDuration;
+	int		MapNumber;
+	int		PartyNumber;
+	int		TickCount;
+	bool	HalfTimeInfoSent;
+	short	IceWalkerPhazeTime;
+	short	EventLevel;
+	// ----
+	BYTE	IceWalkerLive;
+	BYTE	PhazesPassed;	
+};
+
+struct DG_MONSTER_STAT
+{
+	short	EventLevel;
+	short	Class;
+	short	Level;
+	int		HP;
+	int		DmgMin;
+	int		DmgMax;
+	int		Defense;
+};
+//-------------------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------------------
+
+class CDoppelGanger
+{
+protected:
+	// ----
+	int POSX[4];
+	int POSY[4];
+	int MPOSX[4];
+	int MPOSY[4];
+	// ----
+
+	DOPPELGANGEREVENT m_DGData;
+	DG_MONSTER_STAT m_DGMobStat[MAX_DG_STATS];
+	int m_DGMobStatCnt;
+
 public:
-    CDoppelgangerMonsterHerd();
-	virtual ~CDoppelgangerMonsterHerd(){};
+	void Init();
+	void Run();
+	void EnterEvent(LPOBJ lpObj);
+	BYTE CheckOverlapGoerMark(int iIndex);
+	bool IsDGMonster(LPOBJ lpObj);
+	void RegenProc(LPOBJ lpObj);
+	void MoveProc(LPOBJ lpObj);
+	void InterimChestOpen(LPOBJ lpObj, LPOBJ lpChest);
+	void FinalChestOpen(LPOBJ lpObj, LPOBJ lpChest);
+	BYTE GetState();
+	int GetEventTime(LPOBJ lpObj);
+	void DeadUserProc(LPOBJ lpObj);
+	bool InvokeInterimChest(LPOBJ lpObj, LPOBJ lpMon);
+	bool KillIceWalker(LPOBJ lpObj, LPOBJ lpMon);
 
-    virtual int Start() { return MonsterHerd::Start(); };
-    virtual int MonsterHerdItemDrop(LPOBJ lpObj) { return 0; };
-    virtual void MonsterAttackAction(LPOBJ lpObj, LPOBJ lpTargetObj);
+	BYTE GOER_MOBS_DROP_ITEM;
 
-    int AddMonsterEX(int monster_type, int should_attack_first, 
-                    int monster_level, int monster_hp, 
-                    int attack_min, int attack_max, int monster_def);
+private:	
 
-    virtual int GetRandomLocation(BYTE & pos_x, BYTE & pos_y);
-    virtual int SetTotalInfo(int map_number, int radius, int pos_info, int should_move);
-    virtual void MonsterBaseAct(OBJECTSTRUCT *lpObj);
-    virtual int MoveHerd();
-    void ArrangeMonsterHerd();
-    int IsActive();
-    void SetActive(bool is_active);
+	void SetState(int iState);
+	void SetState_OPEN();
+	void SetState_WAITING();
+	void SetState_STARTED();
+	void SetState_ENDED();
+	void ProcState_OPEN();
+	void ProcState_WAITING();
+	void ProcState_STARTED();
+	void ProcState_ENDED();
+	int GetEnterItemPosition(int iIndex);
+	bool AddPlayer(LPOBJ lpObj);
+	void SetMapAttr(bool Block, LPOBJ lpObj);
+	void SendHalfTimeInfo(int Type);
+	void SendDoppelGangerPlayer(LPBYTE lpMsg, int iSize);
+	int SetMapNumber();
+	void SetEventInterface();
+	void SetMonsterCountOnInterface();
+	void SendPlayerPos();
+	void SendMonsterPos();
+	void SendIceWalkerPos();
+	int CalcPos(int player, bool MonsterCalc);
+	void CreateMonster();
+	void DeleteMonster();
+	void CheckPosition();
+	void SendResultMessage(BYTE Result, bool SendForAll, int aIndex);
+	void InvokeSlaughterer();
+	void InvokeFuriousSlaughterer();
+	void InvokeIceWalker();
+	void InvokeFinalChest();
+	void InvokeLarva(LPOBJ lpObj);
+	void CheckUsers();
+	void LoadConfigFile(LPSTR FilePath);
+	bool SetEventLevel();
+	void SetMonsterStats(LPOBJ lpObj);
+	void MsgStringSend(LPSTR szMsg, BYTE type);
+	void SendRanking(BYTE State);
 
+	BYTE Enabled;
+	BYTE InterimChestRate;
+	BYTE UseAutoStat;
+	WORD PartyAutoStat[4];
+	BYTE GOER_MAX_PASS_PORTAL;
+	BYTE SaveInDB;
 
-    int GetMonsterSize() const { return m_mapMonsterHerd.size(); }
-    void SetEndPosition(int pos_info) { this->end_pos_index_ = pos_info; }
+	BYTE DropBagOnKillBoss[3];
+}; 
+//-------------------------------------------------------------------------------------------------------------------------------
 
-    int GetPosIndex() const { return this->pos_index_; }
-    int GetEndPosIndex() const { return this->end_pos_index_; }
-    int IsMove() const { return this->should_move_; }
-    void SetPosIndex(int pos_index);
-private:
-    int align0;
-    int pos_index_;
-    int ukn50;
-    int end_pos_index_;
-    int should_move_;
-};
-
-struct DOPPELGANGER_USERINFO
+struct PMSG_DGOER_EVENT_INFO // 0x23
 {
-    int object_index;
-    int user_level;
-
-    DOPPELGANGER_USERINFO()
-    {
-        object_index = -1;
-        user_level = 0;
-    }
-
-    bool IsUser()
-    {
-        return OBJMAX_RANGE(object_index);
-    }
-    
+	PBMSG_HEAD2 h;
+	BYTE Minutes;
 };
+//-------------------------------------------------------------------------------------------------------------------------------
 
-
-class CDoppelganger
+struct PMSG_DGOER_TIMER_INIT // 0x10
 {
-public:
-    CDoppelganger(void);
-    ~CDoppelganger(void);
-
-    enum { kMaxMiddleTreasureBox = 3 };
-    enum { kMaxMiddleBoss = 4 };
-    enum { kMaxIceWorker = 5 };
-    enum { kMaxLarva = 15 };
-    enum { kMaxMonsterHard = 200 };
-
-
-    static int IsEventMap(int map) { return (map >= 65 && map <= 68); }
-
-
-    void DoppelgangerInfoLoad();
-    void DoppelgangerProcessInit();
-
-    void SetDoppelgangerState(BYTE state);
-    BYTE GetDoppelgangerState();
-
-    void SetDoppelgangerStateNone();
-    void SetDoppelgangerStateReady();
-    void SetDoppelgangerStatePlaying();
-    void SetDoppelgangerStateEnd();
-    void SetPosIndex(int pos_index);
-
-    void ProcDoppelganger(int current_time);
-    void ProcDoppelgangerState_None(int current_time);
-    void ProcDoppelgangerState_Ready(int current_time);
-    void ProcDoppelgangerState_Playing(int current_time);
-    void ProcDoppelgangerState_End(int current_time);
-
-    int PickupMarkOfDimensionItem(OBJECTSTRUCT *lpObj, CMapItem *lpItem, 
-                                    int item_num);
-
-    bool EnterDoppelgangerEvent(int user_index, BYTE item_pos);
-    bool LeaveDoppelgangerEvent(int aIndex);
-    bool AddDoppelgangerUser(int user_index);
-    void DelDoppelgangerUser(int user_index);
-
-
-    void CalUserLevel();
-    void ClearUserData();
-    int GetUserMaxLevel();
-    int GetUserMinLevel();
-    int GetUserAverageLevel();
-    void SetUserAverageLevel();
-    int GetUserCount();
-    int GetStartUserCount();
-    void SendNoticeMessage(char* message);
-    void SendDoppelgangerState(char state);
-    void PlatformLugardAct(OBJECTSTRUCT *lpNpc, OBJECTSTRUCT *lpObj);
-    void MiddleTreasureAct(OBJECTSTRUCT *lpNpc, OBJECTSTRUCT *lpObj);
-    void LastTreasureAct(OBJECTSTRUCT *lpNpc, OBJECTSTRUCT *lpObj);
-    bool OpenTreasureBox();
-    bool OpenLastTreasureBox();
-
-    int GetRandomValue(int range);
-    int GetMonseterHerdIndex();
-    void IncMonseterHerdIndex();
-    void SetHerdStartPosInfo(int herd_index, int pos_info, int should_move);
-    void SetHerdEndPosInfo(int herd_index, int pos_info);
-
-    void AddMonsterHerd(int herd_index, int monster_class, 
-                        int should_attack_first);
-
-    BYTE GetKillerState();
-    int GetKillerHp();
-    void SetKillerHp(int killer_hp);
-    void SetKillerState(BYTE state) { this->killer_state_ = state; }
-
-    BYTE GetAngerKillerState();
-    int GetAngerKillerHp();
-    void SetAngerKillerHp(int anger_killer_hp);
-    void SetAngerKillerState(BYTE state) { this->anger_killer_state_ = state; }
-
-    void AddMonsterBoss(int herd_index, int monster_class, 
-                        int should_attack_first);
-
-    void AddMonsterNormal(int monster_class, int pos_x, int pos_y);
-    void SetIceWorkerRegen(BYTE pos_info);
-
-    void AddIceWorkerIndex(int monster_index);
-    void DelIceWorkerIndex(int monster_index);
-    bool CheckIceWorker();
-    void AddLarvaIndex(int monster_index);
-    void DelLarvaAll();
-    void MonsterHerdStart(int herd_index);
-    void CheckDoppelgangerMosterPos(OBJECTSTRUCT *lpObj);
-    int GetDoppelgangerPosIndex(BYTE pos_x, BYTE pos_y);
-
-    void SendMonsterGoalCount();
-    void SendDoppelgangerMonserPos();
-    void SendDoppelgangerUserPos();
-
-    void SelfExplosion(int index, CMagicInf* magic, int target_index);
-    void AngerKillerAttack(OBJECTSTRUCT *lpObj);
-    void ArrangeMonsterHerd();
-
-    void MoveDoppelgangerMonsterProc();
-
-    bool GetRandomLocation(BYTE& pos_x, BYTE& pos_y);
-    bool GetRandomLocation(BYTE& pos_x, BYTE& pos_y, signed int seed);
-    bool AddMiddleTreasureBoxAll(BYTE pos_x, BYTE pos_y);
-    int AddMiddleTreasureBox(int map_number, BYTE pos_x, BYTE pos_y);
-    bool AddLastTreasureBox(BYTE pos_x, BYTE pos_y);
-
-    int AddMonsterLarva(int map_number, BYTE pos_x, BYTE pos_y, 
-                        int monster_level, int monster_hp, 
-                        int monster_attack_min, int monster_attack_max, 
-                        int monster_def);
-
-    int CheckMapTile(int map_number, BYTE pos_x, BYTE pos_y);
-
-    void SendMapTileInfo(OBJECTSTRUCT *lpObj, char map_set_type);
-    void SendMapTileInfoAll(BYTE map_set_type);
-
-    MONSTER_ATTRIBUTE* GetDefaultMonsterInfo(int monster_class);
-    int GetDefaultMonsterLevel(int monster_class);
-    int GetDefaultMonsterHp(int monster_class);
-    int GetDefaultMonsterAttackMax(int monster_class);
-    int GetDefaultMonsterAttackMin(int monster_class);
-    int GetDefaultMonsterDefense(int monster_class);
-    float GetMonsterLevelWeight();
-    float GetMonsterHpWeight();
-    float GetMonsterAttackWeight();
-    float GetMonsterDefenseWeight();
-    int GetMissionResult();
-    void SetMiddleBossIndex(int monster_class, int monster_index);
-    void SetMiddleBossKill(int monster_class, int monster_index);
-    int GetMiddleKillBossKill(int number);
-    void SendDoppelgangerTimerMsg(int message);
-    void SaveDoppelgangerTmpInfo();
-    int ChangeUserIndex(int ex_user_index, int current_user_index);
-    void SendDoppelgangerStateToSpecificUser(int user_index, char state);
-    int GetPlayUserCountRightNow();
-
-    void GetCenterPosition(int map_number, int pos_index, 
-                            BYTE &pos_x, BYTE &pos_y)
-    {
-        return pos_info_.GetCenterPosition(map_number, pos_index, pos_x, pos_y);
-    }
-
-    void DelTreasureBox(int object_index, int monster_class);
-
-
-    void SetReadyTime(int time) { this->ready_time_ = time; }
-    void SetPlayTime(int time) { this->play_time_ = time; }
-    void SetEndTime(int end_time) { this->end_time_ = end_time; }
-    int GetStateTime() const { return this->state_start_tick_; };
-    int GetMapNumber() const { return this->map_number_; }
-    void SetAddHerdMonsterTime(int time) { this->add_herd_monster_time_ = time; }
-    int GetAddHerdMonsterTime() const { return this->add_herd_monster_time_; }
-    void SetAddBossMonsterTime(int time) { this->add_boss_monster_time_ = time; }
-    int GetAddBossMonsterTime() const { return this->add_boss_monster_time_; }
-    int GetBossRegenOrder() const { return this->boos_regen_order_; }
-    void SetBossRegenOrder(int regen_order){ this->boos_regen_order_ = regen_order; }
-    void SendDoppelgangerResultAll();
-    void SendDoppelgangerResult(OBJECTSTRUCT *lpObj, BYTE result);
-
-private:
-
-    CDoppelgangerPosInfo pos_info_;
-    CDoppelgangerEventInfo event_info_;
-    CDoppelgangerItemBag event_item_bag_;
-    MONSTER_ATTRIBUTE* monster_attribute_[11];
-    MULua mu_lua_;
-    BYTE current_state_;
-    int ukn2c4;
-    int ukn2c8;
-    int ukn2cc;
-    int ukn2d0;
-    int ukn2d4;
-    int ready_time_;
-    int play_time_;
-    int end_time_;
-    CRITICAL_SECTION user_crit_section_;
-    CRITICAL_SECTION treasure_box_crit_section_;
-    int ukn314;
-    int mission_result_;
-    int map_number_;
-    int ukn320;
-    int party_number_;
-    int user_count_;
-    int start_user_count_;
-    int ukn330;
-    int user_max_level_;
-    int user_min_level_;
-    int user_average_level_;
-    int state_start_tick_;
-    int ukn344;
-    int add_herd_monster_time_;
-    int add_boss_monster_time_;
-    int ukn350;
-    int monster_goal_count_;
-    int ice_worker_index_[kMaxIceWorker];
-    int ukn364;
-    int ukn368;
-	int ice_walker_spawn_time; //int ukn36c;
-	char ice_walker_dead; //char ukn370;
-    char killer_state_;
-    int killer_hp_;
-    int anger_killer_state_;
-    int anger_killer_hp_;
-    int larva_index_[kMaxLarva];
-    int middle_boss_index_[kMaxMiddleBoss];
-    int middle_boss_killed_[kMaxMiddleBoss];
-    int middle_treasure_box_index_[kMaxMiddleTreasureBox];
-    int last_treasure_box_index_;
-    int is_treasure_box_opened_;
-    int middle_treasure_box_spawn_time_;
-    int is_middle_treasure_box_spawned_;
-    int is_last_treasure_box_opened_;
-    int ukn3fc;
-    int monster_pos_;
-    CRITICAL_SECTION m_cs3;
-    DOPPELGANGER_USERINFO user_info_[MAX_PARTYUSER];
-    CDoppelgangerMonsterHerd monster_herd_[kMaxMonsterHard];
-    int ukn4c24;
-    int boos_regen_order_;
+	PBMSG_HEAD2 h;	
+	BYTE Timer;
 };
+//-------------------------------------------------------------------------------------------------------------------------------
 
-
-extern CDoppelganger g_DoppleganerEvent;
-
-
-extern bool g_bDoppelGangerEvent;
-extern int g_nMarksOfDimensionDropRate;
-extern float g_fDPMasterLevelExpRate;
-extern int g_RegDoppelgangerClear;
-
-
-struct PMSG_DOPPELGANGER_ENTER_ANS
+struct PMSG_DGOER_MONSTER_COUNT // 0x14
 {
-    PBMSG_HEAD2 h;
-    BYTE result;
+	PBMSG_HEAD2 h;
+	BYTE Total;
+	BYTE Killed;
 };
+//-------------------------------------------------------------------------------------------------------------------------------
 
-struct PMSG_DOPPELGANGER_STATE
+struct PMSG_DGOER_TRIANG_POS // 0x0F
 {
-    PBMSG_HEAD2 h;
-    BYTE state;
+	PBMSG_HEAD2 h;
+	BYTE Pos;
 };
+//-------------------------------------------------------------------------------------------------------------------------------
 
-
-struct PMSG_DOPPELGANGER_MONSTERGOALCOUNT
+struct PMSG_DGOER_RTRIANG_POS // 0x11
 {
-    PBMSG_HEAD2 h;
-    BYTE state;
-    BYTE count;
+	PBMSG_HEAD2 h;
+	BYTE Unk;
+	BYTE Pos;
+};
+//-------------------------------------------------------------------------------------------------------------------------------
+
+struct PMSG_DGOER_END
+{
+	PBMSG_HEAD2 h;
+	BYTE Status;
+};
+//-------------------------------------------------------------------------------------------------------------------------------
+#pragma pack (1)
+struct PMSG_DGOER_UPDATE_BAR
+{
+	PBMSG_HEAD2 h;
+	
+	//Time
+	BYTE TimerL;
+	BYTE TimerH;
+
+	//Users
+	BYTE UserCount;
+	BYTE Unk;
 };
 
-struct PMSG_DOPPELGANGER_MONSTERPOS
+struct PLAYER_BAR_INFO
 {
-    PBMSG_HEAD2 h;
-    BYTE monster_pos;
+	BYTE UserL;
+	BYTE UserH;
+	BYTE Visible;
+	BYTE Pos;
+};
+#pragma pack ()
+static const struct DoppelGangerEntrancePos
+{
+	int iStartX;
+	int iStartY;
+	int iEndX;
+	int iEndY;
+} g_DGEntrance[4] = {
+	195, 34, 199, 40,
+	134, 78, 139, 84,
+	106, 65, 111, 71,
+	93, 23, 97, 25
 };
 
-struct DOPPELGANGER_POS_INFO
+static const struct DG_PORTALPOS
 {
-    short obj_index;
-    BYTE map_number;
-    BYTE pos_index;
+	BYTE StartX;
+	BYTE StartY;
+} g_DGPortal[4] = {
+	197, 30,
+	133, 68,
+	110, 60,
+	95, 15
 };
 
-struct PMSG_DOPPELGANGER_USERPOS
+struct PMSG_ANS_DGSCORE
 {
-    PBMSG_HEAD2 h;
-    short time;
-    BYTE user_count;
+	PBMSG_HEAD h;
+	int ServerCode;
+	char AccountID[10];
+	char Name[10];
+	BYTE MobPassed;
+	BYTE MobToPass;
+	BYTE Result;
 };
 
-struct PMSG_DOPPELGANGER_RESULT
-{
-    PBMSG_HEAD2 h;
-    BYTE result;
-    int reward_exp;
-};
-
-struct PMSG_DOPPELGANGER_ICEWORKER_STATE
-{
-    PBMSG_HEAD2 h;
-    BYTE state;
-    BYTE pos_info;
-};
+extern CDoppelGanger g_DoppelGanger;

@@ -1,72 +1,25 @@
 // TMonsterSkillManager.cpp: implementation of the TMonsterSkillManager class.
-//	GS-CS	1.00.90	JPN	0xXXXXXXXX	-	Completed
+//	GS-N	1.00.18	JPN	0x00558440	-	Completed
 //////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "TMonsterSkillManager.h"
+
 #include "ObjUseSkill.h"
 #include "SkillHitBox.h"
+
 #include "..\include\ReadScript.h"
 #include "LogProc.h"
-#include "ImperialGuardian.h"
-#include "GameMain.h"
+
 
 TMonsterSkillInfo TMonsterSkillManager::s_MonsterSkillInfoArray[MAX_MONSTER_SKILL_INFO_ARRAY];
 _ST_MONSTER_SKILL_DELAYTIME_INFO TMonsterSkillManager::s_MonsterSkillDelayInfoArray[MAX_MONSTER_SKILL_DELAY_INFO_ARRAY];
 TSync TMonsterSkillManager::s_Sync;
 BOOL TMonsterSkillManager::s_bDataLoad;
 
-int gGetLowHPMonster(int nZoneIndex, int nIndex, int nDistance)
-{
-	OBJECTSTRUCT *lpObj = &gObj[nIndex];
-	int nTargetIndex = -1;
-	int nTempTargetLife = 0;
-	int nTargetLife = 0;
-
-	int nMonsterCount = g_ImperialGuardian.GetZoneInfo(nZoneIndex).vtMonsterInfo.size();
-
-	for (int i = 0; i < nMonsterCount; ++i )
-	{
-
-		stMonsterIndexInfo monsterInfo = g_ImperialGuardian.GetZoneInfo(nZoneIndex).vtMonsterInfo.at(i);
-		if ( gObjCalDistance(lpObj, &gObj[monsterInfo.ObjIndex]) >= nDistance )
-			continue;
-
-		if ( !monsterInfo.bLive )
-			continue;
-
-		int nTempTargetLife = (gObj[monsterInfo.ObjIndex].Life / gObj[monsterInfo.ObjIndex].MaxLife * 100.0);
-
-		if ( nTempTargetLife < nTargetLife || !nTargetLife )
-		{
-			if ( nTempTargetLife != 100 && nTempTargetLife > 0)
-			{
-				nTargetLife = nTempTargetLife;
-				nTargetIndex = monsterInfo.ObjIndex;
-			}
-		}
-
-	}
-
-	return nTargetIndex;
-}
-
-int gGetPartyMaxLevel(int nPartyNumber)
-{
-	int nResult = -1;
-	for (int i = 0; i < 5; ++i )
-	{
-		if ( gParty.m_PartyS[nPartyNumber].Number[i] > 0 )
-		{
-			int nUserIndex = gParty.m_PartyS[nPartyNumber].Number[i];
-			int nLevel = gObj[nUserIndex].Level + gObj[nUserIndex].m_nMasterLevel;
-
-			if ( nResult < nLevel )
-				nResult = nLevel;
-		}
-	}
-
-	return nResult;
-}
+//////////////////////////////////////////////////////////////////////
+// Construction/Destruction
+//////////////////////////////////////////////////////////////////////
 
 TMonsterSkillManager::TMonsterSkillManager()
 {
@@ -77,6 +30,7 @@ TMonsterSkillManager::~TMonsterSkillManager()
 {
 	return;
 }
+
 
 BOOL TMonsterSkillManager::LoadData(LPSTR lpszFileName)
 {
@@ -91,7 +45,7 @@ BOOL TMonsterSkillManager::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -129,7 +83,7 @@ BOOL TMonsterSkillManager::LoadData(LPSTR lpszFileName)
 					Token = GetToken();
 					memcpy(szMonsterName, TokenString, 20);
 
-					for ( int i = 0;i < 10;i++)//Season 4.5 changed from 5 to 10
+					for ( int i=0;i<5;i++)
 					{
 						int iSkillUnitNumber = -1;
 						Token = GetToken();
@@ -165,7 +119,7 @@ BOOL TMonsterSkillManager::LoadData(LPSTR lpszFileName)
 					if ( bVerified ==FALSE )
 					{
 						LogAddC(2, "[Monster Manager] - Invalid SkillInfo : MIndex(%s/%d)",
-							szMonsterName, MonsterSkillInfo.m_iMonsterIndex,lpszFileName);
+							szMonsterName, MonsterSkillInfo.m_iMonsterIndex);//, lpszFileName);	// #error Remove the lpszFileNAme-->FIXED
 					}
 
 					memcpy(&TMonsterSkillManager::s_MonsterSkillInfoArray[MonsterSkillInfo.m_iMonsterIndex],
@@ -285,7 +239,7 @@ void TMonsterSkillManager::MonsterSkillProc()
 					continue;
 				}
 
-				gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
+				gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0);
 				stInfo.lpMonsterSkillUnit->RunSkill(stInfo.iIndex, stInfo.iTargetIndex);
 				TMonsterSkillManager::s_MonsterSkillDelayInfoArray[i].RESET();
 			}
@@ -302,10 +256,10 @@ TMonsterSkillUnit * TMonsterSkillManager::FindMonsterSkillUnit(int iIndex, int i
 	if ( lpMonsterSkillInfo->IsValid() == FALSE )
 		return NULL;
 
-	int iFoundSkillArray[10] = {-1};
+	int iFoundSkillArray[5] = {-1};
 	int iFoundSkillCount = 0;
 
-	for(int i=0;i<10;i++)
+	for(int i=0;i<5;i++)
 	{
 		if ( iMonsterSkillUnitType == lpMonsterSkillInfo->m_iSkillUnitTypeArray[i] )
 		{
@@ -330,109 +284,28 @@ TMonsterSkillUnit * TMonsterSkillManager::FindMonsterSkillUnit(int iIndex, int i
 }
 
 
-//good
-void TMonsterSkillManager::UseMonsterSkill(int iIndex, int iTargetIndex, int iMonsterSkillUnitType, int iMonsterSkillUnit,CMagicInf * lpMagic)
+
+void TMonsterSkillManager::UseMonsterSkill(int iIndex, int iTargetIndex, int iMonsterSkillUnitType)
 {
-	if (iIndex >= OBJ_MAXMONSTER || iIndex < 0)
-	{
-		LogAddC(2,"[TMonsterSkillManager][UserMonsterSkill] error: iIndex(%d)",iIndex);
-		return;
-	}
-
-	if (iTargetIndex >= OBJMAX || iTargetIndex < 0)
-	{
-		LogAddC(2,"[TMonsterSkillManager][UserMonsterSkill] error: iTargetIndex(%d)",iTargetIndex);
-		return;
-	}
-
-	LPOBJ lpObj = &gObj[iIndex]; //loc1
-	LPOBJ lpTargetObj = &gObj[iTargetIndex]; //loc2
-	TMonsterSkillInfo * lpMonsterSkillInfo = &TMonsterSkillManager::s_MonsterSkillInfoArray[lpObj->Class]; //loc3
+	LPOBJ lpObj = &gObj[iIndex];
+	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	TMonsterSkillInfo * lpMonsterSkillInfo = &TMonsterSkillManager::s_MonsterSkillInfoArray[lpObj->Class];
 
 	if ( lpMonsterSkillInfo->IsValid() == FALSE )
 		return;
 	
-	TMonsterSkillUnit * lpMonsterSkillUnit = NULL; //loc4
+	TMonsterSkillUnit * lpMonsterSkillUnit = TMonsterSkillManager::FindMonsterSkillUnit(iIndex, iMonsterSkillUnitType);
 
-	if ( iMonsterSkillUnit > -1) //arg4
+	if ( lpMonsterSkillUnit == NULL )
 	{
-		int iMonsterSkill = iMonsterSkillUnit; //loc5
-
-		lpMonsterSkillUnit = lpMonsterSkillInfo->m_lpSkillUnitArray[iMonsterSkill];
-	}
-	else
-	{
-		lpMonsterSkillUnit = TMonsterSkillManager::FindMonsterSkillUnit(iIndex, iMonsterSkillUnitType);
-	}
-
-	if( lpMonsterSkillUnit == NULL )
-	{
-		LogAddC(2, "[Monster Skill Manager] SkillUnit is NULL : ObjIndex[%d], SkillUnitType[%d] ",iIndex,iMonsterSkillUnitType);
+		LogAddC(2, "[Monster Skill Manager] SkillUnit is NULL ");
 		return;
 	}
 
-	CMagicInf cMagicInf;
-
-	if( lpObj->MapNumber >= 69 && lpObj->MapNumber <= 72 )
-	{
-		if( lpObj->Class == 519 && lpMonsterSkillUnit->m_iUnitNumber == 46 )
-		{
-			int nTargetIndex = gGetLowHPMonster(lpObj->m_ImperialZoneID, lpObj->m_Index, 6);
-			// ----
-			if( nTargetIndex == -1 )
-			{
-				GCActionSend(lpObj, 120, lpObj->m_Index, lpObj->TargetNumber);
-				gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
-				return;
-			}
-			// ----
-			lpTargetObj		= &gObj[nTargetIndex];
-			iTargetIndex	= nTargetIndex;
-		}
-	}
-	// ----
-	if( lpMonsterSkillUnit->m_iUnitTargetType == 5 )
-	{
-		lpTargetObj = &gObj[iIndex];
-		iTargetIndex = iIndex;
-	}
-	// ----
-	if( !lpMagic )
-	{
-		lpMagic = &cMagicInf;
-		TMonsterSkillManager::FindMagicInf(lpMonsterSkillUnit, &cMagicInf);
-	}
-	// ----
 	GCUseMonsterSkillSend(lpObj, lpTargetObj, lpMonsterSkillUnit->m_iUnitNumber);
-	// ----
-	if( lpMonsterSkillUnit->m_iUnitScopeType == -1 )
-	{
-		if ( lpObj->MapNumber == MAP_INDEX_RAKLION_FIELD )
-		{
-			gObjAttack(lpObj, lpTargetObj, NULL, FALSE, 0, 0, FALSE, 0, 0);
-		}
-        if ( lpObj->MapNumber == MAP_INDEX_RAKLION_BOSS )
-        {
-			if ( lpObj->Class == 459 )
-			{
-                if ( lpMonsterSkillUnit->m_iUnitNumber == 40 )
-                {
-					gObjAttack(lpObj, lpTargetObj, NULL, FALSE, 0, 0, FALSE, 0, 0);
-                }
-				else
-                {
-					if ( lpMagic )
-					{
-						gObjAttack(lpObj, lpTargetObj,lpMagic, 0, 0, 0, 0, 0, 0);
-					}
-                }
-            }
-            else
-            {
-                gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
-            }
-        }
 
+	if ( lpMonsterSkillUnit->m_iUnitScopeType == -1 )
+	{
 		lpMonsterSkillUnit->RunSkill(iIndex, iTargetIndex);
 	}
 	else
@@ -479,42 +352,6 @@ void TMonsterSkillManager::UseMonsterSkill(int iIndex, int iTargetIndex, int iMo
 
 						if ( bTargetOK )
 						{
-							if ( lpObj->MapNumber == MAP_INDEX_RAKLION_FIELD )
-							{
-								gObjAttack(lpObj, lpTargetObj, NULL, FALSE, 0, 0, FALSE, 0, 0);
-							}
-							if ( lpObj->MapNumber == MAP_INDEX_RAKLION_BOSS )
-							{
-								if ( lpObj->Class == 459 )
-								{
-									if ( lpMonsterSkillUnit->m_iUnitNumber == 40 )
-									{
-										gObjAttack(lpObj, lpTargetObj, NULL, FALSE, 0, 0, FALSE, 0, 0);
-									}
-									else
-									{
-										if ( lpMagic )
-										{
-											gObjAttack(lpObj, lpTargetObj,lpMagic, 0, 0, 0, 0, 0, 0);
-										}
-									}
-								}
-								else
-								{
-									gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
-								}
-							}
-
-#ifdef IMPERIAL
-							if ( lpObj->Class >= 504 && lpObj->Class <= 521)
-							{
-								if ( lpMagic )
-									gObjAttack(lpObj, lpTargetObj, lpMagic, 0, 0, 0, 0, 0, 0);
-								else
-									gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0, 0, 0, 0);
-							}
-#endif
-
 							lpMonsterSkillUnit->RunSkill(iIndex, iRangeTargetIndex);
 						}
 					}
@@ -527,47 +364,9 @@ void TMonsterSkillManager::UseMonsterSkill(int iIndex, int iTargetIndex, int iMo
 				break;
 		}
 	}
+						
 }
-// -------------------------------------------------------------------------------
 
-//0061d860	-> OK
-bool TMonsterSkillManager::FindMagicInf(TMonsterSkillUnit * lpMonsterSkillUnit, CMagicInf * lpOutMagic)
-{
-	if( !lpMonsterSkillUnit )
-	{
-		return false;
-	}
-	// ----
-	if( !lpOutMagic )
-	{
-		return false;
-	}
-	// ----
-	int nUnitNumber = lpMonsterSkillUnit->m_iUnitNumber;
-	// ----
-	switch(nUnitNumber)
-	{
-	case 64:
-		lpOutMagic->m_Skill = 55;
-		break;
-		// --
-	case 65:
-		lpOutMagic->m_Skill = 237;
-		break;
-		// --
-	case 66:
-		lpOutMagic->m_Skill = 236;
-		break;
-		// --
-	case 51:
-		lpOutMagic->m_Skill = 5;
-		break;
-		// --
-	default:
-		return false;
-		break;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
+
+
+

@@ -1,9 +1,14 @@
-//	GS-CS	1.00.90	JPN	-	Completed
 #include "stdafx.h"
 #include "TNotice.h"
 #include "user.h"
 #include "giocp.h"
 #include "..\common\winutil.h"
+
+// GS-N 0.99.60T 0x0048CD90 - Completed
+//	GS-N	1.00.18	JPN	0x004A7F00	-	Completed
+
+
+
 
 void TNotice::MakeNoticeMsg(void * lpNotice, BYTE btType, char * szNoticeMsg)
 {
@@ -28,6 +33,8 @@ void TNotice::MakeNoticeMsg(void * lpNotice, BYTE btType, char * szNoticeMsg)
 
 void TNotice::MakeNoticeMsgEx(void * lpNotice, BYTE btType, char * szNoticeMsg, ...)
 {
+	__try
+	{
 	PMSG_NOTICE * pNotice = (PMSG_NOTICE *)lpNotice;
 	pNotice->type = btType;
 
@@ -62,6 +69,9 @@ void TNotice::MakeNoticeMsgEx(void * lpNotice, BYTE btType, char * szNoticeMsg, 
 #else
 	PHeadSetB((LPBYTE)pNotice, 0x0D, strlen(pNotice->Notice)  + sizeof(PMSG_NOTICE) - sizeof(pNotice->Notice) + 1);
 #endif
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 
 }
 
@@ -128,7 +138,13 @@ void TNotice::SendNoticeToUser(int aIndex, void * lpNotice)
 void TNotice::AllSendServerMsg(LPSTR chatmsg)
 {
 	PMSG_NOTICE pNotice;
-	
+
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
+
 	MakeNoticeMsg((TNotice *)&pNotice, 0,  chatmsg);
 
 	for ( int n = OBJ_STARTUSERINDEX ; n < OBJMAX ; n++)
@@ -146,6 +162,12 @@ void TNotice::AllSendServerMsg(LPSTR chatmsg)
 void TNotice::GCServerMsgStringSend(LPSTR szMsg, int aIndex, BYTE type)
 {
 	PMSG_NOTICE pNotice;
+
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
 	
 	MakeNoticeMsg(&pNotice, type, szMsg);
 	DataSend(aIndex, (unsigned char*)&pNotice, pNotice.h.size);
@@ -170,6 +192,8 @@ TNotice::TNotice(BYTE btType)
 
 void TNotice::SendToAllUser(LPSTR szMsg, ...)
 {
+	__try
+	{
 #ifdef GS_UNICODE
 	unsigned char szTempMsg[4096]={0};
 #endif
@@ -210,10 +234,15 @@ void TNotice::SendToAllUser(LPSTR szMsg, ...)
 			}
 		}
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 }
 
 void TNotice::SendToUser(int aIndex, LPSTR szMsg, ...)
 {
+	__try
+	{
 #ifdef GS_UNICODE
 	unsigned char szTempMsg[4096]={0};
 #endif
@@ -245,5 +274,9 @@ void TNotice::SendToUser(int aIndex, LPSTR szMsg, ...)
 #endif
 
 	DataSend(aIndex, (LPBYTE)&this->m_Notice , this->m_Notice.h.size );
+	
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
 
 }

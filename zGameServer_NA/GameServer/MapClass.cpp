@@ -1,5 +1,7 @@
-//	GS-N	1.00.77	JPN		-	Completed
-//	GS-CS	1.00.90	JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #include "stdafx.h"
 #include "MapClass.h"
 #include "LogProc.h"
@@ -7,8 +9,16 @@
 #include "user.h"
 #include "Protocol.h"
 #include "BloodCastle.h"
-#include "IllusionTempleEvent.h"
-#include "..\include\readscript.h"
+#include "DevilSquare.h"
+#include "ChaosCastle.h"
+#include "IllusionTemple.h"
+#include "ImperialGuardian.h"
+#include "DoppelGanger.h"
+#include "protection.h"
+
+// GS-N 0.99.60T 0x00478170 - Completed
+//	GS-N	1.00.18	JPN	0x0048F140	-	Completed
+
 
 MapClass::MapClass()
 {
@@ -17,20 +27,31 @@ MapClass::MapClass()
 	this->m_NextWeatherTimer=(rand()%10000)+10000;
 	this->init();
 	
-	SetRect(&this->gRegenRect[0], 130, 116, 151, 137);
-	SetRect(&this->gRegenRect[1], 106, 236, 112, 243);
-	SetRect(&this->gRegenRect[2], 197, 35, 218, 50);
-	SetRect(&this->gRegenRect[3], 174, 101, 187, 125);
-	SetRect(&this->gRegenRect[4], 201, 70, 213, 81);
-	SetRect(&this->gRegenRect[5], 89, 135, 90, 136);
-	SetRect(&this->gRegenRect[6], 89, 135, 90, 136);
-	SetRect(&this->gRegenRect[7], 14, 11, 27, 23);
-	SetRect(&this->gRegenRect[8], 187, 54, 203, 69);
-	SetRect(&this->gRegenRect[33], 82, 8, 87, 14);
-	SetRect(&this->gRegenRect[34], 133, 41, 140, 44);
-	SetRect(&this->gRegenRect[51], 40, 214, 43, 224); //Elbeland??
+	SetRect(&this->gRegenRect[MAP_INDEX_LORENCIA], 130, 116, 151, 137);
+	SetRect(&this->gRegenRect[MAP_INDEX_DUNGEON], 106, 236, 112, 243);
+	SetRect(&this->gRegenRect[MAP_INDEX_DEVIAS], 197, 35, 218, 50);
+	SetRect(&this->gRegenRect[MAP_INDEX_NORIA], 174, 101, 187, 125);
+	SetRect(&this->gRegenRect[MAP_INDEX_LOSTTOWER], 201, 70, 213, 81);
+	SetRect(&this->gRegenRect[MAP_INDEX_RESERVED], 89, 135, 90, 136);
+	SetRect(&this->gRegenRect[MAP_INDEX_BATTLESOCCER], 89, 135, 90, 136);
+	SetRect(&this->gRegenRect[MAP_INDEX_ATLANS], 14, 11, 27, 23);
+	SetRect(&this->gRegenRect[MAP_INDEX_TARKAN], 187, 54, 203, 69);
+
+	SetRect(&this->gRegenRect[MAP_INDEX_AIDA], 82, 8, 87, 14);
+	SetRect(&this->gRegenRect[MAP_INDEX_CRYWOLF_FIRSTZONE], 133, 41, 140, 44);
+	SetRect(&this->gRegenRect[MAP_INDEX_BARRACKS], 30, 75, 33, 78);
+	SetRect(&this->gRegenRect[MAP_INDEX_ELBELAND], 50, 220, 56, 226);
+	SetRect(&this->gRegenRect[MAP_INDEX_SWAMP], 135, 105, 145, 115);
+	SetRect(&this->gRegenRect[MAP_INDEX_RAKLION], 220, 210, 223, 212);
+	SetRect(&this->gRegenRect[MAP_INDEX_VULCANUS], 110, 120, 125, 135);	
+	SetRect(&this->gRegenRect[MAP_INDEX_KARLUTAN1], 124, 123, 127, 125);
+	SetRect(&this->gRegenRect[MAP_INDEX_KARLUTAN2], 162, 16, 163, 17);
 	this->m_ItemCount=0;
 }
+
+
+
+
 
 MapClass::~MapClass()
 {
@@ -38,104 +59,50 @@ MapClass::~MapClass()
 }
 
 
-MAP_SETTINGS g_MAP_SETTINGS[MAX_NUMBER_MAP];
 
-void MapSettingsInit()
+BOOL gObjItsInSafeZone(int PlayerID)
 {
-	for(int i = 0;i<MAX_NUMBER_MAP;i++)
+	unsigned char btMapAttribute = MapC[gObj[PlayerID].MapNumber].GetAttr(gObj[PlayerID].X,gObj[PlayerID].Y);
+	if( ((btMapAttribute & 1) == 1) && 
+		(DS_MAP_RANGE(PlayerID) == FALSE) && 
+		(BC_MAP_RANGE(PlayerID) == FALSE) &&
+		(IT_MAP_RANGE(PlayerID) == FALSE) &&
+#if (PACK_EDITION>=3)
+		(DG_MAP_RANGE(PlayerID) == FALSE) &&
+#endif
+#if (PACK_EDITION>=2)
+		(IMPERIALGUARDIAN_MAP_RANGE(PlayerID) == FALSE) &&
+#endif
+		(CC_MAP_RANGE(PlayerID) == FALSE))//If safezone
 	{
-		g_MAP_SETTINGS[i].Init();
+		return 1;
+	}else{
+		return 0;
 	}
-
-	LoadMapSettings(gDirPath.GetNewPath("Custom\\MapData.txt"));
-}
-
-void LoadMapSettings(LPSTR szFileName)
-{
-	if ( (SMDFile = fopen(szFileName, "r")) == NULL )	//ok
-	{
-		return;
-	}
-
-	SMDToken Token;
-	int iType = 0;
-
-	while ( true )
-	{
-		Token = GetToken();
-
-		if (Token == END )
-		{
-			break;
-		}
-
-		iType = TokenNumber;
-
-		while ( true )
-		{
-			Token = GetToken();
-
-			if ( Token == END )
-			{
-				break;
-			}
-
-			if ( iType >= 0 && iType <= MAX_NUMBER_MAP-1)
-			{
-				if ( strcmp("end", TokenString) == 0 )
-				{
-					break;
-				}
-				
-				int ExpSingleInc = 0;
-				int ExpPartyInc = 0;
-				int DropIncrease = 0;
-				int DropExcIncrease = 0;
-
-				ExpSingleInc = TokenNumber;
-				
-				Token = GetToken();
-				ExpPartyInc = TokenNumber;
-
-				Token = GetToken();
-				DropIncrease =  TokenNumber;
-
-				Token = GetToken();
-				DropExcIncrease = TokenNumber;
-
-				Token = GetToken();
-				g_MAP_SETTINGS[iType].drop_zen_increase = TokenNumber;
-			
-				g_MAP_SETTINGS[iType].exp_increase = ExpSingleInc;
-				g_MAP_SETTINGS[iType].exp_party_increase = ExpPartyInc;
-				g_MAP_SETTINGS[iType].drop_increase = DropIncrease;
-				g_MAP_SETTINGS[iType].drop_exc_increase = DropExcIncrease;
-			}
-		}
-	}
-
-	fclose(SMDFile);
 }
 
 BOOL MapNumberCheck(int map)
 {
-	if ( map < 0 || map > MAX_NUMBER_MAP-1 )
+	if ( map < 0 || map > MAX_MAP_NUMBER-1 )
 	{
 		return FALSE;
 	}
 	return TRUE;
 }
 
+
+
+
 void MapClass::GetLevelPos( short level, short& ox, short& oy)
 {
 
-	int x;
-	int y;
+	int x=0;
+	int y=0;
 	int levelpos = 0;
-	int loopcount = 50;
-	BYTE attr;
-	int w;
-	int h;
+	int loopcount = MAX_MAP_NUMBER;
+	BYTE attr=0;
+	int w=0;
+	int h=0;
 
 	while ( loopcount-- != 0 )
 	{
@@ -166,9 +133,14 @@ void MapClass::GetLevelPos( short level, short& ox, short& oy)
 	y = this->gRegenRect[levelpos].top;
 }
 
+
+
+
+
+
 void MapClass::GetRandomLengthPos(short& x, short& y, int length)
 {
-	int lc = 10;
+	int lc = 10;	// loopcount
 	int px;
 	int py;
 	BYTE attr;
@@ -197,35 +169,39 @@ void MapClass::GetRandomLengthPos(short& x, short& y, int length)
 	}
 }
 
+
+
+
 void MapClass::GetMapPos(short Map, short& ox, short& oy)
 {
-	if ( Map != 8 )
+	short OriginalMap = Map;
+	if ( Map != MAP_INDEX_TARKAN )
 	{
-		if ( Map == 33 )
-		{
-			Map = 33;
-		}
-		else if ( Map == 34 )
-		{
-			Map = 34;
-		}
-		else if ( Map == 51 )
-		{
-			Map = 51;
-		}
-		else if ( Map > 4 && Map != 7 )
-		{
-			Map = 0;
-		}
+		if ( Map == MAP_INDEX_AIDA )
+			Map = MAP_INDEX_AIDA;
+		else if ( Map == MAP_INDEX_CRYWOLF_FIRSTZONE )
+			Map = MAP_INDEX_CRYWOLF_FIRSTZONE;
+		else if ( Map == MAP_INDEX_BARRACKS )
+			Map = MAP_INDEX_BARRACKS;
+		else if ( Map == MAP_INDEX_ELBELAND )
+			Map = MAP_INDEX_ELBELAND;
+		else if ( Map == MAP_INDEX_RAKLION )
+			Map = MAP_INDEX_RAKLION;
+		else if ( Map == MAP_INDEX_SWAMP )
+			Map = MAP_INDEX_SWAMP;
+		else if ( Map == MAP_INDEX_VULCANUS )
+			Map = MAP_INDEX_VULCANUS;
+		else if ( Map > MAP_INDEX_LOSTTOWER && Map != MAP_INDEX_ATLANS)
+			Map = MAP_INDEX_LORENCIA;
 	}
 
-	int x;
-	int y;
+	int x=0;
+	int y=0;
 	int levelpos = Map;
 	int loopcount=50;
-	BYTE attr;
-	int w;
-	int h;
+	BYTE attr=0;
+	int w=0;
+	int h=0;
 
 	while ( loopcount-- != 0 )
 	{
@@ -248,29 +224,39 @@ void MapClass::GetMapPos(short Map, short& ox, short& oy)
 			oy = y;
 			return;
 		}
-	}
-				
-	LogAdd( lMsg.Get( MSGGET(1, 204 )) , __FILE__, __LINE__);
+	}				
+
+	if(OriginalMap != MAP_INDEX_BATTLESOCCER)
+		LogAdd( lMsg.Get( MSGGET(1, 204 )) , __FILE__, __LINE__);
+
 	x = this->gRegenRect[levelpos].left;
 	y = this->gRegenRect[levelpos].top;
 }
+
+
 
 void MapClass::LoadMapAttr(char * filename, int MapNumber)
 {
 	if (this->AttrLoad(filename) == FALSE )
 	{
-		MsgBox("LoadMapAttr: %s", filename);
+		MsgBox( lMsg.Get( MSGGET ( 2, 52 )));
 	}
 
 	this->thisMapNumber = MapNumber;
 }
 
+
+
+
 BYTE MapClass::GetWeather()
 {
-	BYTE weather = this->m_Weather<<4;
+	BYTE weather = this->m_Weather *16;
 	weather |= this->m_WeatherVariation ;
 	return weather;
 }
+
+
+
 
 void MapClass::SetWeather(BYTE a_weather, BYTE a_variation)
 {
@@ -280,7 +266,7 @@ void MapClass::SetWeather(BYTE a_weather, BYTE a_variation)
 
 	this->m_Weather = a_weather;
 	this->m_WeatherVariation = a_variation;
-	weather = this->m_Weather<<4;
+	weather = this->m_Weather * 16;	// like << 4
 	weather |= this->m_WeatherVariation;
 	
 	for ( n=OBJ_STARTUSERINDEX ; n<OBJMAX ; n++ )
@@ -294,6 +280,10 @@ void MapClass::SetWeather(BYTE a_weather, BYTE a_variation)
 	}
 }
 
+
+
+
+
 void MapClass::WeatherVariationProcess()
 {
 	LPOBJ lpObj;
@@ -306,7 +296,7 @@ void MapClass::WeatherVariationProcess()
 		this->m_WeatherVariation = rand()%10;
 		this->m_Weather = rand()%3;
 
-		weather = this->m_Weather<<4;
+		weather = this->m_Weather*16;
 		weather |= this->m_WeatherVariation;
 
 		for (int n=OBJ_STARTUSERINDEX ; n<OBJMAX ; n++ )
@@ -321,17 +311,29 @@ void MapClass::WeatherVariationProcess()
 	}
 }
 
+
+
+
+
 void MapClass::SaveItemInfo()
 {
-
+	return;	// Here goes a Macro
 }
+
+
+
+
 
 void MapClass::ItemInit()
 {
-
+	return; // Here goes a Macro
 }
 
-int MapClass::MonsterItemDrop(int type, int level, float dur,  int x, int y, BYTE Option1, BYTE Option2, BYTE Option3, BYTE NOption, BYTE SOption,  int aIndex, DWORD number, BYTE ItemEffectEx, BYTE SocketOption[5], BYTE SocketIndex)
+
+
+
+
+int MapClass::MonsterItemDrop(int type, int level, float dur,  int x, int y, BYTE Option1, BYTE Option2, BYTE Option3, BYTE NOption, BYTE SOption,  int aIndex, DWORD number, BYTE ItemEffectEx, BYTE ItemSocket1, BYTE ItemSocket2, BYTE ItemSocket3, BYTE ItemSocket4, BYTE ItemSocket5)
 {
 	int count;
 	int counttot=0;
@@ -347,7 +349,7 @@ int MapClass::MonsterItemDrop(int type, int level, float dur,  int x, int y, BYT
 	{
 		if ( this->m_cItem[count].IsItem() == FALSE )
 		{
-			this->m_cItem[count].CreateItem(type, level, x, y, dur, Option1, Option2, Option3, NOption, SOption, number, ItemEffectEx,SocketOption,SocketIndex);
+			this->m_cItem[count].CreateItem(type, level, x, y, dur, Option1, Option2, Option3, NOption, SOption, number, ItemEffectEx);
 			this->m_cItem[count].m_UserIndex = aIndex;
 			this->m_ItemCount++;
 
@@ -380,7 +382,13 @@ int MapClass::MonsterItemDrop(int type, int level, float dur,  int x, int y, BYT
 	return -1;
 }
 
-BOOL MapClass::ItemDrop(int type, int level, float dur,  int x, int y, BYTE Option1, BYTE Option2, BYTE Option3, BYTE NOption, BYTE SOption, DWORD number, int aIndex, int PetLevel, int PetExp, BYTE ItemEffectEx, BYTE SocketOption[5], BYTE SocketIndex)
+
+
+
+
+
+
+BOOL MapClass::ItemDrop(int type, int level, float dur,  int x, int y, BYTE Option1, BYTE Option2, BYTE Option3, BYTE NOption, BYTE SOption, DWORD number, int aIndex, int PetLevel, int PetExp, BYTE ItemEffectEx, BYTE ItemSocket1, BYTE ItemSocket2, BYTE ItemSocket3, BYTE ItemSocket4, BYTE ItemSocket5)
 {
 	int count;
 	int counttot = 0;
@@ -397,7 +405,7 @@ BOOL MapClass::ItemDrop(int type, int level, float dur,  int x, int y, BYTE Opti
 	{
 		if ( this->m_cItem[count].IsItem() == FALSE )
 		{
-			this->m_cItem[count].DropCreateItem(type, level, x, y, dur, Option1, Option2, Option3, NOption, SOption, number, PetLevel, PetExp, ItemEffectEx, SocketOption, SocketIndex);
+			this->m_cItem[count].DropCreateItem(type, level, x, y, dur, Option1, Option2, Option3, NOption, SOption, number, PetLevel, PetExp, ItemEffectEx,ItemSocket1,ItemSocket2,ItemSocket3,ItemSocket4,ItemSocket5);
 			this->m_cItem[count].m_UserIndex = aIndex;
 			this->m_ItemCount++;
 
@@ -406,28 +414,35 @@ BOOL MapClass::ItemDrop(int type, int level, float dur,  int x, int y, BYTE Opti
 				this->m_ItemCount = 0;
 			}
 
+			if ( IT_MAP_RANGE(this->thisMapNumber) != FALSE )
+			{
+
+			}
+
 			if ( BC_MAP_RANGE(this->thisMapNumber) != FALSE )
 			{
 				if ( type == ITEMGET(13,19) )
 				{
-					if ( ((level<0)?FALSE:(level>2)?FALSE:TRUE) != FALSE ) //checklimit type not same :)
+					if ( ((level<0)?FALSE:(level>2)?FALSE:TRUE) != FALSE )
 					{
-						int iBridgeIndex = g_BloodCastle.GetBridgeIndexByMapNum(this->thisMapNumber);
-
-						if ( g_BloodCastle.m_BridgeData[iBridgeIndex].m_nBC_QUESTITEM_SERIAL != -1 )
+						int BCRest = MAP_INDEX_BLOODCASTLE1;
+						if(this->thisMapNumber == MAP_INDEX_BLOODCASTLE8)
+							BCRest = 45;
+						if ( g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_nBC_QUESTITEM_SERIAL != -1 )
 						{
-							if ( number == g_BloodCastle.m_BridgeData[iBridgeIndex].m_nBC_QUESTITEM_SERIAL )
+							if ( number == g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_nBC_QUESTITEM_SERIAL )
 							{
-								if ( g_BloodCastle.m_BridgeData[iBridgeIndex].m_iBC_QUEST_ITEM_USER_INDEX != -1 )
+								if ( g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_iBC_QUEST_ITEM_USER_INDEX != -1 )
 								{
-									LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Dropped Angel King's Weapon (%d)", 
-										iBridgeIndex+1, 
-										gObj[g_BloodCastle.m_BridgeData[iBridgeIndex].m_iBC_QUEST_ITEM_USER_INDEX ].AccountID, 
-										gObj[g_BloodCastle.m_BridgeData[iBridgeIndex].m_iBC_QUEST_ITEM_USER_INDEX].Name, 
-										g_BloodCastle.m_BridgeData[iBridgeIndex].m_btBC_QUEST_ITEM_NUMBER);
+									LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Dropped Angel King's Weapon (%d)",
+										this->thisMapNumber-(BCRest-1), gObj[g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_iBC_QUEST_ITEM_USER_INDEX ].AccountID,
+										gObj[g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_iBC_QUEST_ITEM_USER_INDEX].Name,
+										g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_btBC_QUEST_ITEM_NUMBER);
+									
+									g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_iBC_QUEST_ITEM_USER_INDEX = -1;
+									g_BloodCastle.m_BridgeData[this->thisMapNumber-BCRest].m_btBC_QUEST_ITEM_NUMBER = 0;
 
-									g_BloodCastle.m_BridgeData[iBridgeIndex].m_iBC_QUEST_ITEM_USER_INDEX = -1;
-									g_BloodCastle.m_BridgeData[iBridgeIndex].m_btBC_QUEST_ITEM_NUMBER = 0;									
+									
 								}
 							}
 						}
@@ -458,15 +473,19 @@ BOOL MapClass::ItemDrop(int type, int level, float dur,  int x, int y, BYTE Opti
 	return FALSE;
 }
 
+
+
+
+
+
+
+
 BOOL MapClass::MoneyItemDrop(int money, int x, int y)
 {
 	int count;
 	int counttot = 0;
 
 	BYTE attr = this->GetAttr(x, y);
-
-	if(money <= 0)
-		return FALSE;
 
 	if ( (attr&4) == 4 || (attr&8) == 8 )
 	{
@@ -479,16 +498,16 @@ BOOL MapClass::MoneyItemDrop(int money, int x, int y)
 	{
 		if ( this->m_cItem[count].IsItem() == FALSE )
 		{
-			this->m_cItem[count].m_Type			= ITEMGET(14, 15);
-			this->m_cItem[count].m_SellMoney	= money;
-			this->m_cItem[count].m_BuyMoney		= money;
-			this->m_cItem[count].px				= x;
-			this->m_cItem[count].py				= y;
-			this->m_cItem[count].live			= 1;
-			this->m_cItem[count].Give			= 0;
-			this->m_cItem[count].m_State		= 1;
-			this->m_cItem[count].m_Time			= GetTickCount() + ::gZenDurationTime * 1000;
-			this->m_cItem[count].m_LootTime		= 0;
+			this->m_cItem[count].m_Type = ITEMGET(14,15);
+			this->m_cItem[count].m_SellMoney = money;
+			this->m_cItem[count].m_BuyMoney = money;
+			this->m_cItem[count].px = x;
+			this->m_cItem[count].py = y;
+			this->m_cItem[count].live = 1;
+			this->m_cItem[count].Give = 0;
+			this->m_cItem[count].m_State = 1;
+			this->m_cItem[count].m_Time = GetTickCount() + ::gZenDurationTime * 1000;
+			this->m_cItem[count].m_LootTime = 0;
 			this->m_ItemCount++;
 
 			if ( this->m_ItemCount > MAX_MAPITEM-1 )
@@ -517,7 +536,10 @@ BOOL MapClass::MoneyItemDrop(int money, int x, int y)
 	return FALSE;
 }
 
-//004A9EB0
+
+
+
+
 BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 {
 	if ( ((item_num<0)?FALSE:(item_num>MAX_MAPITEM-1)?FALSE:TRUE) == FALSE ) 
@@ -534,7 +556,7 @@ BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 
 	if ( this->m_cItem[item_num].IsItem() == FALSE )
 	{
-		LogAdd(lMsg.Get(MSGGET(1, 208)), __FILE__, __LINE__,gObj[aIndex].Name);
+		LogAdd(lMsg.Get(MSGGET(1, 208)), __FILE__, __LINE__,gObj[aIndex].Name);	// Apply Deathway Fix herw
 		return FALSE;
 	}
 
@@ -573,7 +595,7 @@ BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 				{
 					lootresult = 0;
 
-					//if ( this->m_cItem[item_num].m_QuestItem == false )
+					if ( this->m_cItem[item_num].m_QuestItem == false )
 					{
 						if ( gObj[aIndex].PartyNumber >= 0 )
 						{
@@ -594,14 +616,6 @@ BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 								{
 									lootresult = 1;
 								}
-
-								if( IT_MAP_RANGE(gObj[aIndex].MapNumber) ) //season 2.5 add-on
-								{
-									if(this->m_cItem[item_num].m_Type == ITEMGET(12,15))
-									{
-										lootresult = 0;
-									}
-								}
 							}
 						}
 					}
@@ -609,6 +623,7 @@ BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 			}
 		}
 	}
+
 
 	if ( lootresult == 0 )
 	{
@@ -633,42 +648,10 @@ BOOL MapClass::ItemGive(int aIndex, int item_num, bool bFailNotSend)
 	}
 }
 
-//004C9390  - identical
-int MapClass::GetVisibleItemCount(LPOBJ lpObj,int distance)//NEW
-{
-	int itemcount = 0;
 
-	for(int i = 0; i < this->m_ItemCount; i++)
-	{
-		CMapItem * lpMapItem = &this->m_cItem[i];
 
-		if ( lpMapItem->IsItem() != FALSE )
-		{
-			if ( lpMapItem->Give == 0 && lpMapItem->live != 0)
-			{
-				if(gLootingTime > 0)
-				{
-					int tx = lpObj->X - lpMapItem->px;
-					int ty = lpObj->Y - lpMapItem->py;
-					
-					int dis = sqrt((float) (tx*tx+ty*ty));
 
-					if( dis <= distance)
-					{
-						lpMapItem->m_State = 8;
-						lpMapItem->Give = true;
-						lpMapItem->live = false;
 
-						itemcount++;
-					}
-				}	
-			}
-		}
-	}
-
-	return itemcount;
-}
-//004AA480
 void MapClass::StateSetDestroy()
 {
 	int CurTime = GetTickCount();
@@ -695,25 +678,27 @@ void MapClass::StateSetDestroy()
 			{
 				if ( CurTime > this->m_cItem[n].m_Time )
 				{
-					LogAddTD(lMsg.Get(MSGGET(4, 76)), this->m_cItem[n].GetName(), this->m_cItem[n].m_Type, this->m_cItem[n].m_Level, this->m_cItem[n].m_Special[0] , this->m_cItem[n].m_Number);
-					this->m_cItem[n].m_State = 8;
-
-					if(this->m_cItem[n].m_Type == ITEMGET(14,64)) //season 2.5 add-on
+					if (this->m_cItem[n].m_Number != 0)
 					{
-						g_IllusionTempleEvent.SetStatusRegenTime(this->thisMapNumber);
+						//LogAddTD(lMsg.Get(MSGGET(4, 76)), this->m_cItem[n].GetName(), this->m_cItem[n].m_Type, this->m_cItem[n].m_Level, this->m_cItem[n].m_Special[0] , this->m_cItem[n].m_Number);
 					}
+					this->m_cItem[n].m_State = 8;
 				}
 			}
 		}
 	}
 }
 
+
+
+
+
 BOOL MapClass::AttrLoad(char* filename)
 {
 	FILE * fp;
-	BYTE head;
+	unsigned char head;
 
-	fp = fopen(filename,"rb");	//ok
+	fp = fopen(filename,"rb");
 
 	if ( fp == NULL )
 	{
@@ -737,15 +722,32 @@ BOOL MapClass::AttrLoad(char* filename)
 		this->m_attrbuf = NULL;
 	}
 
-	this->m_attrbuf = (LPBYTE)GlobalAlloc(GPTR, 65536);
+	this->m_attrbuf = (UCHAR*)GlobalAlloc(GPTR, 65536);
 	fread(this->m_attrbuf, 256, 256, fp);
 	fclose(fp);
-	this->path->SetMapDimensions( 256, 256, (LPBYTE)this->m_attrbuf);
+	this->path->SetMapDimensions( 256, 256, (UCHAR *)this->m_attrbuf);
 	return true;
 }
 
+
+
+
+
 BYTE MapClass::GetAttr(int x, int y )
 {
+	__try
+	{
+
+	if (this->m_attrbuf == NULL)
+	{
+		return 4;
+	}
+
+	if (this->thisMapNumber > MAX_MAP_NUMBER)
+	{
+		return 4;
+	}
+
 	if ( x < 0 )
 	{
 		return 4;
@@ -768,10 +770,30 @@ BYTE MapClass::GetAttr(int x, int y )
 
 	return this->m_attrbuf[y*256 + x];
 
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return 4;
+	}
 }
+
+
+
 
 BOOL MapClass::GetStandAttr(int x, int y)
 {
+	__try
+	{
+
+	if (this->m_attrbuf == NULL)
+	{
+		return FALSE;
+	}
+
+	if (this->thisMapNumber > MAX_MAP_NUMBER)
+	{
+		return FALSE;
+	}
+
 	if ( x > (this->m_width-1) )
 	{
 		return FALSE;
@@ -800,7 +822,17 @@ BOOL MapClass::GetStandAttr(int x, int y)
 	}
 
 	return TRUE;
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return FALSE;
+	}
 }
+
+
+
+
+
 
 void MapClass::SearchStandAttr(short& x, short& y)
 {
@@ -837,6 +869,9 @@ void MapClass::SearchStandAttr(short& x, short& y)
 	}
 }
 
+
+
+
 void MapClass::SetStandAttr(int x, int y)
 {
 	if ( x > this->m_width-1 )
@@ -851,6 +886,10 @@ void MapClass::SetStandAttr(int x, int y)
 
 	this->m_attrbuf[y*256+x] |= 2;
 }
+
+
+
+
 
 void MapClass::ClearStandAttr(int x, int y)
 {
@@ -869,6 +908,11 @@ void MapClass::ClearStandAttr(int x, int y)
 		this->m_attrbuf[y*256+x] &= 0xFD;
 	}
 }
+
+
+
+
+
 
 bool MapClass::PathFinding2(int sx, int sy, int tx, int ty, PATH_t* a)
 {
@@ -904,10 +948,18 @@ bool MapClass::PathFinding2(int sx, int sy, int tx, int ty, PATH_t* a)
 	return false;
 }
 
+
+
 int TERRAIN_INDEX_REPEAT(int x, int y);
+
+
+
 
 BOOL MapClass::CheckWall(int sx1, int sy1, int sx2, int sy2)
 {
+	__try
+	{
+
 	int Index = TERRAIN_INDEX_REPEAT(sx1,sy1);
 	int nx1;
 	int ny1;
@@ -955,7 +1007,6 @@ BOOL MapClass::CheckWall(int sx1, int sy1, int sx2, int sy2)
 
 	int error = 0;
 	int count = 0;
-	int Shadow = 0;
 
 	do
 	{
@@ -978,12 +1029,24 @@ BOOL MapClass::CheckWall(int sx1, int sy1, int sx2, int sy2)
 	while ( count <= len1 );
 
 	return TRUE;
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return FALSE;
+	}
 }
+
+
+
 
 int TERRAIN_INDEX_REPEAT(int x, int y)
 {
 	return (BYTE)y * 256 + (BYTE)x;
 }
+
+
+
+
 
 bool MapClass::PathFinding3(int sx, int sy, int tx, int ty, PATH_t* a)
 {
@@ -1019,6 +1082,7 @@ bool MapClass::PathFinding3(int sx, int sy, int tx, int ty, PATH_t* a)
 	return false;
 }
 
+
 bool MapClass::PathFinding4(int sx, int sy, int tx, int ty, PATH_t *a)
 {
 	bool Success = this->path->FindPath3(sx, sy, tx, ty, true);
@@ -1053,89 +1117,107 @@ bool MapClass::PathFinding4(int sx, int sy, int tx, int ty, PATH_t *a)
 	return false;
 }
 
+
+
 BYTE MapClass::CheckWall2(int sx1, int sy1, int sx2, int sy2)
 {
-	int Index = TERRAIN_INDEX_REPEAT(sx1,sy1);
-	int nx1;
-	int ny1;
-	int d1;
-	int d2;
-	int len1;
-	int len2;
-	int px1 = sx2 - sx1;
-	int py1 = sy2 - sy1;
+	bool catchError = true;
+	__try
+	{
+		int Index = TERRAIN_INDEX_REPEAT(sx1,sy1);
+		int nx1;
+		int ny1;
+		int d1;
+		int d2;
+		int len1;
+		int len2;
+		int px1 = sx2 - sx1;
+		int py1 = sy2 - sy1;
 
-	if ( px1 < 0 )
-	{
-		px1 = -px1;
-		nx1 = -1;
-	}
-	else
-	{
-		nx1 = 1;
-	}
-
-	if ( py1 < 0 )
-	{
-		py1 = -py1;
-		ny1 = -256;
-	}
-	else
-	{
-		ny1 = 256;
-	}
-
-	if ( px1 > py1 )
-	{
-		len1 = px1;
-		len2= py1;
-		d1 = ny1;
-		d2 = nx1;
-	}
-	else
-	{
-		len1 = py1;
-		len2 = px1;
-		d1 = nx1;
-		d2 = ny1;
-	}
-
-	int start = 0;
-	BOOL error = FALSE;
-	int count = 0;
-	int Shadow = 0;
-
-	do
-	{
-		if ( start == 0 )
+		if ( px1 < 0 )
 		{
-			if ( (this->m_attrbuf[Index]&2) == 2 )
-			{
-				return 2;
-			}
+			px1 = -px1;
+			nx1 = -1;
 		}
 		else
 		{
-			start = 1;
+			nx1 = 1;
 		}
 
-		if ( (this->m_attrbuf[Index]&4) == 4 )
+		if ( py1 < 0 )
 		{
-			return 4;
+			py1 = -py1;
+			ny1 = -256;
 		}
-
-		error +=len2;
-
-		if ( error > (len1/2) )
+		else
 		{
-			Index += d1;
-			error -= len1;
+			ny1 = 256;
 		}
 
-		Index += d2;
-		count++;
+		if ( px1 > py1 )
+		{
+			len1 = px1;
+			len2= py1;
+			d1 = ny1;
+			d2 = nx1;
+		}
+		else
+		{
+			len1 = py1;
+			len2 = px1;
+			d1 = nx1;
+			d2 = ny1;
+		}
+
+		int start = 0;
+		BOOL error = FALSE;
+		int count = 0;
+
+		do
+		{
+			if ( start == 0 )
+			{
+				if ( (this->m_attrbuf[Index]&2) == 2 )
+				{
+					catchError = false;
+					return 2;
+				}
+			}
+			else
+			{
+				start = 1;
+			}
+
+			if ( (this->m_attrbuf[Index]&4) == 4 )
+			{
+				catchError = false;
+				return 4;
+			}
+
+			error +=len2;
+
+			if ( error > (len1/2) )
+			{
+				Index += d1;
+				error -= len1;
+			}
+
+			Index += d2;
+			count++;
+		}
+		while ( count <= len1 );
+		
+		catchError = false;
+		return 1;
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		if(catchError == true)
+		{		
+			LogAdd("error : %s %d", __FILE__, __LINE__ );			
+		}
+
+		return 1;
 	}
-	while ( count <= len1 );
 	
-	return 1;
 }

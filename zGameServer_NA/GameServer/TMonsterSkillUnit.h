@@ -41,18 +41,17 @@ public:
 public:
 
 	char m_szUnitName[20];	// 4
-	int m_iUnitNumber;	// 18
-	int m_iUnitTargetType;	// 1C
-	int m_iUnitScopeType;	// 20
-	int m_iUnitScopeValue;	// 24
-	int m_iDelay;	// 28
-	int m_iElementsCount;	// 2C
+	short m_iUnitNumber;	// 18
+	short m_iUnitTargetType;	// 1C
+	short m_iUnitScopeType;	// 20
+	short m_iUnitScopeValue;	// 24
+	short m_iDelay;	// 28
+	short m_iElementsCount;	// 2C
 	TMonsterSkillElement* m_lpElementsSlot[5];	// 30
 
 	static BOOL s_bDataLoad;
 	static TMonsterSkillUnit s_MonsterSkillUnitArray[MAX_MONSTER_SKILL_UNIT_ARRAY];
 
 };
-
 
 #endif // !defined(AFX_TMONSTERSKILLUNIT_H__9F3D0706_317D_4E48_8A4A_439053F8F0B0__INCLUDED_)

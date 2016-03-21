@@ -28,4 +28,6 @@ private:
 	short m_GuildCount;
 };
 
+void CViewportGuild__SystemProcessesScan(void * lpParam);
+
 #endif

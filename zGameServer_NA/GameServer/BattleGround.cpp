@@ -1,6 +1,8 @@
-// GS-CS 1.00.90  - Completed
 #include "stdafx.h"
 #include "BattleGround.h"
+// GS-N 0.99.60T 0x004596B0 Completed
+// GS-N 1.00.18 0x00468DC0 - Completed
+
 
 CBattleGround::CBattleGround()
 {
@@ -13,6 +15,7 @@ CBattleGround::~CBattleGround()
 	return;
 }
 
+
 void CBattleGround::SetGroundRect(int map, int x, int y, int xl, int yl)
 {
 	this->m_MapNumber = map;
@@ -23,15 +26,18 @@ void CBattleGround::SetGroundRect(int map, int x, int y, int xl, int yl)
 	this->m_Set = true;
 }
 
+
 void CBattleGround::SetBattleType(int type)
 {
 	this->m_Type = type;
 }
 
+
 BOOL CBattleGround::GetUsed()
 {
 	return this->m_Used;
 }
+
 
 void CBattleGround::Enable(BOOL enable)
 {
@@ -43,6 +49,7 @@ void CBattleGround::Enable(BOOL enable)
 		this->m_Score2 = 0;
 	}
 }
+
 
 void CBattleGround::SetTeamMaster(int n, char *szId)
 {
@@ -56,6 +63,7 @@ void CBattleGround::SetTeamMaster(int n, char *szId)
 	}
 }
 
+
 void CBattleGround::SetTeamName(int n, char *szName)
 {
 	if ( n == 0 )
@@ -67,6 +75,7 @@ void CBattleGround::SetTeamName(int n, char *szName)
 		strcpy( this->m_szTeamName2 , szName);
 	}
 }
+
 
 char * CBattleGround::GetTeamName(int n)
 {
@@ -80,6 +89,7 @@ char * CBattleGround::GetTeamName(int n)
 	}
 }
 
+
 int CBattleGround::GetScore(int team)
 {
 	if ( team == 0 )
@@ -91,6 +101,7 @@ int CBattleGround::GetScore(int team)
 		return this->m_Score2;
 	}
 }
+
 
 void CBattleGround::SetScore(int team, int score)
 {
@@ -104,11 +115,13 @@ void CBattleGround::SetScore(int team, int score)
 	}
 }
 
+
 void CBattleGround::SetTimer(int g_time)
 {
 	this->m_nTimer = g_time;
 	this->m_dwCurTimer = GetTickCount();
 }
+
 
 int CBattleGround::GetTimer()
 {

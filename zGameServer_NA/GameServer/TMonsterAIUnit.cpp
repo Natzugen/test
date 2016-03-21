@@ -1,6 +1,5 @@
 // TMonsterAIUnit.cpp: implementation of the TMonsterAIUnit class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00563910	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -66,7 +65,7 @@ BOOL TMonsterAIUnit::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{

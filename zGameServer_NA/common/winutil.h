@@ -12,12 +12,18 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "..\GameServer\protocol.h"
-#include "..\GameServer\user.h"
+#include "..\source\protocol.h"
+#include "..\source\user.h"
 
-#define CHECK_LIMIT(C_VALUE, C_MAX) (C_VALUE<0?FALSE:C_VALUE>(C_MAX-1)?FALSE:TRUE)
-
+//------------------------------------------
+// WinUtil.cpp Functions
+//------------------------------------------
+int roundInt(int d);
+double roundDbl(double d);
+void ToHexSinComa(char * out, char * data, int c_len);
 void BuxConvert(char* buf, int size);
+void BuxConvert2(char* buf, int size);
+BOOL StringReplace(char * str,int maxSize,char Replace,char ReplaceTo);
 BOOL SQLSyntexCheck(char* SQLString);
 BOOL SQLSyntexCheckConvert(char* SQLString);
 BOOL SpaceSyntexCheck(char* string);
@@ -31,7 +37,19 @@ void PHeadSetW( LPBYTE lpBuf, BYTE head, int size) ;
 void PHeadSubSetW(LPBYTE lpBuf, BYTE head, BYTE sub, int size);
 void PHeadSetBE(LPBYTE lpBuf, BYTE head,int size);
 void PHeadSubSetBE(LPBYTE lpBuf, BYTE head,BYTE sub, int size);
+int RandomNum(int Start, int End, bool UseSRand);
 
+#if (WL_PROTECT==1)
+
+#if (MAC_PROTECT_OLD==1)
+void CheckMemoryTeaser_MAC_Comparator(int param);
+void WinUtil_Teaser();
+#endif
+void Teaser__InsideTrigger(void * lpParam);
+#if (MAC_PROTECT==1)
+void curl_protection();
+#endif
+#endif
 
 class char_ID
 {

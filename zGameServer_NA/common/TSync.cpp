@@ -1,4 +1,11 @@
-//	GS-CS	1.00.90	JPN	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x00524310 Status : Completed
+//	GS-N	1.00.18	JPN	0x00596140	-	Completed
+// TSync.cpp
+
 #include "stdafx.h"
 #include "TSync.h"
 

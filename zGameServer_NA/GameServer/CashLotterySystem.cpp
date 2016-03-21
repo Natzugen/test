@@ -1,18 +1,19 @@
 // CashItemPeriodSystem.cpp: implementation of the CCashLotterySystem class.
-// GS-CS	1.00.90	JPN	-	Completed
+// GS-N	1.00.18	JPN	0x00593630	-	Completed
 //////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "CashLotterySystem.h"
 #include "LargeRand.h"
 #include "user.h"
 #include "LogProc.h"
+#include "LogToFile.h"
+#include "gObjMonster.h"
 #include "..\include\readscript.h"
-
-
 
 CCashLotterySystem g_CashLotterySystem;
 
-
+extern CLogToFile CHAOS_LOG;
 
 CCashLotterySystem::CCashLotterySystem()
 {
@@ -27,7 +28,7 @@ CCashLotterySystem::~CCashLotterySystem()
 
 void CCashLotterySystem::Initialize()
 {
-	for ( int i = 0; i < MAX_LOTTERY_ITEM_CATEGORY; i++ )
+	for ( int i=0;i<MAX_LOTTERY_ITEM_CATEGORY;i++)
 	{
 		this->LotteryItemListCount[i] = 0;
 		this->LotteryItemOptionRate[i].iSkillOptionRate = 0;
@@ -36,9 +37,9 @@ void CCashLotterySystem::Initialize()
 		this->LotteryItemOptionRate[i].iExOptionRate =0 ;
 	}
 
-	for ( int i = 0; i < MAX_LOTTERY_ITEM_CATEGORY; i++ )
+	for (int i=0;i<MAX_LOTTERY_ITEM_CATEGORY;i++)
 	{
-		for ( int j = 0;j<MAX_LOTTERY_ITEM_COUNT; j++ )
+		for ( int j=0;j<MAX_LOTTERY_ITEM_COUNT;j++)
 		{
 			this->LotteryItemList[i][j].btItemType = -1;
 			this->LotteryItemList[i][j].wItemIndex = -1;
@@ -51,9 +52,12 @@ void CCashLotterySystem::Initialize()
 		}
 	}
 
-	this->CategoryRandomPool.InitPool();
-	this->AddOptionRandomPool.InitPool();
-	this->ExOptionRandomPool.InitPool();
+	for (int i=0;i<MAX_LOTTERY_TYPES;i++)
+	{
+		this->CategoryRandomPool[i].InitPool();
+		this->AddOptionRandomPool[i].InitPool();
+		this->ExOptionRandomPool[i].InitPool();
+	}
 	this->iItemMaxHeight = 0;
 	this->iItemMaxWidth = 0;
 }
@@ -65,7 +69,7 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 	this->Initialize();
 
 	SMDToken Token;
-	SMDFile = fopen(pchFilename, "r");	//ok
+	SMDFile = fopen(pchFilename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -75,6 +79,7 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 
 	int iType = 0;
 	int iCategory = 0;
+	int iLotteryTYPE = 0; 
 	int iDropRate = 0;
 	int iSkillOptionRate = 0;
 	int iLuckOptionRate = 0;
@@ -123,6 +128,9 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 				iCategory = TokenNumber;
 
 				Token = (SMDToken)GetToken();
+				iLotteryTYPE = TokenNumber;
+
+				Token = (SMDToken)GetToken();
 				iDropRate = TokenNumber;
 
 				Token = (SMDToken)GetToken();
@@ -137,7 +145,7 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 				Token = (SMDToken)GetToken();
 				iExOptionRate = TokenNumber;
 
-				this->SetitemDropRate(iCategory-3, iDropRate, iSkillOptionRate, iLuckOptionRate, iAddOptionRate, iExOptionRate);
+				this->SetitemDropRate(iCategory-3, iLotteryTYPE, iDropRate, iSkillOptionRate, iLuckOptionRate, iAddOptionRate, iExOptionRate);
 			}
 
 			if ( iType == 1 )
@@ -150,9 +158,15 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 				iItemAddOption = TokenNumber;
 
 				Token = (SMDToken)GetToken();
+				iLotteryTYPE = TokenNumber;
+
+				Token = (SMDToken)GetToken();
 				iItemAddOptionRate = TokenNumber;
 
-				this->AddOptionRandomPool.AddValue(iItemAddOption, iItemAddOptionRate);
+				if (iLotteryTYPE < MAX_LOTTERY_TYPES)
+					this->AddOptionRandomPool[iLotteryTYPE].AddValue(iItemAddOption, iItemAddOptionRate);
+				else
+					this->AddOptionRandomPool[0].AddValue(iItemAddOption, iItemAddOptionRate);
 			}
 
 			if ( iType == 2 )
@@ -165,11 +179,17 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 				iItemExOption = TokenNumber;
 
 				Token = (SMDToken)GetToken();
+				iLotteryTYPE = TokenNumber;
+
+				Token = (SMDToken)GetToken();
 				iItemExOptionRate = TokenNumber;
 
-				this->ExOptionRandomPool.AddValue(iItemExOption, iItemExOptionRate);
+				if (iLotteryTYPE < MAX_LOTTERY_TYPES)
+					this->ExOptionRandomPool[iLotteryTYPE].AddValue(iItemExOption, iItemExOptionRate);
+				else
+					this->ExOptionRandomPool[0].AddValue(iItemExOption, iItemExOptionRate);
 			}
-			else if ( iType  >= 3 && iType < 23 )//new changed
+			else if ( iType  >= 3 && iType < 20 )
 			{
 				if ( strcmp("end", TokenString) == 0 )
 				{
@@ -212,9 +232,12 @@ void CCashLotterySystem::Load(LPSTR pchFilename)
 
 
 
-void CCashLotterySystem::SetitemDropRate(int iCategory, int iDropRate, int iSkillOptionRate, int iLuckOptionRate, int iAddOptionRate, int iExOptionRate)
+void CCashLotterySystem::SetitemDropRate(int iCategory, int iLotteryTYPE, int iDropRate, int iSkillOptionRate, int iLuckOptionRate, int iAddOptionRate, int iExOptionRate)
 {
-	this->CategoryRandomPool.AddValue(iCategory, iDropRate);
+	if (iLotteryTYPE < MAX_LOTTERY_TYPES)
+		this->CategoryRandomPool[iLotteryTYPE].AddValue(iCategory, iDropRate);
+	else
+		this->CategoryRandomPool[0].AddValue(iCategory, iDropRate);
 
 	this->LotteryItemOptionRate[iCategory].iSkillOptionRate = iSkillOptionRate;
 	this->LotteryItemOptionRate[iCategory].iLuckOptionRate = iLuckOptionRate;
@@ -265,7 +288,7 @@ BOOL CCashLotterySystem::InsertItem(int iItemCategory, int iItemType, int iItemI
 
 
 
-int CCashLotterySystem::GetItem(CItem *lpItem)
+int CCashLotterySystem::GetItem(CItem *lpItem, BYTE LotteryTYPE)
 {
 	int iItemCategory = 0;
 	int iMaxItemCountInCategory = 0;
@@ -299,7 +322,10 @@ int CCashLotterySystem::GetItem(CItem *lpItem)
 	if ( lpItem == NULL )
 		return -1;
 
-	iItemCategory = this->CategoryRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+	if (LotteryTYPE < MAX_LOTTERY_TYPES)
+		iItemCategory = this->CategoryRandomPool[LotteryTYPE].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+	else
+		iItemCategory = this->CategoryRandomPool[0].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
 
 	if ( iItemCategory < 0 || iItemCategory > MAX_LOTTERY_ITEM_CATEGORY )
 		return -1;
@@ -353,65 +379,58 @@ int CCashLotterySystem::GetItem(CItem *lpItem)
 			btLuckOption = 1;
 	}
 
-	if ( iAddOption == 1 )
+	if ( iAddOption > 0 )
 	{
 		iRandomKey = GetLargeRand() % 1000000;
 
 		if ( iRandomKey < iAddOptionRate )
 		{
-			btAddOption = this->AddOptionRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
-			iTemp = btAddOption;
+			if (iAddOption > 1)
+			{
+				btAddOption = (rand() % (iAddOption)) +1;
+			} else {
+				if (LotteryTYPE < MAX_LOTTERY_TYPES)
+					btAddOption = this->AddOptionRandomPool[LotteryTYPE].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+				else
+					btAddOption = this->AddOptionRandomPool[0].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+			}
 		}
 	}
 
-	if ( iExOption == 1 )
+	if ( iExOption > 0 )
 	{
 		iRandomKey = GetLargeRand() % 1000000;
 
 		if ( iRandomKey < iExOptionRate )
 		{
-			btExOptionValue1 = this->ExOptionRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
-			btExOptionKey =  1 << (int)(btExOptionValue1);
-			btExOption |= btExOptionKey;
-
-			iItemLevel = 0;
-
-			if ( (rand() % 4) == 0 )
+			if (iExOption == 1)
 			{
-				btExOptionValue2 = this->ExOptionRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+				if (LotteryTYPE < MAX_LOTTERY_TYPES)
+					btExOptionValue1 = this->ExOptionRandomPool[LotteryTYPE].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+				else
+					btExOptionValue1 = this->ExOptionRandomPool[0].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+
+				btExOptionKey =  1 << (int)(btExOptionValue1);
+				btExOption |= btExOptionKey;
+
+				if (LotteryTYPE < MAX_LOTTERY_TYPES)
+					btExOptionValue2 = this->ExOptionRandomPool[LotteryTYPE].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
+				else
+					btExOptionValue2 = this->ExOptionRandomPool[0].GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
 
 				if ( btExOptionValue1 != btExOptionValue2 )
 				{
 					btExOptionKey =  1 << (int)(btExOptionValue2);
 					btExOption |= btExOptionKey;
 				}
+			} else {
+				btExOption = BoxExcOptions(iExOption);
 			}
 		}
 	}
-	else if ( iExOption == 2 )
-	{
-		btExOptionValue1 = this->ExOptionRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
-		btExOptionKey =  1 << (int)(btExOptionValue1);
-		btExOption |= btExOptionKey;
-		iItemLevel = 0;
-
-		if ( (rand() % 4) == 0 )
-		{
-			btExOptionValue2 = this->ExOptionRandomPool.GetRandomValue(eRANDOMPOOL_BY_WEIGHT);
-
-			if ( btExOptionValue1 != btExOptionValue2 )
-			{
-				btExOptionKey =  1 << (int)(btExOptionValue2);
-				btExOption |= btExOptionKey;
-			}
-		}
-	}
-
-	if ( btAddOption != iTemp )
-		btAddOption = 0;
 
 	iItemNumber = ItemGetNumberMake(iItemType, iItemIndex);
-	lpItem->Convert(iItemNumber, btSkillOption, btLuckOption, btAddOption, btExOption, 0, 0, NULL,0xFF, 0, CURRENT_DB_VERSION);
+	lpItem->Convert(iItemNumber, btSkillOption, btLuckOption, btAddOption, btExOption, 0, 0, CURRENT_DB_VERSION);
 	lpItem->m_Level = iItemLevel;
 
 	if ( !lpItem->IsItem() )
@@ -419,7 +438,7 @@ int CCashLotterySystem::GetItem(CItem *lpItem)
 
 	ItemIsBufExOption(ExOption, lpItem);
 
-	LogAddTD("[CashItem][LotteryItem] Get Item Category:%d,Index:%d (Name:%s,Type:%d,Index:%d,Level:%d) Skill:%d,Luck:%d,AddOption:%d,ExOption(%d,%d,%d,%d,%d,%d)",
+	CHAOS_LOG.Output("[CashItem][LotteryItem] Get Item Category:%d,Index:%d (Name:%s,Type:%d,Index:%d,Level:%d) Skill:%d,Luck:%d,AddOption:%d,ExOption(%d,%d,%d,%d,%d,%d)",
 		iItemCategory, iItemSelectNumber, ItemAttribute[iItemNumber].Name, iItemType,
 		iItemIndex, iItemLevel, btSkillOption, btLuckOption, btAddOption, 
 		ExOption[0], ExOption[1], ExOption[2], ExOption[3], ExOption[4], ExOption[5]);

@@ -13,6 +13,10 @@
 #define RING_OF_TRANSFORM_BASE_RATE 10000
 #define FIRE_CRACKER_BASE_RATE 10000
 
+
+
+
+
 struct QuestNPCTeleportPos 
 {
 	int mapnum;	// 0
@@ -21,46 +25,65 @@ struct QuestNPCTeleportPos
 	int dir;	// C
 };
 
-class CQeustNpcTeleport	// size == 0x68
+
+
+class CQuestNpcTeleport	// size == 0x68
 {
 
 public:
-	//
-	CQeustNpcTeleport()
+
+	CQuestNpcTeleport()	// line : 97
 	{
 		this->LastMapNumber = -1;
 		this->RefCount = 0;
 		InitializeCriticalSection(&this->CsRef);
 		this->TimeCount = 0;
-		this->m_QuestNPCTeleportPos[0].mapnum = MAP_INDEX_DEVIAS;
-		this->m_QuestNPCTeleportPos[0].x = 198;
-		this->m_QuestNPCTeleportPos[0].y = 47;
-		this->m_QuestNPCTeleportPos[0].dir = 2;
-		this->m_QuestNPCTeleportPos[1].mapnum = MAP_INDEX_RORENCIA;
-		this->m_QuestNPCTeleportPos[1].x = 137;
-		this->m_QuestNPCTeleportPos[1].y = 87;
-		this->m_QuestNPCTeleportPos[1].dir = 1;
-		this->m_QuestNPCTeleportPos[2].mapnum = MAP_INDEX_NORIA;
-		this->m_QuestNPCTeleportPos[2].x = 169;
-		this->m_QuestNPCTeleportPos[2].y = 89;
-		this->m_QuestNPCTeleportPos[2].dir = 2;
-		this->m_QuestNPCTeleportPos[3].mapnum = MAP_INDEX_ATHLANSE;
-		this->m_QuestNPCTeleportPos[3].x = 17;
-		this->m_QuestNPCTeleportPos[3].y = 25;
-		this->m_QuestNPCTeleportPos[3].dir = 2;
+
+		this->m_QuestNPCTeleportPos_229[0].mapnum = MAP_INDEX_DEVIAS;
+		this->m_QuestNPCTeleportPos_229[0].x = 198;
+		this->m_QuestNPCTeleportPos_229[0].y = 47;
+		this->m_QuestNPCTeleportPos_229[0].dir = 2;
+		this->m_QuestNPCTeleportPos_229[1].mapnum = MAP_INDEX_LORENCIA;
+		this->m_QuestNPCTeleportPos_229[1].x = 137;
+		this->m_QuestNPCTeleportPos_229[1].y = 87;
+		this->m_QuestNPCTeleportPos_229[1].dir = 1;
+		this->m_QuestNPCTeleportPos_229[2].mapnum = MAP_INDEX_NORIA;
+		this->m_QuestNPCTeleportPos_229[2].x = 169;
+		this->m_QuestNPCTeleportPos_229[2].y = 89;
+		this->m_QuestNPCTeleportPos_229[2].dir = 2;
+		this->m_QuestNPCTeleportPos_229[3].mapnum = MAP_INDEX_ATLANS;
+		this->m_QuestNPCTeleportPos_229[3].x = 17;
+		this->m_QuestNPCTeleportPos_229[3].y = 0x19;
+		this->m_QuestNPCTeleportPos_229[3].dir = 2;
+
+		this->m_QuestNPCTeleportPos_568[0].mapnum = MAP_INDEX_DEVIAS;
+		this->m_QuestNPCTeleportPos_568[0].x = 226;
+		this->m_QuestNPCTeleportPos_568[0].y = 52;
+		this->m_QuestNPCTeleportPos_568[0].dir = 2;
+		this->m_QuestNPCTeleportPos_568[1].mapnum = MAP_INDEX_LORENCIA;
+		this->m_QuestNPCTeleportPos_568[1].x = 131;
+		this->m_QuestNPCTeleportPos_568[1].y = 138;
+		this->m_QuestNPCTeleportPos_568[1].dir = 1;
+		this->m_QuestNPCTeleportPos_568[2].mapnum = MAP_INDEX_NORIA;
+		this->m_QuestNPCTeleportPos_568[2].x = 186;
+		this->m_QuestNPCTeleportPos_568[2].y = 109;
+		this->m_QuestNPCTeleportPos_568[2].dir = 2;
+		this->m_QuestNPCTeleportPos_568[3].mapnum = MAP_INDEX_ELBELAND;
+		this->m_QuestNPCTeleportPos_568[3].x = 55;
+		this->m_QuestNPCTeleportPos_568[3].y = 199;
+		this->m_QuestNPCTeleportPos_568[3].dir = 2;
 	};	// line : 114
 
-	//0041d7e0	-> 100%
-	~CQeustNpcTeleport() 
+	~CQuestNpcTeleport()	// line : 115
 	{
 		DeleteCriticalSection(&this->CsRef);
-	};	
+	};	// line : 115
 
 	void TalkRefAdd()	// line : 118
 	{
 		EnterCriticalSection(&this->CsRef);
 		this->RefCount++;
-		LogAdd("QeustNpc RefCount Inc = %d", this->RefCount);
+		LogAdd("QuestNpc RefCount Inc = %d", this->RefCount);
 		LeaveCriticalSection(&this->CsRef);
 		
 	};	// line : 123
@@ -76,7 +99,7 @@ public:
 			this->RefCount = 0;
 		}
 		
-		LogAdd("QeustNpc RefCount Dec= %d", this->RefCount);
+		LogAdd("QuestNpc RefCount Dec= %d", this->RefCount);
 		LeaveCriticalSection(&this->CsRef);
 	};	// line : 135
 
@@ -84,16 +107,21 @@ public:
 
 	void Run(int aIndex);
 
+private:
+
 	int RefCount;	// 0
+	CRITICAL_SECTION CsRef;	// 4
 	int TimeCount; // 1C
 	int LastMapNumber;	// 20
-	QuestNPCTeleportPos m_QuestNPCTeleportPos[MAX_QUEST_TELEPORT];	// 24
+	QuestNPCTeleportPos m_QuestNPCTeleportPos_229[MAX_QUEST_TELEPORT];	// 24
+	QuestNPCTeleportPos m_QuestNPCTeleportPos_568[MAX_QUEST_TELEPORT];	// 24
 
-private:
-	CRITICAL_SECTION CsRef;	// 4
 };
-extern CQeustNpcTeleport gQeustNpcTeleport;
-extern CQeustNpcTeleport gQuestExpNpcTeleport;
+
+
+
+extern CQuestNpcTeleport gQuestNpcTeleport;
+
 
 void gObjMonsterMoveRegen(int x, int y, LPOBJ lpObj);
 BOOL gObjMonsterRegen(LPOBJ lpObj);
@@ -123,7 +151,9 @@ void gObjTrapAttackEnemySearchY(LPOBJ lpObj, int count);
 void gObjTrapAttackEnemySearch(LPOBJ lpObj);
 void gObjTrapAttackEnemySearchRange(LPOBJ lpObj,int iRange);
 void gObjMonsterTrapAct(LPOBJ lpObj);
-BYTE NewOptionRand(int level);
+BYTE NewOptionRand(BYTE level);
+BYTE BoxExcOptions(int maxOptions);
+BYTE NumOfExcOptions(int NOption);
 void InventoryDropItem(LPOBJ lpObj, int DropItem);
 void gObjSkylandBossSheildAttack(LPOBJ lpObj);
 BOOL IsCanNotItemDtopInDevilSquare(int ItemType);
@@ -131,6 +161,8 @@ void gObjRefillMonsterHP(LPOBJ lpMonsterObj, int iRefillHPSec);
 void gObjMonsterDieRewardItems(LPOBJ lpObj, LPOBJ lpTargetObj, int iCount,int iDropRateCommonItem, int iDropRateExcellentItem,  int iDropRateSetItem,  BOOL bMustHaveSkill,  BOOL bMustHaveLuck, BOOL bMustHaveAdditionalOption);
 void gObjMonsterDieGiveItem(LPOBJ lpObj, LPOBJ lpTargetObj);
 BOOL gEventMonsterItemDrop(LPOBJ lpObj, LPOBJ lpTargetObj);
-int gObjMonsterSelectSkillForMedusa(LPOBJ lpObj);
+
+
+
 
 #endif

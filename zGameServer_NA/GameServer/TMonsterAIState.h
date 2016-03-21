@@ -58,15 +58,15 @@ public:
 
 public:
 
-	int m_iPriority;	// 0
-	int m_iCurrentState;	// 4
-	int m_iNextState;	// 8
-	int m_iTransitionType;	// C
-	int m_iTransitionRate;	// 10
-	int m_iTransitionValueType;	// 14
-	int m_iTransitionValue;	// 18
-	int m_iDelayTime;	// 1C
-	char m_szStateTransitionDesc[100];	// 20
+	short m_iPriority;	// 0
+	short m_iCurrentState;	// 4
+	short m_iNextState;	// 8
+	short m_iTransitionType;	// C
+	short m_iTransitionRate;	// 10
+	short m_iTransitionValueType;	// 14
+	short m_iTransitionValue;	// 18
+	short m_iDelayTime;	// 1C
+	char m_szStateTransitionDesc[50];	// 20
 
 };
 

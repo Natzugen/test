@@ -1,5 +1,3 @@
-//GS-N 1.00.90 - 0xXXXXXXXX  - complete
-//GS-CS 1.00.90 - 0xXXXXXXXX  - complete
 #include "stdafx.h"
 #include "Event.h"
 #include "ItemBag.h"
@@ -9,132 +7,146 @@
 #include "GameServer.h"
 #include "GameMain.h"
 #include "..\common\winutil.h"
-#include "ProbabilityItemBag.h"
-#include "EventManagement.h"
-#include "JewelsEx.h"
+#include "ImperialGuardian.h"
+#include "IllusionTemple.h"
+#include "XMasEvent.h"
+#include "EProtocol.h"
+
+#include "LogToFile.h"
+extern CLogToFile ITEMBAG_DROP_LOG;
+
+// GS-N 0.99.60T 0x00460DF0 
+//	GS-N	1.00.18	JPN	0x00470700	-	Completed
+
 
 void EventChipEventProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 {
+#if (TRACE_PROTOCOL==1)
+	LogAddHeadHex("R","EVENT_SERVER", aRecv, aLen);
+#endif
+
 	switch ( protoNum )
 	{
 		case 0x01:
 			EGRecvEventChipInfo((PMSG_ANS_VIEW_EC_MN *)aRecv);
-			break;
+		break;
 		case 0x02:
 			EGResultRegEventChip((PMSG_ANS_REGISTER_EVENTCHIP *)aRecv);
-			break;
+		break;
 		case 0x03:
 			EGRecvRegMutoNum((PMSG_ANS_REGISTER_MUTONUM *)aRecv);
-			break;
+		break;
 		case 0x04:
 			EGRecvChangeRena((PMSG_ANS_RESET_EVENTCHIP *)aRecv);
-			break;
+		break;
 		case 0x05:
 			EGRecvStoneInfo((PMSG_ANS_VIEW_STONES *)aRecv);
-			break;
+		break;
 		case 0x06:
 			EGRecvRegStone((PMSG_ANS_REGISTER_STONES *)aRecv);
-			break;
+		break;
 		case 0x07:
 			EGRecvDeleteStone((PMSG_ANS_DELETE_STONES *)aRecv);
-			break;
+		break;
 		case 0x09:
 			EGRecvChangeStones((PMSG_ANS_RESET_EVENTCHIP *)aRecv);
-			break;
+		break;
 		case 0x08:
 			EGRecv2AnvRegSerial((PMSG_ANS_2ANIV_SERIAL *)aRecv);
-			break;
+		break;
 		case 0x10:
 			EGRecvRegRingGift((PMSG_ANS_REG_RINGGIFT *)aRecv);
-			break;
+		break;
 		case 0x15:
 			EGAnsRegCCOfflineGift((PMSG_ANS_REG_CC_OFFLINE_GIFT *)aRecv);
-			break;
+		break;
 		case 0x16:
 			EGAnsRegDLOfflineGift((PMSG_ANS_REG_DL_OFFLINE_GIFT *)aRecv);
-			break;
+		break;
 		case 0x17:
 			EGAnsRegHTOfflineGift((PMSG_ANS_REG_HT_OFFLINE_GIFT *)aRecv);
-			break;
-#ifdef PCBANG
-		case 0x23: //season4.5 add-on start
-			g_PCBangPointSystem.EGAnsPcBangPointInfo((PMSG_ANS_REG_PC_POINT *)aRecv);
-			break;
-		case 0x24:
-			g_PCBangPointSystem.EGAnsUserFirstPcBangUpdatePoint((PMSG_ANS_REG_PC_POINT *)aRecv);
-			break;
-		case 0x29:
-			g_PCBangPointSystem.EGAnsUpdatePcBangResetPointInfo((PMSG_ANS_REG_PC_POINT *)aRecv);
-			break;
-		case 0x30:
-			g_PCBangPointSystem.EGAnsUserPcBangUpdatePoint((PMSG_ANS_REG_PC_POINT *)aRecv);
-			break; 
-#endif
-		case 0x31:
-			EGAnsRegXMasGetPayItemResult((PMSG_XMAS_PAY_ITEM_RESULT *)aRecv);
-			break;
-		case 0x32:
-			EGAnsRegXMasSetPayItemResult((PMSG_XMAS_PAY_ITEM_RESULT *)aRecv);
-			break;
-		case 0x33:
-			EGAnsRegLuckyCoinItemResult((PMSG_ANS_LUCKYCOIN_REGCOUNT_RESULT *)aRecv);
-			break;
-		case 0x34:
-			EGAnsRegLuckyCoinItemPositionResult((PMSG_ANS_LUCKYCOIN_REGCOUNT_RESULT *)aRecv);
-			break;//season4.5 add-on end
-		case 0x37:
-			EGRecvGoldenArcherInfo((PMSG_ANS_VIEW_GOLDEN_ARCHER_WINDOW *) aRecv);
-			break;
-		case 0x38:
-			EGResultRegGoldenArcherRena((PMSG_ANS_REGISTER_EVENTCHIP *)aRecv);
-			break;
+		break;
 	}
 }
 
-void DataSendEventChip(char* pMsg, int size)
-{
-	if ( IsEventChipServerConnected == FALSE && ::EventChipServerConnect != FALSE )
-	{
-		wsEvenChipServerCli.Close();
-		wsEvenChipServerCli.CreateSocket(ghWnd);
-		if ( GMEventChipServerConnect(::gEventChipServerIp, WM_GM_EVENTCHIP_CLIENT_MSG_PROC) == FALSE )
-		{
-			IsEventChipServerConnected = FALSE;
-			LogAddTD("Can not connect EventChip Server");
 
-			return;
+void DataSendEventChip(PCHAR pMsg, int size)
+{
+	if(ReadConfig.SCFESON == FALSE)
+	{
+		if ( IsEventChipServerConnected == FALSE && ::EventChipServerConnect != FALSE )
+		{
+			wsEvenChipServerCli.Close();
+			wsEvenChipServerCli.CreateSocket(ghWnd);
+			if ( GMEventChipServerConnect(::gEventChipServerIp, WM_GM_EVENTCHIP_CLIENT_MSG_PROC) == FALSE )
+			{
+				IsEventChipServerConnected = FALSE;
+				ITEMBAG_DROP_LOG.Output("Can not connect EventChip Server");
+
+				return;
+			}
+
+			::IsEventChipServerConnected = TRUE;
+
 		}
 
-		::IsEventChipServerConnected = TRUE;
-
-	}
-
-	if ( ::IsEventChipServerConnected != FALSE && ::EventChipServerConnect != FALSE )
-	{
-		::wsEvenChipServerCli.DataSend((char *)pMsg, size);
+		if ( ::IsEventChipServerConnected != FALSE && ::EventChipServerConnect != FALSE )
+		{
+			::wsEvenChipServerCli.DataSend((char *)pMsg, size);
+		}
+	}else
+	{		
+		EProtocolSendTransform((char *)pMsg);
 	}
 }
+
 
 void EledoradoBoxOpenEven(LPOBJ lpObj, int boxtype,int addlevel,int money)
 {
-	CProbabilityItemBag * EledoradoBox = NULL;
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int ExOption = 0;
+	int ItemDropRate = 0;
+	int ExItemDropRate = 0;
+	CItemBag * EledoradoBox = NULL;
 
 	switch ( boxtype )
 	{
 		case 8:
 			EledoradoBox = ::GoldGoblenItemBag;
+			ItemDropRate = ::gEledoradoGoldGoblenItemDropRate;
+			ExItemDropRate = ::gEledoradoGoldGoblenExItemDropRate;
 			break;
+
 		case 9:
 			EledoradoBox = ::TitanItemBag;
+			ItemDropRate = ::gEledoradoTitanItemDropRate;
+			ExItemDropRate = ::gEledoradoTitanExItemDropRate;
 			break;
+
 		case 10:
 			EledoradoBox = ::GoldDerconItemBag;
+			ItemDropRate = ::gEledoradoGoldDerconItemDropRate;
+			ExItemDropRate = ::gEledoradoGoldDerconExItemDropRate;
 			break;
+
 		case 11:
 			EledoradoBox = ::DevilLizardKingItemBag;
+			ItemDropRate = ::gEledoradoDevilLizardKingItemDropRate;
+			ExItemDropRate = ::gEledoradoDevilLizardKingExItemDropRate;
 			break;
+
 		case 12:
 			EledoradoBox = ::KanturItemBag;
+			ItemDropRate = ::gEledoradoDevilTantarosItemDropRate;
+			ExItemDropRate = ::gEledoradoDevilTantarosExItemDropRate;
 			break;
 	}
 
@@ -143,8 +155,268 @@ void EledoradoBoxOpenEven(LPOBJ lpObj, int boxtype,int addlevel,int money)
 		return;
 	}
 
-	EledoradoBox->DropEventItem(lpObj->m_Index,lpObj->MapNumber,lpObj->X, lpObj->Y);
+	if ( EledoradoBox->GetBagCount() > 0 )
+	{
+		if ( (rand() % 100) < ItemDropRate )
+		{
+			int ItemCount = EledoradoBox->GetBagCount();
+			DropItemNum = rand() % ItemCount;
+
+			dur = 0;
+			x = lpObj->X;
+			y = lpObj->Y;
+
+			level = EledoradoBox->GetLevel(DropItemNum);
+			if (level > 0 )
+				level = rand() % (level+addlevel);
+
+			type = ItemGetNumberMake(EledoradoBox->GetType(DropItemNum), EledoradoBox->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(money, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Eldorado Item [%d][%d] Drop",
+					EledoradoBox->GetType(DropItemNum),EledoradoBox->GetIndex(DropItemNum));
+
+				return;
+			}
+
+			Option1 = 1;
+			Option2 = rand() % 2;
+			if ( (rand() % 100 ) < ExItemDropRate )
+			{
+				ExOption = BoxExcOptions(EledoradoBox->GetOp2(DropItemNum));	//NewOptionRand(0);
+			}
+
+			if ( Option2 == 0 || Option1  == 0 )
+			{
+				if ( (rand() % 5 ) < 1 )
+				{
+					Option3 = 3;
+				}
+				else
+				{
+					Option3 = rand() % 3;
+				}
+			}
+
+			if ( type == ITEMGET(12,15) ||
+				 type == ITEMGET(14,13) ||
+				 type == ITEMGET(14,14) )
+			{
+				Option1 = 0;
+				Option2 = 0;
+				Option3 = 0;
+				level = 0;
+				ExOption = 0;
+			}
+
+			if ( type == ITEMGET(13,0) ||
+				 type == ITEMGET(13,1) ||
+				 type == ITEMGET(13,2) ||
+				 type == ITEMGET(13,8) ||
+				 type == ITEMGET(13,9) ||
+				 type == ITEMGET(13,12) ||
+				 type == ITEMGET(13,13) )
+			{
+				level = 0;
+			}
+
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index,
+				ExOption, 0);
+
+			CItem NewItem;
+			NewItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, CURRENT_DB_VERSION);
+
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Eledorado Box] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, NewItem.GetName(),
+				type, level, Option1, Option2, Option3);
+
+			return;
+		}
+	}
+
+	x = lpObj->X;
+	y = lpObj->Y;
+	MapC[lpObj->MapNumber].MoneyItemDrop(money, x, y);
 }
+
+void Eledorado2BoxOpenEven(LPOBJ lpObj, int boxtype,int addlevel,int money)
+{
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int ExOption = 0;
+	int ItemDropRate = 0;
+	int ExItemDropRate = 0;
+	CItemBag * EledoradoBox = NULL;
+
+	switch ( boxtype )
+	{
+
+		case 1:
+			EledoradoBox = ::GoldRabbitItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[9];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[9];
+			break;
+
+		case 2:
+			EledoradoBox = ::GoldDarkKnightItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[0];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[0];
+			break;
+
+		case 3:
+			EledoradoBox = ::GoldDevilItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[1];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[1];
+			break;
+
+		case 4:
+			EledoradoBox = ::GoldStoneGolemItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[2];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[2];
+			break;
+
+		case 5:
+			EledoradoBox = ::GoldCrustItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[3];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[3];
+			break;
+
+		case 6:
+			EledoradoBox = ::GoldSatyrosItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[4];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[4];
+			break;
+
+		case 7:
+			EledoradoBox = ::GoldTwinTaleItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[5];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[5];
+			break;
+
+		case 8:
+			EledoradoBox = ::GoldIronKnightItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[6];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[6];
+			break;
+
+		case 9:
+			EledoradoBox = ::GoldNapinItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[7];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[7];
+			break;
+
+		case 10:
+			EledoradoBox = ::GoldGreatDragonItemBag;
+			ItemDropRate = ::gEledorado2EventItemDropRate[8];
+			ExItemDropRate = ::gEledorado2EventExItemDropRate[8];
+			break;
+	}
+
+	if ( EledoradoBox == NULL )
+	{
+		return;
+	}
+
+	if ( EledoradoBox->GetBagCount() > 0 )
+	{
+		if ( (rand() % 100) < ItemDropRate )
+		{
+			int ItemCount = EledoradoBox->GetBagCount();
+			DropItemNum = rand() % ItemCount;
+
+			dur = 0;
+			x = lpObj->X;
+			y = lpObj->Y;
+
+			level = EledoradoBox->GetLevel(DropItemNum);
+			if (level > 0 )
+				level = rand() % (level+addlevel);
+
+			type = ItemGetNumberMake(EledoradoBox->GetType(DropItemNum), EledoradoBox->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(money, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Eldorado2 Item [%d][%d] Drop",
+					EledoradoBox->GetType(DropItemNum),EledoradoBox->GetIndex(DropItemNum));
+
+				return;
+			}
+
+			Option1 = 1;
+			Option2 = rand() % 2;
+			if ( (rand() % 100 ) < ExItemDropRate )
+			{
+				ExOption = BoxExcOptions(EledoradoBox->GetOp2(DropItemNum));	//NewOptionRand(0);
+			}
+
+			if ( Option2 == 0 || Option1  == 0 )
+			{
+				if ( (rand() % 5 ) < 1 )
+				{
+					Option3 = 3;
+				}
+				else
+				{
+					Option3 = rand() % 3;
+				}
+			}
+
+			if ( type == ITEMGET(12,15) ||
+				 type == ITEMGET(14,13) ||
+				 type == ITEMGET(14,14) )
+			{
+				Option1 = 0;
+				Option2 = 0;
+				Option3 = 0;
+				level = 0;
+				ExOption = 0;
+			}
+
+			if ( type == ITEMGET(13,0) ||
+				 type == ITEMGET(13,1) ||
+				 type == ITEMGET(13,2) ||
+				 type == ITEMGET(13,8) ||
+				 type == ITEMGET(13,9) ||
+				 type == ITEMGET(13,12) ||
+				 type == ITEMGET(13,13) )
+			{
+				level = 0;
+			}
+
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index,
+				ExOption, 0);
+
+			CItem NewItem;
+			NewItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, CURRENT_DB_VERSION);
+
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Jewelry Box Item Drop][Eledorado2 Box] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
+				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, NewItem.GetName(),
+				type, level, Option1, Option2, Option3, ExOption);
+
+			return;
+		}
+	}
+
+	x = lpObj->X;
+	y = lpObj->Y;
+	MapC[lpObj->MapNumber].MoneyItemDrop(money, x, y);
+}
+
+
 
 void EventChipOpenEven(LPOBJ lpObj)
 {
@@ -167,7 +439,7 @@ void EventChipOpenEven(LPOBJ lpObj)
 		level = 0;
 		type = ItemGetNumberMake(14, 21);
 		::ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, 0, 0);
-		LogAdd("EventChip Event ItemDrop Rena");
+		ITEMBAG_DROP_LOG.Output("EventChip Event ItemDrop Rena");
 
 		return;
 	}
@@ -179,15 +451,40 @@ void EventChipOpenEven(LPOBJ lpObj)
 
 	if ( LuckboxItemBag->GetBagCount() > 0 )
 	{
-		if ( (rand()%20) < ::g_ItemDropRateForBoxOfGold )
+		if ( (rand()%1000) < ::g_ItemDropRateForBoxOfGold )
 		{
 			DropItemNum = rand() % LuckboxItemBag->GetBagCount();
 			dur = 0;
 			x = lpObj->X;
 			y = lpObj->Y;
-			level = LuckboxItemBag->GetLevel(DropItemNum) + rand() % 2;
+			level = LuckboxItemBag->GetLevel(DropItemNum);// + rand() % 2;
+			if (level > 0 )
+				level = rand() % (level+1);
 
 			type = ItemGetNumberMake(LuckboxItemBag->GetType(DropItemNum), LuckboxItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Luck Box Item [%d][%d] Drop",
+					LuckboxItemBag->GetType(DropItemNum),LuckboxItemBag->GetIndex(DropItemNum));
+
+				for(int n=0;n<(rand()%4+3);n++)
+				{
+					x = lpObj->X-2;
+					y = lpObj->Y-2;
+					x+= rand()%3;
+					y+= rand()%3;
+					MapC[lpObj->MapNumber].MoneyItemDrop(1000, x, y);
+				}
+				return;
+			}
+
+			if (LuckboxItemBag->GetOp2(DropItemNum) > 0)
+			{
+				if ((rand()%1000) < ::g_ItemEXDropRateForBoxOfGold)
+				{
+					ExOption = BoxExcOptions(LuckboxItemBag->GetOp2(DropItemNum));
+				}
+			}
 
 			Option1 = rand() % 2;
 			Option2 = rand() % 2;
@@ -238,11 +535,11 @@ void EventChipOpenEven(LPOBJ lpObj)
 			DataSend(lpObj->m_Index, (LPBYTE)&pMsg, sizeof(pMsg));
 
 			CItem NewItem;
-			NewItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, CURRENT_DB_VERSION);
+			NewItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, CURRENT_DB_VERSION);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop][Event Chip] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Event Chip] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, NewItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOption);
 
 			return;
 
@@ -255,7 +552,10 @@ void EventChipOpenEven(LPOBJ lpObj)
 	MapC[lpObj->MapNumber].MoneyItemDrop(1000, x, y);
 }
 
-void GoldMedalOpenEven(LPOBJ lpObj)
+
+
+	
+BOOL IllusionOpenEven(LPOBJ lpObj)
 {
 	float dur;
 	int type;
@@ -268,112 +568,28 @@ void GoldMedalOpenEven(LPOBJ lpObj)
 	int DropItemNum;
 	int ExOption=0;
 
-	if ( !GoldMedalItemBag )
-		return;
+	if ( !IllusionItemBag )
+		return FALSE;
 
-	if ( GoldMedalItemBag->GetBagCount() > 0 )
+	if ( IllusionItemBag->GetBagCount() > 0 )
 	{
-		if ( (rand()%20) < g_ItemDropRateForGoldMedal )
+		if ( (rand()%100) < IllusionTemple.BoxItemDropRate )
 		{
-				DropItemNum = rand()%GoldMedalItemBag->GetBagCount();
-				dur=0;
-				x = lpObj->X;
-				y = lpObj->Y;
-				level = GoldMedalItemBag->GetLevel(DropItemNum) + rand()%4;
-				type = ItemGetNumberMake(GoldMedalItemBag->GetType(DropItemNum), GoldMedalItemBag->GetIndex(DropItemNum));
-				Option1 = rand()%2;
-				Option2 = rand()%2;
-
-				if ( !Option2 || !Option1 )
-				{
-					if ( (rand()%5) <1 )
-						Option3 = 3;
-					else
-						Option3 = rand()%3;
-				}
-
-				if ( type == ITEMGET(12,15) ||
-					type == ITEMGET(14,13) ||
-					type == ITEMGET(14,14) )
-				{
-					Option1=0;
-					Option2=0;
-					Option3=0;
-					level = 0;
-					ExOption=0;
-				}
-
-				if ( type == ITEMGET(13,0) ||
-					type == ITEMGET(13,1) ||
-					type == ITEMGET(13,2) ||
-					type == ITEMGET(13,8) ||
-					type == ITEMGET(13,9) ||
-					type == ITEMGET(13,12) ||
-					type == ITEMGET(13,13) )
-				{
-					level = 0;
-				}
-				if (g_JewelsEx.IsJewelEx(type))
-				{
-					level = 0;
-				}
-
-				ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-					Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
-
-				PMSG_SERVERCMD ServerCmd;
-
-				PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-				ServerCmd.CmdType = 2;
-				ServerCmd.X = x;
-				ServerCmd.Y = y;
-
-				MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-				DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-
-				CItem EventItem;
-
-				EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
-
-				LogAddTD("[%s][%s][Lucky Box Item Drop][Gold Medal] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
-					lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-					type, level, Option1, Option2, Option3);
-
-				return;
-		}
-	}
-
-	x = lpObj->X;
-	y = lpObj->Y;
-	MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
-}
-
-void SilverMedalOpenEven(LPOBJ lpObj)
-{
-	float dur;
-	int type;
-	int level;
-	int x;
-	int y;
-	int Option1=0;
-	int Option2=0;
-	int Option3=0;
-	int DropItemNum;
-	int ExOption=0;
-
-	if ( !SilverMedalItemBag )
-		return;
-
-	if ( SilverMedalItemBag->GetBagCount() > 0 )
-	{
-		if ( (rand()%20) < g_ItemDropRateForSilverMedal )
-		{
-			DropItemNum = rand()%SilverMedalItemBag->GetBagCount();
+			DropItemNum = rand()%IllusionItemBag->GetBagCount();
 			dur=0;
 			x = lpObj->X;
 			y = lpObj->Y;
-			level = SilverMedalItemBag->GetLevel(DropItemNum) + rand()%4;
-			type = ItemGetNumberMake(SilverMedalItemBag->GetType(DropItemNum), SilverMedalItemBag->GetIndex(DropItemNum));
+			level = IllusionItemBag->GetLevel(DropItemNum);// + rand()%4;
+			if (level > 0 )
+				level = rand() % (level+1);
+			int ExOpt = BoxExcOptions(IllusionItemBag->GetOp2(DropItemNum));
+			
+			type = ItemGetNumberMake(IllusionItemBag->GetType(DropItemNum), IllusionItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				return FALSE;
+			}
+
 			Option1 = rand()%2;
 			Option2 = rand()%2;
 
@@ -407,13 +623,22 @@ void SilverMedalOpenEven(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
+			if ((type >= ITEMGET(13,117) && type <= ITEMGET(13,120)) ||
+				(type >= ITEMGET(14,0) && type <= ITEMGET(14,8)) ||
+				(type >= ITEMGET(14,35) && type <= ITEMGET(14,40)) ||
+				(type >= ITEMGET(14,70) && type <= ITEMGET(14,71)) ||
+				type == ITEMGET(14,94) ||
+				type == ITEMGET(14,133)
+				)
 			{
+				dur = level;
 				level = 0;
+				if (type >= ITEMGET(14,0) && type <= ITEMGET(14,8))
+					level = 7;
 			}
 
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
 			PMSG_SERVERCMD ServerCmd;
 
@@ -427,11 +652,114 @@ void SilverMedalOpenEven(LPOBJ lpObj)
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop][Silver Medal] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			//ITEMBAG_DROP_LOG.Output("[%s][%s][Box Item Drop][Illusion] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
+			//	lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
+			//	type, level, Option1, Option2, Option3, ExOpt);
+
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+	
+void GoldMedalOpenEven(LPOBJ lpObj)
+{
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1=0;
+	int Option2=0;
+	int Option3=0;
+	int DropItemNum;
+	int ExOption=0;
+
+	if ( !GoldMedalItemBag )
+		return;
+
+	if ( GoldMedalItemBag->GetBagCount() > 0 )
+	{
+		if ( (rand()%20) < g_ItemDropRateForGoldMedal )
+		{
+			DropItemNum = rand()%GoldMedalItemBag->GetBagCount();
+			dur=0;
+			x = lpObj->X;
+			y = lpObj->Y;
+			level = GoldMedalItemBag->GetLevel(DropItemNum);// + rand()%4;
+			if (level > 0 )
+				level = rand() % (level+1);
+			int ExOpt = BoxExcOptions(GoldMedalItemBag->GetOp2(DropItemNum));
+			
+			type = ItemGetNumberMake(GoldMedalItemBag->GetType(DropItemNum), GoldMedalItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Gold Box Item [%d][%d] Drop",
+					GoldMedalItemBag->GetType(DropItemNum),GoldMedalItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
+			Option1 = rand()%2;
+			Option2 = rand()%2;
+
+			if ( !Option2 || !Option1 )
+			{
+				if ( (rand()%5) <1 )
+					Option3 = 3;
+				else
+					Option3 = rand()%3;
+			}
+
+			if ( type == ITEMGET(12,15) ||
+				 type == ITEMGET(14,13) ||
+				 type == ITEMGET(14,14) )
+			{
+				Option1=0;
+				Option2=0;
+				Option3=0;
+				level = 0;
+				ExOption=0;
+			}
+
+			if ( type == ITEMGET(13,0) ||
+				 type == ITEMGET(13,1) ||
+				 type == ITEMGET(13,2) ||
+				 type == ITEMGET(13,8) ||
+				 type == ITEMGET(13,9) ||
+				 type == ITEMGET(13,12) ||
+				 type == ITEMGET(13,13) )
+			{
+				level = 0;
+			}
+
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+			PMSG_SERVERCMD ServerCmd;
+
+			PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+			ServerCmd.CmdType = 2;
+			ServerCmd.X = x;
+			ServerCmd.Y = y;
+
+			MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+			DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+
+			CItem EventItem;
+
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
+
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Gold Medal] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOpt);
 
 			return;
 		}
@@ -440,6 +768,113 @@ void SilverMedalOpenEven(LPOBJ lpObj)
 	x = lpObj->X;
 	y = lpObj->Y;
 	MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
+}
+
+
+
+void SilverMedalOpenEven(LPOBJ lpObj)
+{
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1=0;
+	int Option2=0;
+	int Option3=0;
+	int DropItemNum;
+	int ExOption=0;
+
+	if ( !SilverMedalItemBag )
+		return;
+
+	if ( SilverMedalItemBag->GetBagCount() > 0 )
+	{
+		if ( (rand()%20) < g_ItemDropRateForSilverMedal )
+		{
+			DropItemNum = rand()%SilverMedalItemBag->GetBagCount();
+			dur=0;
+			x = lpObj->X;
+			y = lpObj->Y;
+			level = SilverMedalItemBag->GetLevel(DropItemNum);// + rand()%4;
+			if (level > 0 )
+				level = rand() % (level+1);
+			int ExOpt = BoxExcOptions(SilverMedalItemBag->GetOp2(DropItemNum));
+			
+			type = ItemGetNumberMake(SilverMedalItemBag->GetType(DropItemNum), SilverMedalItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(50000, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Silver Box Item [%d][%d] Drop",
+					SilverMedalItemBag->GetType(DropItemNum),SilverMedalItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
+			Option1 = rand()%2;
+			Option2 = rand()%2;
+
+			if ( !Option2 || !Option1 )
+			{
+				if ( (rand()%5) <1 )
+					Option3 = 3;
+				else
+					Option3 = rand()%3;
+			}
+
+			if ( type == ITEMGET(12,15) ||
+				 type == ITEMGET(14,13) ||
+				 type == ITEMGET(14,14) )
+			{
+				Option1=0;
+				Option2=0;
+				Option3=0;
+				level = 0;
+				ExOption=0;
+			}
+
+			if ( type == ITEMGET(13,0) ||
+				 type == ITEMGET(13,1) ||
+				 type == ITEMGET(13,2) ||
+				 type == ITEMGET(13,8) ||
+				 type == ITEMGET(13,9) ||
+				 type == ITEMGET(13,12) ||
+				 type == ITEMGET(13,13) )
+			{
+				level = 0;
+			}
+
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+				Option1, Option2, Option3, lpObj->m_Index, ExOpt, 0);
+
+			PMSG_SERVERCMD ServerCmd;
+
+			PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+			ServerCmd.CmdType = 2;
+			ServerCmd.X = x;
+			ServerCmd.Y = y;
+
+			MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+			DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+
+			CItem EventItem;
+
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
+
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Silver Medal] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
+				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
+				type, level, Option1, Option2, Option3, ExOpt);
+
+			return;
+		}
+	}
+
+	x = lpObj->X;
+	y = lpObj->Y;
+	MapC[lpObj->MapNumber].MoneyItemDrop(50000, x, y);
 }
 
 
@@ -469,10 +904,24 @@ void HeartOfLoveOpenEven(LPOBJ lpObj)
 			x = lpObj->X;
 			y = lpObj->Y;
 
-			level = HeartOfLoveItemBag->GetLevel(DropItemNum);
-			
+			level = HeartOfLoveItemBag->GetLevel(DropItemNum);// + rand()%5;
+			if (level > 0 )
+				level = rand() % (level+1);
+			int ExOpt = BoxExcOptions(HeartOfLoveItemBag->GetOp2(DropItemNum));
 
 			type = ItemGetNumberMake(HeartOfLoveItemBag->GetType(DropItemNum), HeartOfLoveItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(1004, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] HeartOfLove Box Item [%d][%d] Drop",
+					HeartOfLoveItemBag->GetType(DropItemNum),HeartOfLoveItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
 			Option1 = rand()%2;
 			Option2 = rand()%2;
 
@@ -505,13 +954,8 @@ void HeartOfLoveOpenEven(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOpt, 0);
 
 			PMSG_SERVERCMD ServerCmd;
 
@@ -525,11 +969,11 @@ void HeartOfLoveOpenEven(LPOBJ lpObj)
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop][Heart Of Love] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Heart Of Love] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOpt);
 
 			return;
 		}
@@ -539,6 +983,7 @@ void HeartOfLoveOpenEven(LPOBJ lpObj)
 	y = lpObj->Y;
 	MapC[lpObj->MapNumber].MoneyItemDrop(1004, x, y);
 }
+
 
 void FireCrackerOpenEven(LPOBJ lpObj)
 {
@@ -552,23 +997,18 @@ void FireCrackerOpenEven(LPOBJ lpObj)
 	int Option3=0;
 	int DropItemNum;
 
-	if ( gOnlyFireCrackerEffectUse )
-	{
-		PMSG_SERVERCMD ServerCmd;
-
-		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-		ServerCmd.CmdType = 0;
-		ServerCmd.X = lpObj->X;
-		ServerCmd.Y = lpObj->Y;
-
-		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-
-		return;
-	}
-
 	if ( !FireCrackerItemBag )
 		return;
+
+	PMSG_SERVERCMD ServerCmd;
+
+	PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
+	ServerCmd.CmdType = 0;
+	ServerCmd.X = lpObj->X;
+	ServerCmd.Y = lpObj->Y;
+
+	MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
 
 	if ( FireCrackerItemBag->GetBagCount() > 0 )
 	{
@@ -579,16 +1019,24 @@ void FireCrackerOpenEven(LPOBJ lpObj)
 			x = lpObj->X;
 			y = lpObj->Y;
 			
-			if ( gLanguage == 0 )
-			{
-				level = FireCrackerItemBag->GetLevel(DropItemNum) + rand()%2;
-			}
-			else
-			{
-				level = FireCrackerItemBag->GetLevel(DropItemNum) + rand()%5;
-			}
-			
+			level = FireCrackerItemBag->GetLevel(DropItemNum);// + rand()%5;
+			if (level > 0 )
+				level = rand() % (level+1);
+			int ExOpt = BoxExcOptions(FireCrackerItemBag->GetOp2(DropItemNum));
+						
 			type = ItemGetNumberMake(FireCrackerItemBag->GetType(DropItemNum), FireCrackerItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(2011, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] FireCracker Box Item [%d][%d] Drop",
+					FireCrackerItemBag->GetType(DropItemNum),FireCrackerItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
 			Option1 = rand()%2;
 			Option2 = rand()%2;
 
@@ -621,13 +1069,8 @@ void FireCrackerOpenEven(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOpt, 0);
 
 			PMSG_SERVERCMD ServerCmd;
 
@@ -641,11 +1084,11 @@ void FireCrackerOpenEven(LPOBJ lpObj)
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop][Fire Cracker] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Fire Cracker] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOpt);
 
 			return;
 		}
@@ -653,13 +1096,9 @@ void FireCrackerOpenEven(LPOBJ lpObj)
 
 	x = lpObj->X;
 	y = lpObj->Y;
-	MapC[lpObj->MapNumber].MoneyItemDrop(2004, x, y);
+	MapC[lpObj->MapNumber].MoneyItemDrop(2011, x, y);
 }
 
-void StarOfXMasOpenEven(LPOBJ lpObj)
-{
-	StarOfXMasItemBag->DropItem(lpObj->m_Index);
-}
 
 void RingEventItemBoxOpen(LPOBJ lpObj)
 {
@@ -693,7 +1132,20 @@ void RingEventItemBoxOpen(LPOBJ lpObj)
 			else 
 				level = 6;
 
+			int ExOption = BoxExcOptions(RingEventItemBag->GetOp2(DropItemNum));
 			type = ItemGetNumberMake(RingEventItemBag->GetType(DropItemNum), RingEventItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] RingEvent Box Item [%d][%d] Drop",
+					RingEventItemBag->GetType(DropItemNum),RingEventItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
 			Option1 = 1;
 			Option2 = rand()%2;
 
@@ -723,21 +1175,16 @@ void RingEventItemBoxOpen(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Ring Event](%d,%d,%d) ItemDrop : Item:%s %d Level:%d op1:%d op2:%d op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Ring Event](%d,%d,%d) ItemDrop : Item:%s %d Level:%d op1:%d op2:%d op3:%d ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOption);
 
 			return;
 		}
@@ -747,6 +1194,7 @@ void RingEventItemBoxOpen(LPOBJ lpObj)
 	y = lpObj->Y;
 	MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
 }
+
 
 void FriendShipItemBoxOpen(LPOBJ lpObj)
 {
@@ -760,20 +1208,38 @@ void FriendShipItemBoxOpen(LPOBJ lpObj)
 	int Option3=0;
 	int DropItemNum;
 
-	if ( FriendShipItemBag->GetBagCount() > 0 ) //season 3.0 fixed
+	if ( FriendShipItemBag->GetBagCount() > 0 )	// FIXED
 	{
 		if ( true )
 		{
-			DropItemNum = rand()%FriendShipItemBag->GetBagCount(); //season 3.0 fixed
+			DropItemNum = rand()%FriendShipItemBag->GetBagCount();	//FIXED
 			dur=0;
 			x = lpObj->X;
 			y = lpObj->Y;
 
-			level = FriendShipItemBag->GetLevel(DropItemNum) + rand()%3; //season 3.0 fixed and changed
+			int rnd = rand() % 100;
 
-			type = ItemGetNumberMake(FriendShipItemBag->GetType(DropItemNum), FriendShipItemBag->GetIndex(DropItemNum)); //season 3.0 fixed
+			if ( rnd < 5 )
+				level = 9;
+			else if ( rnd < 20 )
+				level = 8;
+			else if ( rnd < 50 )
+				level = 7;
+			else 
+				level = 6;
+
+			type = ItemGetNumberMake(FriendShipItemBag->GetType(DropItemNum), FriendShipItemBag->GetIndex(DropItemNum));	// FIXED
+			if ( IsItem(type) == FALSE )
+			{
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] FriendShip Box Item [%d][%d] Drop",
+					FriendShipItemBag->GetType(DropItemNum),FriendShipItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
 			Option1 = 1;
 			Option2 = rand()%2;
+			int ExOption = BoxExcOptions(FriendShipItemBag->GetOp2(DropItemNum));
 
 			if ( (rand()%5) <1 )
 				Option3 = 3;
@@ -801,22 +1267,22 @@ void FriendShipItemBoxOpen(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
-			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
+				Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][FriendShip Ring Event](%d,%d,%d) ItemDrop : Item:%s %d Level:%d op1:%d op2:%d op3:%d", lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(), type, level, Option1, Option2, Option3);
+			ITEMBAG_DROP_LOG.Output("[%s][%s][FriendShip Ring Event](%d,%d,%d) ItemDrop : Item:%s %d Level:%d op1:%d op2:%d op3:%d ex:%d",
+				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
+				type, level, Option1, Option2, Option3, ExOption);
+
 			return;
 		}
 	}
 }
+
 
 void DarkLordHeartItemBoxOpen(LPOBJ lpObj)
 {
@@ -843,18 +1309,33 @@ void DarkLordHeartItemBoxOpen(LPOBJ lpObj)
 	
 	if ( DarkLordHeartItemBag->GetBagCount() > 0 )
 	{
-	
 		DropItemNum = rand()%DarkLordHeartItemBag->GetBagCount();
 		DropItemRate = DarkLordHeartItemBag->GetOp1(DropItemNum);
 
 		if ( (rand()%100) < DropItemRate && lpObj->Level <= 100 )
 		{
 			level = DarkLordHeartItemBag->GetLevel(DropItemNum);
+			if (level > 0 )
+				level = rand() % (level+1);
+
 			dur=0;
 			x = lpObj->X;
 			y = lpObj->Y;
 			
+			int ExOpt = BoxExcOptions(DarkLordHeartItemBag->GetOp2(DropItemNum));
 			type = ItemGetNumberMake(DarkLordHeartItemBag->GetType(DropItemNum), DarkLordHeartItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				x = lpObj->X;
+				y = lpObj->Y;
+				MapC[lpObj->MapNumber].MoneyItemDrop(10000, x, y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] DarkLordHeart Box Item [%d][%d] Drop",
+					DarkLordHeartItemBag->GetType(DropItemNum),DarkLordHeartItemBag->GetIndex(DropItemNum));
+
+				return;
+			}
+
 			Option1 = ((rand()%100)>=70)?0:1;
 			Option2 = ((rand()%100)>=10)?0:1;
 			int rnd = rand()%20;
@@ -889,21 +1370,16 @@ void DarkLordHeartItemBoxOpen(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOpt, 0);
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop][Darklord Heart] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop][Darklord Heart] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOpt);
 
 			return;
 		}
@@ -914,9 +1390,6 @@ void DarkLordHeartItemBoxOpen(LPOBJ lpObj)
 	MapC[lpObj->MapNumber].MoneyItemDrop(10000, x, y);
 }
 
-
-
-
 void HiddenTreasureBoxItemBoxOpen(LPOBJ lpObj)
 {
 	CItem objTempItem;
@@ -924,57 +1397,35 @@ void HiddenTreasureBoxItemBoxOpen(LPOBJ lpObj)
 
 	if ( HiddenTreasureBoxItemBag->PickItem(objTempItem, nItemIndex) == FALSE )
 	{
-		LogAddTD("[Hidden TreasureBox Event] [%s][%s] Item Pick Failed - Data Error",
+		ITEMBAG_DROP_LOG.Output("[Hidden TreasureBox Event] [%s][%s] Item Pick Failed - Data Error",
 			lpObj->AccountID, lpObj->Name);
 
 		MapC[lpObj->MapNumber].MoneyItemDrop(200000, lpObj->X, lpObj->Y);
 		return;
 	}
 
-	int iItemSuccessRate = HiddenTreasureBoxItemBag->GetMinLevel(nItemIndex);
+	int iItemSuccessRate = HiddenTreasureBoxItemBag->GetItemDropRatePublic();
 
-	if ( (rand()%100) < iItemSuccessRate )
+	if ( (rand()%100) > iItemSuccessRate )
 	{
-		objTempItem.m_Level = 0;
-
-		if ( objTempItem.m_Option1 )
-			objTempItem.m_Option1 = rand()%2;
-
-		if ( objTempItem.m_Option2 )
-			objTempItem.m_Option2 = rand()%2;
-
-		if ( objTempItem.m_Option3 )
-			if ( (rand()%5) <1 )
-				objTempItem.m_Option3 = 3;
-			else
-				objTempItem.m_Option3 = rand()%3;
-
-		if ( objTempItem.m_NewOption )
-		{
-			objTempItem.m_NewOption = NewOptionRand(objTempItem.m_Level);
-			objTempItem.m_Option1 = 1;
-			objTempItem.m_Option2 = 0;
-		}
-
-
 		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y, objTempItem.m_Type, objTempItem.m_Level, objTempItem.m_Durability,
-			objTempItem.m_Option1, objTempItem.m_Option2, objTempItem.m_Option3, lpObj->m_Index, objTempItem.m_NewOption, 0);
+			objTempItem.m_SkillOption, objTempItem.m_LuckOption, objTempItem.m_Z28Option, lpObj->m_Index, objTempItem.m_NewOption, 0);
 
 		BYTE NewOption[MAX_EXOPTION_SIZE];
 		ItemIsBufExOption(NewOption, &objTempItem);
 
-		LogAddTD("[Hidden TreasureBox Event] [%s][%s] Event ItemDrop : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d exop:[%d,%d,%d,%d,%d,%d]",
+		ITEMBAG_DROP_LOG.Output("[Hidden TreasureBox Event] [%s][%s] Event ItemDrop : (%d)(%d/%d) Item:(%s)%d Level:%d op1:%d op2:%d op3:%d exop:[%d,%d,%d,%d,%d,%d]",
 			lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y,
 			ItemAttribute[objTempItem.m_Type].Name, objTempItem.m_Type,
-			objTempItem.m_Level, objTempItem.m_Option1, objTempItem.m_Option2,
-			objTempItem.m_Option3, NewOption[0], NewOption[1], NewOption[2], NewOption[3], NewOption[4], NewOption[5]);
+			objTempItem.m_Level, objTempItem.m_SkillOption, objTempItem.m_LuckOption,
+			objTempItem.m_Z28Option, NewOption[0], NewOption[1], NewOption[2], NewOption[3], NewOption[4], NewOption[5]);
 	}
 	else
 	{
 		int money = 200000;
 		MapC[lpObj->MapNumber].MoneyItemDrop(money, lpObj->X, lpObj->Y);
 
-		LogAddTD("[Hidden TreasureBox Event] [%s][%s] Event ZenDrop : %d : (%d)(%d/%d)",
+		ITEMBAG_DROP_LOG.Output("[Hidden TreasureBox Event] [%s][%s] Event ZenDrop : %d : (%d)(%d/%d)",
 			lpObj->AccountID, lpObj->Name, money, lpObj->MapNumber, lpObj->X, lpObj->Y);
 	}
 }
@@ -997,6 +1448,60 @@ void BlueRibbonBoxOpen(LPOBJ lpObj)
 	BlueRibbonBoxEventItemBag->DropBlueRibbonBoxEventItem(lpObj->m_Index);
 }
 
+void S6QuestBoxOpen(LPOBJ lpObj, int boxIndex)
+{
+	switch(boxIndex)
+	{
+		case 0:
+		{
+			GreenBoxEventItemBag->DropS6QuestBox(lpObj->m_Index);
+		}break;
+		case 1:
+		{
+			RedBoxEventItemBag->DropS6QuestBox(lpObj->m_Index);
+		}break;
+		case 2:
+		{
+			PurpleBoxEventItemBag->DropS6QuestBox(lpObj->m_Index);
+		}break;
+	}
+}	
+
+
+void S5E4BoxOpen(LPOBJ lpObj, int boxIndex)
+{
+	if(ReadConfig.S5E2 == TRUE)
+	{
+		switch(boxIndex)
+		{
+			case 0:
+			{
+				ElegantJewerlyItemBag->DropS5E4BoxItem(lpObj->m_Index);
+			}break;
+			case 1:
+			{
+				MetalJewerlyItemBag->DropS5E4BoxItem(lpObj->m_Index);
+			}break;
+			case 2:
+			{
+				OldJewerlyItemBag->DropS5E4BoxItem(lpObj->m_Index);
+			}break;
+			case 3:
+			{
+				GoldBoxItemBag->DropS5E4BoxItem(lpObj->m_Index);
+			}break;
+			case 4:
+			{
+				SilverBoxItemBag->DropS5E4BoxItem(lpObj->m_Index);
+			}break;
+		}
+	}
+}
+
+void RainEventItemBoxOpen(int map, int x, int y)
+{
+	RainItemsEvent->DropRainItemEvent(map,x,y);
+}
 
 void PinkChocolateBoxOpen(LPOBJ lpObj)
 {
@@ -1039,77 +1544,183 @@ void KundunEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 	KundunEventItemBag->DropKundunEventItem(lpObj->m_Index, btMapNumber, cX, cY);
 }
 
-
-void HallowinDayEventItemBoxOpen(LPOBJ lpObj)
+void ErohimCastleZoneItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
-	HallowinDayEventItemBag->DropHallowinEventItem(lpObj);
+#if (GS_CASTLE==1)
+	ErohimCastleZoneItemBag->DropErohimCastleZoneItem(lpObj->m_Index, btMapNumber, cX, cY);
+#endif
 }
 
-//Season2.5 New Function -> 0x00488F00
-void ChristmasStarDrop(LPOBJ lpObj)
+BOOL HuntZoneItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
-	PMSG_SERVERCMD ServerCmd;
+#if (GS_CASTLE==1)
+	BOOL result = 0;
+	result = HuntZoneItemBag->DropHuntZoneItem(lpObj->m_Index, btMapNumber, cX, cY);
 
-	PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-	ServerCmd.CmdType = 0;
-	ServerCmd.X = lpObj->X;
-	ServerCmd.Y = lpObj->Y;
-	MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-	DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	return result;
+#endif
+
+	return FALSE;
 }
 
-void ChristmasFireCrackDrop(LPOBJ lpObj) //season 4.5 add-on
+void SelupanEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
-	PMSG_SERVERCMD ServerCmd;
-
-	PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-	ServerCmd.CmdType = 59;
-	ServerCmd.X = lpObj->X;
-	ServerCmd.Y = lpObj->Y;
-	MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-	DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+	SelupanEventItemBag->DropSelupanEventItem(lpObj->m_Index, btMapNumber, cX, cY);
 }
 
-void CherryBlossomEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+#if (PACK_EDITION>=3)
+void BossAttackItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
-	if(CherryBlossom1->DropCherryBlossomEventItem(lpObj->m_Index, btMapNumber, cX, cY, 0) != 0)
+	BossAttackItemBag->DropBossAttackItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+#endif
+
+void FortunePouchItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	FortunePouchItemBag->DropFortunePouchItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+
+#if (PACK_EDITION>=2)
+BOOL XMasEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	CTime tCurrentTime = CTime::GetTickCount();
+
+	int iDay = tCurrentTime.GetDay();
+
+	if(lpObj->m_Quest[49] != iDay) 
 	{
-		PMSG_SERVERCMD ServerCmd;
-
-		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-		ServerCmd.CmdType = 58;
-		ServerCmd.X = SET_NUMBERH(lpObj->m_Index);
-		ServerCmd.Y = SET_NUMBERL(lpObj->m_Index);
-		MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-		DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
+		XMasEventItemBag->DropXMasEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		lpObj->m_Quest[49] = iDay;
+		return 1;
+	}
+	return 0;
+}
+void HalloweenPKItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	HalloweenPKEventItemBag->DropHalloweenPKEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+#endif
+#if (PACK_EDITION>=1)
+void BlueEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	BlueEventItemBag->DropBlueEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+void SummerEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	SummerEventItemBag->DropSummerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+#endif
+void DoubleGoerItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int MonsterClass)
+{
+	switch(MonsterClass)
+	{
+		case 529:
+		{
+			DGBoss1ItemBag->DoubleGoerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 530:
+		{
+			DGBoss2ItemBag->DoubleGoerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 531:
+		{
+			DGBoss3ItemBag->DoubleGoerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 541:
+		{
+			DGSilverTreasureItemBag->DoubleGoerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 542:
+		{
+			DGTreasureItemBag->DoubleGoerEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
 	}
 }
 
-BOOL CherryBlossomEventItemBoxAOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int * iDropZen)
+#if (PACK_EDITION>=3)
+void SwampEventItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
-	return CherryBlossom2->DropCherryBlossomEventItem(lpObj->m_Index, btMapNumber, cX, cY, iDropZen);
+	SwampEventItemBag->DropSwampEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+#endif
+
+void ImperialGuardianItemBoxOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int MonsterClass)
+{
+	switch(MonsterClass)
+	{
+		case 526:
+		{
+			IGStatueItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 504:
+		{
+			IGSundayItemBag2->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 505:
+		{
+			IGSundayItemBag1->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 508:
+		{
+			IGMondayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 509:
+		{
+			IGTuesdayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 510:
+		{
+			IGWednesdayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 511:
+		{
+			IGThursdayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 507:
+		{
+			IGFridayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+		case 506:
+		{
+			IGSaturdayItemBag->ImperialGuardianEventItem(lpObj->m_Index, btMapNumber, cX, cY);
+		}break;
+	}
 }
 
-BOOL CherryBlossomEventItemBoxBOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int * iDropZen)
+void HalloweenDayEventItemBoxOpen(LPOBJ lpObj)
 {
-	return CherryBlossom3->DropCherryBlossomEventItem(lpObj->m_Index, btMapNumber, cX, cY, iDropZen);
+	HalloweenDayEventItemBag->DropHalloweenEventItem(lpObj);
 }
 
-BOOL CherryBlossomEventItemBoxCOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int * iDropZen)
+void GreenMysteryEventItemBoxOpen(LPOBJ lpObj)
 {
-	return CherryBlossom4->DropCherryBlossomEventItem(lpObj->m_Index, btMapNumber, cX, cY, iDropZen);
+	GreenMysteryEventItemBag->GreenMysteryBoxEventItem(lpObj->m_Index);
 }
-
-//#if(_GSCS==1)
-void CastleHuntZoneBossRewardOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+void RedMysteryEventItemBoxOpen(LPOBJ lpObj)
 {
-	CastleHuntZoneBossItemBag->DropCastleHuntZoneBossReward(lpObj->m_Index, btMapNumber, cX, cY);
+	RedMysteryEventItemBag->RedMysteryBoxEventItem(lpObj->m_Index);
 }
-//#endif
+void PurpleMysteryEventItemBoxOpen(LPOBJ lpObj)
+{
+	PurpleMysteryEventItemBag->PurpleMysteryBoxEventItem(lpObj->m_Index);
+}
+void CherryBlossomEventItemBoxOpen(LPOBJ lpObj)
+{
+	CherryBlossomEventItemBag->CherryBlossomBoxEventItem(lpObj->m_Index);
+}
+void GMEventItemBoxOpen(LPOBJ lpObj)
+{
+	GMEventItemBag->GMBoxEventItem(lpObj->m_Index);
+}
 
 void CrywolfDarkElfItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
 	CrywolfDarkElfItemBag->DropCrywolfDarkElfItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+
+void CrywolfPedestalRewardItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	CrywolfPedestalRewardItemBag->DropCrywolfPedestalRewardItem(lpObj->m_Index, btMapNumber, cX, cY);
 }
 
 void CrywolfBossMonsterItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
@@ -1117,31 +1728,7 @@ void CrywolfBossMonsterItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE 
 	CrywolfBossMonsterItemBag->DropCrywolfBossMonsterItem(lpObj->m_Index, btMapNumber, cX, cY);
 }
 
-//004A0D50  /> \55            PUSH EBP
-void RaklionBossMonsterItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	RaklionSelupanItemBag->DropRaklionSelupanItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
 
-//004A0D90  /> \55            PUSH EBP
-void LuckyCoint10ItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	LuckyCoin10->DropEventItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-//004A0DD0  /> \55            PUSH EBP
-void LuckyCoint20ItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	LuckyCoin20->DropEventItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-//004A0E10  /> \55            PUSH EBP
-void LuckyCoint30ItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	LuckyCoin30->DropEventItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-//#if(_GSCS==0)
 void KanturuMayaHandItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
 {
 	KanturuMayaHandItemBag->DropKanturuMayaHandItem(lpObj->m_Index, btMapNumber, cX, cY);
@@ -1152,7 +1739,14 @@ void KanturuNightmareItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY
 {
 	KanturuNightmareItemBag->DropKanturuNightmareItem(lpObj->m_Index, btMapNumber, cX, cY);
 }
-//#endif
+
+
+void HellMainItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
+{
+	HellMainItemBag->DropHellMainItem(lpObj->m_Index, btMapNumber, cX, cY);
+}
+
+
 
 
 
@@ -1180,10 +1774,31 @@ void LuckyBoxOpenEven(LPOBJ lpObj)
 			dur=0;
 			x = lpObj->X;
 			y = lpObj->Y;
-			level = LuckboxItemBag->GetLevel(DropItemNum) + rand()%2;
+			level = LuckboxItemBag->GetLevel(DropItemNum);
+			if (level > 0 )
+				level = rand() % (level+1);
+			
 			type = ItemGetNumberMake(LuckboxItemBag->GetType(DropItemNum), LuckboxItemBag->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
+			{
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Luck Box Item [%d][%d] Drop",
+					LuckboxItemBag->GetType(DropItemNum),LuckboxItemBag->GetIndex(DropItemNum));
+
+				for(int n=0;n<(rand()%4+3);n++)
+				{
+					x = lpObj->X-2;
+					y = lpObj->Y-2;
+					x+= rand()%3;
+					y+= rand()%3;
+					MapC[lpObj->MapNumber].MoneyItemDrop(1000, x, y);
+				}
+
+				return;
+			}
+			
 			Option1 = rand()%2;
 			Option2 = rand()%2;
+			int ExOpt = BoxExcOptions(LuckboxItemBag->GetOp2(DropItemNum));
 
 			if ( (rand()%5) <1 )
 				Option3 = 3;
@@ -1211,21 +1826,16 @@ void LuckyBoxOpenEven(LPOBJ lpObj)
 				level = 0;
 			}
 
-			if (g_JewelsEx.IsJewelEx(type))
-			{
-				level = 0;
-			}
-
 			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-				Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+				Option1, Option2, Option3, lpObj->m_Index, ExOpt, 0);
 
 			CItem EventItem;
 
-			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, 3);
+			EventItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, 3);
 
-			LogAddTD("[%s][%s][Lucky Box Item Drop] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d",
+			ITEMBAG_DROP_LOG.Output("[%s][%s][Lucky Box Item Drop] : (%d)(X:%d/Y:%d) Item:%s(%d) Level:%d Op1:%d Op2:%d Op3:%d Ex:%d",
 				lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, EventItem.GetName(),
-				type, level, Option1, Option2, Option3);
+				type, level, Option1, Option2, Option3, ExOpt);
 
 			return;
 		}	
@@ -1267,7 +1877,16 @@ BOOL AttackEvent53BagOpen(LPOBJ lpObj)
 		x = lpObj->X;
 		y = lpObj->Y;
 		level = Mon53->GetLevel(DropItemNum);
+		if (level > 0 )
+			level = rand() % (level+1);
+
 		type = ItemGetNumberMake(Mon53->GetType(DropItemNum), Mon53->GetIndex(DropItemNum));
+		if ( IsItem(type) == FALSE )
+		{
+			return FALSE;
+		}
+			
+		int ExOption = BoxExcOptions(Mon53->GetOp2(DropItemNum));
 
 		if ( (rand()%100)<6)
 			Option1 = 1;
@@ -1318,16 +1937,11 @@ BOOL AttackEvent53BagOpen(LPOBJ lpObj)
 
 		int iMaxHitIndex = gObjMonsterTopHitDamageUser(lpObj);
 
-		if (g_JewelsEx.IsJewelEx(type))
-		{
-			level = 0;
-		}
-
 		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-			Option1, Option2, Option3, iMaxHitIndex, 0, 0);
+			Option1, Option2, Option3, iMaxHitIndex, ExOption, 0);
 
-		LogAdd("Event ItemDrop(53) : Item:%d Level:%d op1:%d op2:%d op3:%d",
-			type, level, Option1, Option2, Option3);
+		ITEMBAG_DROP_LOG.Output("Event ItemDrop(53) : Item:%d Level:%d op1:%d op2:%d op3:%d ex:%d",
+			type, level, Option1, Option2, Option3, ExOption);
 
 		return TRUE;
 	}
@@ -1348,6 +1962,7 @@ BOOL AttackEvent55BagOpen(LPOBJ lpObj)
 	int Option2=0;
 	int Option3=0;
 	int DropItemNum;
+	int	ExOpt=0;
 
 
 	if ( !Mon55 )
@@ -1355,13 +1970,22 @@ BOOL AttackEvent55BagOpen(LPOBJ lpObj)
 
 	if ( Mon55->GetBagCount() > 0 )
 	{
-	
 		DropItemNum = rand()%Mon55->GetBagCount();
 		dur=0;
 		x = lpObj->X;
 		y = lpObj->Y;
-		level = Mon55->GetLevel(DropItemNum) + rand() % 2;
+
 		type = ItemGetNumberMake(Mon55->GetType(DropItemNum), Mon55->GetIndex(DropItemNum));
+		if ( IsItem(type) == FALSE )
+		{
+			return FALSE;
+		}
+
+		level = Mon55->GetLevel(DropItemNum);
+		if (level > 0 )
+			level = rand() % (level+1);
+
+		ExOpt = BoxExcOptions(Mon55->GetOp2(DropItemNum));
 
 		if ( (rand()%100)<6)
 			Option1 = 1;
@@ -1396,6 +2020,7 @@ BOOL AttackEvent55BagOpen(LPOBJ lpObj)
 			Option1=0;
 			Option2=0;
 			Option3=0;
+			ExOpt=0;
 			level = 0;
 		}
 
@@ -1412,16 +2037,11 @@ BOOL AttackEvent55BagOpen(LPOBJ lpObj)
 
 		int iMaxHitIndex = gObjMonsterTopHitDamageUser(lpObj);
 
-		if (g_JewelsEx.IsJewelEx(type))
-		{
-			level = 0;
-		}
-
 		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur,
-			Option1, Option2, Option3, iMaxHitIndex, 0, 0);
+			Option1, Option2, Option3, iMaxHitIndex, ExOpt, 0);
 
-		LogAdd("Event ItemDrop(55) : Item:%d Level:%d op1:%d op2:%d op3:%d",
-			type, level, Option1, Option2, Option3);
+		ITEMBAG_DROP_LOG.Output("Event ItemDrop(55) : Item:%d Level:%d op1:%d op2:%d op3:%d ex:%d",
+			type, level, Option1, Option2, Option3, ExOpt);
 
 		return TRUE;
 	}
@@ -1429,9 +2049,17 @@ BOOL AttackEvent55BagOpen(LPOBJ lpObj)
 	return FALSE;
 }
 
+
+
+
 #pragma warning ( disable : 4101 )
 void EGRecvEventChipInfo(PMSG_ANS_VIEW_EC_MN * aRecv)
 {
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
+
 	LPOBJ lpObj = &gObj[aRecv->iINDEX];
 
 	PMSG_EVENTCHIPINFO eventchipeventinfo;
@@ -1445,15 +2073,22 @@ void EGRecvEventChipInfo(PMSG_ANS_VIEW_EC_MN * aRecv)
 
 	DataSend(lpObj->m_Index, (LPBYTE)&eventchipeventinfo, eventchipeventinfo.h.size);
 
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
 #pragma warning ( default : 4101 )
+
+
 
 void EGResultRegEventChip(PMSG_ANS_REGISTER_EVENTCHIP * aRecv)
 {
 	PMSG_REGEVENTCHIP_RESULT Result;
 	LPOBJ lpObj;
 	int aIndex;
+
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
 
 	PHeadSetB((LPBYTE)&Result, 0x95, sizeof(Result));
 	lpObj = &gObj[aRecv->iINDEX];
@@ -1462,7 +2097,7 @@ void EGResultRegEventChip(PMSG_ANS_REGISTER_EVENTCHIP * aRecv)
 	if ( aRecv->bSUCCESS == FALSE )
 	{
 		Result.ChipCount = -1;
-		LogAddTD("[EventChip] [%s][%s] RegEventServer Fail (RegEventchip) %d",
+		ITEMBAG_DROP_LOG.Output("[EventChip] [%s][%s] RegEventServer Fail (RegEventchip) %d",
 			lpObj->AccountID, lpObj->Name, aRecv->Pos);
 
 	}
@@ -1472,7 +2107,7 @@ void EGResultRegEventChip(PMSG_ANS_REGISTER_EVENTCHIP * aRecv)
 		gObjInventoryDeleteItem(aIndex, aRecv->Pos);
 		GCInventoryItemDeleteSend(aIndex, aRecv->Pos, 1);
 
-		LogAddTD("[EventChip] [%s][%s] Delete EventChip (%d)",
+		ITEMBAG_DROP_LOG.Output("[EventChip] [%s][%s] Delete EventChip (%d)",
 			lpObj->AccountID, lpObj->Name, aRecv->Pos);
 	}
 
@@ -1480,14 +2115,21 @@ void EGResultRegEventChip(PMSG_ANS_REGISTER_EVENTCHIP * aRecv)
 
 	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
 
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
+
+
+
 
 void EGRecvRegMutoNum( PMSG_ANS_REGISTER_MUTONUM* aRecv)
 {
 	LPOBJ lpObj;
 	int aIndex;
 	
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
 
 	lpObj = &gObj[aRecv->iINDEX];
 	aIndex = aRecv->iINDEX;
@@ -1504,7 +2146,7 @@ void EGRecvRegMutoNum( PMSG_ANS_REGISTER_MUTONUM* aRecv)
 
 		DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
 
-		lpObj->UseEventServer = FALSE;
+		lpObj->UseEventServer = false;
 
 		return;
 	}
@@ -1515,12 +2157,12 @@ void EGRecvRegMutoNum( PMSG_ANS_REGISTER_MUTONUM* aRecv)
 	Result.MutoNum[2] = aRecv->iMUTO_NUM % 1000;
 	lpObj->MutoNumber = aRecv->iMUTO_NUM;
 	
-	LogAddTD("[EventChip] [%s][%s] Make MutoNumber %d,%d,%d",
+	ITEMBAG_DROP_LOG.Output("[EventChip] [%s][%s] Make MutoNumber %d,%d,%d",
 		lpObj->AccountID, lpObj->Name, 
 		Result.MutoNum[0], Result.MutoNum[1], Result.MutoNum[2]);
 
 	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
 
 
@@ -1531,6 +2173,11 @@ void EGRecvChangeRena( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 	LPOBJ lpObj;
 	int aIndex;
 
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
+
 	PHeadSetB((LPBYTE)&Result, 0x95, sizeof(Result));
 	lpObj = &gObj[aRecv->iINDEX];
 	aIndex = aRecv->iINDEX;
@@ -1540,12 +2187,12 @@ void EGRecvChangeRena( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 		lpObj->Money += lpObj->EventChipCount * 3000;
 		GCMoneySend(aIndex, lpObj->Money);
 
-		LogAddTD("[EventChip] [%s][%s] ChangeRena AddMoney(%d)",
+		ITEMBAG_DROP_LOG.Output("[EventChip] [%s][%s] ChangeRena AddMoney(%d)",
 			lpObj->AccountID, lpObj->Name, lpObj->EventChipCount * 3000);
 	}
 	else
 	{
-		LogAddTD("[EventChip] [%s][%s] ChangeRena Fail",
+		ITEMBAG_DROP_LOG.Output("[EventChip] [%s][%s] ChangeRena Fail",
 			lpObj->AccountID, lpObj->Name);
 	}
 
@@ -1554,7 +2201,7 @@ void EGRecvChangeRena( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 
 	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
 
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
 
 
@@ -1563,6 +2210,11 @@ LPOBJ pEventObj;
 
 void EGRecvStoneInfo( PMSG_ANS_VIEW_STONES* aRecv)
 {
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
+
 	LPOBJ lpObj = &gObj[aRecv->iINDEX];
 
 	PMSG_EVENTCHIPINFO Result;
@@ -1593,6 +2245,10 @@ void EGRecvRegStone( PMSG_ANS_REGISTER_STONES* aRecv)
 	LPOBJ lpObj;
 	int aIndex;
 	
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
 
 	PHeadSetB((LPBYTE)&Result, 0x95, sizeof(Result));
 	lpObj = &gObj[aRecv->iINDEX];
@@ -1604,20 +2260,20 @@ void EGRecvRegStone( PMSG_ANS_REGISTER_STONES* aRecv)
 		gObjInventoryDeleteItem(aIndex, aRecv->iPosition);
 		GCInventoryItemDeleteSend(aIndex, aRecv->iPosition, 1);
 
-		LogAddTD("[Stone] [%s][%s] Delete Stones",
+		ITEMBAG_DROP_LOG.Output("[Stone] [%s][%s] Delete Stones",
 			lpObj->AccountID, lpObj->Name);
 	}
 	else
 	{
 		Result.ChipCount = -1;
 		
-		LogAddTD("[Stone] [%s][%s] RegEventServer Fail (Stones : %d)",
+		ITEMBAG_DROP_LOG.Output("[Stone] [%s][%s] RegEventServer Fail (Stones : %d)",
 			lpObj->AccountID, lpObj->Name, aRecv->iStoneCount);
 	}
 
 	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
 
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
 
 
@@ -1635,6 +2291,10 @@ void EGRecvChangeStones( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 	LPOBJ lpObj;
 	int aIndex;
 	
+	if(OBJMAX_RANGE(aRecv->iINDEX) == 0)
+	{
+		return;
+	}
 
 	PHeadSetB((LPBYTE)&Result, 0x95, sizeof(Result));
 	lpObj = &gObj[aRecv->iINDEX];
@@ -1645,12 +2305,12 @@ void EGRecvChangeStones( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 		lpObj->Money += lpObj->iStoneCount * 3000;
 		GCMoneySend(aIndex, lpObj->Money);
 
-		LogAddTD("[Stones] [%s][%s] ChangeRena AddMoney(%d)",
+		ITEMBAG_DROP_LOG.Output("[Stones] [%s][%s] ChangeRena AddMoney(%d)",
 			lpObj->AccountID, lpObj->Name, lpObj->iStoneCount*3000);
 	}
 	else
 	{
-		LogAddTD("[Stones] [%s][%s] ChangeRena Fail",
+		ITEMBAG_DROP_LOG.Output("[Stones] [%s][%s] ChangeRena Fail",
 			lpObj->AccountID, lpObj->Name);
 	}
 
@@ -1659,7 +2319,7 @@ void EGRecvChangeStones( PMSG_ANS_RESET_EVENTCHIP* aRecv)
 
 	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
 
-	lpObj->UseEventServer = FALSE;
+	lpObj->UseEventServer = false;
 }
 
 
@@ -1673,29 +2333,28 @@ struct PMSG_ANS_2ANV_LOTTO_EVENT
 
 
 #define GIFT_2ANV_MAP	235
+#define MAX_GIFT_2ANV	50
+#define GIFT_2ANV_RANGE(x)  ( (((x))<0)?FALSE:(((x))>MAX_GIFT_2ANV-1)?FALSE:TRUE )
 
-#define GIFT_2ANV_RANGE(x)  ( (((x))<0)?FALSE:(((x))>174)?FALSE:TRUE )
 
 BOOL g_bRingEventItemTextLoad = FALSE;
-char g_sz2ANV_GIFT_NAME[50][64];
+char g_sz2ANV_GIFT_NAME[MAX_GIFT_2ANV][64];
 
 void EGRecv2AnvRegSerial( PMSG_ANS_2ANIV_SERIAL* aRecv)
 {
-	int loc1 = -1;
-
 	PMSG_ANS_2ANV_LOTTO_EVENT Result;
 
 	PHeadSetB((LPBYTE)&Result, 0x9D, sizeof(Result));
 
 	if ( !OBJMAX_RANGE(aRecv->iINDEX))
 	{
-		LogAddTD("[Mu_2Anv_Event] Error : Index is out of bound [%d]", aRecv->iINDEX);
+		ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Error : Index is out of bound [%d]", aRecv->iINDEX);
 		return;
 	}
 
 	if ( gObj[aRecv->iINDEX].Connected <= PLAYER_LOGGED )
 	{
-		LogAddTD("[Mu_2Anv_Event] Error : Index is out of bound [%d]", aRecv->iINDEX);
+		ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Error : Index is out of bound [%d]", aRecv->iINDEX);
 		return;
 	}
 
@@ -1707,7 +2366,7 @@ void EGRecv2AnvRegSerial( PMSG_ANS_2ANIV_SERIAL* aRecv)
 		
 		if ( !GIFT_2ANV_RANGE(aRecv->iGiftNumber-1) )
 		{
-			LogAddTD("[Mu_2Anv_Event] Error : Gift Index is out of bound [%d]", aRecv->iGiftNumber);
+			ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Error : Gift Index is out of bound [%d]", aRecv->iGiftNumber);
 			Result.btIsRegistered = 2;
 		}
 
@@ -1728,85 +2387,600 @@ void EGRecv2AnvRegSerial( PMSG_ANS_2ANIV_SERIAL* aRecv)
 		{
 			strcpy(Result.szGIFT_NAME, g_sz2ANV_GIFT_NAME[aRecv->iGiftNumber-1]);
 		}
-	
-		
-		 
-		BYTE level = 0;//loc21
-		BYTE dur = 0;//loc22
-		
-		int ItemNum = g_EventItemList.SortItem(aRecv->iGiftNumber,&level,&dur);//loc23
-		
-		loc1 = ItemNum;
-		
-		if ( ItemNum == 0 ||ItemNum == -1 )
-        {
-			LogAddTD("[Mu_2Anv_Event] Error : iGiftNumber is Out of Boud [%d]", aRecv->iGiftNumber);
-		}
-		else
+
+		switch ( aRecv->iGiftNumber )
 		{
-			ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index,235,gObj[aRecv->iINDEX].X,gObj[aRecv->iINDEX].Y,ItemNum,level,dur,0,0,0,aRecv->iINDEX,0,0);
-			
-			if ( g_bRingEventItemTextLoad == FALSE)
-			{
-				strcpy(Result.szGIFT_NAME, ItemAttribute[ItemNum].Name);
-			}
+			case 1:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 13),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 13)].Name);
+				}
+			break;
+			case 2:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 14),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 14)].Name);
+				}
+			break;
+			case 3:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 15),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 15)].Name);
+				}
+			break;
+			case 4:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 5:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					3, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, "Heart of Love");
+				}
+			break;
+			case 6:
+				gObj[aRecv->iINDEX].Money += 500000;
+				GCMoneySend(aRecv->iINDEX, gObj[aRecv->iINDEX].Money);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, "500,000 Zen");
+				}
+			break;
+			case 7:
+				gObj[aRecv->iINDEX].Money += 50000;
+				GCMoneySend(aRecv->iINDEX, gObj[aRecv->iINDEX].Money);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, "50,000 Zen");
+				}
+			break;
+			case 8:	case 9:	case 10:
+				gObj[aRecv->iINDEX].Money += 30000;
+				GCMoneySend(aRecv->iINDEX, gObj[aRecv->iINDEX].Money);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, "30,000 Zen");
+				}
+			break;
+			case 11:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 19),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					//strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 11)].Name);	// #error Change 11 to 19
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 19)].Name);	// FIX
+				}
+			break;
+			case 12:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 18),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 18)].Name);
+				}
+			break;
+			case 13:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 17),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 17)].Name);
+				}
+			break;
+			case 14:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 16),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 16)].Name);
+				}
+			break;
+			case 15:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 14),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 14)].Name);
+				}
+			break;
+			case 16:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 13),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 13)].Name);
+				}
+			break;
+			case 17:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(12, 12),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(12, 12)].Name);
+				}
+			break;
+			case 18:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(13, 2),
+					0, 255, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 2)].Name);
+				}
+			break;
+			case 19:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(13, 3),
+					0, 255, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					//strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 2)].Name);	// #error Change 2 to 3
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 3)].Name);	// FIX
+				}
+			break;
+			case 20:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 16),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 16)].Name);
+				}
+			break;
+			case 21:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(13, 0),
+					0, 255, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 0)].Name);
+				}
+			break;
+			case 22:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(13, 1),
+					0, 255, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 1)].Name);
+				}
+			break;
+			case 23:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					1, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 24:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					9, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 25:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					10, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 26:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 19),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 19)].Name);
+				}
+			break;
+			case 27:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 19),
+					1, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 19)].Name);
+				}
+			break;
+			case 28:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 19),
+					2, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 19)].Name);
+				}
+			break;
+			case 29:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 19),
+					3, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 19)].Name);
+				}
+			break;
+			case 30:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 19),
+					4, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 19)].Name);
+				}
+			break;
+			case 31:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					2, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 32:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 20),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 20)].Name);
+				}
+			break;
+			case 33:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 22),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 22)].Name);
+				}
+			break;
+			case 34:	case 35:	case 36:	case 37:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(13, 15),
+					aRecv->iGiftNumber - 34, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(13, 15)].Name);
+				}
+			break;
+			case 38:	case 39:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					aRecv->iGiftNumber - 27, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 40:	case 41:	case 42:	case 43:	case 44:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 20),
+					aRecv->iGiftNumber - 39, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 20)].Name);
+				}
+			break;
+			case 45:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 11),
+					8, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 11)].Name);
+				}
+			break;
+			case 46:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 41),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 41)].Name);
+				}
+			break;
+			case 47:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 42),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 42)].Name);
+				}
+			break;
+			case 48:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 44),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 44)].Name);
+				}
+			break;
+			case 49:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 43),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 43)].Name);
+				}
+			break;
+			case 50:
+				ItemSerialCreateSend(gObj[aRecv->iINDEX].m_Index, GIFT_2ANV_MAP, 
+					gObj[aRecv->iINDEX].X, gObj[aRecv->iINDEX].Y,
+					ItemGetNumberMake(14, 31),
+					0, 0, 0, 0, 0,
+					aRecv->iINDEX,
+					0, 0);
+
+				if ( g_bRingEventItemTextLoad == FALSE )
+				{
+					strcpy(Result.szGIFT_NAME, ItemAttribute[ITEMGET(14, 31)].Name);
+				}
+			break;
+			default:
+				ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Error : iGiftNumber is Out of Boud [%d]", aRecv->iGiftNumber);
+			break;
 		}
 	}
-	else if ( aRecv->btIsRegistered == 1 ||  aRecv->btIsRegistered == 2 ||  aRecv->btIsRegistered == 3 ||  aRecv->btIsRegistered == 4 ||  aRecv->btIsRegistered == 5 )
+	else if ( aRecv->btIsRegistered == 1 ||
+			  aRecv->btIsRegistered == 2 ||
+			  aRecv->btIsRegistered == 3 ||
+			  aRecv->btIsRegistered == 4 ||
+			  aRecv->btIsRegistered == 5 )
 	{
 		Result.btIsRegistered = aRecv->btIsRegistered;
 	}
 	else
 	{
 		Result.btIsRegistered = 4;
-		LogAddTD("[Mu_2Anv_Event] Error : Result Value is Wrong [%d]", aRecv->btIsRegistered);
+		ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Error : Result Value is Wrong [%d]", aRecv->btIsRegistered);
 	}
 
-	LogAddTD("[Mu_2Anv_Event] Register Serial Result : %d [%s][%s] GiftNumber: %d Item : %d", aRecv->btIsRegistered, gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name,aRecv->iGiftNumber,loc1);
+	ITEMBAG_DROP_LOG.Output("[Mu_2Anv_Event] Register Serial Result : %d [%s][%s]",
+		aRecv->btIsRegistered, gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name);
 
 	DataSend(aRecv->iINDEX, (LPBYTE)&Result, Result.h.size);
 
-	gObj[aRecv->iINDEX].UseEventServer = FALSE;
+	gObj[aRecv->iINDEX].UseEventServer = false;
 }
 
-static const char g_szRingEventOfflineGift[4][32] = { "100µ· ??????", "10µ· ??????", "5µ· ??????", "2µ· ??????"};
+
+static const char g_szRingEventOfflineGift[4][32] = { "100µ· ¹Â¹ÝÁö",
+													  "10µ· ¹Â¹ÝÁö",
+													  "5µ· ¹Â¹ÝÁö",
+													  "2µ· ¹Â¹ÝÁö"};
 															
+
+
+
 void EGRecvRegRingGift( PMSG_ANS_REG_RINGGIFT* aRecv)
 {
-	gObj[aRecv->iINDEX].UseEventServer = FALSE;
-
 	if ( gObjIsConnected(aRecv->iINDEX) == FALSE )
 		return;
 
 	if ( strcmp(aRecv->szUID, gObj[aRecv->iINDEX].AccountID))
 		return;
 
+	gObj[aRecv->iINDEX].UseEventServer = false;
+
 	if ( aRecv->btIsRegistered == 1 )
 	{
 		if ( CHECK_LIMIT(aRecv->btGiftKind-1, 4) )
 		{
 			char szTemp[256];
-			wsprintf(szTemp, "%s?? ???­ %s?? ???·µ?????????.", gObj[aRecv->iINDEX].Name, g_szRingEventOfflineGift[aRecv->btGiftKind-1]);
+			wsprintf(szTemp, "%s´Ô ²²¼­ %s¿¡ ´çÃ·µÇ¼Ì½À´Ï´Ù.",
+				gObj[aRecv->iINDEX].Name, g_szRingEventOfflineGift[aRecv->btGiftKind-1]);
 
 			AllSendServerMsg(szTemp);
 
-			LogAddTD("[Ring Event] [%s][%s] Register Succeeded Result:%d, Gift:%d", gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name, aRecv->btIsRegistered, aRecv->btGiftKind);
+			ITEMBAG_DROP_LOG.Output("[Ring Event] [%s][%s] Register Succeeded Result:%d, Gift:%d",
+				gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name,
+				aRecv->btIsRegistered, aRecv->btGiftKind);
 		}
 		else
 		{
-			LogAddTD("[Ring Event] [%s][%s] Register Failed Result:%d, Gift:%d (out of bound, 1~4)", gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name, aRecv->btIsRegistered, aRecv->btGiftKind);
+			ITEMBAG_DROP_LOG.Output("[Ring Event] [%s][%s] Register Failed Result:%d, Gift:%d (out of bound, 1~4)",
+				gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name,
+				aRecv->btIsRegistered, aRecv->btGiftKind);
 		}
 
 		return;
 	}
 
-	LogAddTD("[Ring Event] [%s][%s] Register Failed Result : %d", gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name, aRecv->btIsRegistered);
+	ITEMBAG_DROP_LOG.Output("[Ring Event] [%s][%s] Register Failed Result : %d",
+		gObj[aRecv->iINDEX].AccountID, gObj[aRecv->iINDEX].Name,
+		aRecv->btIsRegistered);
 
 	if ( gObjIsConnected(aRecv->iINDEX) == TRUE )
 	{
 		MapC[gObj[aRecv->iINDEX].MapNumber].MoneyItemDrop(100000, (BYTE)gObj[aRecv->iINDEX].X, (BYTE)gObj[aRecv->iINDEX].Y);
 	}
 }
+
+
 
 struct PMSG_REQ_BLOODCASTLE_ENTERCOUNT
 {
@@ -1817,41 +2991,55 @@ struct PMSG_REQ_BLOODCASTLE_ENTERCOUNT
 	int iObjIndex;	// 1C
 };
 
+
+
 void EGReqBloodCastleEnterCount(int iIndex)
 {
-	if ( !gObjIsConnected(iIndex) )
-		return;
-
-	PMSG_REQ_BLOODCASTLE_ENTERCOUNT pMsg;
-
-	pMsg.h.c = 0xC1;
-	pMsg.h.headcode = 0x0B;
-	pMsg.h.size = sizeof(pMsg);
-	memcpy(pMsg.AccountID, gObj[iIndex].AccountID, 10);
-	memcpy(pMsg.GameID, gObj[iIndex].Name, 10);
-	pMsg.ServerCode = gGameServerCode / 20;
-	pMsg.iObjIndex = iIndex;
-
-	if ( !IsDevilSquareEventConnected && !DevilSquareEventConnect )
+	if(ReadConfig.SCFRSON == FALSE)
 	{
-		wsRServerCli.Close();
-		wsRServerCli.CreateSocket(ghWnd);
-
-		if ( !GMRankingServerConnect(gDevilSquareEventServerIp, WM_GM_RANKING_CLIENT_MSG_PROC) )
-		{
-			IsDevilSquareEventConnected = 0;
-			LogAddTD("Can not connect Ranking Server");
+		if ( !gObjIsConnected(iIndex) )
 			return;
+
+		PMSG_REQ_BLOODCASTLE_ENTERCOUNT pMsg;
+
+		pMsg.h.c = 0xC1;
+		pMsg.h.headcode = 0x0B;
+		pMsg.h.size = sizeof(pMsg);
+		memcpy(pMsg.AccountID, gObj[iIndex].AccountID, 10);
+		memcpy(pMsg.GameID, gObj[iIndex].Name, 10);
+		pMsg.ServerCode = gGameServerCode / 20;
+		pMsg.iObjIndex = iIndex;
+
+		if ( !IsDevilSquareEventConnected && !DevilSquareEventConnect )
+		{
+			wsRServerCli.Close();
+			wsRServerCli.CreateSocket(ghWnd);
+
+			if ( !GMRankingServerConnect(gDevilSquareEventServerIp, WM_GM_RANKING_CLIENT_MSG_PROC) )
+			{
+				IsDevilSquareEventConnected = 0;
+				ITEMBAG_DROP_LOG.Output("Can not connect Ranking Server");
+				return;
+			}
+
+			IsDevilSquareEventConnected = TRUE;
 		}
 
-		IsDevilSquareEventConnected = TRUE;
-	}
-
-	if ( !DevilSquareEventConnect && IsDevilSquareEventConnected )
-	{
-		wsRServerCli.DataSend((char*)&pMsg, pMsg.h.size);
+		if ( !DevilSquareEventConnect && IsDevilSquareEventConnected )
+		{
+			wsRServerCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
+		}
 	}
 }
+
+
+struct PMSG_ANS_CL_ENTERCOUNT
+{
+	PBMSG_HEAD h;	// C1:9F
+	BYTE btEventType;	// 3
+	BYTE btLeftEnterCount;	// 4
+};
+
 
 void EGAnsBloodCastleEnterCount( PMSG_ANS_BLOODCASTLE_ENTERCOUNT* lpMsg)
 {
@@ -1866,7 +3054,8 @@ void EGAnsBloodCastleEnterCount( PMSG_ANS_BLOODCASTLE_ENTERCOUNT* lpMsg)
 	memcpy(szAccountID, lpMsg->AccountID, 10);
 	memcpy(szName, lpMsg->GameID, 10);
 
-	if ( strcmp(gObj[lpMsg->iObjIndex].AccountID, szAccountID) || strcmp(gObj[lpMsg->iObjIndex].Name, szName) )
+	if ( strcmp(gObj[lpMsg->iObjIndex].AccountID, szAccountID) ||
+		 strcmp(gObj[lpMsg->iObjIndex].Name, szName) )
 		 return;
 
 	PMSG_ANS_CL_ENTERCOUNT pMsgSend;
@@ -1880,6 +3069,9 @@ void EGAnsBloodCastleEnterCount( PMSG_ANS_BLOODCASTLE_ENTERCOUNT* lpMsg)
 	DataSend(lpMsg->iObjIndex, (LPBYTE)&pMsgSend, sizeof(pMsgSend));
 }
 
+
+
+
 struct PMSG_REQ_REG_CC_OFFLINE_GIFT
 {
 	PBMSG_HEAD h;	// C1:15
@@ -1888,6 +3080,7 @@ struct PMSG_REQ_REG_CC_OFFLINE_GIFT
 	WORD wServerCode;	// 14
 	char szNAME[11];	// 16
 };
+
 
 void EGReqRegCCOfflineGift(int iIndex)
 {
@@ -1906,8 +3099,11 @@ void EGReqRegCCOfflineGift(int iIndex)
 	pMsg.szUID[10] = 0;
 	pMsg.szNAME[10] = 0;
 
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
+	DataSendEventChip((PCHAR)&pMsg, sizeof(pMsg));
 }
+
+
+
 
 void EGAnsRegCCOfflineGift( PMSG_ANS_REG_CC_OFFLINE_GIFT* lpMsg)
 {
@@ -1934,8 +3130,13 @@ void EGAnsRegCCOfflineGift( PMSG_ANS_REG_CC_OFFLINE_GIFT* lpMsg)
 	wsprintf(szText, lMsg.Get(MSGGET(6,74)), szName, szGIFT_NAME);
 	AllSendServerMsg(szText);
 
-	LogAddTD("[Chaos Castle] [%s][%s] Success to Register OffLine Gift (GIFT:%s)", szAccountID, szName, szGIFT_NAME);
+	ITEMBAG_DROP_LOG.Output("[Chaos Castle] [%s][%s] Success to Register OffLine Gift (GIFT:%s)",
+		szAccountID, szName, szGIFT_NAME);
 }
+
+
+
+
 
 struct PMSG_REQ_REG_DL_OFFLINE_GIFT
 {
@@ -1945,6 +3146,7 @@ struct PMSG_REQ_REG_DL_OFFLINE_GIFT
 	WORD wServerCode;	// 14
 	char szNAME[11];	// 16
 };
+
 
 void EGReqRegDLOfflineGift(int iIndex)
 {
@@ -1963,8 +3165,11 @@ void EGReqRegDLOfflineGift(int iIndex)
 	pMsg.szUID[10] = 0;
 	pMsg.szNAME[10] = 0;
 
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
+	DataSendEventChip((PCHAR)&pMsg, sizeof(pMsg));
 }
+
+
+
 
 void EGAnsRegDLOfflineGift( PMSG_ANS_REG_DL_OFFLINE_GIFT* lpMsg)
 {
@@ -1988,11 +3193,14 @@ void EGAnsRegDLOfflineGift( PMSG_ANS_REG_DL_OFFLINE_GIFT* lpMsg)
 	szGIFT_NAME[49] = 0;
 	char szText[256] = {0};
 
-	wsprintf(szText, "[???©·?µ? ±??? ?????®] %s ?????­ %s °??°?? ???·µ?????????.", szName, szGIFT_NAME);
+	wsprintf(szText, "[´ÙÅ©·Îµå ±â³ä ÀÌº¥Æ®] %s ´Ô²²¼­ %s °æÇ°¿¡ ´çÃ·µÇ¼Ì½À´Ï´Ù.", szName, szGIFT_NAME);
 	AllSendServerMsg(szText);
 
-	LogAddTD("[DarkLord Heart Event] [%s][%s] Success to Register OffLine Gift (GIFT:%s)", szAccountID, szName, szGIFT_NAME);
+	ITEMBAG_DROP_LOG.Output("[DarkLord Heart Event] [%s][%s] Success to Register OffLine Gift (GIFT:%s)",
+		szAccountID, szName, szGIFT_NAME);
 }
+
+
 
 struct PMSG_REQ_REG_HT_OFFLINE_GIFT
 {
@@ -2020,8 +3228,11 @@ void EGReqRegHTOfflineGift(int iIndex)
 	pMsg.szUID[10] = 0;
 	pMsg.szNAME[10] = 0;
 
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
+	DataSendEventChip((PCHAR)&pMsg, sizeof(pMsg));
 }
+
+
+
 
 void EGAnsRegHTOfflineGift( PMSG_ANS_REG_HT_OFFLINE_GIFT* lpMsg)
 {
@@ -2053,11 +3264,15 @@ void EGAnsRegHTOfflineGift( PMSG_ANS_REG_HT_OFFLINE_GIFT* lpMsg)
 	szGIFT_NAME[49] = 0;
 	char szText[256] = {0};
 
-	wsprintf(szText, "[??°??? ???°»??? ?????®] %s ?????­ %s °??°?? ???·µ?????????.", szName, szGIFT_NAME);
+	wsprintf(szText, "[Hidden TreasureBox][%s] Success to Register OffLine Gift (GIFT:%s)", szName, szGIFT_NAME);
 	AllSendServerMsg(szText);
 
-	LogAddTD("[Hidden TreasureBox Event] [%s][%s] Success to Register OffLine Gift (GIFT:%s)", szAccountID, szName, szGIFT_NAME);
+	ITEMBAG_DROP_LOG.Output("[Hidden TreasureBox Event] [%s][%s] Success to Register OffLine Gift (GIFT:%s)",
+		szAccountID, szName, szGIFT_NAME);
 }
+
+
+
 
 void Japan1StAnivBoxOpen(LPOBJ lpObj, int iBoxLevel)
 {
@@ -2071,625 +3286,129 @@ void Japan1StAnivBoxOpen(LPOBJ lpObj, int iBoxLevel)
 	MsgSendV2(lpObj, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
 	DataSend(lpObj->m_Index, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
 
-	CProbabilityItemBag * Japan1StAnivBox = NULL;
+	srand(time(NULL));
+
+	float dur;
+	int type;
+	int level;
+	int x;
+	int y;
+	int Option1 = 0;
+	int Option2 = 0;
+	int Option3 = 0;
+	int DropItemNum;
+	int ExOption = 0;
+	int iMinLevel = 0;
+	int iAddLevel = 0;
+	int iItemDropRate = 30;
+	int iDropMoney = 50000;
+	CItemBag * Japan1StAnivBox = NULL;
 
 	switch ( iBoxLevel )
 	{
-		case 1:	Japan1StAnivBox = GoldGoblenItemBag;		break;
-		case 2:	Japan1StAnivBox = TitanItemBag;				break;
-		case 3:	Japan1StAnivBox = GoldDerconItemBag;		break;
-		case 4:	Japan1StAnivBox = DevilLizardKingItemBag;	break;
-		case 5:	Japan1StAnivBox = KanturItemBag;			break;
+		case 1:
+			Japan1StAnivBox = GoldGoblenItemBag;
+			iMinLevel = 5;
+			iAddLevel = 2;
+			break;
+		case 2:
+			Japan1StAnivBox = TitanItemBag;
+			iMinLevel = 4;
+			iAddLevel = 2;
+			break;
+		case 3:
+			Japan1StAnivBox = GoldDerconItemBag;
+			iMinLevel = 4;
+			iAddLevel = 2;
+			break;
+		case 4:
+			Japan1StAnivBox = DevilLizardKingItemBag;
+			iMinLevel = 4;
+			iAddLevel = 1;
+			break;
+		case 5:
+			Japan1StAnivBox = KanturItemBag;
+			iMinLevel = 4;
+			iAddLevel = 0;
+			break;
 	}
-	
-	Japan1StAnivBox->DropEventItem(lpObj->m_Index,lpObj->MapNumber,lpObj->X, lpObj->Y);
-}
 
-void RingOfHeroBoxOpen(LPOBJ lpObj)
-{
-	float dur; //loc1
-	int type; //loc2
-	int level; //loc3
-	int x; //loc4
-	int y; //loc5
-	int Option1 = 0; //loc6
-	int Option2 = 0; //loc7
-	int Option3 = 0; //loc8
-	int DropItemNum; //loc9
-
-	if ( RingOfHeroBoxItemBag->GetBagCount() > 0 && (rand()%10) < 9)
+	if ( (rand()%100) < iItemDropRate )
 	{
-		DropItemNum = rand()%RingOfHeroBoxItemBag->GetBagCount();
-		dur=0;
-		x = lpObj->X;
-		y = lpObj->Y;
-
-		level = RingOfHeroBoxItemBag->GetLevel(DropItemNum) + rand()%3;
-		type = ItemGetNumberMake(RingOfHeroBoxItemBag->GetType(DropItemNum), RingOfHeroBoxItemBag->GetIndex(DropItemNum));
-
-		Option1 = 1;
-
-		Option2 = rand() % 2;
-
-		if ( (rand() % 5 ) < 1 )
+		if ( Japan1StAnivBox->GetBagCount() > 0 )
 		{
-			Option3 = 3;
-		}
-		else
-		{
-			Option3 = rand() % 3;
-		}
-		
-		if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14))
-		{
-			Option1 = 0;
-			Option2 = 0;
-			Option3 = 0;
-			level = 0;
-		}
+			int NormalItemCount = Japan1StAnivBox->GetBagCount();
 
-		if ( type == ITEMGET(13,0) ||
-			 type == ITEMGET(13,1) ||
-			 type == ITEMGET(13,2) ||
-			 type == ITEMGET(13,8) ||
-			 type == ITEMGET(13,9) ||
-			 type == ITEMGET(13,12) ||
-			 type == ITEMGET(13,13) )
-		{
-			level = 0;
-		}
+			DropItemNum = rand()%NormalItemCount;
+			dur=0;
+			x = lpObj->X;
+			y = lpObj->Y;
 
-		ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y, type, level, dur, Option1, Option2, Option3, lpObj->m_Index, 0, 0);
+			if ( iAddLevel )
+				level = iMinLevel + rand() % iAddLevel;
+			else
+				level = iMinLevel;
 
-		CItem NewItem;
-		NewItem.Convert(type, Option1, Option2, Option3, 0, 1, 0, NULL, 0xFF, 0, CURRENT_DB_VERSION);
-
-		LogAddTD("[%s][%s][RingOfHero Event](%d,%d,%d) ItemDrop : Item:%s %d Level:%d op1:%d op2:%d op3:%d", lpObj->AccountID, lpObj->Name, lpObj->MapNumber, lpObj->X, lpObj->Y, NewItem.GetName(), type, level, Option1, Option2, Option3);
-	}
-	else
-	{
-		x = lpObj->X;
-		y = lpObj->Y;
-		MapC[lpObj->MapNumber].MoneyItemDrop(100000, x, y);
-	}
-}
-
-void NewYearLuckMonsterItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	NewYearLuckyPouchItemBag->DropNewYearLuckyBagEventItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-void GMPresentBoxItemBagOpen(LPOBJ lpObj)
-{
-	GMPresentBoxItemBag->DropGMPresentBoxEventItem(lpObj->m_Index, lpObj->MapNumber, lpObj->X, lpObj->Y);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef PCBANG
-void PCBangGreenChaosBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY) //season 4.5 add-on
-{
-	PCBangGageGreenBox->DropPCBangGreenChaosBoxReward(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-void PCBangRedChaosBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY) //season 4.5 add-on
-{
-	PCBangGageRedBox->DropPCBangRedChaosBoxReward(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-void PCBangPurpleChaosBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY) //season 4.5 add-on
-{
-	PCBangGagePurpleBox->DropPCBangPurpleChaosBoxReward(lpObj->m_Index, btMapNumber, cX, cY);
-}
-#endif
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void GenericBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY) //004A3990
-{
-	MoonHarvestItemBag->DropEventItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-
-#ifdef SEASON6DOT3_ENG
-//004ac3f0	-> 100%
-void GoldenBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	GoldenBoxItemBag->DropGoldenBoxItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac430	-> 100%
-void SilverBoxItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	SilverBoxItemBag->DropSilverBoxItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac470	-> 100%
-void ShineJewelleryCaseItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	ShineJewelleryCaseItemBag->DropJewelleryCaseItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac4b0	-> 100%
-void RefinedJewelleryCaseItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	RefinedJewelleryCaseItemBag->DropJewelleryCaseItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac4f0	-> 100%
-void IronJewelleryCaseItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	IronJewelleryCaseItemBag->DropJewelleryCaseItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac530	-> 100%
-void OldJewelleryCaseItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	OldJewelleryCaseItemBag->DropJewelleryCaseItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac570	-> 100%
-void NewMonsterItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY, int nBagNumber)
-{
-	switch(nBagNumber)
-	{
-	case 71:
-	case 72:
-	case 73:
-	case 74:
-	case 75:
-		NewMonsterItemBag->DropNewMonsterItem(lpObj->m_Index, btMapNumber, cX, cY);
-		break;
-	}
-}
-// -------------------------------------------------------------------------
-
-//004ac690	-> 100%
-void BoxOfGreenColorItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	BoxOfGreenColorItemBag->DropBoxOfGRPColorItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac6d0	-> 100%
-void BoxOfRedColorItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	BoxOfRedColorItemBag->DropBoxOfGRPColorItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-
-//004ac710	-> 100%
-void BoxOfPurpleColorItemBagOpen(LPOBJ lpObj, BYTE btMapNumber, BYTE cX, BYTE cY)
-{
-	BoxOfPurpleColorItemBag->DropBoxOfGRPColorItem(lpObj->m_Index, btMapNumber, cX, cY);
-}
-// -------------------------------------------------------------------------
-#endif
-
-//10 new function
-struct PMSG_XMAS_PAY_ITEM
-{
-	PBMSG_HEAD h; //0
-	short iINDEX; //4
-	char szUID[11];
-	WORD wServerCode;
-	WORD wResult;//17
-};
-
-//identical
-void EGAnsRegXMasGetPayItem(int aIndex,int Result)//004A39D0
-{
-	if(gObjIsConnected(aIndex) == FALSE)
-	{
-		return;
-	}
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	PMSG_XMAS_PAY_ITEM pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0x31, 0x00, sizeof(pMsg));
-
-	memcpy(pMsg.szUID, lpObj->AccountID, sizeof(pMsg.szUID));
-	pMsg.wServerCode = gGameServerCode / 20;
-	pMsg.iINDEX = aIndex;
-	pMsg.szUID[10] = '\0';
-	pMsg.wResult = Result;
-
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
-}
-
-//004A3AB0  - identical
-void EGAnsRegXMasGetPayItemResult(PMSG_XMAS_PAY_ITEM_RESULT * lpMsg)
-{
-	int aIndex = lpMsg->iIndex;
-	LPOBJ lpObj;
-
-	if(!OBJMAX_RANGE(aIndex))
-	{
-		return;
-	}
-	
-	lpObj = &gObj[aIndex];
-
-	switch(lpMsg->bt_17)
-	{
-	case 0:
-		{
-			if(lpMsg->w_14 == 1)
+			type = ItemGetNumberMake(Japan1StAnivBox->GetType(DropItemNum), Japan1StAnivBox->GetIndex(DropItemNum));
+			if ( IsItem(type) == FALSE )
 			{
-				if(lpMsg->bt_16 != 0)
+				MapC[lpObj->MapNumber].MoneyItemDrop(iDropMoney*iBoxLevel, lpObj->X, lpObj->Y);
+
+				ITEMBAG_DROP_LOG.Output("[Box Item Not Found] Japan1StAniv Box Item [%d][%d] Drop",
+					Japan1StAnivBox->GetType(DropItemNum),Japan1StAnivBox->GetIndex(DropItemNum));
+
+				return;
+			}
+
+			ExOption = BoxExcOptions(Japan1StAnivBox->GetOp2(DropItemNum));
+
+			Option1 = rand() % 2;
+			Option2 = rand() % 2;
+
+			if ( Option2 == 0 || Option1  == 0 )
+			{
+				if ( (rand() % 5 ) < 1 )
 				{
-					GCServerCmd(lpObj->m_Index,16,0,0);
+					Option3 = 3;
 				}
 				else
 				{
-					GCServerCmd(lpObj->m_Index,16,1,0);
+					Option3 = rand() % 3;
 				}
 			}
-		}
-		break;
-	case 1:
-	case 2:
-		if(lpMsg->w_14 == 1)
-		{
-			GCServerCmd(lpObj->m_Index,16,2,0);
-		}
-		break;
-	case 3:
-		if(lpMsg->w_14 == 1)
-		{
-			GCServerCmd(lpObj->m_Index,16,3,0);
-		}
-		break;
-	}
-}
-//004A3C00 
-void EGAnsRegXMasSetPayItem(int aIndex,int Result)
-{
-	if(gObjIsConnected(aIndex) == FALSE)
-	{
-		return;
-	}
 
-	LPOBJ lpObj = &gObj[aIndex];
-
-	PMSG_XMAS_PAY_ITEM pMsg = {0};
-
-	PHeadSubSetB((LPBYTE)&pMsg, 0x32, 0x00, sizeof(pMsg));
-
-	memcpy(pMsg.szUID, lpObj->AccountID, sizeof(pMsg.szUID));
-	pMsg.wServerCode = gGameServerCode / 20;
-	pMsg.iINDEX = aIndex;
-	pMsg.szUID[10] = '\0';
-	pMsg.wResult = Result;
-
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
-}
-
-//004A3CE0
-void EGAnsRegXMasSetPayItemResult(PMSG_XMAS_PAY_ITEM_RESULT * lpMsg)
-{
-	int aIndex = lpMsg->iIndex;
-
-	int loc2 = 0;//ebp-8
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if(!gObjIsConnected(aIndex))
-	{
-		return;
-	}
-	
-	switch(lpMsg->bt_17)
-	{
-	case 0:
-		{
-			if(lpMsg->w_14 == 1)
+			if ( type == ITEMGET(12,15) || type == ITEMGET(14,13) || type == ITEMGET(14,14) || type == ITEMGET(14,16) )
 			{
-				char szText[256] = { 0 };
-
-				g_iXMasVisitCount++;
-				wsprintf(szText,lMsg.Get(MSGGET(10,24)),g_iXMasVisitCount);
-				
-				if ( (g_iXMasVisitCount % g_iXMasEvent_LuckNumber1st) == FALSE )
-				{
-					if ( (g_iXMasVisitCount % g_iXMasEvent_LuckNumber2nd) == FALSE )
-					{
-						XMasEventC->DropEventItem(aIndex,lpObj->MapNumber,lpObj->X, lpObj->Y);
-					}
-					else
-					{
-						XMasEventB->DropEventItem(aIndex,lpObj->MapNumber,lpObj->X, lpObj->Y);
-					}
-
-					GCServerMsgStringSend(szText, lpObj->m_Index, 0);
-				}
-
-				if((g_iXMasVisitCount % 100) != 0 && gNewServer != 1)
-				{
-					XMasEventA->DropEventItem(aIndex,lpObj->MapNumber,lpObj->X, lpObj->Y);
-				}
-				
-				LogAddTD("[X-MAX Event] [AccountID]: %s , [VISITCOUNT]:%d",lpObj->AccountID,g_iXMasVisitCount);
-
+				Option1 = 0;
+				Option2 = 0;
+				Option3 = 0;
+				level = 0;
+				ExOption = 0;
 			}
+
+			if ( type == ITEMGET(13,0) ||
+				 type == ITEMGET(13,1) ||
+				 type == ITEMGET(13,2) ||
+				 type == ITEMGET(13,8) ||
+				 type == ITEMGET(13,9) ||
+				 type == ITEMGET(13,12) ||
+				 type == ITEMGET(13,13) )
+			{
+				level = 0;
+			}
+
+			ItemSerialCreateSend(lpObj->m_Index, lpObj->MapNumber, x, y,
+				type, level, dur, Option1, Option2, Option3, lpObj->m_Index, ExOption, 0);
+
+			ITEMBAG_DROP_LOG.Output("[Japan1StAnivBox] BoxLevel-%d Event ItemDrop : Item:%d Level:%d op1:%d op2:%d op3:%d ex:%d",
+				iBoxLevel, type, level, Option1, Option2, Option3, ExOption);
+
+			return;
 		}
-		break;
-	case 1:
-	case 2:
-		if(lpMsg->w_14 == 1)
-		{
-			GCServerCmd(lpObj->m_Index,16,2,0);
-		}
-		break;
-	case 3:
-		if(lpMsg->w_14 == 1)
-		{
-			GCServerCmd(lpObj->m_Index,16,3,0);
-		}
-		break;
-	}
-}
-
-//004A3F90 
-void CGReqCheckSnowManNPC(int aIndex)
-{
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if(gObjIsConnected(aIndex) == FALSE)
-	{
-		return;
-	}
-	
-	GCServerCmd(lpObj->m_Index,17,1,0);
-}
-//004A3FF0 
-void ReqNPCXMasMapMoveDevias(int iIndex)
-{
-	LPOBJ lpObj = &gObj[iIndex];
-
-	if(gObjIsConnected(iIndex) == FALSE)
-	{
-		return;
-	}
-
-	gObjMoveGate(lpObj->m_Index, 22); //Devias :)
-}
-
-struct PMSG_ANS_LUCKYCOIN_REGCOUNT
-{
-	PBMSG_HEAD h;
-	WORD iIndex;
-	char AccountID[10];
-	BYTE btResult;
-	char Name[10];
-	BYTE btResult2;
-	short ServerCode;
-};
-
-//004A4050
-void EGAnsRegLuckyCoinItem(int iIndex)
-{
-	LPOBJ lpObj = &gObj[iIndex];
-
-	if(gObjIsConnected(iIndex) == FALSE)
-	{
-		return;
-	}
-
-	PMSG_ANS_LUCKYCOIN_REGCOUNT pMsg = { 0 };
-	
-	pMsg.h.c = 0xC1;
-	pMsg.h.headcode = 0x33;
-	pMsg.h.size = 0x1E;
-	
-	pMsg.iIndex = lpObj->m_Index;
-	pMsg.ServerCode = gGameServerCode / 20;
-	memcpy(pMsg.AccountID, lpObj->AccountID, 0xA);
-	pMsg.btResult = 0;
-	memcpy(pMsg.Name, lpObj->Name, 0xA);
-	pMsg.btResult2 = 0;
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
-}
-
-void EGAnsRegLuckyCoinItemResult(PMSG_ANS_LUCKYCOIN_REGCOUNT_RESULT * lpMsg)
-{
-	int aIndex = lpMsg->iIndex;
-	int loc2 = 0;
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if(gObjIsConnected(aIndex) == FALSE)
-	{
-		return;
-	}
-	
-	if(strcmp(lpMsg->szNAME,lpObj->Name))
-	{
-		return;
-	}
-	
-	GCSendLuckyCoinCount(aIndex,lpMsg->iCoinCount);
-}
-
-struct PMSG_ANS_LUCKYCOIN_ITEM_POSITION
-{
-	PBMSG_HEAD h;
-	WORD iIndex;
-	char AccountID[10];
-	BYTE btResult;
-	char Name[10];
-	BYTE btResult2;
-	short ServerCode;
-	BYTE pos;
-};
-
-//004A41D0		Lucky Coin Send Ranking?
-void EGAnsRegLuckyCoinItemPosition(int iIndex, int Ipos)
-{
-	LPOBJ lpObj = &gObj[iIndex];
-
-	if(gObjIsConnected(iIndex) == FALSE)
-	{
-		return;
-	}
-
-	PMSG_ANS_LUCKYCOIN_ITEM_POSITION pMsg = { 0 };
-	
-	pMsg.h.c = 0xC1;
-	pMsg.h.headcode = 0x34;
-	pMsg.h.size = sizeof(pMsg);//0x20;
-	
-	pMsg.iIndex = lpObj->m_Index;
-	pMsg.ServerCode = gGameServerCode / 20;
-	memcpy(pMsg.AccountID, lpObj->AccountID, 0xA);
-	pMsg.btResult = 0;
-	memcpy(pMsg.Name, lpObj->Name, 0xA);
-	pMsg.btResult2 = 0;
-	pMsg.pos = Ipos;
-	DataSendEventChip((char*)&pMsg, sizeof(pMsg));
-}
-
-void EGAnsRegLuckyCoinItemPositionResult(PMSG_ANS_LUCKYCOIN_REGCOUNT_RESULT * lpMsg)
-{
-	int aIndex = lpMsg->iIndex;
-	int loc2 = 0;
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if(gObjIsConnected(aIndex) == FALSE)
-	{
-		return;
-	}
-	
-	if(strcmp(lpMsg->szNAME,lpObj->Name))
-	{
-		return;
-	}
-
-	CGReqLuckyCoinRegister(aIndex,lpMsg->btResult,lpMsg->iCoinCount,lpMsg->pos);
-}
-#pragma warning ( disable : 4101 )
-void EGRecvGoldenArcherInfo(PMSG_ANS_VIEW_GOLDEN_ARCHER_WINDOW * aRecv)
-{
-	LPOBJ lpObj = &gObj[aRecv->iINDEX];
-
-	PMSG_EVENTCHIPINFO eventchipeventinfo;
-	char msg[255];
-
-	PHeadSetB((LPBYTE)&eventchipeventinfo, 0x94, sizeof(eventchipeventinfo));
-	eventchipeventinfo.Type = 0;
-	eventchipeventinfo.ChipCount = aRecv->nEVENT_CHIPS;
-	lpObj->EventChipCount = aRecv->nEVENT_CHIPS;
-
-	DataSend(lpObj->m_Index, (LPBYTE)&eventchipeventinfo, eventchipeventinfo.h.size);
-
-	lpObj->UseEventServer = FALSE;
-}
-#pragma warning ( default : 4101 )
-
-void RenaResultWinnerPrize(int aIndex);
-
-void EGResultRegGoldenArcherRena(PMSG_ANS_REGISTER_EVENTCHIP * aRecv)
-{
-	PMSG_REGEVENTCHIP_RESULT Result;
-	LPOBJ lpObj;
-	int aIndex;
-
-	PHeadSetB((LPBYTE)&Result, 0x95, sizeof(Result));
-	lpObj = &gObj[aRecv->iINDEX];
-	aIndex = aRecv->iINDEX;
-
-	if ( aRecv->bSUCCESS == FALSE )
-	{
-		Result.ChipCount = -1;
-		LogAddTD("[EventChip] [%s][%s] RegEventServer Fail (RegEventchip) %d",
-			lpObj->AccountID, lpObj->Name, aRecv->Pos);
-
 	}
 	else
 	{
-		Result.ChipCount = aRecv->nEVENT_CHIPS;
-		gObjInventoryDeleteItem(aIndex, aRecv->Pos);
-		GCInventoryItemDeleteSend(aIndex, aRecv->Pos, 1);
-
-		LogAddTD("[EventChip] [%s][%s] Delete EventChip (%d)",
-			lpObj->AccountID, lpObj->Name, aRecv->Pos);
-	}
-
-	Result.Type = 0;
-
-	DataSend(aIndex, (LPBYTE)&Result, Result.h.size);
-
-	lpObj->UseEventServer = FALSE;
-
-	if(aRecv->nEVENT_CHIPS >= gGoldenArcherNeedRenaForPrize)
-	{
-		RenaResultWinnerPrize(aIndex);
-
-		PMSG_REQ_RESET_EVENTCHIP pMsg;
-
-		PHeadSetB((LPBYTE)&pMsg, 0x39, sizeof(pMsg));
-		pMsg.iINDEX = lpObj->m_Index;
-		strcpy(pMsg.szUID, lpObj->AccountID);
-		DataSendEventChip((char*)&pMsg, sizeof(pMsg));
+		MapC[lpObj->MapNumber].MoneyItemDrop(iDropMoney*iBoxLevel, lpObj->X, lpObj->Y);
 	}
 }
 
-
-void RenaResultWinnerPrize(int aIndex)
-{
-	int loc1 = -1;
-
-	if ( !OBJMAX_RANGE(aIndex))
-	{
-		LogAddTD("[GoldenArcher] Error: Index is out of bound [%d]", aIndex);
-		return;
-	}
-
-	if ( gObj[aIndex].Connected <= PLAYER_LOGGED )
-	{
-		LogAddTD("[GoldenArcher] Error: Index is out of bound [%d]", aIndex);
-		return;
-	}
-
-
-	if ( gObj[aIndex].Connected > PLAYER_LOGGED )
-	{
-		PMSG_SERVERCMD ServerCmd;
-
-		PHeadSubSetB((LPBYTE)&ServerCmd, 0xF3, 0x40, sizeof(ServerCmd));
-		ServerCmd.CmdType = 0;
-		ServerCmd.X = gObj[aIndex].X;
-		ServerCmd.Y = gObj[aIndex].Y;
-
-		MsgSendV2(&gObj[aIndex], (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-		DataSend(aIndex, (LPBYTE)&ServerCmd, sizeof(ServerCmd));
-	}
-
-	BYTE level = 0;//loc21
-	BYTE dur = 0;//loc22
-		
-	int ItemNum = g_EventItemList.SortItem(0,&level,&dur);//loc23
-		
-	loc1 = ItemNum;
-		
-	if ( ItemNum == 0 || ItemNum == -1 )
-    {
-		LogAddTD("[GoldenArcher] Error : ItemNumber is Wrong [%d]", ItemNum);
-	}
-	else
-	{
-		ItemSerialCreateSend(gObj[aIndex].m_Index, gObj[aIndex].MapNumber, gObj[aIndex].X,gObj[aIndex].Y, ItemNum, level, dur, 0, 0, 0, aIndex, 0, 0);
-	}
-	
-	LogAddTD("[GoldenArcher] Register Rena Result: [%s][%s] Item : %d", gObj[aIndex].AccountID, gObj[aIndex].Name, loc1);
-
-	//DataSend(aRecv->iINDEX, (LPBYTE)&Result, Result.h.size);
-	
-	gObj[aIndex].UseEventServer = FALSE;
-}

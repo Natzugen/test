@@ -1,31 +1,46 @@
-//	GS-CS	1.00.90	JPN	0xXXXXXXXX	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x0040D2F0
+//	GS-N	1.00.18	JPN	0x004102D0	-	Completed
 #include "stdafx.h"
 #include "KalimaGate.h"
 #include "LogProc.h"
 #include "DevilSquare.h"
 #include "BloodCastle.h"
 #include "ChaosCastle.h"
-#include "illusiontempleevent.h"
-
-#ifdef IMPERIAL
+#include "IllusionTemple.h"
 #include "ImperialGuardian.h"
-#endif
+#include "DoppelGanger.h"
 
 CKalimaGate g_KalimaGate;
 
-//00414A40 - identical
+
+
+
 CKalimaGate::CKalimaGate()
 {
 	InitializeCriticalSection(&this->m_critKalimaGate );
 }
 
-//00414AD0 - identical
+
+
+
+
+
 CKalimaGate::~CKalimaGate()
 {
 	DeleteCriticalSection(&this->m_critKalimaGate );
 }
 
-//00414B10 - identical
+
+
+
+
+
+
+
 BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 {
 	BOOL bKalimaGateCreateSucceed=FALSE;
@@ -59,7 +74,7 @@ BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 
 		iKalimaGateLevel = btLevel-1;
 
-		if (  DS_MAP_RANGE(gObj[iIndex].MapNumber) )
+		if ( DS_MAP_RANGE(gObj[iIndex].MapNumber) )
 		{
 			return false;
 		}
@@ -74,13 +89,20 @@ BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 			return false;
 		}
 
-		if ( CHECK_ILLUSIONTEMPLE(gObj[iIndex].MapNumber) )//NEW
+		if ( IT_MAP_RANGE(gObj[iIndex].MapNumber) )
 		{
 			return false;
 		}
 
-#ifdef IMPERIAL
-		if( CImperialGuardian::IsEventMap(gObj[iIndex].MapNumber) )
+#if (PACK_EDITION>=2)
+		if ( IMPERIALGUARDIAN_MAP_RANGE(gObj[iIndex].MapNumber) )
+		{
+			return false;
+		}
+#endif
+
+#if (PACK_EDITION>=3)
+		if ( DG_MAP_RANGE(gObj[iIndex].MapNumber) )
 		{
 			return false;
 		}
@@ -129,7 +151,7 @@ BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 			}
 		}
 
-		if ( gObj[iIndex].MapNumber == 10 )
+		if ( gObj[iIndex].MapNumber == MAP_INDEX_ICARUS )
 		{
 			LogAddTD("[Kalima] [%s][%s] Failed to Summon Kalima Gate - Uable to Summon in this Map (MapNumber:%d)",
 				gObj[iIndex].AccountID, gObj[iIndex].Name, gObj[iIndex].MapNumber);
@@ -149,8 +171,7 @@ BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 					gObj[iIndex].AccountID, gObj[iIndex].Name, iMonsterIndex);
 				return false;
 			}
-
-			gObjSetMonster(iMonsterIndex, iMonsterType);
+			gObjSetMonster(iMonsterIndex, iMonsterType,"CKalimaGate::CreateKalimaGate");
 			gObj[iMonsterIndex].Live = TRUE;
 			gObj[iMonsterIndex].Life = 1000.0;
 			gObj[iMonsterIndex].MaxLife = 1000.0;
@@ -197,7 +218,12 @@ BOOL CKalimaGate::CreateKalimaGate(int iIndex, BYTE btLevel, BYTE cTX, BYTE cTY)
 	return true;
 }
 
-//00415910 - identical
+
+
+
+
+
+
 void CKalimaGate::KalimaGateAct(int iIndex)
 {
 	LPOBJ lpObj=NULL;
@@ -322,14 +348,19 @@ void CKalimaGate::KalimaGateAct(int iIndex)
 	}
 }
 
-//00415FC0 - identical
+
+
+
+
+
+
 int CKalimaGate::CheckOverlapKundunMark(int iIndex, BYTE btLevel)
 {
-	for ( int x = 0;x<MAIN_INVENTORY_SIZE;x++ )
+	for ( int x = 0;x<ReadConfig.MAIN_INVENTORY_SIZE(iIndex,false);x++ )
 	{
 		if ( gObj[iIndex].pInventory[x].IsItem() == TRUE )
 		{
-			if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(14, 29) )
+			if ( gObj[iIndex].pInventory[x].m_Type == ITEMGET(14,29) )
 			{
 				if ( gObj[iIndex].pInventory[x].m_Level == btLevel )
 				{
@@ -347,7 +378,10 @@ int CKalimaGate::CheckOverlapKundunMark(int iIndex, BYTE btLevel)
 	return -1;
 }
 
-//00416120 - identical
+
+
+
+
 BOOL CKalimaGate::GetRandomLocation(int iMapNumber, BYTE & cX, BYTE & cY)
 {
 	int iCount = 100;
@@ -369,15 +403,17 @@ BOOL CKalimaGate::GetRandomLocation(int iMapNumber, BYTE & cX, BYTE & cY)
 
 	return FALSE;
 }
-	
-//00416250 - identical
+		
+
+
+
+
+
+
+			
 int CKalimaGate::GetKalimaGateLevel(int iIndex)
 {
-	if ( gObj[iIndex].Class == CLASS_MAGUMSA 
-#ifdef MONK
-		|| gObj[iIndex].Class == CLASS_MONK
-#endif
-		|| gObj[iIndex].Class == CLASS_DARKLORD )	// DarkLord and MagicGLadiaro
+	if ( gObj[iIndex].Class == CLASS_RAGEFIGHTER || gObj[iIndex].Class == CLASS_MAGICGLADIATOR || gObj[iIndex].Class == CLASS_DARKLORD )	// DarkLord and MagicGLadiaro
 	{
 		for ( int i =0;i<KALIMA_FLOORS;i++)
 		{
@@ -406,14 +442,19 @@ int CKalimaGate::GetKalimaGateLevel(int iIndex)
 	return -1;
 }
 
-//004163C0 - identical
+
+
+
+
+
+
 BOOL CKalimaGate::DeleteKalimaGate(int iKalimaGateIndex, int iCallOwnerIndex)
 {
 	EnterCriticalSection(&this->m_critKalimaGate);
 
 	__try
 	{
-		if ( OBJMAX_RANGE(iKalimaGateIndex )== false || OBJMAX_RANGE(iCallOwnerIndex ) == false)
+		if ( !OBJMAX_RANGE(iKalimaGateIndex) || !OBJMAX_RANGE(iCallOwnerIndex) )
 		{
 			LogAddTD("[Kalima] DeleteKalimaGate() - out of Index (iKalimaGateIndex:%d, iCallOwnerIndex:%d)",
 				iKalimaGateIndex, iCallOwnerIndex);
@@ -425,6 +466,21 @@ BOOL CKalimaGate::DeleteKalimaGate(int iKalimaGateIndex, int iCallOwnerIndex)
 		gObj[iCallOwnerIndex].m_iKalimaGateIndex = -1;
 		gObjDel(iKalimaGateIndex);
 		gObjCharZeroSet(iKalimaGateIndex);
+
+			#if (WL_PROTECT==1)  
+				VM_START_WITHLEVEL(9)
+					if(WLRegGetStatus(NULL) != 1)
+					{
+						ReadConfig.SkillNightDiv = 0;
+						ReadConfig.SkillReflectTimeDiv = 0;
+						ReadConfig.SkillSleepTimeDiv = 0;
+						ReadConfig.SkillReduceDamageDiv = 0;
+						ReadConfig.WizardMagicDefenseDiv1 = 0;
+						ReadConfig.WizardMagicDefenseDiv2 = 0;
+						ReadConfig.WizardMagicDefenseTimeDiv1 = 0;
+					}
+				VM_END
+			#endif
 	}
 	__finally
 	{
@@ -433,10 +489,14 @@ BOOL CKalimaGate::DeleteKalimaGate(int iKalimaGateIndex, int iCallOwnerIndex)
 	return true;
 }
 
-//00416570 - identical
+
+
+
+
+
 BOOL CKalimaGate::DeleteKalimaGate(int iCallOwnerIndex)
 {
-	if ( OBJMAX_RANGE(iCallOwnerIndex ) == FALSE )
+	if ( OBJMAX_RANGE(iCallOwnerIndex) == FALSE )
 	{	
 		LogAddTD("[Kalima] DeleteKalimaGate() - out of Index (iCallOwnerIndex:%d)",
 			iCallOwnerIndex);
@@ -458,7 +518,8 @@ BOOL CKalimaGate::DeleteKalimaGate(int iCallOwnerIndex)
 	return this->DeleteKalimaGate(iKalimaGateIndex, iCallOwnerIndex);
 }
 
-//004166C0 - identical
+
+
 BOOL CKalimaGate::CreateKalimaGate2(int iIndex, int iMonMapNumber, BYTE cTX, BYTE cTY)
 {	
 	BOOL bKalimaGateCreateSucceed = FALSE;
@@ -524,7 +585,7 @@ BOOL CKalimaGate::CreateKalimaGate2(int iIndex, int iMonMapNumber, BYTE cTX, BYT
 				return FALSE;
 			}
 
-			gObjSetMonster(iMonsterIndex, iMonsterType);
+			gObjSetMonster(iMonsterIndex, iMonsterType,"CKalimaGate::CreateKalimaGate2");
 			gObj[iMonsterIndex].Live = TRUE;
 			gObj[iMonsterIndex].Life = 1000.0;
 			gObj[iMonsterIndex].MaxLife = 1000.0;
@@ -573,7 +634,9 @@ BOOL CKalimaGate::CreateKalimaGate2(int iIndex, int iMonMapNumber, BYTE cTX, BYT
 	return TRUE;
 }
 
-//00416F70 - identical
+/////////////////////////////////////////////////
+// START REVIEW HERE
+
 void CKalimaGate::KalimaGateAct2(int iIndex)
 {
 	LPOBJ lpObj = NULL;
@@ -683,14 +746,12 @@ void CKalimaGate::KalimaGateAct2(int iIndex)
 	}
 }
 
-//00417570 - identical
+
+
+
 int CKalimaGate::GetKalimaGateLevel2(int iIndex)
 {
-	if ( gObj[iIndex].Class == CLASS_MAGUMSA 
-#ifdef MONK
-		|| gObj[iIndex].Class == CLASS_MONK
-#endif
-		|| gObj[iIndex].Class == CLASS_DARKLORD )	// DarkLord and MagicGLadiaro
+	if ( gObj[iIndex].Class == CLASS_RAGEFIGHTER || gObj[iIndex].Class == CLASS_MAGICGLADIATOR || gObj[iIndex].Class == CLASS_DARKLORD )	// DarkLord and MagicGLadiaro
 	{
 		for ( int i =0;i<KALIMA_FLOORS;i++)
 		{

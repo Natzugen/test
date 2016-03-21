@@ -1,6 +1,5 @@
 // TServerInfoDisplayer.cpp: implementation of the TServerInfoDisplayer class.
-//	GS-N	1.00.90	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x004A9500	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -10,19 +9,20 @@
 #include "LogToFile.h"
 
 TServerInfoDisplayer g_ServerInfoDisplayer;
-CLogToFile SERVER_CONN_STATE_LOG("ConnectState", ".\\LOG\\ConnectState", 1);
+CLogToFile SERVER_CONN_STATE_LOG("SERVER_CONN_STATE_LOG", ".\\SERVER_CONN_STATE_LOG", 1);
 
-//#if(_GSCS==1)
+
+#if (GS_CASTLE==1)
 static char * ServerTypeText[1] =
 {
-	"GAMESERVER" 
+	"[- TitansTech Chronos(CS) -]"
 };
-//#else
-//static char * ServerTypeText[1] =
-//{
-//	"GAMESERVER-N"
-//};
-//#endif
+#else
+static char * ServerTypeText[1] =
+{
+	"[- TitansTech Chronos -]"
+};
+#endif
 
 static char * ErrorMessge[8] = 
 {
@@ -62,17 +62,12 @@ TServerInfoDisplayer::~TServerInfoDisplayer()
 
 void TServerInfoDisplayer::InitGDIObject()
 {
-#ifdef ZEONWINDOW
-	this->m_hFont = CreateFont(60, 0, 0, 0, FW_REGULAR, FALSE, FALSE, FALSE, 
-		1, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-		DEFAULT_PITCH|FF_DONTCARE, "Times");
-#else
 	this->m_hFont = CreateFont(80, 0, 0, 0, FW_THIN, FALSE, TRUE, FALSE, 
 		ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 		DEFAULT_PITCH|FF_DONTCARE, "Times");
-#endif
-	this->m_hNormalBrush	= CreateSolidBrush(RGB(110, 240, 120));
-	this->m_hAbnormalBrush	= CreateSolidBrush(RGB(250, 110, 110));
+
+	this->m_hNormalBrush = CreateSolidBrush(RGB(110, 240, 250)); //last number 250 = Cyan | 120 = Green
+	this->m_hAbnormalBrush = CreateSolidBrush(RGB(250, 110, 110));
 }
 
 
@@ -97,7 +92,9 @@ void TServerInfoDisplayer::Run(HWND hWnd)
 
 	this->CheckLogFileSize();
 
+#if (GS_OLDSTYLE==1)
 	this->PaintAllInfo(hWnd, 0, 20);
+#endif
 }
 
 
@@ -169,7 +166,7 @@ void TServerInfoDisplayer::PaintAllInfo(HWND hWnd, int iTopLeftX, int iTopLeftY)
 	RECT rect;
 	GetClientRect(hWnd, &rect);
 	rect.top = 20;
-	rect.bottom = 80;
+	rect.bottom = 100;
 	int iLineCount = 0;
 
 	int iOldBkMode = SetBkMode(hDC, TRANSPARENT);
@@ -207,18 +204,25 @@ void TServerInfoDisplayer::PaintAllInfo(HWND hWnd, int iTopLeftX, int iTopLeftY)
 		iLineCount++;
 	}
 
-	if ( this->m_bValidEVDSConnection == FALSE )
+	
+	if(ReadConfig.SCFESON == FALSE)
 	{
-		SetTextColor(hDC, RGB(0, 0, 255));
-		TextOut(hDC, iTopLeftX,  iTopLeftY+iLineCount*15, ErrorMessge[4], strlen(ErrorMessge[4]));
-		iLineCount++;
+		if ( this->m_bValidEVDSConnection == FALSE )
+		{
+			SetTextColor(hDC, RGB(0, 0, 255));
+			TextOut(hDC, iTopLeftX,  iTopLeftY+iLineCount*15, ErrorMessge[4], strlen(ErrorMessge[4]));
+			iLineCount++;
+		}
 	}
 
-	if ( this->m_bValidRKDSConnection == FALSE )
+	if(ReadConfig.SCFRSON == FALSE)
 	{
-		SetTextColor(hDC, RGB(0, 0, 255));
-		TextOut(hDC, iTopLeftX, iTopLeftY+iLineCount*15, ErrorMessge[5], strlen(ErrorMessge[5]));
-		iLineCount++;
+		if ( this->m_bValidRKDSConnection == FALSE )
+		{
+			SetTextColor(hDC, RGB(0, 0, 255));
+			TextOut(hDC, iTopLeftX, iTopLeftY+iLineCount*15, ErrorMessge[5], strlen(ErrorMessge[5]));
+			iLineCount++;
+		}
 	}
 
 	if ( this->m_bValidJSConnection == FALSE || this->m_bValidDSConnection == FALSE || this->m_bValidFSConnection == FALSE || this->m_bValidEXDSConnection == FALSE || this->m_bValidEVDSConnection == FALSE || this->m_bValidRKDSConnection == FALSE )
@@ -232,7 +236,7 @@ void TServerInfoDisplayer::PaintAllInfo(HWND hWnd, int iTopLeftX, int iTopLeftY)
 	HFONT pOldFont = (HFONT)SelectObject(hDC, this->m_hFont);
 	SetTextColor(hDC, RGB(250, 250, 250));
 
-	TextOutA(hDC, GAMESERVER_WIDTH / 2 - 200, 18, ServerTypeText[0], strlen(ServerTypeText[0]));
+	TextOut(hDC, 250, 10, ServerTypeText[0], strlen(ServerTypeText[0]));
 	SelectObject(hDC, pOldFont);
 	SetBkMode(hDC, iOldBkMode);
 	ReleaseDC(hWnd, hDC);

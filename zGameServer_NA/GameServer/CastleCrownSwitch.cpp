@@ -1,104 +1,115 @@
 // CastleCrownSwitch.cpp: implementation of the CCastleCrownSwitch class.
-// GS-CS	1.00.90	JPN	-	Completed
+//
 //////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "CastleCrownSwitch.h"
 
+#if (GS_CASTLE==1)
 #include "CastleSiege.h"
-#include "user.h"
-#include "LogProc.h"
+#include "DSProtocol.h"
+#include "GameMain.h"
+#include "TNotice.h"
+#include "TUnion.h"
+#include "LifeStone.h"
+#include "Mercenary.h"
+#include "DBSockMng.h"
+#include "LogToFile.h"
+#include "logproc.h"
+#include "..\include\readscript.h"
 
-
-//#if (_GSCS==1)
-CCastleCrownSwitch g_CsNPC_CastleCrownSwitch;
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
+CCastleCrownSwitch g_CastleCrownSwitch;
+extern CCastleSiege g_CastleSiege;
 
 CCastleCrownSwitch::CCastleCrownSwitch()
 {
-	return;
+
 }
 
 CCastleCrownSwitch::~CCastleCrownSwitch()
 {
-	return;
+
 }
 
-void CCastleCrownSwitch::CastleCrownSwitchAct(int iIndex)
+//----- (00561490) --------------------------------------------------------
+void CCastleCrownSwitch::CrownSwitchPushTime(int iSwitchIndex)
 {
-	if ( !gObjIsConnected(iIndex))
-		return;
-
-	if ( gObj[iIndex].Type != OBJ_NPC ||
-		((gObj[iIndex].Class < 217 )?FALSE:(gObj[iIndex].Class > 219-1 )?FALSE:TRUE)==FALSE )
-		return;
-
-	if ( !gObjIsConnected(g_CastleSiege.GetCrownSwitchUserIndex(gObj[iIndex].Class)) )
-	{
-		g_CastleSiege.ResetCrownSwitchUserIndex(gObj[iIndex].Class);
-
-		if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
-		{
-			g_CastleSiege.SetRegCrownAvailable(FALSE);
-			g_CastleSiege.NotifyCrownState(1);
-		}
-
-		return;
-	}
 	
-	LPOBJ lpObj= &gObj[iIndex];
-	LPOBJ lpUserObj = &gObj[g_CastleSiege.GetCrownSwitchUserIndex(gObj[iIndex].Class)];
-	g_CastleSiege.NotifyCrownSwitchInfo(iIndex);
-
-	if ( lpUserObj->MapNumber == MAP_INDEX_CASTLESIEGE &&
-		 lpUserObj->m_btCsJoinSide >= 2 )
+	//DebugLog("%s START",__FUNCTION__);
+	if ( gObjIsConnected(iSwitchIndex) )
 	{
-		if ( abs(lpObj->Y - lpUserObj->Y) <= 3 &&
-			 abs(lpObj->X - lpUserObj->X) <= 3 )
-		{
-			int iCrownIndex1 = g_CastleSiege.GetCrownSwitchUserIndex(217);
-			int iCrownIndex2 = g_CastleSiege.GetCrownSwitchUserIndex(218);
+		LPOBJ lpCrownSwObj = &gObj[iSwitchIndex];
 
-			if (gObjIsConnected(iCrownIndex1) && gObjIsConnected(iCrownIndex2) )
+		int iSwitchUserIndex = g_CastleSiege.GetCrownSwitchUserIndex(lpCrownSwObj->Class);
+		if ( gObjIsConnected(iSwitchUserIndex) )
+		{
+			LPOBJ lpCrownSwUserObj = &gObj[iSwitchUserIndex];
+
+			g_CastleSiege.NotifyCrownSwitchInfo(iSwitchIndex);
+
+			if (lpCrownSwUserObj->MapNumber != MAP_INDEX_CASTLESIEGE || 
+				lpCrownSwUserObj->m_btCsJoinSide <= 1 ) /*|| 
+				lpCrownSwUserObj->m_bCsGuildInvolved == false) */
 			{
-				if ( gObj[iCrownIndex1].m_btCsJoinSide == gObj[iCrownIndex2].m_btCsJoinSide )
+				GCAnsCsAccessSwitchState(lpCrownSwUserObj->m_Index,lpCrownSwObj->m_Index,-1,0);
+				g_CastleSiege.ResetCrownSwitchUserIndex(lpCrownSwObj->Class);
+				if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
 				{
-					if ( g_CastleSiege.GetRegCrownAvailable() == 0 )
+					GCSkillInfoSend(lpCrownSwObj, 0, 0x14);
+
+					g_CastleSiege.SetRegCrownAvailable(0);
+					g_CastleSiege.NotifyCrownState(1);
+				}
+			}
+
+			if ( abs( (lpCrownSwObj->Y - lpCrownSwUserObj->Y) ) > 3
+					|| abs( (lpCrownSwObj->X - lpCrownSwUserObj->X) ) > 3 )
+			{
+				GCAnsCsAccessSwitchState(lpCrownSwUserObj->m_Index,lpCrownSwObj->m_Index,-1,0);
+				g_CastleSiege.ResetCrownSwitchUserIndex(lpCrownSwObj->Class);
+				if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
+				{
+					GCSkillInfoSend(lpCrownSwObj, 0, 0x14);
+
+					g_CastleSiege.SetRegCrownAvailable(0);
+					g_CastleSiege.NotifyCrownState(1);
+				}
+				LogAddTD("[CastleSiege][Switch][%s][%s] Push Castle Crown Switch Canceled (GUILD:%s) - CS X:%d/Y:%d",lpCrownSwUserObj->AccountID, lpCrownSwUserObj->Name, lpCrownSwUserObj->GuildName, lpCrownSwUserObj->X, lpCrownSwUserObj->Y);
+			} else {
+				int v8 = g_CastleSiege.GetCrownSwitchUserIndex(217);
+				int v9 = g_CastleSiege.GetCrownSwitchUserIndex(218);
+
+				if (gObjIsConnected(v8) && gObjIsConnected(v9))
+				{
+					LPOBJ lpSwUser1Obj = &gObj[v8];
+					LPOBJ lpSwUser2Obj = &gObj[v9];
+
+					if ( lpSwUser1Obj->m_btCsJoinSide == lpSwUser2Obj->m_btCsJoinSide )
 					{
-						g_CastleSiege.SetRegCrownAvailable(TRUE);
-						g_CastleSiege.NotifyCrownState(0);
+						if ( g_CastleSiege.GetRegCrownAvailable() != 1 )
+						{
+							GCSkillInfoSend(lpCrownSwObj, 1, 0x14);
+
+							g_CastleSiege.SetRegCrownAvailable(1);
+							g_CastleSiege.NotifyCrownState(0);
+						}
 					}
 				}
 			}
-		}
-		else
-		{
-			GCAnsCsAccessSwitchState(lpUserObj->m_Index, lpObj->m_Index, -1, 0);
-			g_CastleSiege.ResetCrownSwitchUserIndex(gObj[iIndex].Class);
-
-			if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
-			{
-				g_CastleSiege.SetRegCrownAvailable(FALSE);
-				g_CastleSiege.NotifyCrownState(1);
-			}
-
-			LogAddTD("[CastleSiege] [%s][%s] Push Castle Crown Switch Canceled (GUILD:%s) - CS X:%d/Y:%d",
-				lpUserObj->AccountID, lpUserObj->Name, lpUserObj->GuildName, lpObj->X, lpObj->Y);
+		} else {
+				g_CastleSiege.ResetCrownSwitchUserIndex(lpCrownSwObj->Class);
+				if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
+				{
+					g_CastleSiege.SetRegCrownAvailable(0);
+					g_CastleSiege.NotifyCrownState(1);
+				}
 		}
 	}
-	else
-	{
-		GCAnsCsAccessSwitchState(lpUserObj->m_Index, lpObj->m_Index, -1, 0);
-
-		g_CastleSiege.ResetCrownSwitchUserIndex(gObj[iIndex].Class);
-
-		if ( g_CastleSiege.GetRegCrownAvailable() == 1 )
-		{
-			g_CastleSiege.SetRegCrownAvailable(FALSE);
-			g_CastleSiege.NotifyCrownState(1);
-		}
-	}
+	
+	//DebugLog("%s END",__FUNCTION__);
 }
 
-//#endif
+#endif

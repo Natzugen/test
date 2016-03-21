@@ -10,6 +10,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+
 struct PATH_t
 {
   int PathNum;	// 0
@@ -22,7 +23,6 @@ struct PATH_t
 
 class PATH
 {
-
 private:
 	
 	int Width; // 0
@@ -35,10 +35,10 @@ private:
 	int NumFails;	// 438
 	LPBYTE Map; // 43C
 	LPBYTE HitMap; // 440
-	int stx;	// 444
-	int sty;	// 448
-	int edx;	// 44C
-	int edy;	// 450
+	//int stx;	// 444
+	//int sty;	// 448
+	//int edx;	// 44C
+	//int edy;	// 450
 
 private:
 
@@ -77,7 +77,7 @@ private:
 			this->HitMap[which] = 1;
 			return false;
 		}
-		return TRUE;
+		return true;
 	};	// line : 43
 
 	BOOL CanWeMoveForward2(int x, int y) // line : 46
@@ -94,7 +94,7 @@ private:
 			this->HitMap[which] = 1;
 			return false;
 		}
-		return TRUE;
+		return true;
 	};
 	
 	BOOL CanWeMoveForward3(int x, int y) // line : 46
@@ -111,7 +111,7 @@ private:
 			this->HitMap[which] = 1;
 			return false;
 		}
-		return TRUE;
+		return true;
 	};
 
 	// line : 56
@@ -148,9 +148,9 @@ private:
 			for ( i = 0 ; i<8 ; i++ )
 			{
 				ldir = i % 8;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -167,9 +167,9 @@ private:
 			for ( i = dirstart+7 ; i <= dirstart+9 ; i++ )
 			{
 				ldir = i % 8;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -186,9 +186,9 @@ private:
 				for ( i = dirstart+2 ; i <= dirstart+6 ; i++ )
 				{
 					ldir = i % 8;
-					auto endx = sx + this->Dir[ldir*2];
-					auto endy = sy + this->Dir[ldir*2+1];
-					auto dist = this->GetDist(endx, endy, dx, dy);
+					auto int endx = sx + this->Dir[ldir*2];
+					auto int endy = sy + this->Dir[ldir*2+1];
+					auto int dist = this->GetDist(endx, endy, dx, dy);
 
 					if ( MinDist > dist )
 					{
@@ -231,13 +231,13 @@ private:
 
 		if ( ErrorCheck != 0 )
 		{
-			auto dir = WhichDir+7;
+			auto int dir = WhichDir+7;
 
 			dir %= 8;
 
 			if (this->CanWeMoveForward(sx + this->Dir[dir*2], sy + this->Dir[dir*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -247,11 +247,11 @@ private:
 				return dir;
 			}
 
-			auto dir2 = WhichDir+9;
+			auto int dir2 = WhichDir+9;
 			dir2 %= 8;
 			if (CanWeMoveForward(sx+this->Dir[dir2*2], sy+this->Dir[dir2*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -278,9 +278,9 @@ private:
 			for ( i = 0 ; i<8 ; i++ )
 			{
 				ldir = i % 8 ;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -297,9 +297,9 @@ private:
 			for ( i = dirstart+7 ; i <= dirstart+9 ; i++ )
 			{
 				ldir = i % 8;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -316,9 +316,9 @@ private:
 				for ( i = dirstart+2 ; i <= dirstart+6 ; i++ )
 				{
 					ldir = i % 8;
-					auto endx = sx + this->Dir[ldir*2];
-					auto endy = sy + this->Dir[ldir*2+1];
-					auto dist = this->GetDist(endx, endy, dx, dy);
+					auto int endx = sx + this->Dir[ldir*2];
+					auto int endy = sy + this->Dir[ldir*2+1];
+					auto int dist = this->GetDist(endx, endy, dx, dy);
 
 					if ( MinDist > dist )
 					{
@@ -361,13 +361,13 @@ private:
 
 		if ( ErrorCheck != 0 )
 		{
-			auto dir = WhichDir+7;
+			auto int dir = WhichDir+7;
 
 			dir %= 8;
 
 			if (this->CanWeMoveForward2(sx + this->Dir[dir*2], sy + this->Dir[dir*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -377,12 +377,12 @@ private:
 				return dir;
 			}
 
-			auto dir2 = WhichDir+9;
+			auto int dir2 = WhichDir+9;
 			dir2 %= 8;
 
 			if (CanWeMoveForward2(sx+this->Dir[dir2*2], sy+this->Dir[dir2*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -409,9 +409,9 @@ private:
 			for ( i = 0 ; i<8 ; i++ )
 			{
 				ldir = i % 8 ;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -428,9 +428,9 @@ private:
 			for ( i = dirstart+7 ; i <= dirstart+9 ; i++ )
 			{
 				ldir = i % 8;
-				auto endx = sx + this->Dir[ldir*2];
-				auto endy = sy + this->Dir[ldir*2+1];
-				auto dist = this->GetDist(endx, endy, dx, dy);
+				auto int endx = sx + this->Dir[ldir*2];
+				auto int endy = sy + this->Dir[ldir*2+1];
+				auto int dist = this->GetDist(endx, endy, dx, dy);
 
 				if ( MinDist > dist )
 				{
@@ -447,9 +447,9 @@ private:
 				for ( i = dirstart+2 ; i <= dirstart+6 ; i++ )
 				{
 					ldir = i % 8;
-					auto endx = sx + this->Dir[ldir*2];
-					auto endy = sy + this->Dir[ldir*2+1];
-					auto dist = this->GetDist(endx, endy, dx, dy);
+					auto int endx = sx + this->Dir[ldir*2];
+					auto int endy = sy + this->Dir[ldir*2+1];
+					auto int dist = this->GetDist(endx, endy, dx, dy);
 
 					if ( MinDist > dist )
 					{
@@ -483,13 +483,13 @@ private:
 
 		if ( ErrorCheck != 0 )
 		{
-			auto dir = WhichDir+7;
+			auto int dir = WhichDir+7;
 
 			dir %= 8;
 
 			if (this->CanWeMoveForward3(sx + this->Dir[dir*2], sy + this->Dir[dir*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -499,12 +499,12 @@ private:
 				return dir;
 			}
 
-			auto dir2 = WhichDir+9;
+			auto int dir2 = WhichDir+9;
 			dir2 %= 8;
 
 			if (CanWeMoveForward3(sx+this->Dir[dir2*2], sy+this->Dir[dir2*2+1]) != FALSE )
 			{
-				auto path = this->VerifyThatOnPath(sx, sy);
+				auto int path = this->VerifyThatOnPath(sx, sy);
 
 				if ( path != -1 )
 				{
@@ -769,7 +769,6 @@ public:
 	{
 		return this->PathY;
 	};
-
 
 
 };

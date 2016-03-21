@@ -29,7 +29,8 @@ public:
 	int Send(int server, char* buf, int len);
 	int Send(char* buf, int len);
 	int MsgProc(int line, WPARAM wParam, LPARAM lParam);
-	int GetActiveDS(){	return m_ActiveServer;	}
+	//int __thiscall GetActiveDS();
+
 
 public:
 

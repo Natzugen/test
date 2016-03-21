@@ -1,5 +1,5 @@
 // ItemSystemFor380.cpp: implementation of the CItemSystemFor380 class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x00570590	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -9,10 +9,18 @@
 #include "LogProc.h"
 #include "..\include\ReadScript.h"
 
-#include "MixSystem.h"
+#include "ChaosBox.h"
 #include "..\common\winutil.h"
 
+#include "MuItemShop.h"
+#include "CrywolfSync.h"
+#include "Crywolf.h"
+
 CItemSystemFor380 g_kItemSystemFor380;
+
+#include "LogToFile.h"
+extern CLogToFile CHAOS_LOG;
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -39,13 +47,13 @@ void CItemSystemFor380::_InitOption()
 	this->m_iRateSuccessRateForMix2 = 60;
 	this->m_iRateSuccessRateForMix3 = 100;
 
-	this->m_bSystemFor380ItemOption = GetPrivateProfileInt("GameServerInfo", "System380ItemSystem", 0, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iNeedJewelOfHarmonyCount = GetPrivateProfileInt("GameServerInfo", "CountOfJewelOfHarmonyForMix", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iNeedJewelOfSuhoCount = GetPrivateProfileInt("GameServerInfo", "CountOfSuhoOfHarmonyForMix", 1, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iNeedZenFor380Option = GetPrivateProfileInt("GameServerInfo", "NeedZenForMix", 10000000, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateSuccessRateForMix1 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade1", 50, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateSuccessRateForMix2 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade2", 60, gDirPath.GetNewPath("commonserver.cfg"));
-	this->m_iRateSuccessRateForMix3 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade3", 60, gDirPath.GetNewPath("commonserver.cfg"));
+	this->m_bSystemFor380ItemOption = GetPrivateProfileInt("GameServerInfo", "System380ItemSystem", 0, ReadConfig.ConnDataFiles[0]);
+	this->m_iNeedJewelOfHarmonyCount = GetPrivateProfileInt("GameServerInfo", "CountOfJewelOfHarmonyForMix", 1, ReadConfig.ConnDataFiles[0]);
+	this->m_iNeedJewelOfSuhoCount = GetPrivateProfileInt("GameServerInfo", "CountOfSuhoOfHarmonyForMix", 1, ReadConfig.ConnDataFiles[0]);
+	this->m_iNeedZenFor380Option = GetPrivateProfileInt("GameServerInfo", "NeedZenForMix", 10000000, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateSuccessRateForMix1 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade1", 50, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateSuccessRateForMix2 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade2", 60, ReadConfig.ConnDataFiles[0]);
+	this->m_iRateSuccessRateForMix3 = GetPrivateProfileInt("GameServerInfo", "MixRateForGrade3", 60, ReadConfig.ConnDataFiles[0]);
 }
 
 
@@ -54,7 +62,7 @@ void CItemSystemFor380::_InitOption()
 BOOL CItemSystemFor380::Load380ItemOptionInfo(LPSTR filename)
 {
 	enum SMDToken Token;
-	SMDFile = fopen(filename, "r");	//ok
+	SMDFile = fopen(filename, "r");
 
 	if ( SMDFile == NULL )
 		return FALSE;
@@ -84,7 +92,9 @@ BOOL CItemSystemFor380::Load380ItemOptionInfo(LPSTR filename)
 					{
 						if ( !strcmp("end", TokenString))
 						{
+							fclose(SMDFile);
 							return TRUE;
+							#pragma message (" [TO FIX] !!! : Recode all Load380ItemOptionInfo")
 						}
 					}
 
@@ -97,13 +107,13 @@ BOOL CItemSystemFor380::Load380ItemOptionInfo(LPSTR filename)
 					p->m_Index = _index;
 
 					Token = (SMDToken)GetToken();
-					p->m_Option1 = TokenNumber;
+					p->m_SkillOption = TokenNumber;
 
 					Token = (SMDToken)GetToken();
 					p->m_Value1 = TokenNumber;
 
 					Token = (SMDToken)GetToken();
-					p->m_Option2 = TokenNumber;
+					p->m_LuckOption = TokenNumber;
 
 					Token = (SMDToken)GetToken();
 					p->m_Value2 = TokenNumber;
@@ -114,9 +124,7 @@ BOOL CItemSystemFor380::Load380ItemOptionInfo(LPSTR filename)
 			}
 		}
 	}
-	// ----
-	fclose(SMDFile); //wz mistake, fixed
-	// ----
+	fclose(SMDFile);
 	return TRUE;
 }
 
@@ -185,9 +193,9 @@ BOOL CItemSystemFor380::ApplyFor380Option(LPOBJ lpObj)
 			BYTE iOption1, iOption2;
 			WORD iValue1, iValue2;
 
-			iOption1 = this->m_itemOption[pItem->m_Type ].m_Option1;
+			iOption1 = this->m_itemOption[pItem->m_Type ].m_SkillOption;
 			iValue1 = this->m_itemOption[pItem->m_Type ].m_Value1;
-			iOption2 = this->m_itemOption[pItem->m_Type ].m_Option2;
+			iOption2 = this->m_itemOption[pItem->m_Type ].m_LuckOption;
 			iValue2 = this->m_itemOption[pItem->m_Type ].m_Value2;
 			BOOL bResult = FALSE;
 			bResult = this->_CalcItemEffectValue(iOption1, iValue1, pItemEffect);
@@ -211,46 +219,56 @@ BOOL CItemSystemFor380::_CalcItemEffectValue(int iItemOptionType, int iItemEffec
 
 	switch ( iItemOptionType )
 	{
-		//case ITEMOPTION_FOR380ITEM_EFFECT_NONE:
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDATTACKSUCCESSRATEPVP:
 			pItemEffect->OpAddAttackSuccessRatePVP += iItemEffectValue;
-			DebugLog("380효과 : 공격성공율상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDATTACKSUCCESSRATEPVP %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDDAMAGE:
 			pItemEffect->OpAddDamage += iItemEffectValue;
-			DebugLog("380효과 : 데미지 상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDDAMAGE %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDDEFENSESUCCESSRATEPVP:
 			pItemEffect->OpAddDefenseSuccessRatePvP += iItemEffectValue;
-			DebugLog("380효과 : 방어성공율상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDDEFENSESUCCESSRATEPVP %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDDEFENSE:
 			pItemEffect->OpAddDefense += iItemEffectValue;
-			DebugLog("380효과 : 방어력 상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDDEFENSE %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDMAXHP:
 			pItemEffect->OpAddMaxHP += iItemEffectValue;
-			DebugLog("380효과 : 최대 HP 상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDMAXHP %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDMAXSD:
 			pItemEffect->OpAddMaxSD += iItemEffectValue;
-			DebugLog("380효과 : 최대 SD 상승 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDMAXSD %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPREFILLON:
 			pItemEffect->OpRefillOn += 1;
-			DebugLog("380효과 : SD 자동 회복 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPREFILLON %d\n", iItemEffectValue);
+		break;
 		case ITEMOPTION_FOR380ITEM_EFFECT_OPADDREFILLSD:
 			pItemEffect->OpAddRefillSD += iItemEffectValue;
-			DebugLog("380효과 : SD자동회복량 증가 %d\n", iItemEffectValue);
-			break;
+			//DebugLog("380 Item: EFFECT_OPADDREFILLSD %d\n", iItemEffectValue);
+		break;
 		default:
 			bResult = FALSE;
-			break;
+		break;
 	}
 
 	return bResult;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 BOOL CItemSystemFor380::_SetOption(CItem * pItem, BOOL bOption)
 {
@@ -265,8 +283,11 @@ BOOL CItemSystemFor380::_SetOption(CItem * pItem, BOOL bOption)
 	return TRUE;
 }
 
+
+
 void CItemSystemFor380::SetOptionItemByMacro(LPOBJ lpObj, BYTE invenrotyTargetPos, int bOption)
 {
+	// HERE GOES A MACRO
 	return;
 	CItem * pItem=NULL;
 }
@@ -305,7 +326,7 @@ BOOL CItemSystemFor380::ChaosMix380ItemOption(LPOBJ lpObj)
 		if ( this->Is380Item(&lpObj->pChaosBox[n]) == TRUE &&
 			this->Is380OptionItem(&lpObj->pChaosBox[n]) == FALSE &&
 			 lpObj->pChaosBox[n].m_Level > 3 &&
-			 (lpObj->pChaosBox[n].m_Option3<<2) > 3)
+			 (lpObj->pChaosBox[n].m_Z28Option<<2) > 3)
 		{
 			iValidItemCount++;
 			pTargetItem = &lpObj->pChaosBox[n];
@@ -370,8 +391,8 @@ BOOL CItemSystemFor380::ChaosMix380ItemOption(LPOBJ lpObj)
 	g_CastleSiegeSync.AddTributeMoney(iChaosTaxMoney);
 	
 	GCMoneySend(lpObj->m_Index, lpObj->Money);
-	g_MixSystem.LogChaosItem(lpObj, "380Item][Item Mix");
-	LogAddTD("[380Item][Item Mix] - Mix Start");
+	LogChaosItem(lpObj, "380Item][Item Mix");
+	CHAOS_LOG.Output("[380Item][Item Mix] - Mix Start");
 
 	int iRate =	rand() % 100;
 	int iRateSuccess = this->m_iRateSuccessRateForMix1;
@@ -384,36 +405,57 @@ BOOL CItemSystemFor380::ChaosMix380ItemOption(LPOBJ lpObj)
 		iRateSuccess = this->m_iRateSuccessRateForMix3;
 
 	iRateSuccess += iCharmOfLuckCount;
+	lpObj->ChaosSuccessRate = iRateSuccess;
 
+	if (ReadConfig.IsVipExtraMixPercent == 1 && lpObj->Vip == 1)
+	{
+		if (lpObj->ChaosSuccessRate + ReadConfig.VipExtraMixPercent < 100)
+			lpObj->ChaosSuccessRate += ReadConfig.VipExtraMixPercent;
+		else
+			lpObj->ChaosSuccessRate = 100;
+
+		CHAOS_LOG.Output("[CBMix][%s][%s] VIP Extra Percent brings mix up to: %d", 
+			lpObj->AccountID, lpObj->Name,
+			lpObj->ChaosSuccessRate
+		);
+
+		char sbuff[1024]={0};
+		wsprintf(sbuff,"[VIP] Extra %d percent added!",ReadConfig.VipExtraMixPercent);
+		GCServerMsgStringSend(sbuff,lpObj->m_Index,1);
+	}
 	lpObj->pChaosBox[iPosOfJewelOfHarmony].Clear();
 	lpObj->pChaosBoxMap[iPosOfJewelOfHarmony] = -1;
 	lpObj->pChaosBox[iPosOfJewelOfSuho].Clear();
 	lpObj->pChaosBoxMap[iPosOfJewelOfSuho] = -1;
 
-	if ( iRate < iRateSuccess )
+	if ( iRate <= lpObj->ChaosSuccessRate )
 	{
 		this->_SetOption(pTargetItem, TRUE);
 		GCUserChaosBoxSend(lpObj, 0);
 
-		LogAddTD("[380Item][ItemMix] Mix Success [%s][%s], Money(%d-%d) Rate(%d/%d) Option(%d,%d) OptionValue(%d,%d)",
+		CHAOS_LOG.Output("[380Item][ItemMix] Mix Success [%s][%s], Money(%d-%d) Rate(%d/%d) Option(%d,%d) OptionValue(%d,%d)",
 			lpObj->AccountID, lpObj->Name, lpObj->Money,
 			iMixPrice, iRate, iRateSuccess,
-			this->m_itemOption[(pTargetItem->m_Type )].m_Option1,
-			this->m_itemOption[(pTargetItem->m_Type )].m_Option2,
+			this->m_itemOption[(pTargetItem->m_Type )].m_SkillOption,
+			this->m_itemOption[(pTargetItem->m_Type )].m_LuckOption,
 			this->m_itemOption[(pTargetItem->m_Type )].m_Value1,
 			this->m_itemOption[(pTargetItem->m_Type )].m_Value2);
+	
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 0);
 	}
 	else
 	{
 		GCUserChaosBoxSend(lpObj, 0);
 		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
 
-		LogAddTD("[380Item][ItemMix] Mix Fail [%s][%s], Money(%d-%d) Rate(%d/%d)",
+		CHAOS_LOG.Output("[380Item][ItemMix] Mix Fail [%s][%s], Money(%d-%d) Rate(%d/%d)",
 			lpObj->AccountID, lpObj->Name, lpObj->Money,
 			iMixPrice, iRate, iRateSuccess);
 
+		MuItemShop.EarnGoblinPointsCBMix(lpObj->m_Index, lpObj->ChaosSuccessRate, 1);
 	}
 
+	::gObjInventoryCommit(lpObj->m_Index);
 	lpObj->ChaosLock = FALSE;
 	return TRUE;
 }

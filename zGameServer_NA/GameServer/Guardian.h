@@ -5,6 +5,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==1)
 class CGuardian
 {
 public:
@@ -12,8 +13,9 @@ public:
 	CGuardian();
 	virtual ~CGuardian();
 
-	BOOL CreateGuardian(int iIndex);
+	BOOL CreateGuardian(int iIndex, BYTE cTX, BYTE cTY);
 	void GuardianAct(int iIndex);
+	BOOL DeleteGuardian(int iIndex);
 
 private:
 	
@@ -21,5 +23,6 @@ private:
 };
 
 extern CGuardian g_CsNPC_Guardian;
+#endif
 
 #endif

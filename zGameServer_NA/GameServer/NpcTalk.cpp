@@ -4,8 +4,10 @@
 #include "gObjMonster.h"
 #include "..\common\winutil.h"
 #include "protocol.h"
+#include "ObjCalCharacter.h"
 #include "GameMain.h"
 #include "BloodCastle.h"
+#include "IllusionTemple.h"
 #include "gObjMonster.h"
 #include "DevilSquare.h"
 #include "QuestInfo.h"
@@ -14,1380 +16,1111 @@
 #include "JewelOfHarmonySystem.h"
 #include "Gamemain.h"
 #include "Event.h"
-#include "IllusionTempleEvent.h"
-#include "BuffEffectSlot.h"
-#include "CashShop.h"
-#include "LuaNPC.h"
-
-#ifdef NPVP
-#include "NewPVP.h"
-#endif
-
-#ifdef GENS
-#include "GensSystem.h"
-#endif
-
-#ifdef DP
-#include "Doppelganger.h"
-#endif
-
-#ifdef WZQUEST
-#include "QuestExpProgMng.h"
-#endif
-
-#ifdef __CUSTOMS__
 #include "ResetSystem.h"
-#include "PKClear.h"
-#ifdef QUESTSYSTEM
-#include "QuestSystem.h"
-#endif
-#endif
+#include "SkyEvent.h"
+#include "DuelManager.h"
+#include "DoppelGanger.h"
+#include "XMasEvent.h"
+#include "CashShop.h"
+#include "SCFVipShop.h"
+#include "SCFPvPSystem.h"
+#include "GensPvP.h"
+#include "EProtocol.h"
+#include "DSProtocol.h"
 
-#ifdef __NOVUS__
-#include "CraftSystem.h"
-#endif
-// -------------------------------------------------------------------------------
+#include "LogToFile.h"
+extern CLogToFile ANTI_HACK_LOG;
+extern CLogToFile CHAOS_LOG;
+extern CLogToFile JEWEL_MIX_LOG;
+// GS-N 0.99.60T 0x005211D0
+//	GS-N	1.00.18	JPN	0x005527F0	-	Completed
 
-//1.00.92	-> 5AA0A0 -> 100%
-//1.01.00	-> 613DB0 -> 100%
-bool NpcTalk(LPOBJ lpNpc, LPOBJ lpObj) // -> Complete
+struct PMSG_QUEST_DIALOG {
+	PBMSG_HEAD	head;
+	unsigned char	quest_id;
+	unsigned char	dialog_id;
+};
+
+
+
+BOOL NpcTalk(LPOBJ lpNpc, LPOBJ lpObj)
 {
 	int npcnum = lpNpc->Class;
-	// ----
-	if( npcnum < 0 )
-	{
-		return false;
-	}
-	// ----
-	if( lpObj->m_IfState.use > 0 )
-	{
-		return true;
-	}
-	// ----
-#ifdef QUESTSYSTEM
-	if( g_QuestSystem.Dialog(lpObj, lpNpc) )
-	{
-		return true;
-	}
-#endif
-	// ----
-#ifdef __CUSTOMS__
-	if( g_ResetSystem.Dialog(lpObj, lpNpc) )
-	{
-		return true;
-	}
-	// ----
-	if( g_PKClear.Dialog(lpObj, lpNpc) )
-	{
-		return true;
-	}
-#endif
-	// ----
-#ifdef __NOVUS__
-	if( g_CraftSystem.Dialog(lpObj, lpNpc) )
-	{
-		return true;
-	}
-#endif
-	// ----
-	if( npcnum == 229 ) //-> Marlon
-	{
-		gQeustNpcTeleport.TalkRefAdd();
-		lpObj->TargetShopNumber = npcnum;
-	}
-	// ----
-	g_QuestExpProgMng.ChkUserQuestType(263, lpObj, lpNpc, 0);
-	// ----
-	if( npcnum == 568 ) //-> Wandering Merchant Zyro
-	{
-		gQeustNpcTeleport.TalkRefAdd();
-		lpObj->TargetShopNumber = npcnum;
-		// ----
-		if( Npc_Dialog(lpNpc, lpObj) )
-		{
-			return true;
-		}
-	}
-	// ----
-	if( NpcQuestCheck(lpNpc, lpObj) != FALSE )
-	{
-		return true;
-	}
-	// ----
-	if( npcnum > 367 )
-	{
-		switch( npcnum )
-		{
-		case 566: //-> Mercenary Guild Manager Tercia
-		case 567: //-> Priestess Veina
-			{
-				if( Npc_Dialog(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 368: //-> Elpis
-		case 369: //-> Osbourne
-		case 370: //-> Jerridon
-			{
-				if( g_kJewelOfHarmonySystem.NpcJewelOfHarmony(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 375: //-> Chaos Card Master
-			{
-				if( NpcChaosCardMaster(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 376: //-> Pamela the Supplier
-			{
-				if( NpcQuartermasterPamella(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 377: //-> Angela the Supplier
-			{
-				if( NpcQuartermasterAngela(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 379: //-> Natasha the Firecracker Merchant
-			{
-				if( NPcFireCrackerStore(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 385: //-> Mirage
-			{
-				if( NpcPlatformMirage(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 380: //-> Stone Statue
-			{
-				if( NpcIllusionHolyRelicsStatue(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 383: //-> Alliance Sacred Item Storage
-			{
-				if( NpcHolyRelicsBoxAllied(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 384: //-> Illusion Castle Sacred Item Storage
-			{
-				if( NpcHolyRelicsBoxIllusion(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 415: //-> Silvia
-			{
-				if( NpcSilviaTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 416: //-> Rhea
-			{
-				if( NpcRheaTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 417: //-> Marce
-			{
-				if( NpcMarceTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 522: //-> Jerint the Assistant
-			{
-				if( Npc_EventDungeonTalk(lpNpc, lpObj) ) //-> 617AA0
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 450: //-> Cherry Blossom Spirit
-			{
-				if( NpcCherryTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 452: //-> Seed Master
-			{
-				if( NpcSeedMaster(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 453: //-> Seed Researcher
-			{
-				if( NpcSeedResearcher(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 478: //-> Delgado
-			{
-				if( NpcLuckyCoinDelgado(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 465: //-> Santa Claus
-			{
-				if( Npc_SantaTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 467: //-> Snowman
-			{
-				if( Npc_SnowManTalk(lpNpc, lpObj) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 468: //-> Dasher
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 94) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 469: //-> Kermit
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 95) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 470: //-> Little Santa
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 0) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 471: //-> Cupid
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 1) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 472: //-> Prancer
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 92) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 473: //-> Donner
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 93) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 474: //-> Vixen
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 96) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 475: //-> Blitzen
-			{
-				if( Npc_LittleSantaTalk(lpNpc, lpObj, 97) )
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 479: //-> Doorkeeper Titus
-			{
-				/*if ( lpObj->m_IfState._bf0 & 3 )
-				{
-				return true
-				}
-				else*/
-				PMSG_TALKRESULT pResult;
-				// ----
-#ifdef NPVP
-				g_NewPVP.SendChannelList(*lpNpc, *lpObj);
-#endif
-				// ----
-				pResult.h.c				= 0xC3;
-				pResult.h.headcode		= 0x30;
-				pResult.h.size			= sizeof(pResult);
-				pResult.result			= 33;
-				// ----
-				DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-				// ----
-				lpObj->m_IfState.type	= 20;
-				lpObj->m_IfState.use	= 1;
-				// ----
-				return true;
-			}
-			break;
-			// --
-		case 540: //-> Lugard
-			{
-				if( Npc_LugardTalk(lpNpc, lpObj) ) //-> 617B10
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 541: //-> Interim Reward Chest
-			{
-				if( Npc_MiddleTreasureTalk(lpNpc, lpObj) ) //-> 617B80
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 542: //-> Final Reward Chest
-			{
-				if( Npc_LastTreasureTalk(lpNpc, lpObj) ) //-> 617BD0
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 543: //-> Gens Duprian Steward
-		case 544: //-> Gens Vanert Steward
-			{
-				if( Npc_Dialog(lpNpc, lpObj) ) //-> 617C20
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 545: //-> Christine the General Goods Merchant
-			{
-				if( NpcKristenTalk(lpNpc, lpObj) ) //-> 617E30
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 546: //-> Jeweler Raul
-			{
-				if( NpcRaulTalk(lpNpc, lpObj) ) //-> 617E70
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 547: //-> Market Union Member Julia
-			{
-				if( NpcJuliaTalk(lpNpc, lpObj) ) //-> 617EB0
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 577: //-> Leina the General Goods Merchant
-			{
-				if( NpcRehina(lpNpc, lpObj) ) //-> 617F30
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		case 578: //-> Weapons Merchant Bolo
-			if( NpcVolo(lpNpc, lpObj) ) //-> 617F70
-			{
-				return true;
-			}
-			break;
-			// --
-		case 579: //-> David
-			{
-				if( NpcDabide(lpNpc, lpObj) ) //-> 617FB0
-				{
-					return true;
-				}
-			}
-			break;
-			// --
-		default:
-			{
-				return false;
-			}
-		}
-	}
-	else
-	{
-		if( npcnum == 367 ) //-> Gateway Machine
-		{
-			if( NpcMainatenceMachine(lpNpc, lpObj) )
-			{
-				return true;
-			}
-		}
-		else
-		{
-			switch( npcnum )
-			{
-			case 254: //-> Pasi the Mage
-				{
-					if( NpcFasi(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 241: //-> Guild Master
-				{
-					if( NpcGuildMasterTalk(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 239: //-> Arena Guard
-				{
-					if( NpcBattleAnnouncer(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 249: //-> Guard
-				{
-					if( NpcRolensiaGuard(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 238: //-> Chaos Goblin
-				{
-					if( NpcChaosGoblelin(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 237: //-> Charon
-				{
-					if ( NpcRusipher(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 253: //-> Potion Girl Amy
-				{
-					if( NpcPosionGirl(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 245: //-> Wizard Izabel
-				{
-					if( NpcDeviasWizard(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 247: //-> Guard
-				{
-					if( NpcDeviasGuard(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 240: //-> Safety Guardian (Vault Keeper)
-				{
-					if( NpcWarehouse(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 226: //-> Trainer
-				{
-					if( NpcDarkSpiritTrainer(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 242: //-> Elf Lala
-				{
-					if( NpcNoriaRara(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 244: //-> Caren the Barmaid
-				{
-					if( NpcDeviasMadam(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 236: //-> Golden Archer
-				{
-					if( NpcEventChipNPC(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 234: //->
-				{
-					if( NpcServerDivision(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 232: //-> Archangel
-				{
-					if( NpcAngelKing(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 233: //-> Messenger of Archangel
-				{
-					if( NpcAngelMessanger(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 255: //-> Lumen the Barmaid
-				{
-					if( NpcRolensiaMadam(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 250: //-> Wandering Merchant
-				{
-					if( NpcRoadMerchant(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 246: //-> Weapons Merchant Zienna
-				{
-					if( NpcDeviasWeapon(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 251: //-> Hanzo the Blacksmith
-				{
-					if( NpcRorensiaSmith(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 243: //-> Eo the Craftsman
-				{
-					if( NpcNoriJangIn(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 256: //-> Lahap
-				{
-					if( NpcJewelMixDealer(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 221: //-> Slingshot attack
-				{
-					if( NpcSiegeMachine_Attack(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 222: //-> Slingshot defense
-				{
-					if( NpcSiegeMachine_Defense(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 223: //-> Senior
-				{
-					if( NpcElderCircle(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 224: //-> Guardsman
-				{
-					if( NpcCastleGuard(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 219: //-> Castle Gate Switch
-				{
-					if( NpcCastleGateLever(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 216: //-> Crown
-				{
-					if( NpcCastleCrown(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 217: //-> Crown Switch 2
-			case 218: //-> Crown Switch 1
-				{
-					if( NpcCastleSwitch(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 220:
-				{
-					if( NpcCastleHuntZoneGuard(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 257: //-> Shadow Phantom Soldier
-				{
-					if( Npc_Dialog(lpNpc, lpObj) ) //-> 617C20
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			case 205:
-				if ( NpcCrywolfAltar( lpNpc, lpObj ) == TRUE ) //ok
-				{
-					return TRUE;
-				}
-				break;
-				// --
-			case 206:
-				if ( NpcCrywolfAltar( lpNpc, lpObj ) == TRUE ) //ok
-				{
-					return TRUE;
-				}
-				break;
-				// --
-			case 207:
-				if ( NpcCrywolfAltar( lpNpc, lpObj ) == TRUE ) //ok
-				{
-					return TRUE;
-				}
-				break;
-				// --
-			case 208:
-				if ( NpcCrywolfAltar( lpNpc, lpObj ) == TRUE ) //ok
-				{
-					return TRUE;
-				}
-				break;
-				// --
-			case 209:
-				if ( NpcCrywolfAltar( lpNpc, lpObj ) == TRUE ) //ok
-				{
-					return TRUE;
-				}
-				break;
-			// --
-			case 259: //-> Oracle Layla
-				{
-					if( NpcReira(lpNpc, lpObj) )
-					{
-						return true;
-					}
-				}
-				break;
-				// --
-			default:
-				{
-					return false;
-				}
-				break;
-			}
-		}
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AAF50 -> 100%
-//1.01.00	-> 614F60 -> 100%
-bool NpcMainatenceMachine(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	if ( npcnum < 0 )
+	{
+		return FALSE;
+	}
+
+	if ( lpObj->m_IfState.use > 0 )
+	{
+		return TRUE;
+	}
+
+	if ( lpObj->CloseCount >= 0 )
+	{
+		if(ReadConfig.AHLog == TRUE)
+		{
+			ANTI_HACK_LOG.Output("[ANTI-HACK][NPC] - Try to open NPC during server quit [%s][%s]",
+				lpObj->AccountID, lpObj->Name);
+		}
+		return FALSE;
+	}
+
+	if ( lpObj->m_bMapSvrMoveQuit == true || lpObj->m_bMapAntiHackMove == true )
+	{
+		if(ReadConfig.AHLog == TRUE)
+		{
+			ANTI_HACK_LOG.Output("[ANTI-HACK][NPC] - Try to open NPC during MapServer Move [%s][%s]",
+				lpObj->AccountID, lpObj->Name);
+		}
+		return FALSE;
+	}
+
+	if ( npcnum == 229 ) // Marlon
+	{
+		gQuestNpcTeleport.TalkRefAdd();
+		lpObj->TargetShopNumber = npcnum;
+	}
+
+	if ( NpcQuestCheck(lpNpc, lpObj) != FALSE )
+	{
+		return TRUE;
+	}
+
+	switch ( npcnum )
+	{
+		case 367:
+			if ( NpcMainatenceMachine ( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 259:
+			if ( NpcReira ( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 254:
+			if ( NpcFasi ( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 241:
+			if ( NpcGuildMasterTalk( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+		
+		case 239:
+			if ( NpcBattleAnnouncer( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 249:
+			if ( NpcLorenciaGuard( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 238:
+			if ( NpcChaosGoblin( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 237:
+			if ( NpcRusipher( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 253:
+			if ( NpcPotionsGirl( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 245:
+			if ( NpcDeviasWizard( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 247:
+			if ( NpcDeviasGuard( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 240:
+			if ( NpcWarehouse( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 226:
+			if ( NpcDarkSpiritTrainer( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 242:
+			if ( NpcNoriaRara( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 244:
+			if ( NpcDeviasMadam( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 236:
+			if ( NpcEventChipNPC( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 234:
+			if ( NpcServerDivision( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 232:
+			if ( NpcAngelKing( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 233:
+			if ( NpcAngelMessanger( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 255:
+			if ( NpcLorenciaMadam( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 250:
+			if ( NpcRoadMerchant( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 246:
+			if ( NpcDeviasWeapon( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 251:
+			if ( NpcLorenciaSmith( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 243:
+			if ( NpcNoriJangIn( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 256:
+			if ( NpcJewelMixDealer( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 221:
+			if ( NpcSiegeMachine_Attack( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 222:
+			if ( NpcSiegeMachine_Defense( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 223:
+			if ( NpcElderCircle( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 224:
+			if ( NpcCastleGuard( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 219:
+			if ( NpcCastleGateLever( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 216:
+			if ( NpcCastleCrown( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 217:
+		case 218:
+			if ( NpcCastleSwitch( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 220:
+			if ( NpcCastleTrialsGuard( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 566:
+		{
+			if(ReadConfig.S5E2 == TRUE)
+			{
+				lpObj->m_IfState.use = 1;
+				lpObj->m_IfState.type = 105;
+				lpObj->m_IfState.state = 1;
+				char sa[12] = {0xC1,0x0C,0xF9,0x01,0x36,0x02,0x00,0x00,0x00,0x00,0x00,0x00};
+				::DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+			}
+		}break;
+
+		case 567:
+		{
+			if(ReadConfig.S5E2 == TRUE)
+			{
+				lpObj->m_IfState.use = 1;
+				lpObj->m_IfState.type = 103;
+				lpObj->m_IfState.state = 1;
+				char sa[12] = {0xC1,0x0C,0xF9,0x01,0x37,0x02,0x00,0x00,0x00,0x00,0x00,0x00};
+				::DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+			}
+		}break;
+
+		case 568:
+		{
+			if(ReadConfig.S5E2 == TRUE)
+			{
+				lpObj->m_IfState.use = 1;
+				lpObj->m_IfState.type = 104;
+				lpObj->m_IfState.state = 1;
+				char sa[12] = {0xC1,0x0C,0xF9,0x01,0x38,0x02,0x00,0x00,0x00,0x00,0x00,0x00};
+				::DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+			}
+		}break;
+
+		case 257:
+			{
+				if(ReadConfig.S5E2 == FALSE)
+				{
+					if ( NpcShadowPhantom(lpObj ) == TRUE )
+					{
+						return TRUE;
+					}
+				}else
+				{
+					lpObj->m_IfState.use = 1;
+					lpObj->m_IfState.type = 102;
+					lpObj->m_IfState.state = 1;
+					char sa[12] = {0xC1,0x0C,0xF9,0x01,0x01,0x01,0x00,0x00,0x00,0x00,0x00,0x00};
+					::DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+				}
+			}
+		break;
+
+		case 368:
+		case 369:
+		case 370:
+			if ( g_kJewelOfHarmonySystem.NpcJewelOfHarmony( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+
+		case 375:
+			if ( NpcChaosCardMaster( lpNpc, lpObj ) == TRUE )
+			{
+				return TRUE;
+			}
+		break;
+				
+		case 380: //[ILLUSION TEMPLE] STONE STATUE
+		{
+			IllusionTemple.SelectHero(lpObj,lpObj->MapNumber);
+		}break;
+		
+		case 383: //[ILLUSION TEMPLE] BLUE STORAGE
+		{
+			IllusionTemple.ReturnGift(lpObj,lpObj->MapNumber-45,npcnum);
+		}break;
+		
+		case 384: //[ILLUSION TEMPLE] ORANGE STORAGE
+		{
+			IllusionTemple.ReturnGift(lpObj,lpObj->MapNumber-45,npcnum);
+		}break;
+
+		case 385:
+		{
+			if ( NpcAlchemist(lpNpc, lpObj ) == TRUE)
+			{
+				return TRUE;
+			}
+		}break;
+		
+		case 406:
+		{
+			if ( NpcPriestDevin(lpNpc, lpObj ) == TRUE)
+			{
+				return TRUE;
+			}
+		}break;
+
+		case 407:
+		{
+			if ( NpcWerewolfQuarrel(lpNpc, lpObj ) == TRUE)
+			{
+				return TRUE;
+			}
+		}break;
+		
+		case 408:
+		{
+			if ( NpcKeepergate(lpNpc, lpObj ) == TRUE)
+			{
+				return TRUE;
+			}
+		}break;
+#if (PACK_EDITION>=2)
+		//case 450:
+		//{
+		//	if ( SkyEvent.NpcTalk(lpNpc, lpObj ) == TRUE)
+		//	{
+		//		return TRUE;
+		//	}
+		//}break;
+#endif
+		case 468:
+		case 469:
+		case 470:
+		case 471:
+		case 474:
+#if (PACK_EDITION>=2)
+		case 475:
+		{
+			if ( NpcLittleSanta(lpNpc, lpObj ) == TRUE)
+			{
+				return TRUE;
+			}
+		}break;
+#endif
+		case 479:
+		{
+			if ( g_DuelManager.NPCTalk_GateKeeper(lpNpc, lpObj)==TRUE )
+			{
+				return TRUE;
+			}
+		}break;
+
+		case 478:
+		{
+			if ( NpcLuckyCoins(lpNpc, lpObj)==TRUE )
+			{
+				return TRUE;
+			}
+		}break;
+
+		//case 579:
+		//{
+		//	if ( NpcLuckyItems(lpNpc, lpObj)==TRUE )
+		//	{
+		//		return TRUE;
+		//	}
+		//}break;
+#if (PACK_EDITION>=2)
+		case 522:
+		{
+			if ( NpcImperialGuardian(lpNpc, lpObj)==TRUE )
+			{
+				return TRUE;
+			}
+		}break;
+#endif
+#if (PACK_EDITION>=3)
+		case 540:
+		{
+			if ( NpcDoubleGoer(lpNpc, lpObj)==TRUE )
+			{
+				return TRUE;
+			}
+		}break;
+
+		case 541:
+		{
+			g_DoppelGanger.InterimChestOpen(lpObj,lpNpc);
+			return TRUE;
+		}break;
+		case 542:
+		{
+			g_DoppelGanger.FinalChestOpen(lpObj,lpNpc);
+			return TRUE;
+		}break;
+#endif		
+		
+#if (PACK_EDITION>=2)
+		case 465:
+		{
+			if (XMasEvent.AllowGifts == 1)
+			{
+				if(XMasEventItemBoxOpen(lpObj, lpObj->MapNumber, lpObj->X, lpObj->Y) == 0)
+				{
+					ChatTargetSend(lpNpc, lMsg.Get(MSGGET(14, 114)), lpObj->m_Index);
+				} else {
+					ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 124)), lpObj->m_Index);
+					ChatTargetSend(lpNpc, "Ho-Ho-Ho!", lpObj->m_Index);
+				}
+			} else {
+				ChatTargetSend(lpNpc, "XMas Season is Over!", lpObj->m_Index);
+			}
+
+			if (XMasEvent.BlessingBuffOnTalk == 1)
+			{
+				if ( NpcLittleSanta(lpNpc, lpObj ) == TRUE)
+				{
+					//Do Nothing Either Way
+				}
+			}
+			return TRUE;
+		}break;
+#endif
+
+		case 543:
+		{
+			lpObj->m_IfState.use = 1;
+			lpObj->m_IfState.type = 100;
+			lpObj->m_IfState.state = 1;
+			char sa[12] = {0xC1,0x0C,0xF9,0x01,0x1F,0x02,0x00,0x00,0x00,0x00,0x00,0x00};
+			DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+		}break;
+		case 544:
+		{
+			lpObj->m_IfState.use = 1;
+			lpObj->m_IfState.type = 101;
+			lpObj->m_IfState.state = 1;
+			char sa[12] = {0xC1,0x0C,0xF9,0x01,0x20,0x02,0x00,0x00,0x00,0x00,0x00,0x00};
+			DataSend(lpObj->m_Index ,(UCHAR*)sa, sizeof(sa));
+		}break;
+	}
+
+	return FALSE;
+}
+
+BOOL NpcPriestDevin(LPOBJ lpNpc, LPOBJ lpObj)
 {
+	return TRUE;
+}
+
+BOOL NpcWerewolfQuarrel(LPOBJ lpNpc, LPOBJ lpObj)	//407
+{
+	//lpObj->m_IfState.type = 55;
+	//lpObj->m_IfState.state = 0;
+	//lpObj->m_IfState.use = 1;
+
+	return TRUE;
+}
+
+BOOL NpcKeepergate(LPOBJ lpNpc, LPOBJ lpObj)		//408
+{
+	//lpObj->m_IfState.type = 56;
+	//lpObj->m_IfState.state = 0;
+	//lpObj->m_IfState.use = 1;
+
+	return TRUE;
+}
+
+void QuestTeleport(int aIndex, int Type) 
+{
+	if(gObj[aIndex].Money < 20000)
+	{
+		LogAdd("[%s][%s] [QUEST] short of zen for teleport quest map.\n", gObj[aIndex].AccountID, gObj[aIndex].Name);
+		return;
+	}
+
+	if(Type == 0)
+	{
+		gObjTeleport(aIndex, 41, 36, 90);
+		LogAdd("[%s][%s] [QUEST] Teleport to Barracks.\n", gObj[aIndex].AccountID, gObj[aIndex].Name);
+	}
+
+	if(Type == 1)
+	{
+		gObjTeleport(aIndex, 42, 96, 187);
+		LogAdd("[%s][%s] [QUEST] Teleport to Refuge.\n", gObj[aIndex].AccountID, gObj[aIndex].Name);
+	}
+
+
+	#if (WL_PROTECT==1)
+		VM_START_WITHLEVEL(3)
+		g_CashShop.SystemProcessesScan();
+		VM_END
+	#endif
+
+	gObj[aIndex].Money -= 20000;
+	GCMoneySend(aIndex, gObj[aIndex].Money);
+}
+
+BOOL NpcMainatenceMachine(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	lpObj->m_IfState.use = 1;
+	lpObj->m_IfState.type = 19;	//Kanturu Entrance
+
+	#if (GS_CASTLE==0)
 	g_KanturuEntranceNPC.NotifyEntranceInfo(lpObj->m_Index);
-	return true;
+	#endif
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AAF80 -> 100%
-//1.01.00	-> 614F90 -> 100%
-bool NpcReira(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+BOOL NpcReira(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AAFA0 -> 100%
-//1.01.00	-> 614FB0 -> 100%
-bool NpcBattleAnnouncer(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+BOOL NpcBattleAnnouncer(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+#if (GS_CASTLE==1)
+
+#endif
+
+	return 0;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AAFC0 -> 99% (Need change 1 name)
-//1.01.00	-> 614FD0 -> 99% (Need change 1 name)
-bool NpcFasi(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+BOOL NpcFasi(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( gLanguage && gLanguage != 8 && gDevilSquareEvent )
+	if ( gDevilSquareEvent != FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 1, 6, 0);
 	}
-	// ----
-	int PKFlag = false;
-	// ----
-#ifdef PARTYKILLPKSET
-	if( lpObj->PartyNumber >= 0 )
+
+	if ( lpObj->m_PK_Level > 4 )
 	{
-		if( gParty.GetPKPartyPenalty(lpObj->PartyNumber) > 4 ) //PartyClass::GetPKPartyPenalty
+		if ( PvP.gPkLimitFree == FALSE )
 		{
-			PKFlag = true;
-		}
-	}
-	else if( lpObj->m_PK_Level > 4 )
-	{
-		PKFlag = true;
-	}
-#else
-	if( lpObj->m_PK_Level > 4 )
-	{
-		PKFlag = true;
-	}
-#endif
-	// ----
-	if( PKFlag )
-	{
-		int hour	= 0;
-		int min		= 0;
-		// ----
-		if( lpNpc->TargetNumber != lpObj->m_Index )
-		{
-			if( gObjGetPkTime(lpObj, hour, min) == true )
-			{
-				char TextBuff[100];
-				wsprintf(TextBuff, lMsg.Get(MSGGET(4, 79)), hour, min);
-				// ----
-				ChatTargetSend(lpNpc, TextBuff, lpObj->m_Index);
-				// ----
-				lpNpc->TargetNumber = lpObj->m_Index;
-				// ----
-				if( !gPkLimitFree )
-				{
-					return true;
-				}
-			}
-		}
-		else if( !gPkLimitFree )
-		{
-			int TextID = rand() % 3;
-			// ----
-			switch( TextID )
+			int numbertext = rand() % 3;
+
+			switch ( numbertext )
 			{
 				case 0:
 					ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 98)), lpObj->m_Index);
 					break;
-					// --
+
 				case 1:
 					ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 99)), lpObj->m_Index);
 					break;
-					// --
+
 				case 2:
 					ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 100)), lpObj->m_Index);
 					break;
 			}
-			// ---
-			lpNpc->TargetNumber = 0;
-			// ----
-			return true;
+
+			lpNpc->TargetNumber = -1;	// Apply Deathway Fix, change 0 to -1;
+			return TRUE;
 		}
 	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB220 -> 100%
-//1.01.00	-> 615240 -> 99% (Need define text to CommonServer.cfg)
-bool NpcGuildMasterTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return FALSE;
+}
+
+
+
+
+BOOL NpcGuildMasterTalk(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gGuildCreate )
+	if ( gGuildCreate == FALSE )
 	{
-		ChatTargetSend(lpNpc, "서버분할 기간에는 길드를 생성할수가 없습니다", lpObj->m_Index);
-		return true;
+		ChatTargetSend(lpNpc, "Creation of the guild is DISABLED!", lpObj->m_Index);
+		return TRUE;
 	}
-	// ----
-	if( lpObj->GuildNumber > 0 )
+
+	if ( lpObj->GuildNumber > 0 )
 	{
 		ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 116)), lpObj->m_Index);
-		return true;
+		return TRUE;
 	}
-	// ----
-#ifdef GENS
-	if( gGensSystem.GuildCreateReqGens )
-	{
-		if( !gGensSystem.GetGensInfluence(lpObj) )
-		{
-			GCServerMsgStringSend("You need Gens family to create guild", lpObj->m_Index, 1);
-			return true;
-		}
-	}
-#endif
-	int nRet = gObjGuildMasterCapacityTest(lpObj);
-	// ----
-	if( !nRet )
+
+	int capacity = gObjGuildMasterCapacityTest(lpObj);
+
+	if ( capacity == 0 )
 	{
 		ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 117)), lpObj->m_Index);
 	}
-	else if( nRet == 2 )
+	else if ( capacity == 2 )
 	{
-		ChatTargetSend(lpNpc, lMsg.Get(MSGGET(4, 118)), lpObj->m_Index);
+		char buf[100]={0};
+		wsprintf(buf,"You need at least %d resets",ReadConfig.ResetReq_NpcGuildMasterTalk);
+		ChatTargetSend(lpNpc, buf, lpObj->m_Index);
+		GCServerMsgStringSend(buf,lpObj->m_Index, 0x01);
 	}
 	else
 	{
 		GCGuildMasterQuestionSend(lpObj->m_Index);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB350 -> 100%
-//1.01.00	-> 6153B0 -> 100%
-bool NpcRolensiaGuard(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return TRUE;
+}
+
+
+
+
+BOOL NpcLorenciaGuard(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gLanguage && gEnableEventNPCTalk )
+	if ( gEnableEventNPCTalk != FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 4, 0, 0);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB3A0 -> 100%
-//1.01.00	-> 615400 -> 100%
-bool NpcChaosGoblelin(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return TRUE;
+}
+
+
+
+
+
+BOOL NpcChaosGoblin(LPOBJ lpNpc, LPOBJ lpObj)
 {
 	gUserFindDevilSquareKeyEyes(lpObj->m_Index);
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB3D0 -> 100%
-//1.01.00	-> 615430 -> 100%
-bool NpcChaosCardMaster(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return FALSE;
+}
+
+
+
+BOOL g_bUseLotterySystem = TRUE;
+
+
+BOOL NpcChaosCardMaster(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	//if( !g_bUseLotteryEvent )
-	//{
-	//	return false;
-	//}
-	// ----
-	if( lpObj->m_bPShopOpen )
+//#if (CRYSTAL_EDITION == 1)	
+//	if(lpNpc->MapNumber == MAP_INDEX_ELBELAND)
+//	{
+//		SVShop.WindowState(lpObj->m_Index,1);
+//		return TRUE;
+//	}
+//#endif
+
+	if ( g_bUseLotterySystem == FALSE )
+		return FALSE;
+
+	if ( bCanChaosBox == TRUE )
 	{
-		GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
-		// ----
-		return false;
-	}
-	// ----
-	if( bCanChaosBox )
-	{
-		if( lpObj->m_IfState.use > 0 )
+		if ( lpObj->m_IfState.use > 0 )
+			return FALSE;
+
+		if ( lpObj->m_bPShopOpen == true )
 		{
-			return false;
-		}
-		// ----
-		if( lpObj->m_bPShopOpen )
-		{
-			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed", lpObj->AccountID, lpObj->Name);
+			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed",
+				lpObj->AccountID, lpObj->Name);
+
 			GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
-			// ----
-			return true;
+			return TRUE;
 		}
-		// ----
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x15;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 7;
-		// ----
-		LogAddTD("[ChaosCardlMix] [%s][%s] ChaosCardMaster Start", lpObj->AccountID, lpObj->Name);
-		// ----
+
+		PMSG_TALKRESULT pMsg;
+
+		pMsg.h.c = 0xC3;
+		pMsg.h.headcode = 0x30;
+		pMsg.h.size = sizeof(pMsg);
+		pMsg.result = 0x15;
+
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 7;
+
+		LogAddTD("[ChaosCard] [%s][%s] ChaosCard Mix Dealer Start",
+			lpObj->AccountID, lpObj->Name);
+
 		gObjItemTextSave(lpObj);
 		gObjWarehouseTextSave(lpObj);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB5A0 -> 100%
-//1.01.00	-> 615600 -> 100%
-bool NpcRusipher(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return TRUE;
+}
+
+
+
+
+BOOL NpcRusipher(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gDevilSquareEvent )
+	if ( gDevilSquareEvent == FALSE )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
+
+
 	int aIndex = lpObj->m_Index;
-	// ----
-	if( lpObj->m_IfState.use > 0 )
+
+	if ( (lpObj->m_IfState.use ) > 0 )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
-	if( !gUserFindDevilSquareInvitation(aIndex) )
+
+	if ( gUserFindDevilSquareInvitation(aIndex) == FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 1, 2 ,0);
 	}
-	else if( g_DevilSquare.GetState() )
+	else if ( g_DevilSquare.GetState() == 1 )
 	{
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 4;
-		// ----
-		DataSend(aIndex, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 12;
+		PMSG_TALKRESULT pMsg;
+
+		pMsg.h.c = 0xC3;
+		pMsg.h.headcode = 0x30;
+		pMsg.h.size = sizeof(pMsg);
+		pMsg.result = 0x04;
+
+		DataSend(aIndex, (LPBYTE)&pMsg, pMsg.h.size);
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 12;
 	}
 	else
 	{
 		GCServerCmd(lpObj->m_Index, 1, 3, 0);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB6E0 -> 100%
-//1.01.00	-> 615740 -> 100%
-bool NpcPosionGirl(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	return false;
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB700 -> 100%
-//1.01.00	-> 615760 -> 100%
-bool NpcDeviasWizard(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+BOOL NpcPotionsGirl(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB720 -> 100%
-//1.01.00	-> 615780 -> 100%
-bool NpcDeviasGuard(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+BOOL NpcDeviasWizard(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return true;
+#if (WL_PROTECT==1)  
+		VM_START_WITHLEVEL(4)
+		int MyCheckVar1;
+		CHECK_REGISTRATION(MyCheckVar1, 0x89121805)  
+		if (MyCheckVar1 != 0x89121805)
+		{	
+			bCanTrade = 0;
+			gAddExperience = 5.0f;
+			gItemDropPer = 7;
+		}
+		VM_END
+#endif
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB740 -> 100%
-//1.01.00	-> 6157A0 -> 100%
-bool NpcDeviasWareHousemen(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+BOOL NpcDeviasGuard(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB760 -> 100%
-//1.01.00	-> 6157C0 -> 100%
-bool NpcWarehouse(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+BOOL NpcDeviasWareHousemen(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return gObjCalDistance(lpNpc, lpObj) > 10;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB780 -> 100%
-//1.01.00	-> 615800 -> 100%
-bool NpcNoriaRara(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+BOOL NpcWarehouse(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gLanguage && gEnableEventNPCTalk )
+	return FALSE;
+}
+
+
+
+BOOL NpcNoriaRara(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( gEnableEventNPCTalk != FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 4, 2, 0);
 	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB7D0 -> 100%
-//1.01.00	-> 615850 -> 100%
-bool NpcDeviasMadam(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return FALSE;
+}
+
+
+BOOL NpcDeviasMadam(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gLanguage && gEnableEventNPCTalk )
+	if ( gEnableEventNPCTalk != FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 4, 1, 0);
 	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB820 -> 99% (Need add msg send for THA proto)
-//1.01.00	-> 6158A0 -> 99% (Need add msg send for THA proto)
-bool NpcEventChipNPC(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	#if (WL_PROTECT==1)
+		VM_START_WITHLEVEL(2)
+		g_CashShop.SystemProcessesScan();
+		VM_END
+	#endif
+
+	return FALSE;
+}
+
+
+struct PMSG_REQ_VIEW_EC_MN
 {
-	if( lpObj->m_IfState.use > 0 )
+	PBMSG_HEAD h;	// C1:01
+	int iINDEX;	// 4
+	char szUID[11];	// 8
+};
+
+
+BOOL NpcEventChipNPC(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( (lpObj->m_IfState.use) > 0 )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
-	if( lpNpc->MapNumber == 0 )
+	
+	if ( lpNpc->MapNumber == MAP_INDEX_LORENCIA )
 	{
-		PMSG_REQ_VIEW_EC_MN pMsg;
-		// ----
-		PHeadSetB((LPBYTE)&pMsg, 0x37, sizeof(pMsg));
-		pMsg.iINDEX				= lpObj->m_Index;
-		strcpy(pMsg.szUID, lpObj->AccountID);
-		pEventObj				= lpNpc;
-		// ----
-		DataSendEventChip((char*)&pMsg, sizeof(pMsg));
-		// ----
-		lpObj->m_IfState.type	= 9;
-		lpObj->m_IfState.state	= 0;
-		lpObj->m_IfState.use	= 1;
-		// ----
-		return true;
+		PMSG_REQ_VIEW_EC_MN pMsgTha = {0};
+
+		PHeadSetB((LPBYTE)&pMsgTha, 0x01, sizeof(pMsgTha));
+		pMsgTha.iINDEX = lpObj->m_Index;
+		strcpy(pMsgTha.szUID, lpObj->AccountID);
+		pEventObj = lpNpc;
+
+		DataSendEventChip((char*)&pMsgTha, sizeof(pMsgTha));
+		
+		lpObj->m_IfState.type = 9;
+		lpObj->m_IfState.state = 0;
+		lpObj->m_IfState.use = 1;
+
+		return TRUE;
 	}
-	// ----
-	if( lpNpc->MapNumber == 2 )
+
+	if ( lpNpc->MapNumber == MAP_INDEX_DEVIAS )
 	{
 		PMSG_EVENTCHIPINFO Result;
-		// ----
+
 		PHeadSetB((LPBYTE)&Result, 0x94, sizeof(Result));
-		Result.Type				= 2;
-		// ----
+		Result.Type = 2;
+		
 		DataSend(lpObj->m_Index, (LPBYTE)&Result, Result.h.size);
-		// ----
-		lpObj->m_IfState.type	= 9;
-		lpObj->m_IfState.state	= 0;
-		lpObj->m_IfState.use	= 1;
-		// ----
-		return true;
+
+		lpObj->m_IfState.type = 9;
+		lpObj->m_IfState.state = 0;
+		lpObj->m_IfState.use = 1;
+
+		return TRUE;
 	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AB820 -> 100%
-//1.01.00	-> 615A70 -> 100%
-bool NpcRorensiaSmith(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5ABA10 -> 100%
-//1.01.00	-> 615A90 -> 100%
-bool NpcNoriJangIn(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+BOOL NpcLorenciaSmith(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5ABA30 -> 100%
-//1.01.00	-> 615AB0 -> 100%
-bool NpcQuestCheck(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+BOOL NpcNoriJangIn(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( g_QuestInfo.NpcTalk(lpNpc, lpObj) )
+	return FALSE;
+}
+
+
+
+BOOL NpcQuestCheck(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( g_QuestInfo.NpcTalk(lpNpc, lpObj) != FALSE )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5ABA70 -> 100%
-//1.01.00	-> 615AF0-> 100%
-bool NpcServerDivision(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return FALSE;
+}
+
+
+BOOL NpcServerDivision(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gEnableServerDivision )
+	if ( gEnableServerDivision == FALSE )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
-	if( lpObj->lpGuild )
+
+	if ( lpObj->lpGuild != NULL )
 	{
 		GCServerCmd(lpObj->m_Index, 6, 0, 0);
-		// ----
-		return true;
+		return TRUE;
 	}
-	// ----
-	lpObj->m_IfState.type	= 11;
-	lpObj->m_IfState.state	= 0;
-	lpObj->m_IfState.use	= 1;
-	// ----
-	return false;
+
+	lpObj->m_IfState.type = 11;
+	lpObj->m_IfState.state = 0;
+	lpObj->m_IfState.use = 1;
+
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5ABB30 -> 100%
-//1.01.00	-> 615BB0 -> 100%
-bool NpcRoadMerchant(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+BOOL NpcRoadMerchant(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> ? -> 0%
-//1.01.00	-> 615BD0 -> 0%
-bool NpcAngelKing(LPOBJ lpNpc, LPOBJ lpObj)
+
+BOOL NpcAngelKing(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	bool iITEM_LEVEL = 0; //loc1
+	int iITEM_LEVEL = 0;
 
-	if( CHECK_LIMIT(lpObj->m_cBloodCastleIndex, MAX_BLOOD_CASTLE_LEVEL) == FALSE )
+	if ( (  (lpObj->m_cBloodCastleIndex < 0)?FALSE:(lpObj->m_cBloodCastleIndex > MAX_BLOOD_CASTLE_LEVEL-1)?FALSE:TRUE ) == FALSE )
 	{
 		GCServerCmd(lpObj->m_Index, 1, 0x18, 0);
 		return FALSE;
 	}
 
-	LogAddTD("[Blood Castle] (%d) [%s][%s] Talk to Angel King",	lpObj->m_cBloodCastleIndex+1, lpObj->AccountID, lpObj->Name);
+	__int64 remainTime = (__int64)(g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_iBC_REMAIN_MSEC / 1000);
+	
+	if(( remainTime <= 0) || (remainTime > g_iNpcAngelKingRemainTime))
+	{
+		char sbuf[1024]={0};
+		wsprintf(sbuf,"When the clock has %d for finish give the weapon, not now.", g_iNpcAngelKingRemainTime );
+		GCServerMsgStringSend (sbuf,lpObj->m_Index,0x01 ) ;
+		LogAddTD("[Blood Castle] (%d) [%s][%s] Try Talk to Angel King Failed -> Wait Until Clock Is %d",
+		lpObj->m_cBloodCastleIndex+1, lpObj->AccountID, lpObj->Name,g_iNpcAngelKingRemainTime);
+		return FALSE;
+	}
 
-	if( g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_bBC_REWARDED != false )
+	LogAddTD("[Blood Castle] (%d) [%s][%s] Talk to Angel King",
+		lpObj->m_cBloodCastleIndex+1, lpObj->AccountID, lpObj->Name);
+
+	if ( g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_bBC_REWARDED != false )
 	{
 		GCServerCmd(lpObj->m_Index, 1, 0x2E, 0);
 		return FALSE;
 	}
 
-	if( g_BloodCastle.GetCurrentState(lpObj->m_cBloodCastleIndex) != 2 || g_BloodCastle.CheckPlayStart(lpObj->m_cBloodCastleIndex) == false)
+	if ( g_BloodCastle.GetCurrentState(lpObj->m_cBloodCastleIndex) != 2 || g_BloodCastle.CheckPlayStart(lpObj->m_cBloodCastleIndex) == false)
 	{
 		GCServerCmd(lpObj->m_Index, 1, 0x18, 0);
 		return FALSE;
 	}
 
-	if( lpObj->m_bBloodCastleComplete == true)
+	if ( lpObj->m_bBloodCastleComplete == true)
 	{
 		GCServerCmd(lpObj->m_Index, 1, 0x2E, 0);
 		return FALSE;
 	}
 
-	if( (iITEM_LEVEL = g_BloodCastle.CheckQuestItem(lpObj->m_Index)<0?0:iITEM_LEVEL = g_BloodCastle.CheckQuestItem(lpObj->m_Index)>2?0:1) ) //perfect
+	if ( iITEM_LEVEL = iITEM_LEVEL = CHECK_LIMIT( g_BloodCastle.CheckQuestItem(lpObj->m_Index), 3)  )
 	{
-		if( lpNpc->m_cBloodCastleIndex != lpObj->m_cBloodCastleIndex )
+		if ( lpNpc->m_cBloodCastleIndex != lpObj->m_cBloodCastleIndex )
 		{
 			GCServerCmd(lpObj->m_Index, 1, 0x18, 0);
 			return FALSE;
 		}
 
-		if( g_BloodCastle.CheckUserBridgeMember(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == false )
+		if ( g_BloodCastle.CheckUserBridgeMember(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == false )
 		{
 			GCServerCmd(lpObj->m_Index, 1, 0x18, 0);
 			return FALSE;
 		}
 
 		g_BloodCastle.SetUserState(lpObj->m_Index, 2);
-		
 		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_iExtraEXP_Win_Quest_Party = lpObj->PartyNumber;
 		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_iExtraEXP_Win_Quest_Index = lpObj->m_Index;
-		
 		memcpy(g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_CharName, lpObj->Name, 10);
 		memcpy(g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_AccountID, lpObj->AccountID, 10);
+		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_CharName[10] = 0;	// Zero String terminated
+		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_AccountID[10] = 0;	// Zero String Terminated
 		
-		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_CharName[10] = 0;
-		g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_AccountID[10] = 0;
-		
-		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Destroy Castle Door [%s][%s]", lpObj->m_cBloodCastleIndex+1, 
-			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Door_AccountID, 
+		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Destroy Castle Door [%s][%s]",
+			lpObj->m_cBloodCastleIndex+1, g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Door_AccountID,
 			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Door_CharName);
-
-		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Destroy Saint Status [%s][%s]", lpObj->m_cBloodCastleIndex+1, 
-			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Door_AccountID, 
+		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Destroy Saint Status [%s][%s]",
+			lpObj->m_cBloodCastleIndex+1, g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Door_AccountID,	// #error Correct this
 			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szKill_Status_CharName);
-
-		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Win Quest [%s][%s]", lpObj->m_cBloodCastleIndex+1, 
-			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_AccountID, 
+		LogAddTD("[Blood Castle] (%d) Blood Castle Quest Succeed Result -> Win Quest [%s][%s]",
+			lpObj->m_cBloodCastleIndex+1, g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_AccountID,
 			g_BloodCastle.m_BridgeData[lpObj->m_cBloodCastleIndex].m_szWin_Quest_CharName);
 
-		if( g_BloodCastle.SetBridgeWinner(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == TRUE )
+		if ( g_BloodCastle.SetBridgeWinner(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == TRUE )
 		{
 			lpObj->m_bBloodCastleComplete = true;
 
-			if( g_BloodCastle.CheckPartyExist(lpObj->m_Index) == FALSE )
+			if ( g_BloodCastle.CheckPartyExist(lpObj->m_Index) == FALSE )
 			{
 				GCServerCmd(lpObj->m_Index, 1, 0x17, 0);
-				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest", 
-					g_BloodCastle.GetBridgeIndexByMapNum(lpNpc->MapNumber)+1, lpObj->AccountID, lpObj->Name);
+
+				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest",
+					lpNpc->MapNumber-10, lpObj->AccountID, lpObj->Name);
 			}
 			else
 			{
 				GCServerCmd(lpObj->m_Index, 1, 0x17, 0);
-				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest - More Party to register", 
-					g_BloodCastle.GetBridgeIndexByMapNum(lpNpc->MapNumber)+1, lpObj->AccountID, lpObj->Name);
+				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest - More Party to register",
+					lpNpc->MapNumber-10, lpObj->AccountID, lpObj->Name);
 			}
 		}
 		else
 		{
-			LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Winner Already Exist !!", 
-				g_BloodCastle.GetBridgeIndexByMapNum(lpNpc->MapNumber)+1, lpObj->AccountID, lpObj->Name);
+			LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Winner Already Exist !!",
+				lpNpc->MapNumber-10, lpObj->AccountID, lpObj->Name);
+
 			return FALSE;
 		}
 
@@ -1395,34 +1128,88 @@ bool NpcAngelKing(LPOBJ lpNpc, LPOBJ lpObj)
 	}
 	else
 	{
-		if( g_BloodCastle.CheckUserWinnerParty(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == TRUE )
+		if ( g_BloodCastle.CheckUserWinnerParty(lpObj->m_cBloodCastleIndex, lpObj->m_Index) == TRUE )
 		{
 			lpObj->m_bBloodCastleComplete = true;
 
 			if ( g_BloodCastle.CheckPartyExist(lpObj->m_Index) == FALSE )
 			{
 				GCServerCmd(lpObj->m_Index, 1, 0x17, 0);
-				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest", 
-					g_BloodCastle.GetBridgeIndexByMapNum(lpNpc->MapNumber)+1, lpObj->AccountID, lpObj->Name);
+
+				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest",
+					lpNpc->MapNumber-10, lpObj->AccountID, lpObj->Name);
 			}
 			else
 			{
 				GCServerCmd(lpObj->m_Index, 1, 0x17, 0);
-				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest - More Party to register", 
-					g_BloodCastle.GetBridgeIndexByMapNum(lpNpc->MapNumber)+1, lpObj->AccountID, lpObj->Name);
+				LogAddTD("[Blood Castle] (%d) (Account:%s, Name:%s) Succeed Blood Castle Quest - More Party to register",
+					lpNpc->MapNumber-10, lpObj->AccountID, lpObj->Name);
 			}
 
 			return FALSE;
 		}
+
 		GCServerCmd(lpObj->m_Index, 1, 0x18, 0);
 	}
+	
 	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> ? -> 0%
-//1.01.00	-> 616340 -> 0%
-bool NpcAngelMessanger(LPOBJ lpNpc, LPOBJ lpObj)
+BOOL NpcAlchemist(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( (lpObj->m_IfState.use) > 0 )
+	{
+		return TRUE;
+	}
+
+	int illusion_minutes = IllusionTemple.ReqRemainTime();
+
+	if ( illusion_minutes > 0 )
+	{
+		PMSG_RESULT_DEVILSQUARE_REMAINTIME pResult;
+
+		PHeadSetB((LPBYTE)&pResult, 0x91, sizeof(pResult));
+		pResult.hEventType = 5;
+		pResult.RemainTime = illusion_minutes;
+		pResult.RemainTime_LOW = 0;
+		pResult.EnteredUser = 0;
+
+		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+
+		return 1;
+	} 
+	else if ( illusion_minutes < 1 )
+	{
+		PMSG_TALKRESULT pMsg;
+		pMsg.h.c = 0xC3;
+		pMsg.h.headcode = 0x30;
+		pMsg.h.size = sizeof(pMsg);
+		pMsg.result = 0x14;
+		pMsg.level1 = 5;
+
+		pMsg.level2 = IllusionTemple.ReqPlayerNumberInside(lpObj);
+		pMsg.level3 = 0;
+		pMsg.level4 = 0;
+		pMsg.level5 = 0;
+		pMsg.level6 = 0;
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 96;	//Illusion Temple
+
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+
+		return 1;
+	}else
+	{
+		//If event started
+		ChatTargetSend(lpNpc, "Illusion Temple event started!", lpObj->m_Index);
+		return 1;
+	}
+	return 0;
+}
+
+
+BOOL NpcAngelMessanger(LPOBJ lpNpc, LPOBJ lpObj)
 {
 	if ( (lpObj->m_IfState.use ) > 0 )
 	{
@@ -1431,22 +1218,11 @@ bool NpcAngelMessanger(LPOBJ lpNpc, LPOBJ lpObj)
 
 	int iIndex = lpObj->m_Index;
 
-	if(gBloodCastleAllowingPlayers == FALSE)
+	if ( gObj[iIndex].m_PK_Level >= 4 )
 	{
-		if ( gObj[iIndex].m_PK_Level >= 4 )
-		{
-			GCServerCmd(iIndex, 0x38, 0, 0);
-			return TRUE;
-		}
+		GCServerCmd(iIndex, 0x39, 0, 0);
+		return TRUE;
 	}
-	
-	C_PMSG_BCTALKOPEN customPmsg;
-
-	PHeadSubSetB((LPBYTE)&customPmsg, 0xD0,0x15, sizeof(customPmsg));
-	customPmsg.ThirdChangeUp = lpObj->ThirdChangeUp;
-	customPmsg.Level = lpObj->Level;
-	DataSend(lpObj->m_Index, (LPBYTE)&customPmsg, customPmsg.h.size);
-
 
 	int iITEM_LEVEL = 0;
 
@@ -1499,228 +1275,258 @@ bool NpcAngelMessanger(LPOBJ lpNpc, LPOBJ lpObj)
 
 	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC4E0 -> 100%
-//1.01.00	-> 616580 -> 100%
-bool NpcRolensiaMadam(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+BOOL NpcLorenciaMadam(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC500 -> 100%
-//1.01.00	-> 6165A0 -> 100%
-bool NpcDeviasWeapon(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+
+BOOL NpcDeviasWeapon(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	return false;
+	return FALSE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC520 -> 100%
-//1.01.00	-> 6165C0 -> 100%
-bool NpcDarkSpiritTrainer(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+
+
+BOOL NpcDarkSpiritTrainer(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( bCanChaosBox )
+	if ( bCanChaosBox == TRUE )
 	{
 		PMSG_TALKRESULT pMsg;
-		// ----
-		pMsg.h.c		= 0xC3;
-		pMsg.h.headcode	= 0x30;
-		pMsg.h.size		= sizeof(pMsg);
-		// ----
-		if( lpObj->m_bPShopOpen )
+
+		pMsg.h.c = 0xC3;
+		pMsg.h.headcode = 0x30;
+		pMsg.h.size = sizeof(pMsg);
+		
+		if ( lpObj->m_bPShopOpen == true )
 		{
-			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed", lpObj->AccountID, lpObj->Name);
+			CHAOS_LOG.Output("[%s][%s] is Already Opening PShop, ChaosBox Failed",
+				lpObj->AccountID, lpObj->Name);
 			GCServerMsgStringSend(lMsg.Get(MSGGET(4, 194)), lpObj->m_Index, 1);
-			// ----
-			return true;
+
+			return TRUE;
 		}
-		// ----
-		lpObj->m_IfState.type		= 13;
-		lpObj->m_IfState.state		= 0;
-		lpObj->m_IfState.use		= 1;
-		// ----
-		pMsg.result					= 7;
-		// ----
+
+		lpObj->m_IfState.type = 13;
+		lpObj->m_IfState.state = 0;
+		lpObj->m_IfState.use = 1;
+		
+		pMsg.result = 0x07;
 		lpObj->bIsChaosMixCompleted = false;
-		// ----
-		pMsg.level1					= gDQChaosSuccessRateLevel1;
-		pMsg.level2					= gDQChaosSuccessRateLevel2;
-		pMsg.level3					= gDQChaosSuccessRateLevel3;
-		pMsg.level4					= gDQChaosSuccessRateLevel4;
-		pMsg.level5					= gDQChaosSuccessRateLevel5;
-		pMsg.level6					= gDQChaosSuccessRateLevel6;
-		pMsg.level7					= gDQChaosSuccessRateLevel7;
-		// ----
+		pMsg.level1 = ReadConfig.gDQChaosSuccessRateLevel1;
+		pMsg.level2 = ReadConfig.gDQChaosSuccessRateLevel2;
+		pMsg.level3 = ReadConfig.gDQChaosSuccessRateLevel3;
+		pMsg.level4 = ReadConfig.gDQChaosSuccessRateLevel4;
+		pMsg.level5 = ReadConfig.gDQChaosSuccessRateLevel5;
+		pMsg.level6 = ReadConfig.gDQChaosSuccessRateLevel6;
+		pMsg.level7 = ReadConfig.gDQChaosSuccessRateLevel7;	//CBMIX TST
+
 		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
-		// ----
+
 		GCAnsCsMapSvrTaxInfo(lpObj->m_Index, 1, g_CastleSiegeSync.GetTaxRateChaos(lpObj->m_Index));
 		gObjInventoryTrans(lpObj->m_Index);
-		// ----
-		LogAddTD("[%s][%s] Open Chaos Box", lpObj->AccountID, lpObj->Name);
-		// ----
-		gObjItemTextSave(lpObj);
-		gObjWarehouseTextSave(lpObj);
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC720 -> 100%
-//1.01.00	-> 6167D0 -> 100%
-bool NpcJewelMixDealer(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( bCanChaosBox )
-	{
-		if( lpObj->m_IfState.use > 0 )
+#if (WL_PROTECT==1)  
+		VM_START_WITHLEVEL(14)
+		if(WLRegGetStatus(NULL) != 1)
 		{
-			return true;
+			ReadConfig.gObjLevelUpGralNormal = 1;
+			bCanTrade = 0;
+			gAddExperience = 1.0f;	
+			gCreateCharacter = 0;
+			gServerMaxUser=7;
+ 			gItemDropPer = 1;
 		}
-		// ----
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x09;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 20;
-		// ----
-		LogAddTD("[JewelMix] [%s][%s] Jewel Mix Dealer Start", lpObj->AccountID, lpObj->Name);
-		// ----
+		VM_END
+#endif
+
+		CHAOS_LOG.Output("[%s][%s] DarkSpirit Open Chaos Box", lpObj->AccountID, lpObj->Name);
 		gObjItemTextSave(lpObj);
 		gObjWarehouseTextSave(lpObj);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC830 -> 100%
-//1.01.00	-> 6168E0 -> 100%
-bool NpcSiegeMachine_Attack(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+	return TRUE;
+}
+
+
+
+
+
+BOOL NpcJewelMixDealer(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( lpObj->m_IfState.use > 0 )
+	if ( bCanChaosBox == TRUE )
 	{
-		return true;
+		if ( (lpObj->m_IfState.use) > 0 )
+		{
+			return TRUE;
+		}
+
+		PMSG_TALKRESULT pMsg;
+
+		pMsg.h.c = 0xC3;
+		pMsg.h.headcode = 0x30;
+		pMsg.h.size = sizeof(pMsg);
+		pMsg.result = 0x09;
+
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 12;
+
+		JEWEL_MIX_LOG.Output("[JewelMix] [%s][%s] Jewel Mix Dealer Start", lpObj->AccountID, lpObj->Name);
+
+		gObjItemTextSave(lpObj);
+		gObjWarehouseTextSave(lpObj);
 	}
-	// ----
-	PMSG_ANS_USE_WEAPON_INTERFACE pResult = { 0 };
-	// ----
+
+	return TRUE;
+}
+
+
+
+struct PMSG_ANS_USE_WEAPON_INTERFACE
+{
+	PBMSG_HEAD2 h;	// C1:B7:00
+	BYTE btResult;	// 4
+	BYTE btWeaponType;	// 5
+	BYTE btObjIndexH;	// 6
+	BYTE btObjIndexL;	// 7
+};
+
+
+BOOL NpcSiegeMachine_Attack(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( (lpObj->m_IfState.use) > 0 )
+	{
+		return TRUE;
+	}
+
+	PMSG_ANS_USE_WEAPON_INTERFACE pResult = {0};
+
 	PHeadSubSetB((LPBYTE)&pResult, 0xB7, 0x00, sizeof(pResult));
-	// ----
-	pResult.btResult		= 0;
-	pResult.btWeaponType	= 1;
-	pResult.btObjIndexH		= SET_NUMBERH(lpNpc->m_Index);
-	pResult.btObjIndexL		= SET_NUMBERL(lpNpc->m_Index);
-	// ----
-	if( !gObjIsConnectedGP(lpNpc->m_iWeaponUser) )
+
+	pResult.btResult = 0;
+	pResult.btWeaponType = 1;
+	pResult.btObjIndexH = SET_NUMBERH(lpNpc->m_Index);
+	pResult.btObjIndexL = SET_NUMBERL(lpNpc->m_Index);
+
+	if ( gObjIsConnectedGP(lpNpc->m_iWeaponUser) == FALSE )
 	{
-		lpNpc->m_iWeaponUser	= 0;
-		lpNpc->m_btWeaponState	= 1;
+		lpNpc->m_iWeaponUser = 0;
+		lpNpc->m_btWeaponState = 1;
 	}
-	// ----
+
 	lpNpc->m_btWeaponState = 1;
-	// ----
-	if( lpNpc->m_btWeaponState == 1 ) // >< Stupid WZ
+
+
+	if ( lpNpc->m_btWeaponState == 1 )
 	{
-		pResult.btResult		= 1;
-		lpNpc->m_btWeaponState	= 2;
-		lpNpc->m_iWeaponUser	= lpObj->m_Index;
-		// ----
+		pResult.btResult = 1;
+		lpNpc->m_btWeaponState = 2;
+		lpNpc->m_iWeaponUser = lpObj->m_Index;
+
 		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 15;
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 15;
 	}
 	else
 	{
 		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
 	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.00.92	-> 5AC9D0 -> 100%
-//1.01.00	-> 616A80 -> 100%
-bool NpcSiegeMachine_Defense(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( lpObj->m_IfState.use > 0 )
-	{
-		return true;
-	}
-	// ----
-	PMSG_ANS_USE_WEAPON_INTERFACE pResult = { 0 };
-	// ----
-	PHeadSubSetB((LPBYTE)&pResult, 0xB7, 0x00, sizeof(pResult));
-	// ----
-	pResult.btResult		= 0;
-	pResult.btWeaponType	= 2;
-	pResult.btObjIndexH		= SET_NUMBERH(lpNpc->m_Index);
-	pResult.btObjIndexL		= SET_NUMBERL(lpNpc->m_Index);
-	// ----
-	if( !gObjIsConnectedGP(lpNpc->m_iWeaponUser) )
-	{
-		lpNpc->m_iWeaponUser	= 0;
-		lpNpc->m_btWeaponState	= 1;
-	}
-	// ----
-	lpNpc->m_btWeaponState = 1;
-	// ----
-	if( lpNpc->m_btWeaponState == 1 ) // >< Stupid WZ
-	{
-		pResult.btResult		= 1;
-		lpNpc->m_btWeaponState	= 2;
-		lpNpc->m_iWeaponUser	= lpObj->m_Index;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 16;
-	}
-	else
-	{
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-	}
-	// ----
-	return true;
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcElderCircle(LPOBJ lpNpc, LPOBJ lpObj)
+
+
+BOOL NpcSiegeMachine_Defense(LPOBJ lpNpc, LPOBJ lpObj)
 {
 	if ( (lpObj->m_IfState.use ) > 0 )
 	{
 		return TRUE;
 	}
 
-//#if(_GSCS==1)
-	if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
+	PMSG_ANS_USE_WEAPON_INTERFACE pResult = {0};
+
+	PHeadSubSetB((LPBYTE)&pResult, 0xB7, 0x00, sizeof(pResult));
+
+	pResult.btResult = 0;
+	pResult.btWeaponType = 2;
+	pResult.btObjIndexH = SET_NUMBERH(lpNpc->m_Index);
+	pResult.btObjIndexL = SET_NUMBERL(lpNpc->m_Index);
+
+	if ( gObjIsConnectedGP(lpNpc->m_iWeaponUser) == FALSE )
+	{
+		lpNpc->m_iWeaponUser = 0;
+		lpNpc->m_btWeaponState = 1;
+	}
+
+	lpNpc->m_btWeaponState = 1;
+
+
+	if ( lpNpc->m_btWeaponState == 1 )
+	{
+		pResult.btResult = 1;
+		lpNpc->m_btWeaponState = 2;
+		lpNpc->m_iWeaponUser = lpObj->m_Index;
+
+		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 16;
+	}
+	else
+	{
+		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+	}
+
+	return TRUE;
+}
+
+
+BOOL NpcElderCircle(LPOBJ lpNpc, LPOBJ lpObj) //GS-CS Decompiled 100%
+{
+	if ( (lpObj->m_IfState.use ) > 0 )
+	{
+		return TRUE;
+	}
+
+#if (GS_CASTLE==1)
+	if(g_CastleSiege.GetCastleState() == 7) //Good
 	{
 		ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 85))), lpObj->m_Index);
 		return TRUE;
 	}
 
-	if(strcmp(lpObj->GuildName, "") == 0 )
+	 //0001:001d2150       _strcmp                    005d3150 f   libcmt:strcmp.obj
+
+	if(strcmp(lpObj->GuildName, "") == 0 ) //Good
 	{
 		ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 86))), lpObj->m_Index);
 		return TRUE;
 	}
 
-	if(!g_CastleSiege.CheckGuildOwnCastle(lpObj->GuildName) || (lpObj->GuildStatus != G_MASTER && lpObj->GuildStatus != G_SUB_MASTER))
+	if(g_CastleSiege.CheckGuildOwnCastle(lpObj->GuildName)) //Good
 	{
-		ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 86))), lpObj->m_Index);
-		return TRUE;
+		if( lpObj->GuildStatus != GUILD_MASTER )
+		{
+			if ( lpObj->GuildStatus != GUILD_ASSISTANT )
+			{
+				ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 86))), lpObj->m_Index);
+				return TRUE;
+			}
+		}
 	}
-//#endif
+#endif
 
 	PMSG_TALKRESULT pMsg;
 
@@ -1732,55 +1538,52 @@ bool NpcElderCircle(LPOBJ lpNpc, LPOBJ lpObj)
 	lpObj->m_IfState.use = 1;
 	lpObj->m_IfState.type = 12;
 
-//#if(_GSCS==1)
+#if (GS_CASTLE==1)
 	pMsg.level1 = 0;
 	pMsg.level2 = 0;
 	pMsg.level3 = 0;
 	pMsg.level4 = 0;
 	pMsg.level5 = 0;
 	pMsg.level6 = 0;
-	pMsg.level7 = 0;//Season 4.5 fix
 
-	if( bCanChaosBox == TRUE)
+	if( bCanChaosBox == TRUE) //Good
 	{
 		lpObj->m_IfState.type = 7;
 
 		lpObj->bIsChaosMixCompleted = false;
-		lpObj->m_bIsCastleNPCUpgradeCompleted = false; 
+		//lpObj->m_bCsGuildInvolved = false; //Good
 
-		pMsg.level1 = 1;
+		pMsg.level1 = 1; //Good
 
 		GCAnsCsMapSvrTaxInfo(lpObj->m_Index, 1, g_CastleSiegeSync.GetTaxRateChaos(lpObj->m_Index));
 		gObjInventoryTrans(lpObj->m_Index);
 
-		LogAddTD("[%s][%s] Open Chaos Box", lpObj->AccountID, lpObj->Name);
+		CHAOS_LOG.Output("[%s][%s] NpcElderCircle Open Chaos Box", lpObj->AccountID, lpObj->Name);
 		gObjItemTextSave(lpObj);
 		gObjWarehouseTextSave(lpObj);
 	}
-//#endif
+#endif
 
 	DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
-
+	//lpObj->m_IfState.use = 0;
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCastleGuard(LPOBJ lpNpc, LPOBJ lpObj)
+
+BOOL NpcCastleGuard(LPOBJ lpNpc, LPOBJ lpObj) //GS-CS Decompiled 100%
 {
 	if ( (lpObj->m_IfState.use ) > 0 )
 	{
 		return TRUE;
 	}
 
-//#if(_GSCS==1)
-	if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
+#if (GS_CASTLE==1)
+	if(g_CastleSiege.GetCastleState() == 7)
 	{
 		ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 87))), lpObj->m_Index);
 		return TRUE;
 	}
-//#endif
+#endif
 
 	PMSG_TALKRESULT pMsg;
 
@@ -1797,23 +1600,21 @@ bool NpcCastleGuard(LPOBJ lpNpc, LPOBJ lpObj)
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCastleGateLever(LPOBJ lpNpc, LPOBJ lpObj)
+
+BOOL NpcCastleGateLever(LPOBJ lpNpc, LPOBJ lpObj) //GS-CS Decompiled 100%
 {
 	if ( (lpObj->m_IfState.use) > 0 )
 	{
 		return TRUE;
 	}
 
-//#if(_GSCS==1)
-	bool bControlEnable = FALSE;
+#if (GS_CASTLE==1)
+	BOOL bControlEnable = 0;
 	BYTE btResult = 0;
 	int iGateIndex = -1;
 
-	if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
+	if(g_CastleSiege.GetCastleState() == 7)
 	{
 		if(lpObj->m_btCsJoinSide != TRUE)
 		{
@@ -1827,10 +1628,17 @@ bool NpcCastleGateLever(LPOBJ lpNpc, LPOBJ lpObj)
 	}
 	else
 	{
-		if(g_CastleSiege.CheckCastleOwnerMember(lpObj->m_Index) == FALSE && g_CastleSiege.CheckCastleOwnerUnionMember(lpObj->m_Index) == FALSE) //Fixed
+		if(!g_CastleSiege.CheckCastleOwnerMember(lpObj->m_Index))
 		{
-			btResult = 4;
-			bControlEnable = FALSE;
+			if(!g_CastleSiege.CheckCastleOwnerUnionMember(lpObj->m_Index))
+			{
+				btResult = 4;
+				bControlEnable = FALSE;
+			}
+			else
+			{
+				bControlEnable = TRUE;
+			}
 		}
 		else
 		{
@@ -1849,14 +1657,14 @@ bool NpcCastleGateLever(LPOBJ lpNpc, LPOBJ lpObj)
 			}
 			else
 			{
+				LogAddTD("[CastleSiege] Gate not alive for lever: %d",lpNpc->m_Index);
 				btResult = 2;
 			}
 		}
-		else
-		{
-			btResult = 3;
-		}
-
+	}
+	else
+	{
+		btResult = 3;
 	}
 
 	GCAnsCsGateState(lpObj->m_Index,btResult,iGateIndex);
@@ -1868,57 +1676,153 @@ bool NpcCastleGateLever(LPOBJ lpNpc, LPOBJ lpObj)
 
 	lpObj->m_IfState.use = 1;
 	lpObj->m_IfState.type = 12;
-//#endif
+
+#endif
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCastleCrown(LPOBJ lpNpc, LPOBJ lpObj)
+struct PMSG_TRIALS_TALKRESULT
 {
-	//#if(_GSCS==1)
-	if ( gObjIsConnected(lpObj->m_Index) == FALSE )
+	PBMSG_HEAD h;
+	BYTE subtype;			// 3
+	BYTE interface_type;	// 4
+	BYTE entrance;	// 5
+	BYTE unk1;	// 6
+	BYTE unk2;	// 7
+	int set_money;
+	int max_money;
+	int up_money;
+};
+
+BOOL NpcCastleTrialsGuard(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	#if (GS_CASTLE==1)
+	if ( gObjIsConnected(lpObj->m_Index) == FALSE ) //Good
 	{
 		return TRUE;
 	}
 
-	if(g_CastleSiege.GetCastleState() != CASTLESIEGE_STATE_STARTSIEGE)
+	if(abs(lpObj->Y - lpNpc->Y) > 3 || abs(lpObj->X - lpNpc->X) > 3)
+	{
+		return TRUE;
+	}
+
+	if(g_CastleSiege.GetCastleState() == 7) //Good
+	{
+		ChatTargetSend(lpNpc,(lMsg.Get(MSGGET(6, 85))), lpObj->m_Index);
+		return TRUE;
+	}
+	
+	PMSG_TRIALS_TALKRESULT pMsg;	//Trials Guard
+	pMsg.interface_type = 0x01;
+	pMsg.entrance = 0x00;
+
+	if (g_CastleSiegeSync.CheckCastleOwnerMember(lpObj->m_Index) == TRUE) 
+	{
+		if( (lpObj->GuildStatus == 128)||(lpObj->GuildStatus == 64) )
+		{
+			//DebugLog("%s Guild Owner & Castle Owner",__FUNCTION__);
+			pMsg.interface_type = 0x03;
+			pMsg.entrance = 0x01;
+		} else {
+			//DebugLog("%s Guild Member & Castle Owner",__FUNCTION__);
+			pMsg.interface_type = 0x02;
+			pMsg.entrance = 0x01;
+		}
+	}
+	else if (g_CastleSiegeSync.CheckCastleOwnerUnionMember(lpObj->m_Index) == TRUE)
+	{
+		//DebugLog("%s Guild Union Member & Castle Owner",__FUNCTION__);
+		pMsg.interface_type = 0x02;
+		pMsg.entrance = 0x01;
+	}
+
+	if( g_CastleSiege.GetHuntZoneEnter() )
+	{
+		//DebugLog("%s Open Entrance",__FUNCTION__);
+		pMsg.entrance = 0x01;
+	}
+
+	pMsg.h.c = 0xC1;
+	pMsg.h.size = sizeof(pMsg);
+	pMsg.h.headcode = 0xB9;
+	pMsg.subtype = 0x03;
+
+	pMsg.unk1 = 0;	// 6
+	pMsg.unk2 = 0;	// 7
+
+	pMsg.set_money = g_CastleSiegeSync.GetTaxHuntZone(lpObj->m_Index, FALSE);
+	pMsg.max_money = 300000;
+	pMsg.up_money = 10000;
+
+	lpObj->m_IfState.use = 1;
+	lpObj->m_IfState.type = 220;
+
+	DataSend(lpObj->m_Index, (LPBYTE)&pMsg, pMsg.h.size);
+	#endif
+
+	return TRUE;
+}
+
+BOOL NpcCastleCrown(LPOBJ lpNpc, LPOBJ lpObj) //GS-CS Decompiled 100%
+{
+	#if (GS_CASTLE==1)
+	if ( gObjIsConnected(lpObj->m_Index) == FALSE ) //Good
+	{
+		return TRUE;
+	}
+
+	if(g_CastleSiege.GetCastleState() != 7) //Good
 	{
 		return TRUE;
 	}
 	
-	if(lpObj->m_btCsJoinSide < 2 || lpObj->m_bCsGuildInvolved == FALSE )
+	//if( lpObj->m_bCsGuildInvolved == false )
+	if( lpObj->m_btCsJoinSide == 1 )
 	{
+		GCServerMsgStringSend ("You are on defending team!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][Defending] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		return TRUE;
 	}
 
-	if(g_CastleSiege.CheckUnionGuildMaster(lpObj->m_Index) == FALSE )
+	if( lpObj->m_btCsJoinSide < 1 )
 	{
+		GCServerMsgStringSend ("You are not on any team!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][NonCS] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		return TRUE;
 	}
 
-	if( (abs(lpObj->Y - lpNpc->Y)) > 3 || (abs(lpObj->X - lpNpc->X)) > 3)
+	if( g_CastleSiege.CheckUnionGuildMasterOrAssistant(lpObj->m_Index) == FALSE )
 	{
+		GCServerMsgStringSend ("You are not Union Master!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][Union] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
+		return TRUE;
+	}
+
+	if(abs(lpObj->Y - lpNpc->Y) > 3 || abs(lpObj->X - lpNpc->X) > 3)
+	{
+		GCServerMsgStringSend ("You are too far from the crown!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][Distance] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		return TRUE;
 	}
 
 	if(g_CastleSiege.GetRegCrownAvailable() == FALSE )
 	{
+		GCServerMsgStringSend ("Crown is not Availiable!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][Not Availiable] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		return TRUE;
 	}
 
 	int iUserIndex = g_CastleSiege.GetCrownUserIndex();
 
-	if(gObjIsConnected(iUserIndex) == FALSE )
+	if( (iUserIndex == -1) || (gObjIsConnected(iUserIndex) == FALSE) )
 	{
 		int iSwitchIndex1 = g_CastleSiege.GetCrownSwitchUserIndex(217);
 		int iSwitchIndex2 = g_CastleSiege.GetCrownSwitchUserIndex(218);
 
 		if(gObjIsConnected(iSwitchIndex1) == FALSE || gObjIsConnected(iSwitchIndex2) == FALSE )
 		{
-			GCAnsCsAccessCrownState(lpObj->m_Index,4);
 			LogAddTD("[CastleSiege] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 			return TRUE;
 		}
@@ -1931,53 +1835,66 @@ bool NpcCastleCrown(LPOBJ lpNpc, LPOBJ lpObj)
 		}
 		else
 		{
-			GCAnsCsAccessCrownState(lpObj->m_Index,0);
 			g_CastleSiege.SetCrownUserIndex(lpObj->m_Index);
 			g_CastleSiege.SetCrownAccessUserX(lpObj->X);
 			g_CastleSiege.SetCrownAccessUserY(lpObj->Y);
-			g_CastleSiege.SetCrownAccessTickCount();
+
+			//lpObj->m_iAccumulatedCrownAccessTime = 0;
+			//g_CastleSiege.SetCrownAccessTickCount();
+			g_CastleSiege.SetCrownAccessTickCountByVal(GetTickCount() - lpObj->m_iAccumulatedCrownAccessTime);
+
 			g_CastleSiege.NotifyAllUserCsProgState(0,lpObj->GuildName);
+			g_CastleSiege.m_iCastleCrownAccessUser=lpObj->m_Index;
+
+			GCAnsCsAccessCrownState(lpObj->m_Index,0);
 			LogAddTD("[CastleSiege] [%s][%s] Start to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		}
 	}
 	else if(lpObj->m_Index != iUserIndex)
 	{
+		GCServerMsgStringSend ("Someone is already accessing the Crown!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][iUserIndex] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
 		GCAnsCsAccessCrownState(lpObj->m_Index,3);
 	}
-
+	#endif
 	return TRUE;
-//#else
-//	return TRUE;
-//#endif
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCastleSwitch(LPOBJ lpNpc, LPOBJ lpObj)
+
+BOOL NpcCastleSwitch(LPOBJ lpNpc, LPOBJ lpObj) //GS-CS Decompiled 100%
 {
-	//#if(_GSCS==1)
+	#if (GS_CASTLE==1)
 	if(gObjIsConnected(lpObj->m_Index) == FALSE )
 	{
 		return TRUE;
 	}
 
-	if(g_CastleSiege.GetCastleState() != CASTLESIEGE_STATE_STARTSIEGE)
+	if(g_CastleSiege.GetCastleState() != 7)
 	{
 		return TRUE;
 	}
 	
-	if(lpObj->m_btCsJoinSide < 2)
+	//if( lpObj->m_bCsGuildInvolved == false )
+	if( lpObj->m_btCsJoinSide == 1 )
+	{
+		GCServerMsgStringSend ("You are on defending team!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][Defending] [%s][%s] Failed to Register Castle Switch (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
+		return TRUE;
+	}
+
+	if( lpObj->m_btCsJoinSide < 1 )
+	{
+		GCServerMsgStringSend ("You are not on any team!",lpObj->m_Index,0x01 ) ;
+		LogAddTD("[CastleSiege][NonCS] [%s][%s] Failed to Register Castle Crown (GUILD:%s)",lpObj->AccountID,lpObj->Name,lpObj->GuildName);
+		return TRUE;
+	}
+
+	if((lpObj->Y - lpNpc->Y) > 3 || (lpObj->X - lpNpc->X) > 3)
 	{
 		return TRUE;
 	}
 
-	if( (abs(lpObj->Y - lpNpc->Y)) > 3 || (abs(lpObj->X - lpNpc->X)) > 3)
-	{
-		return TRUE;
-	}
-
-	if(g_CastleSiege.CheckGuardianStatueExist() == TRUE)
+	if(g_CastleSiege.CheckGuardianStatueExist())
 	{
 		MsgOutput(lpObj->m_Index,lMsg.Get(MSGGET(6, 200)));
 		return TRUE;
@@ -1995,724 +1912,197 @@ bool NpcCastleSwitch(LPOBJ lpNpc, LPOBJ lpObj)
 	{
 		GCAnsCsAccessSwitchState(lpObj->m_Index,lpNpc->m_Index,iUserIndex,2);
 	}
-
+	#endif
 	return TRUE;
-//#else
-//	return TRUE;
-//#endif
 }
-// -------------------------------------------------------------------------------
 
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCastleHuntZoneGuard(LPOBJ lpNpc, LPOBJ lpObj) // -> Only _CS
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	if( (lpObj->m_IfState.use ) > 0 )
-	{
-		return true;
-	}
-	// ----
-	PMSG_ANS_GUARD_IN_CASTLE_HUNTZONE pResult = { 0 };
-	// ----
-	PHeadSubSetB((LPBYTE)&pResult, 0xB9, 0x03, sizeof(PMSG_ANS_GUARD_IN_CASTLE_HUNTZONE));
-	// ----
-	pResult.btResult		= TRUE;
-	pResult.iMaxPrice		= 300000;
-	pResult.iUnitOfPrice	= 10000;
-	pResult.btUsable		= 0;
-	pResult.iCurrentPrice	= 0;
-	pResult.iCurrentPrice	= g_CastleSiegeSync.GetTaxHuntZone(lpObj->m_Index, false);
-	// ----
-	if( g_CastleSiege.GetHuntZoneEnter() )
-	{
-		pResult.btUsable = 1;
-	}
-	// ----
-	if( lpObj->lpGuild != 0 )
-	{
-		if( g_CastleSiege.CheckCastleOwnerUnionMember(lpObj->m_Index) )
-		{
-			pResult.btResult = 2;
-		}
-		// ----
-		if( g_CastleSiege.CheckCastleOwnerMember(lpObj->m_Index) )
-		{
-			if( lpObj->GuildStatus == G_MASTER )
-			{
-				pResult.btResult = 3;
-			}
-		}
-	}
-	else
-	{
-		if( g_CastleSiege.GetHuntZoneEnter() )
-		{
-			pResult.btResult = 1;
-		}
-	}
-	// ----
-	DataSend(lpObj->m_Index,(LPBYTE)&pResult,pResult.h.size);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACD50 -> 100%
-//1.01.00	-> 616F60 -> Not in use
-bool NpcShadowPhantom(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	if( lpObj->Level > g_ShadowPahtomMaxLevel || lpObj->ThirdChangeUp )
-	{
-		GCServerCmd(lpObj->m_Index, 13, 0, 0);
-		// ----
-		return true;
-	}
-	// ----
-	int iIncleaseAttackPower	= 0;
-	int iIncleaseDefensePower	= 0;
-	// ----
-	if ( lpObj->Level <= 180 )
-	{
-		iIncleaseAttackPower	= lpObj->Level / 3 + 45;
-		iIncleaseDefensePower	= lpObj->Level / 5 + 50;
-	}
-	else
-	{
-		iIncleaseAttackPower	= 105;
-		iIncleaseDefensePower	= 86;
-	}
-	// ----
-	gObjAddBuffEffect(lpObj, AT_NPC_HELP, 2, iIncleaseAttackPower, 3, 
-		iIncleaseDefensePower, (lpObj->Level / 6 + 30) * 60);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 616F60 -> 100%
-bool NpcShadowPhantom(int iObjIndex) //-> Complete
-{
-	LPOBJ lpObj = &gObj[iObjIndex];
-	// ----
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	if( lpObj->Level > g_ShadowPahtomMaxLevel || lpObj->ThirdChangeUp )
-	{
-		GCServerCmd(lpObj->m_Index, 13, 0, 0);
-		// ----
-		return true;
-	}
-	// ----
-	int iIncleaseAttackPower	= 0;
-	int iIncleaseDefensePower	= 0;
-	// ----
-	if ( lpObj->Level <= 180 )
-	{
-		iIncleaseAttackPower	= lpObj->Level / 3 + 45;
-		iIncleaseDefensePower	= lpObj->Level / 5 + 50;
-	}
-	else
-	{
-		iIncleaseAttackPower	= 105;
-		iIncleaseDefensePower	= 86;
-	}
-	// ----
-	gObjAddBuffEffect(lpObj, AT_NPC_HELP, 2, iIncleaseAttackPower, 3, 
-		iIncleaseDefensePower, (lpObj->Level / 6 + 30) * 60);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.93	-> ? -> 0%
-//1.01.01	-> ? -> 0%
-bool NpcCrywolfAltar(LPOBJ lpNpc, LPOBJ lpObj) //-> Only on _CS
+BOOL NpcShadowPhantom(LPOBJ lpObj)
 {
 	if ( gObjIsConnected(lpObj->m_Index) == FALSE )
 	{
 		return TRUE;
 	}
+
+	if ( lpObj->Level > ReadConfig.Max_NPC_Phantom_Buffer )
+	{
+		GCServerCmd(lpObj->m_Index, 0x0D, 0, 0);
+		
+		return TRUE;
+	}
+
+	lpObj->m_iSkillNPCHelpTime = GetTickCount();
+	lpObj->m_iSkillNPCDefense = lpObj->Level / 5 + 50;	// FORMULA
+	lpObj->m_iSkillNPCAttack = lpObj->Level / 3 + 45;	// FORMULA
+
+	lpObj->m_ViewSkillState |= 131072;
+
+	GCSkillInfoSend(lpObj, 1, 0x03);
+
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACEB0 -> 100%
-//1.01.00	-> 6170D0 -> 100%
-bool NpcQuartermasterPamella(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+#if (PACK_EDITION>=2)
+BOOL NpcLittleSanta(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( !gObjIsConnected(lpObj->m_Index) )
+	if ( gObjIsConnected(lpObj->m_Index) == FALSE )
 	{
-		return true;
+		return TRUE;
 	}
-	// ----
-	return false;
+
+	if(lpObj->m_iSkillNPCSantaType > 0)
+	{
+		GCSantaStateInfoSend(lpObj, 0);
+	}
+
+	if (lpNpc->Class == 465 || lpNpc->Class == 476)
+		lpObj->m_iSkillNPCSantaTime = 60 * XMasEvent.BlessingBuffMinutes;
+	else
+		lpObj->m_iSkillNPCSantaTime = 60 * XMasEvent.LittleBuffMinutes;
+
+	lpObj->m_iSkillNPCSantaType = lpNpc->Class;
+	gObjCalCharacter(lpObj->m_Index);
+	GCSantaStateInfoSend(lpObj, 1);
+
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACEF0 -> 100%
-//1.01.00	-> 617110 -> 100%
-bool NpcQuartermasterAngela(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACF30 -> 100%
-//1.01.00	-> 617150 -> 100%
-bool NPcFireCrackerStore(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACF70 -> 100%
-//1.01.00	-> 617190 -> 100%
-bool NpcIllusionHolyRelicsStatue(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		g_IllusionTempleEvent.IllusionHolyRelicsStatusAct(lpObj->MapNumber, lpNpc, lpObj);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5ACFD0 -> 100%
-//1.01.00	-> 6171F0 -> 100%
-bool NpcHolyRelicsBoxAllied(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		g_IllusionTempleEvent.HolyRelicsBoxAlliedAct(lpObj->MapNumber, lpNpc, lpObj);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD030 -> 100%
-//1.01.00	-> 617250 -> 100%
-bool NpcHolyRelicsBoxIllusion(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		g_IllusionTempleEvent.HolyRelicsBoxIllusionAct(lpObj->MapNumber, lpNpc, lpObj);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD090 -> 100%
-//1.01.00	-> 6172B0 -> 100%
-bool NpcPlatformMirage(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		g_IllusionTempleEvent.PlatformMirageAct(lpNpc, lpObj);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD0E0 -> 100%
-//1.01.00	-> 617300 -> 100%
-bool NpcSilviaTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD120 -> 100%
-//1.01.00	-> 617340 -> 100%
-bool NpcRheaTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD160 -> 100%
-//1.01.00	-> 617380 -> 100%
-bool NpcMarceTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD1A0 -> 100%
-//1.01.00	-> 6173C0 -> 100%
-bool NpcSeedMaster(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( bCanChaosBox )
-	{
-		if( lpObj->m_IfState.use > 0 )
-		{
-			return true;
-		}
-		// ----
-		if( lpObj->m_bPShopOpen )
-		{
-			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed", lpObj->AccountID, lpObj->Name);
-			GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
-			// ----
-			return true;
-		}
-		// ----
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x17;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 7;
-		// ----
-		LogAddTD("[JewelMix] [%s][%s] Socket Item Mix Start", lpObj->AccountID, lpObj->Name);
-		// ----
-		gObjItemTextSave(lpObj);
-		gObjWarehouseTextSave(lpObj);
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD320 -> 100%
-//1.01.00	-> 617540 -> 100%
-bool NpcSeedResearcher(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( bCanChaosBox )
-	{
-		if( lpObj->m_IfState.use > 0 )
-		{
-			return true;
-		}
-		// ----
-		if( lpObj->m_bPShopOpen )
-		{
-			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed", lpObj->AccountID, lpObj->Name);
-			GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
-			// ----
-			return true;
-		}
-		// ----
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x18;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 7;
-		// ----
-		LogAddTD("[JewelMix] [%s][%s] Socket Item Mix Start", lpObj->AccountID, lpObj->Name);
-		// ----
-		gObjItemTextSave(lpObj);
-		gObjWarehouseTextSave(lpObj);
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD4A0 -> 100%
-//1.01.00	-> 6176C0 -> 100%
-bool NpcCherryTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD4E0 -> 100%
-//1.01.00	-> 617700 -> 100%
-bool NpcLuckyCoinDelgado(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD520 -> 99% (Need change 1 item)
-//1.01.00	-> 617740 -> 99% (Need change 1 item)
-bool Npc_SantaTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		//GEReqCheckEventNPCTarget
-		EGAnsRegXMasGetPayItem(lpObj->m_Index, 1);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD570 -> 100%
-//1.01.00	-> 617790 -> 100%
-bool Npc_SnowManTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		CGReqCheckSnowManNPC(lpObj->m_Index);
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.00.92	-> 5AD5C0 -> 100%
-//1.01.00	-> 6177E0 -> 100%
-bool Npc_LittleSantaTalk(LPOBJ lpNpc, LPOBJ lpObj, int BuffEffect) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	switch( BuffEffect )
-	{
-	case AT_NULL_BUFF_EFFECT:
-		lpObj->Life = lpObj->AddLife + lpObj->MaxLife;
-		GCReFillSend(lpObj->m_Index, lpObj->Life, 0xFF, 0, lpObj->iShield);
-		break;
-		// --
-	case AT_INCREASE_ATTACK:
-		lpObj->Mana = lpObj->AddMana + lpObj->MaxMana;
-		GCManaSend(lpObj->m_Index, lpObj->Mana, 0xFF, 0, lpObj->BP);
-		break;
-		// --
-	case AT_XMASS_ATTACK:
-		gObjAddBuffEffect(lpObj, AT_XMASS_ATTACK, 57, 30, 0, 0, 1800);
-		break;
-		// --
-	case AT_XMASS_DEFENSE:
-		gObjAddBuffEffect(lpObj, AT_XMASS_DEFENSE, 58, 100, 0, 0, 1800);
-		break;
-		// --
-	case AT_XMASS_HEALTH:
-		gObjAddBuffEffect(lpObj, AT_XMASS_HEALTH, 4, 500, 0, 0, 1800);
-		break;
-		// --
-	case AT_XMASS_MANA:
-		gObjAddBuffEffect(lpObj, AT_XMASS_MANA, 5, 500, 0, 0, 1800);
-		break;
-		// --
-	case AT_XMASS_DEXTERITY:
-		gObjAddBuffEffect(lpObj, AT_XMASS_DEXTERITY, 1, 15, 0, 0, 1800);
-		break;
-		// --
-	case AT_XMASS_AG_RECOVERY:
-		gObjAddBuffEffect(lpObj, AT_XMASS_AG_RECOVERY, 59, 10, 0, 0, 1800);
-		break;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617AA0 -> 100%
-bool Npc_EventDungeonTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x24;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617B10 -> 90% (Need add global bool & write act)
-bool Npc_LugardTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		//if( bDoppelgangerEvent )
-		//{
-#ifdef DP
-			g_DoppleganerEvent.PlatformLugardAct(lpNpc, lpObj); //-> 69e000
-			return true;
 #endif
-		//}
-		// ----
-		//return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//1.01.00	-> 617B80 -> 95% (Need write act)
-bool Npc_MiddleTreasureTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+BOOL NpcLuckyCoins(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-#ifdef DP
-		g_DoppleganerEvent.MiddleTreasureAct(lpNpc, lpObj); //-> 69e2d0
-		return true;
-#endif
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617BD0 -> 95% (Need write act)
-bool Npc_LastTreasureTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-#ifdef DP
-		g_DoppleganerEvent.LastTreasureAct(lpNpc, lpObj); //-> 69e820
-		return true;
-#endif
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617C20 -> 99% (Need fix state)
-bool Npc_Dialog(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	PMSG_ANS_DIG_NPC_CLICK pResult;
-	// ----
-	char * GensName;
-	// ----
-	if( gObjIsConnected(lpObj->m_Index) )
-	{
-		lpObj->TargetShopNumber = lpNpc->Class;
-		// ----
-		switch(lpObj->TargetShopNumber) // Not original, but easier
-		{
-#ifdef GENS
-		case 543:
-			{
-				pResult.dwContributePoint	= gGensSystem.GetContributePoint(lpObj);
-				GensName					= gGensSystem.GetGensInfluenceName(lpObj);
-				// ----
-				LogAddTD("[GensSystem] Gens_Duprian_NPC [%s][%s] GensName [%s] Total ContributePoint [%d]",
-					lpObj->AccountID, lpObj->Name, GensName, pResult.dwContributePoint);
-			}
-			break;
-			// --
-		case 544:
-			{
-				pResult.dwContributePoint	= gGensSystem.GetContributePoint(lpObj);
-				GensName					= gGensSystem.GetGensInfluenceName(lpObj);
-				// ----
-				LogAddTD("[GensSystem] Gens_Vanert_NPC [%s][%s] GensName [%s] Total ContributePoint [%d]",
-					lpObj->AccountID, lpObj->Name, GensName, pResult.dwContributePoint);
-			}
-			break;
-#endif
-			// --
-		case 257: case 566:
-		case 567: case 568:
-			{
-				pResult.dwContributePoint = 0;
-			}
-			break;
-		}
-		// ----
-		if( lpObj->TargetShopNumber == 568 )
-		{
-			//lpObj->m_IfState._bf0 = lpObj->m_IfState._bf0 & 0xFFFF003F | 0x280;
-			//lpObj->m_IfState._bf0 &= 0xFFFFFFC3u;
-			//lpObj->m_IfState._bf0 = lpObj->m_IfState._bf0 & 0xFFFFFFFC | 1;
-		}
-		// ----
-		pResult.h.c					= 0xC3;
-		pResult.h.headcode			= 0xF9;
-		pResult.h.subcode			= 1;
-		pResult.h.size				= sizeof(pResult);
-		pResult.wNPCIndex			= lpObj->TargetShopNumber;
-		// ----
-		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		return true;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617E30 -> 100%
-bool NpcKristenTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617E70 -> 100%
-bool NpcRaulTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	NpcJewelMixDealer(lpNpc, lpObj);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//1.01.00	-> 617EB0 -> 100%
-bool NpcJuliaTalk(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( gObjIsConnected(lpObj->m_Index) )
+	if ( lpObj->m_IfState.use != 1 )
 	{
 		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x25;
-		pResult.level1			= 0;
-		// ----
+		pResult.h.c = 0xC3;
+		pResult.h.headcode = 0x30;
+		pResult.h.size = sizeof(pResult);
+		pResult.result = 32;
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 97;	//Lucky Coins
+
 		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		return true;
 	}
-	// ----
-	return true;
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//1.01.00	-> 617F30 -> 100%
-bool NpcRehina(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
 
-//1.01.00	-> 617F70 -> 100%
-bool NpcVolo(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
-{
-	if( !gObjIsConnected(lpObj->m_Index) )
-	{
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
+//BOOL NpcLuckyItems(LPOBJ lpNpc, LPOBJ lpObj)
+//{
+//	if ( lpObj->m_IfState.use != 1 )
+//	{
+//
+//		if ( lpObj->m_bPShopOpen == true )
+//		{
+//			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed",
+//				lpObj->AccountID, lpObj->Name);
+//			GCServerMsgStringSend(lMsg.Get(MSGGET(4, 194)), lpObj->m_Index, 1);
+//
+//			return FALSE;
+//		}
+//		PMSG_TALKRESULT pResult;
+//		pResult.h.c = 0xC3;
+//		pResult.h.headcode = 0x30;
+//		pResult.h.size = sizeof(pResult);
+//
+//		lpObj->m_IfState.type = 7;
+//		lpObj->m_IfState.state = 0;
+//		pResult.result = 38;
+//
+//		pResult.h.size = 4;
+//		lpObj->bIsChaosMixCompleted = false;
+//		pResult.level1 = 0;
+//		pResult.level2 = 0;
+//		pResult.level3 = 0;
+//		pResult.level4 = 0;
+//		pResult.level5 = 0;
+//		pResult.level6 = 0;
+//
+//		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+//		gObjInventoryTrans(lpObj->m_Index);
+//
+//		LogAddTD("[%s][%s] Open Seed Chaos Box", lpObj->AccountID, lpObj->Name);
+//		gObjItemTextSave(lpObj);
+//		gObjWarehouseTextSave(lpObj);
+//		GCAnsCsMapSvrTaxInfo( lpObj->m_Index, 1, ::g_CastleSiegeSync.GetTaxRateChaos(lpObj->m_Index));
+//
+//		//PMSG_TALKRESULT pResult;
+//		//pResult.h.c = 0xC3;
+//		//pResult.h.headcode = 0x30;
+//		//pResult.h.size = sizeof(pResult);
+//		//pResult.result = 38;
+//
+//		//lpObj->m_IfState.use = 1;
+//		//lpObj->m_IfState.type = 7;	//Lucky Items
+//
+//		//DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+//	}
+//	return TRUE;
+//}
 
-//1.01.00	-> 617FB0 -> 100%
-bool NpcDabide(LPOBJ lpNpc, LPOBJ lpObj) //-> Complete
+
+BOOL NpcImperialGuardian(LPOBJ lpNpc, LPOBJ lpObj)
 {
-	if( bCanChaosBox )
+	if ( lpObj->m_IfState.use != 1 )
 	{
-		if( lpObj->m_IfState.use > 0 )
-		{
-			return true;
-		}
-		// ----
-		if( lpObj->m_bPShopOpen )
-		{
-			LogAdd("[%s][%s] is Already Opening PShop, ChaosBox Failed", lpObj->AccountID, lpObj->Name);
-			GCServerMsgStringSend(lMsg.Get(MSGGET(4,194)), lpObj->m_Index, 1);
-			// ----
-			return true;
-		}
-		// ----
-		lpObj->bIsChaosMixCompleted = false;
-		// ----
 		PMSG_TALKRESULT pResult;
-		// ----
-		pResult.h.c				= 0xC3;
-		pResult.h.headcode		= 0x30;
-		pResult.h.size			= sizeof(pResult);
-		pResult.result			= 0x26;
-		// ----
+
+		pResult.h.c = 0xC3;
+		pResult.h.headcode = 0x30;
+		pResult.h.size = sizeof(pResult);
+		pResult.result = 36;
+
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 98;	//Imperial Guardian
+
 		DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
-		// ----
-		lpObj->m_IfState.use	= 1;
-		lpObj->m_IfState.type	= 7;
-		// ----
-		gObjInventoryTrans(lpObj->m_Index);
-		// ----
-		LogAddTD("[Lucky Item] [%s][%s] Lucky Item Mix Start", lpObj->AccountID, lpObj->Name);
-		// ----
-		gObjItemTextSave(lpObj);
-		gObjWarehouseTextSave(lpObj);
 	}
-	// ----
-	return true;
+	return TRUE;
 }
-// -------------------------------------------------------------------------------
+
+#if (PACK_EDITION>=3)
+BOOL NpcDoubleGoer(LPOBJ lpNpc, LPOBJ lpObj)
+{
+	if ( lpObj->m_IfState.use != 1 )
+	{
+		PMSG_TALKRESULT pMsg={0};
+		PHeadSetBE((LPBYTE)&pMsg, 0x30, 5);
+		pMsg.result = 0x23;
+		if(g_DoppelGanger.GetState() != DG_STATE_OPEN)
+		{
+			int time = g_DoppelGanger.GetEventTime(lpObj);
+			pMsg.level1 = (time/1000)/60;
+		}
+		DataSend(lpObj->m_Index, (LPBYTE)&pMsg, 5);
+		lpObj->m_IfState.use = 1;
+		lpObj->m_IfState.type = 99;	//Double Goer
+	}
+	return TRUE;
+
+	//if ( lpObj->m_IfState.use != 1 )
+	//{
+	//	PMSG_TALKRESULT pResult;
+
+	//	pResult.h.c = 0xC3;
+	//	pResult.h.headcode = 0x30;
+	//	pResult.h.size = sizeof(pResult);
+	//	pResult.result = 35;
+
+	//	//ADD GOER TIMER
+	//	if (g_DoubleGoer.Occuped == 1)
+	//		pResult.level1 = (((DG_MaxTime * 60) - g_DoubleGoer.Seconds)/60);
+	//	else
+	//		pResult.level1 = 0;
+
+	//	pResult.level2 = 0;
+	//	pResult.level3 = 0;
+	//	pResult.level4 = 0;
+	//	pResult.level5 = 0;
+	//	pResult.level6 = 0;
+
+	//	lpObj->m_IfState.use = 1;
+	//	lpObj->m_IfState.type = 99;	//Double Goer
+
+	//	DataSend(lpObj->m_Index, (LPBYTE)&pResult, pResult.h.size);
+	//}
+	//return TRUE;
+}
+#endif

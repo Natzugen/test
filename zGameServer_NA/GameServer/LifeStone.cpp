@@ -1,17 +1,24 @@
 // LifeStone.cpp: implementation of the CLifeStone class.
-//	GS-CS		1.00.90		0xXXXXXXXX  - complete
+//
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "LifeStone.h"
-#include "user.h"
-#include "logproc.h"
+#include "..\common\winutil.h"
+
+#if (GS_CASTLE==1)
+#include "CastleSiege.h"
+#include "DSProtocol.h"
 #include "GameMain.h"
-#include "CastleSiegeSync.h"
-#include "Protocol.h"
+#include "TNotice.h"
+#include "TUnion.h"
+#include "LifeStone.h"
+#include "Mercenary.h"
+#include "DBSockMng.h"
+#include "LogToFile.h"
+#include "logproc.h"
+#include "..\include\readscript.h"
 
-
-//#if (_GSCS==1)
 CLifeStone g_CsNPC_LifeStone;
 
 //////////////////////////////////////////////////////////////////////
@@ -28,281 +35,304 @@ CLifeStone::~CLifeStone()
 
 }
 
-int CLifeStone::CreateLifeStone(int iIndex)
+struct PMSG_LIFESTONE_STATE_STRUCT
+{
+	PBMSG_HEAD2 h;	// C1:B9:XX	[1-4]
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
+	BYTE State;		// 7
+};
+
+//----- (0045F6C0) --------------------------------------------------------
+void CLifeStone::SendLifeStoneState(int iIndex)
 {
 	LPOBJ lpObj = &gObj[iIndex];
-	int iMonsterIndex = -1;
-	BYTE cX = lpObj->X;
-	BYTE cY = lpObj->Y;
 
-	if ( g_CastleSiegeSync.GetCastleState() != CASTLESIEGE_STATE_STARTSIEGE )
-	{
-		MsgOutput(iIndex, lMsg.Get(1645));
-		return FALSE;
-	}
+	PMSG_LIFESTONE_STATE_STRUCT pSend;
+	PHeadSubSetB((LPBYTE)&pSend, 0xB9, 1, sizeof(PMSG_LIFESTONE_STATE_STRUCT));
+	pSend.NumberH	= SET_NUMBERH(iIndex);
+	pSend.NumberL	= SET_NUMBERL(iIndex);
+	pSend.State		= lpObj->m_btCreationState;
 
-	if ( lpObj->GuildStatus != G_MASTER )
-	{
-		return FALSE;
-	}
-
-	if ( lpObj->m_btCsJoinSide < 2 )
-	{
-		MsgOutput(iIndex, lMsg.Get(1641)); //HermeX Fix
-		return FALSE;
-	}
-
-	if ( lpObj->lpGuild->lpLifeStone  ) //HermeX Fix
-	{
-		MsgOutput(iIndex, lMsg.Get(1642)); //HermeX Fix
-		return FALSE;
-	}
-	
-	if( cX > 150 && cX < 210 && cY > 175 && cY < 230 )
-	{
-		MsgOutput(iIndex, lMsg.Get(1644)); //HermeX Fix
-		return FALSE;
-	}
-
-	BYTE btMapAttr = MapC[lpObj->MapNumber].GetAttr(cX, cY);
-	
-	if ( btMapAttr & 16 != 16 ) //siege camp?
-	{
-		//return FALSE;
-	}
-
-	if ( gObj[iIndex].MapNumber != MAP_INDEX_CASTLESIEGE )
-	{
-		MsgOutput(iIndex, lMsg.Get(1627)); //HermeX Fix
-		return FALSE;
-	}
-	
-	iMonsterIndex = gObjAddMonster(lpObj->MapNumber);
-
-	if ( iMonsterIndex >= 0 )
-	{
-	
-		MONSTER_ATTRIBUTE * MAttr = gMAttr.GetAttr(278);
-	
-		if ( MAttr == NULL )
-		{
-			gObjDel(iMonsterIndex);
-			return FALSE;
-		}
-
-		gObjSetMonster(iMonsterIndex, 278);
-		gObj[iMonsterIndex].Live = TRUE;
-		gObj[iMonsterIndex].Life = MAttr->m_Hp;
-		gObj[iMonsterIndex].MaxLife = MAttr->m_Hp;
-		gObj[iMonsterIndex].m_PosNum = -1;
-		gObj[iMonsterIndex].X = cX;
-		gObj[iMonsterIndex].Y = cY;
-		gObj[iMonsterIndex].MTX = cX;
-		gObj[iMonsterIndex].MTY = cY;
-		gObj[iMonsterIndex].TX = cX;
-		gObj[iMonsterIndex].TY = cY;
-		gObj[iMonsterIndex].m_OldX = cX;
-		gObj[iMonsterIndex].m_OldY = cY;
-		gObj[iMonsterIndex].StartX = cX;
-		gObj[iMonsterIndex].StartY = cY;
-		gObj[iMonsterIndex].MapNumber = lpObj->MapNumber;
-		gObj[iMonsterIndex].m_MoveRange = 0;
-		gObj[iMonsterIndex].Level = MAttr->m_Level;
-		gObj[iMonsterIndex].Type = OBJ_MONSTER;
-		gObj[iMonsterIndex].MaxRegenTime = 1000;
-		gObj[iMonsterIndex].Dir = 1;
-		gObj[iMonsterIndex].RegenTime = GetTickCount();
-		gObj[iMonsterIndex].m_Attribute = 0;
-		gObj[iMonsterIndex].DieRegen = 0;
-		gObj[iMonsterIndex].m_btCsNpcType = OBJ_NPC; //HermeX Fix
-		gObj[iMonsterIndex].m_btCsJoinSide = lpObj->m_btCsJoinSide;
-		gObj[iMonsterIndex].lpGuild = lpObj->lpGuild;
-		gObj[iMonsterIndex].m_btCreationState = 0;
-
-		lpObj->lpGuild->lpLifeStone = &gObj[iMonsterIndex]; //SirMaster Fix
-		gObj[iMonsterIndex].m_iCreatedActivationTime = 0; //new
-
-		MsgOutput(iIndex, lMsg.Get(1646));
-		LogAddTD("[CastleSiege] LifeStone is created - [%s] [%s][%s] (Map:%d)(X:%d, Y:%d)",lpObj->lpGuild->Name,
-		lpObj->AccountID,lpObj->Name,lpObj->MapNumber,cX,cY);
-		lpObj->m_btLifeStoneCount++;
-	}
-	else
-	{
-		MsgOutput(iIndex, lMsg.Get(1647));
-		return FALSE;
-	}
-	return TRUE;
+	::MsgSendV2(lpObj, (PBYTE)&pSend, pSend.h.size);
 }
 
-int CLifeStone::DeleteLifeStone(int iIndex) //Identical
+//----- (00562F60) --------------------------------------------------------
+void CLifeStone::LifeStoneAct(int iIndex)
 {
-
-	if(iIndex < 0 || iIndex > OBJMAX - 1)
-	{
-		return FALSE;
-	}
-
-	LPOBJ lpLifeStone = &gObj[iIndex];
-
-	if(lpLifeStone->lpGuild)
-	{
-		LogAddTD("[CastleSiege] LifeStone is broken - [%s]",lpLifeStone->lpGuild->Name);
-		lpLifeStone->lpGuild->lpLifeStone = 0;
-	}
-	return TRUE;
-}
-
-int CLifeStone::SetReSpawnUserXY(int iUserIndex) //Identical
-{
-	
-	if(!gObjIsConnected(iUserIndex))
-	{
-		return FALSE;
-	}
-
-	LPOBJ lpUser = &gObj[iUserIndex];
-
-	if(lpUser->MapNumber != MAP_INDEX_CASTLESIEGE)
-	{
-		return FALSE;
-	}
-
-	if(!lpUser->lpGuild) //HermeX Fix
-	{
-		return FALSE;
-	}
-
-	BYTE btCsJoinSide = lpUser->m_btCsJoinSide;
-
-	if(lpUser->lpGuild->lpLifeStone == 0)
-	{
-		return FALSE;
-	}
-
-	LPOBJ lpLifeStone = lpUser->lpGuild->lpLifeStone;
-
-	if(lpLifeStone->m_iCreatedActivationTime < 60)//NEW
-	{
-		return FALSE;
-	}
-
-	lpUser->MapNumber = MAP_INDEX_CASTLESIEGE;
-	lpUser->X = lpLifeStone->X;
-	lpUser->Y = lpLifeStone->Y;
-	return TRUE;
-}
-
-void CLifeStone::LifeStoneAct(int iIndex) //Identical
-{
-	if(!gObjIsConnected(iIndex))
-	{
+	if( ::gObjIsConnected(iIndex) == FALSE )
 		return;
-	}
 
 	LPOBJ lpObj = &gObj[iIndex];
 
-	lpObj->m_iCreatedActivationTime++;
-	BYTE btCreationState = lpObj->m_btCreationState; //HermeX Fix
+	lpObj->m_iCreatedActivationTime += 1;
+	BYTE stoneStatus = lpObj->m_btCreationState;
 
-	if(lpObj->m_iCreatedActivationTime < 60 )
-	{
-		lpObj->m_btCreationState = (lpObj->m_iCreatedActivationTime / 12);
-	}
-	else //HermeX Fix
-	{
+	if ( lpObj->m_iCreatedActivationTime >= 60 )
 		lpObj->m_btCreationState = 5;
-	}
+    else
+		lpObj->m_btCreationState = lpObj->m_iCreatedActivationTime / 12;
 
-	if(btCreationState != lpObj->m_btCreationState) //HermeX Fix
-	{
-		::GCSendObjectCreationState(iIndex);
-	}
+    if ( stoneStatus != lpObj->m_btCreationState )
+		this->SendLifeStoneState(iIndex);
 
-	if(lpObj->m_btCreationState < 5)
-	{
+	if ( lpObj->m_btCreationState < 5 )
 		return;
-	}
 
-	if(lpObj->VPCount < 1)
-	{
+	if( lpObj->VPCount < 1 )
 		return;
-	}
 
-		int tObjNum = -1;
+	int tObjNum = -1;
 
-		for(int i = 0; i < MAX_VIEWPORT; i++) //HermeX Fix
+	for( int i = 0; i < MAX_VIEWPORT; i++ )
+	{
+		tObjNum = lpObj->VpPlayer[i].number;
+
+		if( gObjIsConnected(tObjNum) == TRUE )
 		{
-			BOOL iRecoverLife,iRecoverMana,iRecoverBP;
-
-			tObjNum = lpObj->VpPlayer[i].number;
-				
-			if(tObjNum >= 0)
+			if( gObj[tObjNum].Type == OBJ_USER )
 			{
-				if(gObj[tObjNum].Type == OBJ_USER)
+				if( gObj[tObjNum].Live )
 				{
-					if(gObj[tObjNum].Live != FALSE)
+					if( gObj[tObjNum].m_btCsJoinSide == 1 )
 					{
-						if(gObj[tObjNum].m_btCsJoinSide == lpObj->m_btCsJoinSide)
+						if( (abs(lpObj->X - gObj[tObjNum].X) <= 3) && (abs(lpObj->Y - gObj[tObjNum].Y) <= 3) )
 						{
-							if(abs(lpObj->Y - gObj[tObjNum].Y) <= 3)
+							BOOL bIsMaxLife = FALSE;
+							BOOL bIsMaxMana = FALSE;
+							BOOL bIsMaxBP	= FALSE;
+
+							if( gObj[tObjNum].Life < (gObj[tObjNum].Life+gObj[tObjNum].AddLife) )
 							{
-								if(abs(lpObj->X - gObj[tObjNum].X) <= 3) //fix
+								gObj[tObjNum].Life = gObj[tObjNum].Life + ((gObj[tObjNum].AddLife+gObj[tObjNum].MaxLife) * (lpObj->m_btCsNpcRgLevel+1)) / 100;
+
+								if( gObj[tObjNum].Life > (gObj[tObjNum].Life+gObj[tObjNum].AddLife) )
 								{
-									iRecoverLife = FALSE;
-									iRecoverMana = FALSE;
-									iRecoverBP = FALSE;
-
-									if(gObj[tObjNum].Life < (gObj[tObjNum].MaxLife + gObj[tObjNum].AddLife)) //SirMaster Fix
-									{
-										gObj[tObjNum].Life += ((gObj[tObjNum].MaxLife + gObj[tObjNum].AddLife) / 100 ); //SirMaster Fix
-										
-										if(gObj[tObjNum].Life > (gObj[tObjNum].MaxLife + gObj[tObjNum].AddLife)) //SirMaster Fix
-										{
-											gObj[tObjNum].Life = (gObj[tObjNum].MaxLife + gObj[tObjNum].AddLife); //SirMaster Fix
-										}
-										iRecoverLife = TRUE;
-									}
-
-									if(gObj[tObjNum].Mana < (gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana) ) //SirMaster Fix
-									{
-										gObj[tObjNum].Mana += ((gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana) / 100 ); //SirMaster Fix
-	
-										if(gObj[tObjNum].Mana > (gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana)) //SirMaster Fix
-										{
-											gObj[tObjNum].Mana = (gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana); //SirMaster Fix
-										}
-										iRecoverMana = TRUE;
-									}
-
-									if(gObj[tObjNum].BP < (gObj[tObjNum].MaxBP + gObj[tObjNum].AddBP))
-									{
-										gObj[tObjNum].BP += ((gObj[tObjNum].MaxBP + gObj[tObjNum].AddBP) / 100);
-
-										if(gObj[tObjNum].BP > (gObj[tObjNum].MaxBP + gObj[tObjNum].AddBP))
-										{
-											gObj[tObjNum].BP = (gObj[tObjNum].MaxBP + gObj[tObjNum].AddBP);
-										}
-										iRecoverBP = TRUE;
-									}
-
-									if(iRecoverLife != FALSE)
-									{
-										::GCReFillSend(tObjNum,gObj[tObjNum].Life,0xFF,1,gObj[tObjNum].iShield);
-									}
-
-									if( (iRecoverMana != FALSE) || (iRecoverBP != FALSE) )
-									{
-										::GCManaSend(tObjNum,gObj[tObjNum].Mana,0xFF,0,gObj[tObjNum].BP);
-									}
+									gObj[tObjNum].Life = gObj[tObjNum].Life+gObj[tObjNum].AddLife;
 								}
+								bIsMaxLife = TRUE;
+							}
+
+							if( gObj[tObjNum].Mana < (gObj[tObjNum].Mana+gObj[tObjNum].AddMana) )
+							{
+								gObj[tObjNum].Mana = gObj[tObjNum].Mana + ((gObj[tObjNum].AddMana+gObj[tObjNum].MaxMana) * (lpObj->m_btCsNpcRgLevel+1)) / 100;
+
+								if( gObj[tObjNum].Mana > (gObj[tObjNum].Mana+gObj[tObjNum].AddMana) )
+								{
+									gObj[tObjNum].Mana = gObj[tObjNum].Mana+gObj[tObjNum].AddMana;
+								}
+								bIsMaxLife = TRUE;
+							}
+
+							if( gObj[tObjNum].BP < (gObj[tObjNum].BP+gObj[tObjNum].AddBP) )
+							{
+								gObj[tObjNum].BP = gObj[tObjNum].BP + ((gObj[tObjNum].AddBP+gObj[tObjNum].MaxBP) * (lpObj->m_btCsNpcRgLevel+1)) / 100;
+
+								if( gObj[tObjNum].BP > (gObj[tObjNum].BP+gObj[tObjNum].AddBP) )
+								{
+									gObj[tObjNum].BP = gObj[tObjNum].BP+gObj[tObjNum].AddBP;
+								}
+								bIsMaxLife = TRUE;
+							}
+
+							if( bIsMaxLife ) 
+							{
+								::GCReFillSend(tObjNum, gObj[tObjNum].Life, 0xFF, 1, gObj[tObjNum].iShield);
+							}
+							if( bIsMaxMana || bIsMaxBP )
+							{
+								::GCManaSend(tObjNum, gObj[tObjNum].Mana, 0xFF, 0, gObj[tObjNum].BP);
 							}
 						}
 					}
 				}
 			}
-			continue;
 		}
+	}
 }
 
-//#endif
+//----- (00562770) --------------------------------------------------------
+BOOL CLifeStone::CreateLifeStone(int iIndex)
+{
+	LPOBJ lpObj = &gObj[iIndex];
+	int iMonsterIndex=-1;
+
+	if ( g_CastleSiege.GetCastleState() != 7 )
+	{
+		//(98175472, 1248)	(4, 224)
+		//(98175472, 1180)	(4, 156)	=> BASE: 1024
+		//(98175472, 1500)	(5, 220)	=> 1500-1024 = 476 (220 = 476 - 256)
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 109)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	if (lpObj->GuildStatus != GUILD_MASTER)
+	{
+		return FALSE;
+	}
+
+	if (lpObj->m_btCsJoinSide < 2 )
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 105)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	if (lpObj->lpGuild == NULL)
+		return FALSE;
+
+	if (!lpObj->lpGuild->back)
+		return FALSE;
+
+	if (lpObj->lpGuild->back->Number > 0)
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 106)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	if ( (lpObj->X > 150 && lpObj->X < 210) && (lpObj->Y > 175 && lpObj->Y < 230) )
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 108)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	BYTE btMapAttr = MapC[lpObj->MapNumber].GetAttr(lpObj->X, lpObj->Y);
+	if ( lpObj->MapNumber != MAP_INDEX_CASTLESIEGE )
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 91)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	iMonsterIndex = gObjAddMonster(lpObj->MapNumber);
+	if ( iMonsterIndex < 0 )
+	{
+		GCServerMsgStringSend(lMsg.Get(MSGGET(6, 111)), lpObj->m_Index, 1);
+		return FALSE;
+	}
+
+	LPMONSTER_ATTRIBUTE lpMATTR = gMAttr.GetAttr(278);
+	if ( !lpMATTR )
+	{
+		gObjDel(iMonsterIndex);
+		LogAddTD("[CastleSiege] [%s][%s] LifeStone Vanished (NextMap) - lpMATTR == NULL (SummonIndex:%d)",
+			lpObj->AccountID, lpObj->Name, iMonsterIndex);
+		return FALSE;
+	}
+	
+	gObjSetMonster(iMonsterIndex, 278,"CLifeStone::CreateLifeStone");
+
+	gObj[iMonsterIndex].Live = TRUE;
+	gObj[iMonsterIndex].Life = lpMATTR->m_Hp;
+	gObj[iMonsterIndex].MaxLife = lpMATTR->m_Hp;
+	gObj[iMonsterIndex].m_PosNum = -1;
+	gObj[iMonsterIndex].X = lpObj->X;
+	gObj[iMonsterIndex].Y = lpObj->Y;
+	gObj[iMonsterIndex].MTX = lpObj->X;
+	gObj[iMonsterIndex].MTY = lpObj->Y;
+	gObj[iMonsterIndex].TX = lpObj->X;
+	gObj[iMonsterIndex].TY = lpObj->Y;
+	gObj[iMonsterIndex].m_OldX = lpObj->X;
+	gObj[iMonsterIndex].m_OldY = lpObj->Y;
+	gObj[iMonsterIndex].StartX = lpObj->X;
+	gObj[iMonsterIndex].StartY = lpObj->Y;
+	gObj[iMonsterIndex].MapNumber = lpObj->MapNumber;
+	gObj[iMonsterIndex].m_MoveRange = 0;
+	gObj[iMonsterIndex].Level = lpMATTR->m_Level;	//*(_WORD *)(lpMATTR + 28)
+	gObj[iMonsterIndex].Type = OBJ_MONSTER;		//2
+	gObj[iMonsterIndex].MaxRegenTime = 1000;
+	gObj[iMonsterIndex].Dir = 1;
+	gObj[iMonsterIndex].RegenTime = GetTickCount();
+	gObj[iMonsterIndex].m_Attribute = 0;
+	gObj[iMonsterIndex].DieRegen = 0;
+	gObj[iMonsterIndex].m_btCsNpcType = 3;
+	gObj[iMonsterIndex].m_btCsJoinSide = lpObj->m_btCsJoinSide;
+	gObj[iMonsterIndex].lpGuild = lpObj->lpGuild;
+	gObj[iMonsterIndex].m_btCreationState = 0;
+	lpObj->lpGuild->back->Number = gObj[iMonsterIndex].m_Index;
+
+	GCServerMsgStringSend(lMsg.Get(MSGGET(6, 105)), lpObj->m_Index, 1);
+	LogAddTD("[CastleSiege] LifeStone is created - [%s][%s] (Map:%d)(X:%d, Y:%d)",
+		lpObj->AccountID,lpObj->Name,lpObj->MapNumber,lpObj->X,lpObj->Y);
+
+	lpObj->m_btLifeStoneCount += 1;
+	return TRUE;
+}
+
+
+//----- (00562DC0) --------------------------------------------------------
+int CLifeStone::DeleteLifeStone(int iIndex)
+{
+	if ( OBJMAX_RANGE(iIndex) == FALSE )
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[iIndex];
+
+    if ( lpObj->lpGuild )
+    {
+		LogAddTD("[CastleSiege] LifeStone is broken - [%s]", lpObj->lpGuild->Name);
+		lpObj->lpGuild->back->Number = 0;
+    }
+	return TRUE;
+}
+
+//----- (00562E60) --------------------------------------------------------
+int CLifeStone::SetReSpawnUserXY(int iUserIndex)
+{
+	bool value=false;
+	__try
+	{
+		if ( g_CastleSiege.GetCastleState() != 7 )
+			return FALSE;
+
+		if ( OBJMAX_RANGE(iUserIndex) == FALSE )
+			return FALSE;
+
+		if ( !gObjIsConnected(iUserIndex) )
+			return FALSE;
+
+		LPOBJ lpObj = &gObj[iUserIndex];
+		LogAddTD("[CastleSiege] Looking for LifeStone : [%s][%s] (IX:%d)",lpObj->AccountID,lpObj->Name,lpObj->m_Index);
+
+		if( lpObj->MapNumber != MAP_INDEX_CASTLESIEGE )
+			return FALSE;
+
+		if ( lpObj->lpGuild == NULL )
+			return FALSE;
+
+		if ( !lpObj->lpGuild->back )
+			return FALSE;
+
+		if ( !lpObj->lpGuild->back->Number )
+			return FALSE;
+
+		int LifeStoneIndex = lpObj->lpGuild->back->Number;
+
+		LogAddTD("[CastleSiege] Looking for LifeStone ID: [%s][%s] (ID:%d)",lpObj->AccountID,lpObj->Name,lpObj->lpGuild->back->Number);
+
+		if ( !OBJMAX_RANGE(LifeStoneIndex) )
+			return FALSE;
+
+		if( gObj[LifeStoneIndex].Class != 278 )
+			return FALSE;
+
+		if ( gObj[LifeStoneIndex].Live )
+		{
+			lpObj->MapNumber = 30;
+			lpObj->X = gObj[LifeStoneIndex].X;
+			lpObj->Y = gObj[LifeStoneIndex].Y;
+
+			value = true;
+			return TRUE;
+		}
+
+		return FALSE;
+	}__finally
+	{
+		if(value == false)
+			return FALSE;
+		else 
+			return TRUE;
+	}
+}
+#endif

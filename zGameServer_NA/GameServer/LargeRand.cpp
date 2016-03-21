@@ -1,8 +1,13 @@
-//GameServer 1.00.90 - completed
 #include "stdafx.h"
 #include "LargeRand.h"
 
+// GS-N 0.99.60T 0x00522860
+//	GS-N	1.00.18	JPN	0x00595700	-	Completed
+
 CLargeRand g_LargLand;
+
+
+
 
 DWORD GetLargeRand()
 {
@@ -57,7 +62,7 @@ DWORD CLargeRand::reloadMT()
 
 	pM = this->state;
 
-	for(int j = 0x18D; --j != 0 ; s0=s1 , s1 = *p2 , p2++ )
+	for( int j=0x18D ; --j != 0 ; s0=s1 , s1 = *p2 , p2++ )
 	{
 		*p0++ = (*pM++ ^ (((s0 & 0x80000000) | (s1 & 0x7FFFFFFF)) >> 1)) ^ (((s1&1!=0)?-1:0)&0x9908B0DF);
 	}

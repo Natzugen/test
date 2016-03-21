@@ -1,6 +1,7 @@
 #ifndef KANTURU_OBJ_INFO_H___
 #define KANTURU_OBJ_INFO_H___
 
+#if (GS_CASTLE==0)
 
 #define MAX_KANTURU_OBJ_INDEX	800
 
@@ -20,7 +21,7 @@ public:
 	{
 		for ( int iCount=0;iCount<MAX_KANTURU_OBJ_INDEX;iCount++)
 		{
-			this->m_iObjIndex[iCount]=0;
+			this->m_iObjIndex[iCount]=-1;
 		}
 
 		this->m_iObjCount=0;
@@ -46,9 +47,9 @@ public:
 	
 public:
 
-	int m_iObjCount;	// 4
-	int m_iObjIndex[MAX_KANTURU_OBJ_INDEX];	// 8
+	short m_iObjCount;	// 4
+	short m_iObjIndex[MAX_KANTURU_OBJ_INDEX];	// 8
 };
 
-
+#endif
 #endif /*KANTURU_OBJ_INFO_H___*/

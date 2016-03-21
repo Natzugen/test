@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
@@ -9,96 +13,9 @@
 #include "GuildClass.h"
 #include "user.h"
 #include "MapClass.h"
-#include "QuestInfo.h"
-#include "HacktoolBlockEx.h"
+#include "stdafx.h"
+
 extern int iCount;
-// -------------------------------------------------------------------------------
-#ifdef __CUSTOMS__
-#pragma pack(push, 1)
-struct PMSG_TARGETDATA_REQ
-{
-	PBMSG_HEAD2 h;
-	int			aIndex;
-};
-#pragma pack(pop)
-// -------------------------------------------------------------------------------
-
-#pragma pack(push, 1)
-struct PMSG_TARGETDATA_ANS
-{
-	PBMSG_HEAD2 h;
-#ifdef __NOVUS__
-	float		TargetLife;
-	float		TargetMaxLife;
-	int			TargetLevel;
-	int			TargetReset;
-#endif
-	float		TargetLifePercent;
-};
-#pragma pack(pop)
-// -------------------------------------------------------------------------------
-
-#pragma pack(push, 1)
-struct CHAR_UPDATEINFO
-{
-	PBMSG_HEAD2 h;
-	short	Strength;
-	short	Dexterity;
-	short	Vitality;
-	short	Energy;
-	short	Leadership;
-	int		LevelUpPoint;
-};
-#pragma pack(pop)
-// -------------------------------------------------------------------------------
-
-void TargetDataRequest(int aIndex, PMSG_TARGETDATA_REQ * Request);
-void UpdateCharInfo(int aIndex);
-// -------------------------------------------------------------------------------
-#endif
-
-#pragma pack(push, 1)
-struct DISCONNECTEX
-{
-	PBMSG_HEAD h;
-	char AccountID[10];
-	char Password[10];
-};
-#pragma pack(pop)
-
-void DisconnectEx(DISCONNECTEX * lpData);
-// -------------------------------------------------------------------------------
-
-struct PMSG_MONEY
-{
-	PBMSG_HEAD h;
-	BYTE Result;
-	int wMoney;
-	int iMoney;
-};
-
-struct PMSG_USEEFFECTITEM
-{
-	PBMSG_HEAD h;	// C1:2D
-	WORD wOptionType;	// 4
-	WORD wEffectType;	// 6
-	BYTE byEffectOption;	// 8
-	int iLeftTime;	// C
-	BYTE flag;
-};
-
-struct SENDRECONNECTSTATUS
-{
-	PBMSG_HEAD h;
-	int value;
-};
-
-struct PMSG_ANS_MAPSVRTAXINFO
-{
-	PBMSG_HEAD2 h;	// C1:B2:1A
-	BYTE btTaxType;	// 4
-	BYTE btTaxRate;	// 5
-};
 
 struct PMSG_KILLPLAYER_EXT
 {
@@ -111,740 +28,71 @@ struct PMSG_KILLPLAYER_EXT
 	BYTE DamageL;	// B
 };
 
-struct PMSG_ANS_CRYWOLF_BENEFIT_PLUS_CHAOSRATE
+struct PMSG_OFFICIALHELPER_RESULT
 {
-	PBMSG_HEAD2 h;	// C1:BD:09
-	BYTE btPlusChaosRate;	// 4
-};
-
-struct PMSG_JOINRESULT
-{
-	PBMSG_HEAD h;	// C1:F1
-	BYTE scode;	// 3
-	BYTE result;	// 4
-	BYTE NumberH;	// 5
-	BYTE NumberL;	// 6
-	BYTE CliVersion[5];	// 7
-};
-
-struct SDHP_CHARACTER_TRANSFER
-{
-	PBMSG_HEAD h;	// C1:CF
-	char Account[MAX_ACCOUNT_LEN];	// 3
-	short Number;	// E
-};
-
-struct PMSG_ANS_CRYWOLF_ALTAR_CONTRACT
-{
-	PBMSG_HEAD2 h;	// C1:BD:03
-	BYTE btResult;	// 4
-	BYTE btAltarState;	// 5
-	BYTE btObjIndexH;	// 6
-	BYTE btObjIndexL;	// 7
-};
-
-
-struct PMSG_REQ_2ANIV_SERIAL
-{
-	PBMSG_HEAD h;	// C1:08
-	int iINDEX;	// 8
-	char szUID[MAX_ACCOUNT_LEN+1];	// 8
-	char SERIAL1[5];	// 13
-	char SERIAL2[5];	// 18
-	char SERIAL3[5];	// 1D
-	int iMEMB_GUID;	// 24
-};
-
-struct PMSG_RESULT_MOVECHAOSCASTLE
-{
-	PBMSG_HEAD2 h;	// C1:AF:01
-	BYTE Result;	// 4
-};
-
-struct PMSG_SETQUEST_PRIZE
-{
-	PBMSG_HEAD h;	// C1:A3
-	BYTE NumberH;	// 3
-	BYTE NumberL;	// 4
-	BYTE Type;	// 5
-	BYTE Count;	// 6
-};
-
-struct PMSG_SETQUEST_RESULT
-{
-	PBMSG_HEAD h;	// C1:A2
-	BYTE QuestIndex;	// 3
-	BYTE Result;	// 4
+	PBMSG_HEAD h;	// C1:BF:0A
+	BYTE Sub;
+	BYTE IsZen;
+	BYTE Unk1;
+	BYTE Unk2;
+	BYTE Unk3;
+	DWORD Zen;
 	BYTE State;	// 5
+	WORD Unk4;
+	BYTE Unk5;
 };
 
-struct PMSG_SEND_QEUSTINFO
+struct PMSG_ANS_END_DUEL
 {
-	PBMSG_HEAD h;	// C1:A0
-	BYTE Count;	// 3
-	BYTE State[50];	// 4
-};
-
-struct PMSG_REQ_RESET_EVENTCHIP
-{
-	PBMSG_HEAD h;	// C1:[04:Rena] [09:Stone]
-	int iINDEX;	// 4
-	char szUID[11];	// 8
-};
-
-struct PMSG_REQ_REGISTER_MUTONUM
-{
-	PBMSG_HEAD h;	// C1:03
-	int iINDEX;	// 4
-	char szUID[11];	// 8
-};
-
-struct PMSG_REQ_REGISTER_STONES
-{
-	PBMSG_HEAD h;	// C1:06
-	int iINDEX;	// 4
-	BYTE iPosition;	// 8
-	char szUID[11];	// 9
-};
-
-struct PMSG_PING
-{
-	PBMSG_HEAD h;	// C1:71
-};
-
-struct PMSG_RESULT_DEVILSQUARE_REMAINTIME
-{
-	PBMSG_HEAD h;	// C1:91
-	BYTE hEventType;	// 3
-	BYTE RemainTime;	// 4
-	BYTE EnteredUser;	// 5
-	BYTE RemainTime_LOW;	// 6
-};
-
-struct PMSG_RESULT_MOVEDEVILSQUARE
-{
-	PBMSG_HEAD h;	// C1:90
-	BYTE Result;	// 3
-};
-
-struct PMSG_WEATHER
-{
-	PBMSG_HEAD h;	// C1:0F
-	BYTE Weather;	// 3
-};
-
-struct PMSG_ITEMUSESPECIALTIME
-{
-	PBMSG_HEAD h;	// C1:29
-	BYTE Number;	// 3
-	WORD Time;	// 4
-};
-
-struct PMSG_INVENTORYDELETE
-{
-	PBMSG_HEAD h;	// C1:28
-	BYTE IPos;	// 3
-	BYTE Flag;	// 4
-};
-
-//#pragma pack(push, 1)
-struct PMSG_MANASEND
-{
-	PBMSG_HEAD h;	// C1:27
-	BYTE IPos;	// 3
-	BYTE ManaH;	// 4
-	BYTE ManaL;	// 5
-	BYTE BPH;	// 6
-	BYTE BPL;	// 7
-	int Mana;
-	int BP;
-};
-//#pragma pack(pop)
-
-//#pragma pack(push, 1)
-struct PMSG_REFILL
-{
-	PBMSG_HEAD h;	// C1:26
-	BYTE IPos;	// 3
-	BYTE LifeH;	// 4
-	BYTE LifeL;	// 5
-	BYTE Flag;	// 6
-	BYTE btShieldH;	// 7
-	BYTE btShieldL;	// 8
-	int Life;
-	int Shield;
-};
-//#pragma pack(pop)
-
-//#pragma pack(push, 1)
-struct PMSG_USERMAPJOIN
-{
-	PBMSG_HEAD h;	// C1:F3:03
-	BYTE subcode;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	BYTE X;	// 6
-	BYTE Y;	// 7
-	BYTE MapNumber;	// 8
-	BYTE Dir;	// 9
-};
-//#pragma pack(pop)
-
-struct PMSG_EFFECTINFO
-{
-	PBMSG_HEAD h;	// C1:48
+	PBMSG_HEAD h;	// C1:AB
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
-	BYTE btType;	// 5
-};
-
-struct PMSG_ANS_GUILDVIEWPORT
-{
-	PBMSG_HEAD h;	// C1:66
-	int GuildNumber;	// 4
-	BYTE btGuildType;	// 8
-	BYTE UnionName[8];	// 9
-	char GuildName[8];	// 11
-	BYTE Mark[32];	// 19
-};
-
-struct PMSG_ANS_MAPSERVERAUTH
-{
-	PBMSG_HEAD2 h;
-	BYTE iResult;
-};
-
-//#if(_GSCS==1)
-struct PMSG_ANS_CASTLESIEGESTATE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	char cCastleSiegeState;
-	BYTE btStartYearH;
-	BYTE btStartYearL;
-	BYTE btStartMonth;
-	BYTE btStartDay;
-	BYTE btStartHour;
-	BYTE btStartMinute;
-	BYTE btEndYearH;
-	BYTE btEndYearL;
-	BYTE btEndMonth;
-	BYTE btEndDay;
-	BYTE btEndHour;
-	BYTE btEndMinute;
-	BYTE btSiegeStartYearH;
-	BYTE btSiegeStartYearL;
-	BYTE btSiegeStartMonth;
-	BYTE btSiegeStartDay;
-	BYTE btSiegeStartHour;
-	BYTE btSiegeStartMinute;
-	char cOwnerGuild[8];
-	char cOwnerGuildMaster[10];
-	BYTE btStateLeftSec1;
-	BYTE btStateLeftSec2;
-	BYTE btStateLeftSec3;
-	BYTE btStateLeftSec4;
-};
-
-struct PMSG_ANS_REGCASTLESIEGE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	char szGuildName[8];
-};
-
-struct PMSG_ANS_GIVEUPCASTLESIEGE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btIsGiveUp;
-	char szGuildName[8];
-};
-
-struct PMSG_ANS_GUILDREGINFO
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	char szGuildName[8];
-	BYTE btGuildMark1;
-	BYTE btGuildMark2;
-	BYTE btGuildMark3;
-	BYTE btGuildMark4;
-	BYTE btIsGiveUp;
-	BYTE btRegRank;
-};
-
-struct PMSG_ANS_REGGUILDMARK
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	char szGuildName[8];
-	BYTE btGuildMark1;
-	BYTE btGuildMark2;
-	BYTE btGuildMark3;
-	BYTE btGuildMark4;
-};
-
-struct PMSG_ANS_NPCBUY
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	int iNpcNumber;
-	int iNpcIndex;
-};
-
-struct PMSG_ANS_NPCREPAIR
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	int iNpcNumber;
-	int iNpcIndex;
-	int iNpcHP;
-	int iNpcMaxHP;
-};
-
-struct PMSG_ANS_NPCUPGRADE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	int iNpcNumber;
-	int iNpcIndex;
-	int iNpcUpType;
-	int iNpcUpValue;
-};
-
-struct PMSG_ANS_TAXMONEYINFO
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btTaxRateChaos;
-	BYTE btTaxRateStore;
-	BYTE btMoney1;
-	BYTE btMoney2;
-	BYTE btMoney3;
-	BYTE btMoney4;
-	BYTE btMoney5;
-	BYTE btMoney6;
-	BYTE btMoney7;
-	BYTE btMoney8;
-};
-
-struct PMSG_ANS_TAXRATECHANGE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btTaxType;
-	BYTE btTaxRate1;
-	BYTE btTaxRate2;
-	BYTE btTaxRate3;
-	BYTE btTaxRate4;
-};
-
-struct PMSG_ANS_MONEYDRAWOUT
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btMoney1;
-	BYTE btMoney2;
-	BYTE btMoney3;
-	BYTE btMoney4;
-	BYTE btMoney5;
-	BYTE btMoney6;
-	BYTE btMoney7;
-	BYTE btMoney8;
-};
-
-struct PMSG_ANS_CSGATESTATE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btIndex1;
-	BYTE btIndex2;
-};
-
-struct PMSG_ANS_CSGATEOPERATE
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;
-	BYTE btOperate;
-	BYTE btIndex1;
-	BYTE btIndex2;
-};
-
-struct PMSG_ANS_CSGATECURSTATE
-{
-	PBMSG_HEAD2 h;
-	BYTE btOperate;
-	BYTE btIndex1;
-	BYTE btIndex2;
-};
-
-struct PMSG_ANS_NOTIFYSWITCHPROC
-{
-	PBMSG_HEAD2 h;
-	BYTE btIndex1;
-	BYTE btIndex2;
-	BYTE btUserIndex1;
-	BYTE btUserIndex2;
-	BYTE btSwitchState;
-};
-
-struct PMSG_ANS_NOTIFYCROWNPROC
-{
-	PBMSG_HEAD2 h;
-	BYTE btCrownState;
-	DWORD dwAccumulatedCrownAccessTime;
+	char szName[10];	// 5
 };
 
 
-struct PMSG_ANS_CSCOMMAND
-{
-	PBMSG_HEAD2 h;
-	BYTE btTeam;
-	BYTE btX;
-	BYTE btY;
-	BYTE btCommand;
-};
-
-struct PMSG_ANS_NPCDBLIST
-{
-	PWMSG_HEAD h;
-	BYTE btResult;
-	int iCount;
-};
-
-struct PMSG_ANS_CSATTKGUILDLIST
-{
-	PWMSG_HEAD h;
-	BYTE btResult;
-	int iCount;
-};
-
-struct PMSG_NOTIFY_OBJECT_CREATION_STATE
-{
-	struct PBMSG_HEAD2 h;
-	BYTE btObjIndexH;
-	BYTE btObjIndexL;
-	BYTE btCreationState;
-};
-
-struct PMSG_ANS_MOVE_TO_CASTLE_HUNTZONE
-{
-    PBMSG_HEAD2 h; // +0x0(0x4)
-    BYTE btResult; // +0x4(0x1)
-};
-//#endif
-
-struct PMSG_ANS_GUILDMARK_OF_CASTLEOWNER
-{
-	PBMSG_HEAD2 h;	// C1:B9:02
-	BYTE GuildMarkOfCastleOwner[32];	// 4
-};
-
-struct PMSG_ANS_USEWEAPON
-{
-	PBMSG_HEAD2 h;	// C1:B7:01
-	BYTE btResult;	// [1:Attacker] [2:Targets]	4
-	BYTE btObjIndexH;	// 5
-	BYTE btObjIndexL;	// 6
-	BYTE btWeaponType;	// [1:Slingshot attack] [2:Slingshot defense]	7
-	BYTE btPointX;	// 8
-	BYTE btPointY;	// 9
-};
-
-struct PMSG_ANS_CSHUNTZONEENTER
-{
-	PBMSG_HEAD2 h;	// C1:B2:1F
-	BYTE btResult;	// 4
-	BYTE btHuntZoneEnter;	// 5
-};
-
-struct PMSG_ANS_NOTIFYCSPROGRESS
-{
-	PBMSG_HEAD2 h;	// C1:B2:18
-	BYTE btCastleSiegeState;	// 4
-	BYTE szGuildName[8];	// 5
-};
-
-struct PMSG_ANS_JEWEL_UNMIX
-{
-	PBMSG_HEAD2 h;	// C1:BC:[00:01]
-	BYTE btResult;	// 4
-};
-
-struct PMSG_ANS_MINIMAPDATA
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;	// 4
-};
-
-struct PMSG_ANS_CSLEFTTIMEALARM
-{
-	PBMSG_HEAD2 h;	// C1:B2:1E
-	BYTE btHour;	// 4
-	BYTE btMinute;	// 5
-};
-struct PMSG_GETITEMINFO_FOR_PARTY
-{
-	PBMSG_HEAD h;	// C1:47
-	BYTE NumberH;	// 3
-	BYTE NumberL;	// 4
-	UINT ItemInfo;	// 8
-	BYTE Level;	// C
-};
-
-
-struct PMSG_ITEMDUR
-{
-	PBMSG_HEAD h;	// C1:2A
-	BYTE IPos;	// 3
-	BYTE Dur;	// 4
-	BYTE Flag;	// 5
-};
-
-struct PMSG_REQ_REGISTER_EVENTCHIP
-{
-	PBMSG_HEAD h;	// C1:02
-	int iINDEX;	// 4
-	BYTE Pos;	// 8
-	char szUID[11];	// 9
-};
-
-struct PMSG_RESULT_MOVEBLOODCASTLE
-{
-	PBMSG_HEAD h;	// C1:9A
-	BYTE Result;	// 3
-};
-
-struct PMSG_TELEPORT_RESULT
-{
-	PBMSG_HEAD h;	// C3:1C
-	WORD MoveNumber;	// 3 //BYTE -> WORD
-	BYTE MapNumber;	// 4
-	BYTE MapX;	// 5
-	BYTE MapY;	// 6
-	BYTE Dir;	// 7
-};
-
-
-struct SDHP_IDPASS
-{
-	PBMSG_HEAD h;	// C1:01	[11::LOGIN-TEST]
-	char Id[10];	// 3
-	char Pass[10];	// D
-	short Number;	// 18
-	char IpAddress[17];	// 1A
-};
-
-struct SDHP_BILLSEARCH
-{
-	PBMSG_HEAD h;	// C1:06
-	char Id[10];	// 3
-	short Number;	// E
-};
-
-struct SDHP_CREATECHAR
-{
-	PBMSG_HEAD h;	// C1:04
-	int UserNumber;	// 4
-	int DBNumber;	// 8
-	short Number;	// C
-	char AccountId[10];	// E
-	char Name[10];	// 18
-	BYTE ClassSkin;	// 22
-};
-
-struct SDHP_CHARDELETE
-{
-	PBMSG_HEAD h;	// C1:05
-	short Number;	// 4
-	char AccountID[10];	// 6
-	char Name[10];	// 10
-	BYTE Guild;	// [0:NoGuild] [1:Master] [2:Member] 1A
-	char GuildName[8];	// 1B
-};
-
-//#pragma pack(push, 1)
-struct PMSG_LVPOINTADDRESULT
-{
-	PBMSG_HEAD h;	// C1:F3:06
-	BYTE subcode;	// 3
-	BYTE ResultType;	// 4
-	WORD MaxLifeAndMana;	// 6
-	WORD wMaxShield;	// 8
-	WORD MaxBP;	// A
-};
-//#pragma pack(pop)
-
-struct PMSG_PKLEVEL
-{
-	PBMSG_HEAD h;	// C1:F3:08
-	BYTE subcode;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	BYTE PkLevel;	// 6
-};
-
-#pragma pack(1)
-struct PMSG_MAGICLIST	//Revised to 1.01.03
-{
-	char Pos;	// 0
-	WORD wSkillNum; //3
-	BYTE btSkillLevel;	// 5
-};
-#pragma pack()
-
-struct PMSG_MAGICLISTCOUNT
-{
-	PBMSG_HEAD h;	// C1:F3:11
-	BYTE subcode;	// 3
-	BYTE Count;	// [0xFE:AddOne] [0xFF:DelOne] 4
-	BYTE btListType;	// 5
-};
-
-struct PMSG_EQUIPMENTLIST
-{
-	PBMSG_HEAD h;	// C1:F3:13
-	BYTE subcode;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	BYTE Equipment[CHAR_SET_SIZE];	// 6
-};
-
-struct PMSG_RECALLMONLIFE
-{
-	PBMSG_HEAD h;	// C1:F3:20
-	BYTE subcode;	// 3
-	BYTE Life;	// 4
-};
-
-struct PMSG_TIMEVIEW
-{
-	PBMSG_HEAD h;	// C1:F3:22
-	BYTE subcode;	// 3
-	WORD Second;	// 4
-};
-
-struct PMSG_GOALSEND
-{
-	PBMSG_HEAD h;	// C1:F3:23
-	BYTE subcode;	// 3
-	char RedTeamName[8];	// 4
-	BYTE RedTeamScore;	// C
-	char BlueTeamName[8];	// D
-	BYTE BlueTeamScore;	// 15
-};
-
-struct PMSG_GUILDWARSEND
-{
-	PBMSG_HEAD h;	// C1:61
-	char GuildName[8];	// 3
-	BYTE Type;	// B
-};
-
-struct PMSG_ITEMGETRESULT
-{
-	PBMSG_HEAD h;	// C1:22
-	BYTE result;	// [0xFE:Money] 3
-	BYTE Data[MAX_ITEM_INFO];	// 4
-};
-
-
-struct PMSG_INVENTORYITEMMODIFY
-{
-	PBMSG_HEAD h;	// C1:F3:14
-	BYTE subcode;	// 3
-	BYTE Pos;	// 4
-	BYTE ItemInfo[MAX_ITEM_INFO];	// 5
-
-};
-
-//#pragma pack(push, 1)
-struct PMSG_LEVELUP
-{
-	PBMSG_HEAD h;	// C1:F3:05
-	BYTE subcode;	// 3
-	WORD Level;	// 4
-	WORD LevelUpPoint;	// 6
-	WORD MaxLife;	// 8
-	WORD MaxMana;	// A
-	WORD wMaxShield;	// C
-	WORD MaxBP;	// E
-	short AddPoint;	// 10
-	short MaxAddPoint;	// 12
-	short MinusPoint;	// 14
-	short MaxMinusPoint;	// 16
-	int UpPoint;
-};
-//#pragma pack(pop)
-
-struct PMSG_SERVERMSG
-{
-	PBMSG_HEAD h;	// C1:0C
-	BYTE MsgNumber;	// 3
-};
-
-struct PMSG_EVENT
-{
-	PBMSG_HEAD h;	// C1:0B
-	BYTE State;	// 3
-	BYTE Event;	// 4
-};
-
-
-
-struct CHAT_LOG_DATA
-{
-	PBMSG_HEAD h;	// C1:02
-	WORD wServer;	// 4
-	char AccountID[11];	// 6
-	char Name[11];	// 11
-	BYTE btType;	// 1C
-	char szChatMsg[MAX_CHAT_LEN+1];	// 1D
-	char szTargetName[5][11];	// 5A
-};
-
-
-struct PMSG_GUILDMASTERMANAGER_RUN
-{
-	PBMSG_HEAD h;	// C1:55
-};
-
-
-struct PMSG_GUILDMASTERQUESTION
-{
-	PBMSG_HEAD h;	// C1:54
-};
-
-struct PMSG_CHECK_MAINEXE
-{
-	PBMSG_HEAD h;	// C1:03
-	WORD m_wKey;	// 4
-};
-
-
+/* * * * * * * * * * * * * * * * * * * * * 
+ *	Mu Send Warehouse Info Packet
+ *	Direction : GameServer -> Client
+ *  Code      : 0xC3
+ *	HeadCode  : 0x30
+ */
 struct PMSG_TALKRESULT
 {
 	PBMSG_HEAD h;
-	BYTE result;	// 3
+	unsigned char result;	// 3
 	BYTE level1;	// 4
 	BYTE level2;	// 5
 	BYTE level3;	// 6
 	BYTE level4;	// 7
 	BYTE level5;	// 8
 	BYTE level6;	// 9
-
-	BYTE level7;	// 10 //0x0A
+	BYTE level7;	// 9
 };
 
 
+/* * * * * * * * * * * * * * * * * * * * * 
+ *	Mu Result Packet
+ *	Direction : GameServer -> Client
+ *  Code     : 0xC1
+ *	HeadCode : 0xF3
+ *	SubCode  : 0x02
+ */
 struct PMSG_RESULT
 {
 	PBMSG_HEAD h;
-	BYTE subcode;	// 3
-	BYTE result;	// 4
+	unsigned char subcode;	// 3
+	unsigned char result;	// 4
 };
 
+
+
+/* * * * * * * * * * * * * * * * * * * * * 
+ *	Packet to Send Blod Castle State
+ *	Direction : GameServer -> Client
+ *	Code      : 0xC1
+ *	HeadCode  : 0x9B
+ */
 struct PMSG_STATEBLOODCASTLE
 {
 	PBMSG_HEAD h;	// C1:9B
@@ -856,11 +104,13 @@ struct PMSG_STATEBLOODCASTLE
 	BYTE btWeaponNum;	// C
 };
 
+
 struct PMSG_KILLCOUNT
 {
 	PBMSG_HEAD2 h;
 	BYTE btKillCount;
 };
+
 
 struct SDHP_DBCHARINFOREQUEST
 {
@@ -870,7 +120,18 @@ struct SDHP_DBCHARINFOREQUEST
 	short Number;	// 1A
 };
 
-//#pragma pack(push, 1)
+struct PMSG_ATTACKRESULT_NORMAL
+{
+	PBMSG_HEAD h;	// C1:DC
+	BYTE NumberH;	// 3
+	BYTE NumberL;	// 4
+	BYTE DamageH;	// 5
+	BYTE DamageL;	// 6
+	BYTE DamageType;	// 7
+	BYTE btShieldDamageH;	// 8
+	BYTE btShieldDamageL;	// 9
+};
+
 struct PMSG_ATTACKRESULT
 {
 	PBMSG_HEAD h;	// C1:DC
@@ -881,13 +142,10 @@ struct PMSG_ATTACKRESULT
 	BYTE DamageType;	// 7
 	BYTE btShieldDamageH;	// 8
 	BYTE btShieldDamageL;	// 9
-	int Life;	//A
-	int MaxLife;	//E
-	int Class;
-	int AttackHP;
-	int AttackSD;
+	int Life;
+	int MaxLife;
 };
-//#pragma pack(pop)
+
 
 struct PMSG_RECV_POSISTION_SET
 {
@@ -898,6 +156,7 @@ struct PMSG_RECV_POSISTION_SET
 	BYTE Y;	// 6
 };
 
+
 struct PMSG_USEREQUIPMENTCHANGED
 {
 	PBMSG_HEAD h;
@@ -905,6 +164,7 @@ struct PMSG_USEREQUIPMENTCHANGED
 	BYTE NumberL;	// 4
 	BYTE ItemInfo[MAX_ITEM_INFO];	// 5
 };
+
 
 struct PMSG_SERVERCMD
 {
@@ -918,7 +178,7 @@ struct PMSG_SERVERCMD
 struct PMSG_ITEMTHROW_RESULT
 {
 	PBMSG_HEAD h;	// C1:23
-	BYTE Result;	// 3
+	unsigned char Result;	// 3
 	BYTE Ipos;	// 4
 };
 
@@ -929,6 +189,7 @@ struct PMSG_GUILDCREATED_RESULT
 	BYTE Result;	// 3
 	BYTE btGuildType;	// 4
 };
+
 
 struct PMSG_SIMPLE_GUILDVIEWPORT_COUNT
 {
@@ -944,8 +205,8 @@ struct PMSG_SIMPLE_GUILDVIEWPORT
 	BYTE btGuildRelationShip;	// 6
 	BYTE NumberH;	// 7
 	BYTE NumberL;	// 8
-	BYTE btOwnerStatus; //9 season4 add-on
 };
+
 
 struct PMSG_RECVMOVE
 {
@@ -957,46 +218,74 @@ struct PMSG_RECVMOVE
 	BYTE Path;	// 7
 };
 
-//#pragma pack(push, 1)
+
+struct PMSG_MAGICATTACK_RESULT_S5E2
+{
+	PBMSG_HEAD h;	// C3:19 ( 0 1 2)
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+	BYTE SourceNumberH;	// 4
+	BYTE SourceNumberL;	// 5
+	BYTE TargetNumberH;	// 6
+	BYTE TargetNumberL;	// 7 
+	BYTE UnkS5E2;
+};
+
 struct PMSG_MAGICATTACK_RESULT
 {
-	PBMSG_HEAD h;	// C3:19
-	BYTE MagicNumberH;	// 3
-	BYTE MagicNumberL;	// 4
-	BYTE SourceNumberH;	// 5
-	BYTE SourceNumberL;	// 6
-	BYTE TargetNumberH;	// 7
-	BYTE TargetNumberL;	// 8
+	PBMSG_HEAD h;	// C3:19 ( 0 1 2)
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+	BYTE SourceNumberH;	// 4
+	BYTE SourceNumberL;	// 5
+	BYTE TargetNumberH;	// 6
+	BYTE TargetNumberL;	// 7 
 };
-//#pragma pack(pop)
 
-#pragma pack(push, 1)
 struct PMSG_BEATTACK_COUNT
 {
-	PBMSG_HEAD h;		// C1:D7
-	BYTE MagicNumberH;	// 3
-	BYTE MagicNumberL;	// 4
-	BYTE X;				// 5
-	BYTE Y;				// 6
-	BYTE Serial;		// 7
-	BYTE Count;			// 8
+	PBMSG_HEAD h;	// C1:D7
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+	BYTE X;	// 4
+	BYTE Y;	// 5
+	BYTE Serial;	// 6
+	BYTE Count;	// 7
 };
-#pragma pack(pop)
 
-#pragma pack(push, 1)
+
+struct PMSG_BEATTACK_COUNT_S5E2
+{
+	PBMSG_HEAD h;	// C1:D7
+	BYTE X;	// 4
+	BYTE Y;	// 5
+	BYTE Serial;	// 6
+	BYTE Count;	// 7
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+};
+
 struct PMSG_BEATTACK
 {
-	BYTE NumberH;		// 0
-	BYTE NumberL;		// 1
-	BYTE MagicKey;		// 2
+	BYTE NumberH;	// 0
+	BYTE NumberL;	// 1
+	BYTE MagicKey;	// 2
 };
-#pragma pack(pop)
+
+
+struct PMSG_BEATTACK_S5E2
+{
+	BYTE MagicKey;	// 2
+	BYTE NumberH;	// 0
+	BYTE NumberL;	// 1
+};
 
 struct PMSG_SET_DEVILSQUARE
 {
 	PBMSG_HEAD h;	// C1:92
 	BYTE Type;	// 3
 };
+
 
 struct PMSG_GUILD_ASSIGN_STATUS_RESULT
 {
@@ -1013,6 +302,11 @@ struct PMSG_GUILD_ASSIGN_TYPE_RESULT
 	BYTE btResult;	// 4
 };
 
+//////////////////////////////////////////////////////////////////////////////
+//::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//////////////////////////////////////////////////////////////////////////////
+
+
 struct PMSG_CLIENTTIME
 {
 	PBMSG_HEAD h;
@@ -1021,33 +315,43 @@ struct PMSG_CLIENTTIME
 	WORD MagicSpeed;	// A
 };
 
+
+
 struct PMSG_CHECK_MAINEXE_RESULT
 {
 	PBMSG_HEAD h;
 	DWORD m_dwKey;	// 4
 };
 
+
+
+
+
 struct PMSG_CHATDATA
 {
 	PBMSG_HEAD h;	//	
 	char chatid[10];	//	3
-	char chatmsg[MAX_CHAT_LEN];	//	D
+	char chatmsg[60];	//	D
 };
+
+
 
 struct PMSG_CHATDATA_NUMBER
 {
 	PBMSG_HEAD h;
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
-	char chatmsg[MAX_CHAT_LEN];	// 5
+	char chatmsg[60];	// 5
 };
+
 
 struct PMSG_CHATDATA_WHISPER
 {
 	PBMSG_HEAD h;	// C1:02
 	char id[10];	// 3
-	char chatmsg[MAX_CHAT_LEN];	// D  
+	char chatmsg[60];	// D  
 };
+
 
 
 struct PMSG_IDPASS
@@ -1055,11 +359,13 @@ struct PMSG_IDPASS
 	PBMSG_HEAD h;
 	BYTE subcode;	// 3
 	char Id[10];	// 4
-	char Pass[10];	// E // 20 for GMO
-	DWORD TickCount;	// 18
+	char Pass[10];	// E
+	DWORD TickCount;	// 18 DWORD
+	//WORD unk;			//S4 FIX
 	BYTE CliVersion[5];	// 1C
 	BYTE CliSerial[16];	// 21  
 };
+
 
 
 struct PMSG_CLIENTCLOSE
@@ -1069,6 +375,8 @@ struct PMSG_CLIENTCLOSE
 	BYTE Flag;	// 4
 };
 
+
+
 struct PMSG_CLIENTMSG
 {
 	PBMSG_HEAD h;
@@ -1076,6 +384,8 @@ struct PMSG_CLIENTMSG
 	BYTE Flag;	// 4
 	BYTE subFlag;	// 5
 };
+
+
 
 struct PMSG_CHARCREATE
 {
@@ -1085,6 +395,8 @@ struct PMSG_CHARCREATE
 	BYTE ClassSkin;	// E
 };
 
+
+
 struct PMSG_CHARDELETE
 {
 	PBMSG_HEAD h;
@@ -1093,12 +405,16 @@ struct PMSG_CHARDELETE
 	char LastJoominNumber[10];	// E
 };
 
+
+
 struct PMSG_CHARMAPJOIN
 {
 	PBMSG_HEAD h;
 	BYTE subcode;	// 3
 	char Name[10];	// 4
 };
+
+
 
 struct PMSG_LVPOINTADD
 {
@@ -1107,7 +423,9 @@ struct PMSG_LVPOINTADD
 	BYTE Type;	// 4
 };
 
-#pragma pack(1)
+
+
+
 struct PMSG_SKILLKEY
 {
 	PBMSG_HEAD h;	// C1:F3:30
@@ -1118,10 +436,13 @@ struct PMSG_SKILLKEY
 	BYTE WkeyDefine;	// 10
 	BYTE EkeyDefine;	// 11
 	BYTE ChatWindow;	// 12
-	BYTE RkeyDefine;	// 13
-	int QWERLevel;	// 14
+#if (BORDS == 1)
+	BYTE RkeyDefine;	// 11
+	DWORD Unk;
+#endif
 };
-#pragma pack()
+
+
 
 struct PMSG_ITEMGETREQUEST
 {
@@ -1129,6 +450,8 @@ struct PMSG_ITEMGETREQUEST
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
 };
+
+
 
 struct PMSG_ITEMTHROW
 {
@@ -1138,15 +461,29 @@ struct PMSG_ITEMTHROW
 	BYTE Ipos;	// 5
 };
 
+
+struct PMSG_SKILLMASTERADD
+{
+	PBMSG_HEAD h;	// C1:F3:30
+	BYTE subcode;	// 3
+	WORD Skill;
+	BYTE unk1;
+	BYTE unk2;
+};
+
+
+
 struct PMSG_INVENTORYITEMMOVE
 {
 	PBMSG_HEAD h;
 	BYTE sFlag;	// 3
 	BYTE source_item_num;	// 4
 	BYTE sItemInfo[MAX_ITEM_INFO];	// 5
-	BYTE tFlag;	// C
-	BYTE target_item_num;	// D
+	BYTE tFlag;	// 0x11
+	BYTE target_item_num;	// 0x12
 };
+
+
 
 struct PMSG_TALKREQUEST
 {
@@ -1155,17 +492,23 @@ struct PMSG_TALKREQUEST
 	BYTE NumberL;	// 4
 };
 
+
+
 struct PMSG_BUYREQUEST
 {
 	PBMSG_HEAD h;
 	BYTE Pos;	// 3
 };
 
+
+
 struct PMSG_SELLREQUEST
 {
 	PBMSG_HEAD h;
 	BYTE Pos;	// 3
 };
+
+
 
 struct PMSG_ITEMDURREPAIR
 {
@@ -1174,12 +517,15 @@ struct PMSG_ITEMDURREPAIR
 	BYTE Requestpos;	// 4
 };
 
+
+
 struct PMSG_TRADE_REQUEST
 {
 	PBMSG_HEAD h;
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
 };
+
 
 struct PMSG_TRADE_RESPONSE
 {
@@ -1190,17 +536,23 @@ struct PMSG_TRADE_RESPONSE
 	int GuildNumber;	// 10
 };
 
+
+
 struct PMSG_TRADE_GOLD
 {
 	PBMSG_HEAD h;
 	DWORD Money;	// 4
 };
 
+
+
 struct PMSG_TRADE_OKBUTTON
 {
 	PBMSG_HEAD h;	// C1:3C
 	BYTE Flag;	// 3
 };
+
+
 
 struct PMSG_REQ_PSHOP_SETITEMPRICE
 {
@@ -1212,11 +564,15 @@ struct PMSG_REQ_PSHOP_SETITEMPRICE
 	BYTE sItemPrice4;	// 8
 };
 
+
+
 struct PMSG_REQ_PSHOP_OPEN
 {
 	PBMSG_HEAD2 h;
 	char szPShopText[36];	// 4
 };
+
+
 
 struct PMSG_REQ_BUYLIST_FROM_PSHOP
 {
@@ -1235,6 +591,7 @@ struct PMSG_REQ_BUYITEM_FROM_PSHOP
 	BYTE btItemPos;	// 10
 };
 
+
 struct PMSG_REQ_PSHOPDEAL_CLOSE
 {
 	PBMSG_HEAD2 h;
@@ -1243,12 +600,16 @@ struct PMSG_REQ_PSHOPDEAL_CLOSE
 	BYTE btName[10];	// 6
 };
 
+
+
 struct PMSG_PARTYREQUEST
 {
 	PBMSG_HEAD h;
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
 };
+
+
 
 struct PMSG_PARTYREQUESTRESULT
 {
@@ -1258,11 +619,15 @@ struct PMSG_PARTYREQUESTRESULT
 	BYTE NumberL;	// 5
 };
 
+
+
 struct PMSG_PARTYDELUSER
 {
 	PBMSG_HEAD h;
 	BYTE Number;	// 3
 };
+
+
 
 struct PMSG_GUILDJOINQ
 {
@@ -1270,6 +635,8 @@ struct PMSG_GUILDJOINQ
 	BYTE NumberH;	// 3
 	BYTE NumberL;	// 4
 };
+
+
 
 struct PMSG_GUILDQRESULT
 {
@@ -1279,6 +646,8 @@ struct PMSG_GUILDQRESULT
 	BYTE NumberL;	// 5
 };
 
+
+
 struct PMSG_GUILDDELUSER
 {
 	PBMSG_HEAD h;
@@ -1286,11 +655,15 @@ struct PMSG_GUILDDELUSER
 	char JoominNumber[10];	// D
 };
 
+
+
 struct PMSG_GUILDMASTERANSWER
 {
 	PBMSG_HEAD h;
 	BYTE Result;	// 3
 };
+
+
 
 struct PMSG_GUILDINFOSAVE
 {
@@ -1300,11 +673,15 @@ struct PMSG_GUILDINFOSAVE
 	BYTE Mark[32];	// C
 };
 
+
+
 struct PMSG_GUILDWARSEND_RESULT
 {
 	PBMSG_HEAD h;
 	BYTE Result;	// 3
 };
+
+
 
 struct PMSG_WAREHOUSEMONEYINOUT
 {
@@ -1312,6 +689,8 @@ struct PMSG_WAREHOUSEMONEYINOUT
 	BYTE Type;	// [0x01:Deposit] [0x02:Withdraw] 3
 	int Money;	// 4
 };
+
+
 
 struct PMSG_WAREHOUSEPASSSEND
 {
@@ -1321,12 +700,16 @@ struct PMSG_WAREHOUSEPASSSEND
 	char LastJoominNumber[10];	// 6
 };
 
+
 struct PMSG_CHAOSMIX
 {
 	PBMSG_HEAD h;
 	BYTE Type;	// 3
-	BYTE SocketSlot; //4
+	BYTE unk;	//S4 IcaruS FIX
 };
+
+
+
 
 struct PMSG_MOVE
 {
@@ -1336,12 +719,16 @@ struct PMSG_MOVE
 	BYTE Path[8];	// 5
 };
 
+
+
 struct PMSG_POSISTION_SET
 {
 	PBMSG_HEAD h;
 	BYTE X;	// 3
 	BYTE Y;	// 4
 };
+
+
 
 struct PMSG_ATTACK
 {
@@ -1352,6 +739,16 @@ struct PMSG_ATTACK
 	BYTE DirDis;	// 6
 };
 
+struct PMSG_ATTACK_S5E2
+{
+	PBMSG_HEAD h;
+	BYTE AttackAction;	// 5
+	BYTE DirDis;	// 6
+	BYTE NumberH;	// 3
+	BYTE NumberL;	// 4
+};
+
+
 struct PMSG_ACTION
 {
 	PBMSG_HEAD h;
@@ -1361,32 +758,85 @@ struct PMSG_ACTION
 	BYTE iTargetIndexL;	// 6
 };
 
+
+
 struct PMSG_MAGICATTACK
 {
 	PBMSG_HEAD h;
-	BYTE MagicNumberH;	// 3
-	BYTE MagicNumberL;	// 4
+	BYTE MagicNumberH;	// 3	//S4 FIX
+	BYTE MagicNumberL; // 4
 	BYTE NumberH;	// 5
 	BYTE NumberL;	// 6
 	BYTE Dis;	// 7
 };
 
+struct PMSG_MAGICATTACK_S5E2
+{
+	PBMSG_HEAD h;
+	BYTE MagicNumberH;	// 3	//S4 FIX
+	BYTE MagicNumberL; // 4
+	BYTE UnkS5E2;
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
+	BYTE Dis;	// 7
+};
+
+struct PMSG_RAGEATTACK
+{
+	PBMSG_HEAD h;
+	BYTE MagicNumberH;	// 3	//S4 FIX
+	BYTE MagicNumberL; // 4
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
+	BYTE Unk1;
+	BYTE Unk2;
+};
+
+struct PMSG_RAGEATTACK_END
+{
+	PBMSG_HEAD h;
+	BYTE MagicNumberH;	// 3	//S4 FIX
+	BYTE MagicNumberL; // 4
+	BYTE Unk1;
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
+	BYTE Unk2;
+};
+
 struct PMSG_MAGICCANCEL 
 {
 	PBMSG_HEAD h;
-	BYTE MagicNumberH;	// 3
-	BYTE MagicNumberL;	// 4
-	BYTE NumberH;	// 5
-	BYTE NumberL;	// 6
+	BYTE MagicNumber;	// 3
+	BYTE NumberH;	// 4
+	BYTE NumberL;	// 5
+
 };
+
+
 
 struct PMSG_TELEPORT
 {
 	PBMSG_HEAD h;
+	BYTE Unk;	//S4 IcaruS Fix
+	//BYTE Unk1;	//S4 IcaruS Fix
 	WORD MoveNumber;	// 3
 	BYTE MapX;	// 4
 	BYTE MapY;	// 5
+	BYTE Unk2;	//S4 IcaruS Fix
+
 };
+
+
+struct PMSG_MWINDOW
+{
+	PBMSG_HEAD h;
+	BYTE Unk1;
+	WORD Unk2;
+	BYTE Unk3;
+	WORD MoveNumber;
+};
+
+
 
 struct PMSG_TARGET_TELEPORT
 {
@@ -1397,20 +847,75 @@ struct PMSG_TARGET_TELEPORT
 	BYTE MapY;	// 6
 };
 
-struct PMSG_DURATION_MAGIC_RECV
+struct PMSG_DURATION_MAGIC_RECV_S5E2
 {
 	PBMSG_HEAD h;
-	BYTE MagicNumberH;	// 3
-	BYTE MagicNumberL;	// 4
-	BYTE X;	// 5
-	BYTE Y;	// 6
-	BYTE Dir;	// 7
-	BYTE Dis;	// 8
-	BYTE TargetPos;	// 9
-	BYTE NumberH;	// A
-	BYTE NumberL;	// B
-	BYTE MagicKey;	// C
+	BYTE X;	// 4
+	BYTE Y;	// 5
+	BYTE MagicNumberH;		//S4 FIX
+	BYTE MagicNumberL; // 3
+	BYTE Dir;	// 6
+	BYTE Dis;	// 7 
+	BYTE TargetPos;	// 8
+	BYTE MagicKey;	// B
+	BYTE NumberH;	// 9
+	BYTE NumberL;	// A
+	BYTE UNK0;
+	BYTE UNK1;
+	BYTE UNK2;
+	BYTE UNK3;
+	BYTE UNK4;
+	BYTE UNK_S5E2;
 };
+
+
+struct PMSG_DURATION_MAGIC_RECV
+{
+/*	lpMsg->MagicNumber = lpMsg->X;
+	lpMsg->X = lpMsg->Y;
+	lpMsg->Y = lpMsg->Dir;
+	lpMsg->Dis = lpMsg->TargetPos;
+	lpMsg->NumberH = lpMsg->NumberH;
+	lpMsg->NumberL = lpMsg->MagicKey;
+	lpMsg->MagicKey = lpMsg->UNK0;
+	lpMsg->UNK0 = lpMsg->UNK1;
+	lpMsg->UNK1 = lpMsg->UNK2;
+	lpMsg->UNK3 = lpMsg->UNK4;*/
+	PBMSG_HEAD h; // 
+
+/*	BYTE MagicNumber; // 3
+	BYTE X;	// 4
+	BYTE Y;	// 5
+	BYTE Dir;	// 6
+	BYTE Dis;	// 7 
+	BYTE TargetPos;	// 8
+	BYTE NumberH;	// 9
+	BYTE NumberL;	// A
+	BYTE MagicKey;	// B
+	BYTE UNK0;
+	BYTE UNK1;
+	BYTE UNK2;
+	BYTE UNK3;
+	BYTE UNK4;*/
+
+	BYTE MagicNumberH;		//S4 FIX
+	BYTE MagicNumberL; // 3
+	BYTE X;	// 4
+	BYTE Y;	// 5
+	BYTE Dir;	// 6
+	BYTE Dis;	// 7 
+	BYTE TargetPos;	// 8
+	BYTE NumberH;	// 9
+	BYTE NumberL;	// A
+	BYTE MagicKey;	// B
+	BYTE UNK0;
+	BYTE UNK1;
+	BYTE UNK2;
+	BYTE UNK3;
+	BYTE UNK4;
+};
+
+
 
 struct PMSG_USEITEM
 {
@@ -1420,12 +925,16 @@ struct PMSG_USEITEM
 	BYTE btItemUseType;	// 5
 };
 
+
+
 struct PMSG_REQ_MOVEDEVILSQUARE
 {
 	PBMSG_HEAD h;
 	BYTE SquareNumber;	// 3
 	BYTE InvitationItemPos;	// 4
 };
+
+
 
 struct PMSG_REQ_DEVILSQUARE_REMAINTIME
 {
@@ -1434,10 +943,14 @@ struct PMSG_REQ_DEVILSQUARE_REMAINTIME
 	BYTE btItemLevel;	// 4
 };
 
+
+
 struct PMSG_PING_RESULT
 {
 	PBMSG_HEAD h;
 };
+
+
 
 struct PMSG_REGEVENTCHIP
 {
@@ -1446,10 +959,14 @@ struct PMSG_REGEVENTCHIP
 	BYTE ChipPos;	// 4
 };
 
+
+
 struct PMSG_GETMUTONUMBER
 {
 	PBMSG_HEAD h;
 };
+
+
 
 struct PMSG_EXCHANGE_EVENTCHIP
 {
@@ -1464,12 +981,16 @@ struct PMSG_SETQUEST
 	BYTE State;	// 4
 };
 
+
+
 struct PMSG_REQ_MOVEBLOODCASTLE
 {
 	PBMSG_HEAD h;
 	BYTE iBridgeNumber;	// 3
 	BYTE iItemPos;	// 4
 };
+
+
 
 struct PMSG_REQ_MOVECHAOSCASTLE
 {
@@ -1478,6 +999,8 @@ struct PMSG_REQ_MOVECHAOSCASTLE
 	BYTE iItemPos;	// 5
 };
 
+
+
 struct PMSG_REQ_REPOSUSER_IN_CC
 {
 	PBMSG_HEAD2 h;
@@ -1485,11 +1008,15 @@ struct PMSG_REQ_REPOSUSER_IN_CC
 	BYTE btPY;	// 5
 };
 
+
+
 struct PMSG_REQ_CL_ENTERCOUNT
 {
 	PBMSG_HEAD h;
 	BYTE btEventType;	// 3
 };
+
+
 
 struct PMSG_REQ_2ANV_LOTTO_EVENT
 {
@@ -1499,11 +1026,15 @@ struct PMSG_REQ_2ANV_LOTTO_EVENT
 	char SERIAL3[5];	// D
 };
 
+
+
 struct PMSG_REQ_MOVE_OTHERSERVER
 {
 	PBMSG_HEAD h;
 	char LastJoominNumber[10];	// 3
 };
+
+
 
 struct PMSG_PACKETCHECKSUM
 {
@@ -1512,11 +1043,55 @@ struct PMSG_PACKETCHECKSUM
 	DWORD CheckSum;	// 4
 };
 
+
+/*
+struct _GG_AUTH_DATA
+{
+	unsigned long dwIndex;
+	unsigned long dwValue1;
+	unsigned long dwValue2;
+	unsigned long dwValue3;
+};
+*/
+
+
 struct PMSG_NPROTECTGGCHECKSUM
 {
 	PBMSG_HEAD h;	// C3:73
 	_GG_AUTH_DATA m_ggadCheckSum;	// 4
 };
+
+
+
+struct PMSG_REQ_START_DUEL
+{
+	PBMSG_HEAD h;
+	BYTE NumberH;	// 3
+	BYTE NumberL;	// 4
+	char szName[10];	// 5
+};
+
+
+
+struct PMSG_REQ_END_DUEL
+{
+	PBMSG_HEAD h;
+};
+
+
+
+
+
+struct PMSG_ANS_DUEL_OK
+{
+	PBMSG_HEAD h;
+	bool bDuelOK;	// 3
+	BYTE NumberH;	// 4
+	BYTE NumberL;	// 5
+	char szName[10];	// 6
+};
+
+
 
 struct PMSG_REQUEST_PET_ITEM_COMMAND
 {
@@ -1527,6 +1102,8 @@ struct PMSG_REQUEST_PET_ITEM_COMMAND
 	BYTE NumberL;	// 6
 };
 
+
+
 struct PMSG_REQUEST_PET_ITEMINFO
 {
 	PBMSG_HEAD h;
@@ -1535,11 +1112,15 @@ struct PMSG_REQUEST_PET_ITEMINFO
 	BYTE nPos;	// 5
 };
 
+
+
 struct PMSG_REQ_GUILDVIEWPORT
 {
 	PBMSG_HEAD h;
 	int GuildNumber;	// 4
 };
+
+
 
 struct PMSG_GUILD_ASSIGN_STATUS_REQ
 {
@@ -1549,11 +1130,15 @@ struct PMSG_GUILD_ASSIGN_STATUS_REQ
 	char szTagetName[10];	// 5
 };
 
+
+
 struct PMSG_GUILD_ASSIGN_TYPE_REQ
 {
 	PBMSG_HEAD h;
 	BYTE btGuildType;	// 3
 };
+
+
 
 struct PMSG_RELATIONSHIP_JOIN_BREAKOFF_REQ
 {
@@ -1563,6 +1148,8 @@ struct PMSG_RELATIONSHIP_JOIN_BREAKOFF_REQ
 	BYTE btTargetUserIndexH;	// 5
 	BYTE btTargetUserIndexL;	// 6
 };
+
+
 
 struct PMSG_RELATIONSHIP_JOIN_BREAKOFF_ANS
 {
@@ -1574,16 +1161,34 @@ struct PMSG_RELATIONSHIP_JOIN_BREAKOFF_ANS
 	BYTE btTargetUserIndexL;	// 7
 };
 
-struct PMSG_UNIONLIST_REQ
-{
+
+
+struct PMSG_UNIONLIST_REQ {
+
+  
+
+  
   PBMSG_HEAD h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
+
 
 struct PMSG_KICKOUT_UNIONMEMBER_REQ
 {
 	PBMSG_HEAD2 h;
 	char szTargetGuildName[8];	// 4
 };
+
+
 
 struct PMSG_REQ_MAPSERVERAUTH
 {
@@ -1600,26 +1205,87 @@ struct PMSG_REQ_MAPSERVERAUTH
 
 };
 
-struct PMSG_REQ_CASTLESIEGESTATE
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_CASTLESIEGESTATE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_REGCASTLESIEGE
-{
-	PBMSG_HEAD2 h;  
+
+
+struct PMSG_REQ_REGCASTLESIEGE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_GIVEUPCASTLESIEGE
-{
-	PBMSG_HEAD2 h;
-	BYTE btGiveUp;
+
+
+struct PMSG_REQ_GIVEUPCASTLESIEGE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btGiveUp;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_GUILDREGINFO
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_GUILDREGINFO {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
+
 
 struct CSP_ANS_GUILDREGINFO
 {
@@ -1629,188 +1295,556 @@ struct CSP_ANS_GUILDREGINFO
 	int iIndex;	// C
 	char szGuildName[8];	// 10
 	int iRegMarkCount;	// 18
-	BYTE bIsGiveUp;	// 1C
+	unsigned char bIsGiveUp;	// 1C
 	BYTE btRegRank;	// 1D
 };
 
-struct PMSG_REQ_REGGUILDMARK
-{
-	PBMSG_HEAD2 h;
-	BYTE btItemPos;
+
+
+struct PMSG_REQ_REGGUILDMARK {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btItemPos;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct CSP_ANS_GUILDREGMARK
-{
-	struct PBMSG_HEAD2 h;
-	int iResult;
-	WORD wMapSvrNum;
-	int iIndex;
-	char szGuildName[8];
-	int iItemPos;
-	int iRegMarkCount;
+struct CSP_ANS_GUILDREGMARK {
+
+  // static data ------------------------------------
+
+  // non-static data --------------------------------
+  /*<thisrel this+0x0>*/ /*|0x4|*/ struct PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x4|*/ int iResult;
+  /*<thisrel this+0x8>*/ /*|0x2|*/ unsigned short wMapSvrNum;
+  /*<thisrel this+0xc>*/ /*|0x4|*/ int iIndex;
+  /*<thisrel this+0x10>*/ /*|0x8|*/ char szGuildName[8];
+  /*<thisrel this+0x18>*/ /*|0x4|*/ int iItemPos;
+  /*<thisrel this+0x1c>*/ /*|0x4|*/ int iRegMarkCount;
+
+  // base classes -----------------------------------
+
+  // friends ----------------------------------------
+
+  // static functions -------------------------------
+
+  // non-virtual functions --------------------------
+
+  // virtual functions ------------------------------
+};
+// <size 0x20>
+
+struct PMSG_REQ_NPCBUY {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x4|*/ int iNpcNumber;
+  /*<thisrel this+0x8>*/ /*|0x4|*/ int iNpcIndex;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_NPCBUY
-{
-	PBMSG_HEAD2 h;
-	int iNpcNumber;
-	int iNpcIndex;
+
+struct PMSG_REQ_NPCREPAIR {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x4|*/ int iNpcNumber;
+  /*<thisrel this+0x8>*/ /*|0x4|*/ int iNpcIndex;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_NPCREPAIR
-{
-	PBMSG_HEAD2 h;
-	int iNpcNumber;
-	int iNpcIndex;
+
+
+struct PMSG_REQ_NPCUPGRADE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x4|*/ int iNpcNumber;
+  /*<thisrel this+0x8>*/ /*|0x4|*/ int iNpcIndex;
+  /*<thisrel this+0xc>*/ /*|0x4|*/ int iNpcUpType;
+  /*<thisrel this+0x10>*/ /*|0x4|*/ int iNpcUpValue;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_NPCUPGRADE
-{
-	PBMSG_HEAD2 h;
-	int iNpcNumber;
-	int iNpcIndex;
-	int iNpcUpType;
-	int iNpcUpValue;
+
+
+struct PMSG_REQ_TAXMONEYINFO {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_TAXMONEYINFO
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_TAXRATECHANGE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btTaxType;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btTaxRate1;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btTaxRate2;
+  /*<thisrel this+0x7>*/ /*|0x1|*/ BYTE btTaxRate3;
+  /*<thisrel this+0x8>*/ /*|0x1|*/ BYTE btTaxRate4;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_TAXRATECHANGE
-{
-	PBMSG_HEAD2 h;
-	BYTE btTaxType;
-	BYTE btTaxRate1;
-	BYTE btTaxRate2;
-	BYTE btTaxRate3;
-	BYTE btTaxRate4;
+
+
+struct PMSG_REQ_MONEYDRAWOUT {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btMoney1;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btMoney2;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btMoney3;
+  /*<thisrel this+0x7>*/ /*|0x1|*/ BYTE btMoney4;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_MONEYDRAWOUT
-{
-	PBMSG_HEAD2 h;
-	BYTE btMoney1;
-	BYTE btMoney2;
-	BYTE btMoney3;
-	BYTE btMoney4;
+
+
+struct PMSG_REQ_CSGATEOPERATE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btOperate;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btIndex1;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btIndex2;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CSGATEOPERATE
-{
-	PBMSG_HEAD2 h;
-	BYTE btOperate;
-	BYTE btIndex1;
-	BYTE btIndex2;
+
+
+struct PMSG_REQ_MINIMAPDATA {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_MINIMAPDATA
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_STOPMINIMAPDATA {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_STOPMINIMAPDATA
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_CSCOMMAND {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btTeam;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btX;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btY;
+  /*<thisrel this+0x7>*/ /*|0x1|*/ BYTE btCommand;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CSCOMMAND
-{
-	PBMSG_HEAD2 h;
-	BYTE btTeam;
-	BYTE btX;
-	BYTE btY;
-	BYTE btCommand;
+
+
+struct PMSG_REQ_CSHUNTZONEENTER {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btHuntZoneEnter;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CSHUNTZONEENTER
-{
-	PBMSG_HEAD2 h;
-	BYTE btHuntZoneEnter;
+
+
+struct PMSG_REQ_NPCDBLIST {
+
+  
+
+  
+  PBMSG_HEAD h;
+  /*<thisrel this+0x3>*/ /*|0x1|*/ BYTE btMonsterCode;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_NPCDBLIST
-{
-	PBMSG_HEAD h;
-	BYTE btMonsterCode;
+
+
+struct PMSG_REQ_CSREGGUILDLIST {
+
+  
+
+  
+  PBMSG_HEAD h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CSREGGUILDLIST
-{
-	PBMSG_HEAD h;
+
+
+struct PMSG_REQ_CSATTKGUILDLIST {
+
+  
+
+  
+  PBMSG_HEAD h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CSATTKGUILDLIST
-{
-	PBMSG_HEAD h;
+
+
+struct PMSG_REQ_USEWEAPON {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btObjIndexH;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btObjIndexL;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btTargetIndex;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_USEWEAPON
-{
-	PBMSG_HEAD2 h;
-	BYTE btObjIndexH;
-	BYTE btObjIndexL;
-	BYTE btTargetIndex;
+
+
+struct PMSG_REQ_WEAPON_DAMAGE_VALUE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btObjIndexH;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btObjIndexL;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_WEAPON_DAMAGE_VALUE
-{
-	PBMSG_HEAD2 h;
-	BYTE btObjIndexH;
-	BYTE btObjIndexL;
+
+
+struct PMSG_REQ_GUILDMARK_OF_CASTLEOWNER {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_GUILDMARK_OF_CASTLEOWNER
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_JEWEL_MIX {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btJewelType;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btJewelMix;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_JEWEL_MIX
-{
-	PBMSG_HEAD2 h;
-	BYTE btJewelType;
-	BYTE btJewelMix;
+
+struct PMSG_REQ_JEWEL_UNMIX {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btJewelType;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btJewelLevel;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ BYTE btJewelPos;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_JEWEL_UNMIX
-{
-	PBMSG_HEAD2 h;
-	BYTE btJewelType;
-	BYTE btJewelLevel;
-	BYTE btJewelPos;
+
+struct PMSG_REQ_CRYWOLF_INFO {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CRYWOLF_INFO
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_CRYWOLF_ALTAR_CONTRACT {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ BYTE btObjIndexH;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ BYTE btObjIndexL;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CRYWOLF_ALTAR_CONTRACT
-{
-	PBMSG_HEAD2 h;
-	BYTE btObjIndexH;
-	BYTE btObjIndexL;
+
+
+struct PMSG_REQ_CRYWOLF_BENEFIT_PLUS_CHAOSRATE {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_CRYWOLF_BENEFIT_PLUS_CHAOSRATE
-{
-	PBMSG_HEAD2 h;
+
+struct PMSG_REQ_KANTURU_STATE_INFO {
+
+  
+
+  
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
+
+  
+
+  
+
+  
+
+  
+
+  
 };
 
-struct PMSG_REQ_KANTURU_STATE_INFO
-{
-	PBMSG_HEAD2 h;
+
+
+struct PMSG_REQ_ENTER_KANTURU_BOSS_MAP {
+  /*<thisrel this+0x0>*/ /*|0x4|*/PBMSG_HEAD2 h;
 };
 
-struct PMSG_REQ_ENTER_KANTURU_BOSS_MAP
-{
-	PBMSG_HEAD2 h;
-};
 
-//#if(_GSCS==1)
-struct CSP_ANS_CSINITDATA
-{
+struct CSP_ANS_CSINITDATA { // <size 0x40>
 	PWMSG_HEAD h;	// 0
 	int iResult;		// 4
 	WORD wMapSvrNum;	// 8
@@ -1832,21 +1866,19 @@ struct CSP_ANS_CSINITDATA
 	int iCount; // 38
 };
 
-struct CSP_CSINITDATA
-{
+struct CSP_CSINITDATA {// <size 0x1c>
 	int iNpcNumber; // 0
 	int iNpcIndex; // 4
 	int iNpcDfLevel; // 8
 	int iNpcRgLevel; // c
 	int iNpcMaxHp; // 10
 	int iNpcHp; // 14
-	BYTE btNpcX; // 18
-	BYTE btNpcY; // 19
-	BYTE btNpcDIR; // 1a
+	unsigned char btNpcX; // 18
+	unsigned char btNpcY; // 19
+	unsigned char btNpcDIR; // 1a
 };
 
-struct CSP_CALCREGGUILDLIST
-{
+struct CSP_CALCREGGUILDLIST { // <size 0x18>
 	char szGuildName[8]; // 0
 	int iRegMarkCount; // 8
 	int iGuildMemberCount; // c
@@ -1854,388 +1886,132 @@ struct CSP_CALCREGGUILDLIST
 	int iSeqNum; // 14
 };
 
-struct CSP_CSGUILDUNIONINFO
-{
+struct CSP_CSGUILDUNIONINFO { // <size 0xc>
 	char szGuildName[8]; // 0
 	int iCsGuildID; // 8
 };
 
-struct CSP_CSLOADTOTALGUILDINFO
-{
+struct CSP_CSLOADTOTALGUILDINFO { // <size 0x10>
 	char szGuildName[8]; // 0
 	int iCsGuildID; // 8
 	int iGuildInvolved; // c
-	int iGuildScore; //10 season 2.5 add-on
 };
 
-struct PMSG_CSATTKGUILDLIST
-{
-	BYTE btCsJoinSide; // 0
-	BYTE btGuildInvolved; // 1
-	char szGuildName[8]; // 2
-	int iGuildScore; //A season 2.5 add-on
+struct PMSG_CSATTKGUILDLIST { // <size 0xa>
+	unsigned char btCsJoinSide; // 0
+	unsigned char btGuildInvolved; // 4
+	char szGuildName[8]; // 8
 };
 
-struct CSP_ANS_NPCDATA
-{
+struct CSP_ANS_NPCDATA { // <size 0x14>
 	PWMSG_HEAD h; // 0
 	int iResult; // 4
-	WORD wMapSvrNum; // 8
+	unsigned short wMapSvrNum; // 8
 	int iIndex; // c
 	int iCount; // 10
 };
 
-struct PMSG_ANS_NOTIFYCSSTART
-{
+struct PMSG_ANS_NOTIFYCSSTART { // <size 0x5>
 	PBMSG_HEAD2 h; // 0
-	BYTE btStartState; // 4
+	unsigned char btStartState; // 4
 };
 
-struct PMSG_REQ_MOVE_TO_CASTLE_HUNTZONE
+struct PMSG_ANS_NOTIFYCSPROGRESS { // <size 0xd>
+	PBMSG_HEAD2 h; // 0
+	unsigned char btCastleSiegeState; // 4
+	unsigned char szGuildName[8]; // 5
+};
+
+struct PMSG_REQ_MOVE_TO_CASTLE_HUNTZONE // 0x8
 {
-    PBMSG_HEAD2 h;
-    int iPrice;
+    PBMSG_HEAD2 h; // +0x0(0x4)
+    int iPrice; // +0x4(0x4)
 };
-//#endif
 
-struct PMSG_REQ_PCBANG_SHOP_BUY
+struct PMSG_RESULT_DEVILSQUARE_REMAINTIME
 {
-	PBMSG_HEAD2 h;
-	BYTE btPosition;
+	PBMSG_HEAD h;	// C1:91
+	BYTE hEventType;	// 3
+	BYTE RemainTime;	// 4
+	BYTE EnteredUser;	// 5
+	BYTE RemainTime_LOW;	// 6
 };
 
-struct PMSG_REQ_PCBANG_SHOP_OPEN
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_REQ_WEREWOLF_MOVE
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_REQ_GATEKEEPER_MOVE
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_ANS_ILLUSIONTEMPLE_ENTER
-{
-	PBMSG_HEAD2 h;
-	BYTE btFloorIndex;	// 
-	BYTE TicketPos;
-};
-
-struct PMSG_USE_ILLUSIONTEMPLE_KILLCOUNT_SKILL
-{
-	PBMSG_HEAD2 h;
-	BYTE	btSkillIdH;
-	BYTE	btSkillIdL;
-	BYTE	btTargetH;
-	BYTE	btTargetL;
-	BYTE	btDis;
-};
-
-struct PMSG_ILLUSIONTEMPLE_DROP_REWARD
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_SEND_ILLUSIONTEMPLE_KILLCOUNT
-{
-	PBMSG_HEAD2 h;
-	BYTE btKillCount;
-};
-
-struct PMSG_REQ_XMASNPCMAP_MOVE
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_REQ_XMAS_PAYITEM
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_REQ_CHARACTER_CHECKNAME
-{
-	PBMSG_HEAD2 h; //4
-	char ChangeName[10]; //4
-};
-
-struct PMSG_REQ_CHARACTER_CHANGENAME
-{
-	PBMSG_HEAD2 h; //4
-	char ChangeName[10]; //4
-	char Name[10]; //E
-};
-
-struct PMSG_ANS_CHARACTER_CHECKNAME
-{
-	PBMSG_HEAD2 h; //4
-	char Name[10]; //4
-	BYTE Result; //E
-};
-
-struct PMSG_ANS_CHARACTER_CHANGENAME
-{
-	PBMSG_HEAD h; //4
-	int iIndex; //4
-	char AccountID[10]; //E
-	char ChangeName[10]; //18
-	char Name[10]; //22
-};
-
-struct PMSG_REQ_REG_LUCKYCOIN
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_ANS_LUCKYCOIN_COINT
-{
-	PBMSG_HEAD2 h; //4
-	int CoinCount; //4
-};
-
-struct PMSG_REGISTER_LUCKYCOIN
-{
-	PBMSG_HEAD2 h;
-	BYTE btResult;	//4
-	int CoinCount; //5
-};
-
-struct PMSG_REQ_SEARCH_LUCKY_COIN
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_REQ_TRADE_LUCKYCOIN
-{
-	PBMSG_HEAD h;
-	int LuckyCoinNumber;	// 4
-};
-
-struct PMSG_LUCKYCOIN_RESULT
-{
-	PBMSG_HEAD2 h;
-	BYTE	btResult;
-};
-
-
-#pragma pack (1)
-
-struct PMSG_REQ_START_DUEL//done
-{
-	PBMSG_HEAD2 h;
-	BYTE NumberH;	// 3
-	BYTE NumberL;	// 4
-	char szName[10];	// 5
-};
-
-struct PMSG_REQ_DUEL_OK//done
-{
-	PBMSG_HEAD2 h;	// 
-	BYTE NumberH;	// 
-	BYTE NumberL;	// 
-	char szName[10];	
-};
-
-struct PMSG_DUEL_START_ERROR//done
-{
-	PBMSG_HEAD2 h;	// C1:AA
-	BYTE ErrorType;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	char szName[10];	// 6
-};
-
-struct PMSG_REQ_END_DUEL
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_ANS_DUEL_OK//done
-{
-	PBMSG_HEAD2 h;
-	bool bDuelOK;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	char szName[10];	// 6
-};
-
-struct PMSG_ANS_START_DUEL//done
-{
-	PBMSG_HEAD2 h;	// C1:AA
-	BYTE bDuelStart;	// 3
-	BYTE NumberH;	// 4
-	BYTE NumberL;	// 5
-	char szName[10];	// 6
-};
-
-struct PMSG_ANS_DUEL_SCORE
-{
-	PBMSG_HEAD2 h;	// C1:AD
-	BYTE NumberH1;	// 3
-	BYTE NumberL1;	// 4
-	BYTE NumberH2;	// 5
-	BYTE NumberL2;	// 6
-	BYTE btDuelScore1;	// 7
-	BYTE btDuelScore2;	// 8
-};
-
-struct PMSG_REQ_SPECTATE_ADD_DUEL // 0x07
-{
-	PBMSG_HEAD2 h;
-	BYTE btRoomIndex;
-	BYTE btRandomValue;
-};
-
-struct PMSG_REQ_SPECTATE_REMOVE_DUEL // 0x07
-{
-	PBMSG_HEAD2 h;
-};
-
-struct PMSG_SEND_END_DUEL
-{
-	PBMSG_HEAD2 h;
-	BYTE unk;
-};
-
-struct PMSG_SEND_DUEL_SPEC_LIST // 0x0B
-{
-	PBMSG_HEAD2 h;
-	BYTE btCount;
-	BYTE szName[10][10];
-};
-
-struct PMSG_SEND_DUEL_SPEC_ADD // 0x08
-{
-	PBMSG_HEAD2 h;
-	BYTE szName[10];
-};
-
-struct PMSG_DUEL_ROOMSTATUS // Complemento de 0x06
-{
-	BYTE szName1[10];
-	BYTE szName2[10];
-	BYTE btDuelRunning;
-	BYTE btDuelOpen;
-};
-
-struct PMSG_REQ_DUEL_STATUS // 0x06
-{
-	PBMSG_HEAD2 h;
-	PMSG_DUEL_ROOMSTATUS pRoomStatus[4];
-};
-
-struct PMSG_DUEL_LIFEBAR_REFILL // 0x05
-{
-	PBMSG_HEAD2 h;
-	BYTE btObjId01H;
-	BYTE btObjId01L;
-	BYTE btObjId02H;
-	BYTE btObjId02L;
-	BYTE btLife01;
-	BYTE btLife02;
-	BYTE btShield01;
-	BYTE btShield02;
-};
-
-struct PMSG_DUEL_LIFEBAR_NAME // 0x07 00 
-{
-	PBMSG_HEAD2 h;
-	WORD Type; // 4
-	BYTE szName1[10]; // 5
-	BYTE szName2[10]; // f
-	BYTE btObjId1H;
-	BYTE btObjId1L;
-	BYTE btObjId2H;
-	BYTE btObjId2L;
-};
-
-struct PMSG_DUEL_LIFEBAR_INIT // 0x0D
-{
-	PBMSG_HEAD2 h;
-	BYTE Unknow00;
-};
-
-struct PMSG_DUEL_FINISH // 0x0C
-{
-	PBMSG_HEAD2 h;
-	BYTE szWinner[10];
-	BYTE szLooser[10];
-};
-#pragma pack ()
-
-struct PMSG_ANS_END_DUEL
-{
-	PBMSG_HEAD h;	// C1:AB
-	BYTE NumberH;	// 3
-	BYTE NumberL;	// 4
-	char szName[10];	// 5
-};
 
 void ProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen, int aIndex, BOOL Encrypt, int serial);
 void TestSend();
-void MsgSendV2(LPOBJ lpObj, LPBYTE Msg, int size);
+void MsgSendV2(LPOBJ lpObj, unsigned char* Msg, int size);
+void MsgSendDistNear(LPOBJ lpObj, unsigned char* Msg, int size, int dist);
+void MsgSendDistNear2(unsigned char* Msg, int size, int map, int x, int y, int dist);
 void CGLiveClient(PMSG_CLIENTTIME* lpClientTime, short aIndex);
 void GCCheckMainExeKeySend(int aIndex);
 WORD EncryptCheckSumKey(WORD wSource);
 void CGCheckMainRecv(PMSG_CHECK_MAINEXE_RESULT* lpMsg, int aIndex);
-void PEchoProc(LPBYTE aMsg, int aLen, short aIndex);
-void GCResultSend(int aIndex, BYTE headcode, BYTE result);
+void PEchoProc(unsigned char* aMsg, int aLen, short aIndex);
+void GCResultSend(int aIndex, unsigned char headcode, unsigned char result);
 void ChatSend(LPOBJ lpObj, char* szChat);
 void vChatSend(LPOBJ lpObj, char* szChat, ...);
 void AllSendServerMsg(char* chatmsg);
-void DataSendAll(LPBYTE lpMsg, int iMsgSize);
+void DataSendAll(unsigned char* lpMsg, int iMsgSize);
 void ChatTargetSend(LPOBJ lpObj, char* szChat, int senduser);
 void PChatProc(PMSG_CHATDATA* lpChat, short aIndex);
 void CGChatRecv(PMSG_CHATDATA_NUMBER* lpMsg, int aIndex);
-void GCServerMsgSend(BYTE msg, int aIndex);
+void GCServerMsgSend(unsigned char msg, int aIndex);
 void GCServerMsgStringSend(char* szMsg, int aIndex, BYTE type);
-void GCServerMsgStringSendEx(int aIndex, BYTE type, char *szFormat, ...);
-void GCServerMsgStringSendGuild(_GUILD_INFO_STRUCT* lpNode, char* szMsg, BYTE type);
-void GCEventStateSend(int aIndex, BYTE state, BYTE event);
-void GCMapEventStateSend(int map, BYTE state, BYTE event);
+void GCServerMsgStringSendToMap(char* szMsg, BYTE Map, BYTE type) ;
+void GCFireWorks(BYTE Map, BYTE X, BYTE Y) ;
+void GCServerMsgStringSendToNoMap(char* szMsg, BYTE Map, BYTE type) ;
+void GCServerMsgStringSendGuild(_GUILD_INFO_STRUCT* lpNode, char* szMsg, unsigned char type);
+void GCEventStateSend(int aIndex, unsigned char state, unsigned char event);
+void GCMapEventStateSend(int map, unsigned char state, unsigned char event);
 void CGChatWhisperRecv(PMSG_CHATDATA_WHISPER* lpMsg, int aIndex);
-void SCPJoinResultSend(int aIndex, BYTE result);
+void SCPJoinResultSend(int aIndex, unsigned char result);
 void CSPJoinIdPassRequest(PMSG_IDPASS* lpMsg, int aIndex);
 void CSPJoinIdPassRequestTEST(PMSG_IDPASS* lpMsg, int aIndex);
 void GCJoinBillCheckSend(char* AccountId, int aIndex);
-void GCJoinResult(BYTE result, int aIndex);
-void GCJoinSocketResult(BYTE result, SOCKET Socket);
+void GCJoinResult(unsigned char result, int aIndex);
+void GCJoinSocketResult(unsigned char result, SOCKET Socket);
 void CGClientCloseMsg(PMSG_CLIENTCLOSE* lpMsg, int aIndex);
-void GCCloseMsgSend(int aIndex, BYTE result);
+void GCCloseMsgSend(int aIndex, unsigned char result);
 void CGClientMsg(PMSG_CLIENTMSG* lpMsg, int aIndex);
 void CGPCharacterCreate(PMSG_CHARCREATE* lpMsg, int aIndex);
 void CGPCharDel(PMSG_CHARDELETE* lpMsg, int aIndex);
 void CGPCharacterMapJoinRequest(PMSG_CHARMAPJOIN* lpMsg, int aIndex);
+void CGPCharacterMapJoinRequestS4( PMSG_CHARMAPJOIN * lpMsg, int aIndex);
 void GCLevelUpMsgSend(int aIndex, int iSendEffect);
 void CGLevelUpPointAdd(PMSG_LVPOINTADD* lpMsg, int aIndex);
 void GCInventoryItemOneSend(int aIndex, int pos);
-void GCPkLevelSend(int aIndex, BYTE pklevel);
-bool CheckAuthorityCondition(int AuthorityCode, LPOBJ lpObj);
-void GCMagicListOneSend(int aIndex, char Pos, WORD type, BYTE level, WORD skill, BYTE btListType);
-void GCMagicListOneDelSend(int aIndex, char Pos, WORD type, BYTE level, BYTE skill, BYTE btListType);
+void GCPkLevelSend(int aIndex, unsigned char pklevel);
+void GCMagicListOneSend(int aIndex, char Pos, WORD type, unsigned char level, unsigned char skill, BYTE btListType);
+void GCMagicListOneDelSend(int aIndex, char Pos, WORD type, BYTE level, unsigned char skill, BYTE btListType);
 void GCMagicListMultiSend(LPOBJ lpObj, BYTE btListType);
 void GCEquipmentSend(int aIndex);
 void GCRecallMonLife(int aIndex, int maxlife, int life);
 void GCTimeViewSend(int aIndex, int second);
-void GCGoalSend(int aIndex, char* Name1, BYTE score1, char* Name2, BYTE score2);
+void GCGoalSend(int aIndex, char* Name1, unsigned char score1, char* Name2, unsigned char score2);
 void GCSkillKeyRecv(PMSG_SKILLKEY* lpMsg, int aIndex);
-void GCSkillKeySend(int aIndex, LPBYTE keybuffer, BYTE GO, BYTE Qk, BYTE Wk, BYTE Ek, BYTE ChatWnd, BYTE Rk, int QWERLevel);
-void GCMoneySend(int aIndex, DWORD money);
-void GCItemInventoryPutSend(int aIndex, BYTE result, BYTE iteminfo1, BYTE iteminfo2);
+
+#if (BORDS == 0)
+	void GCSkillKeySend(int aIndex, unsigned char* keybuffer, unsigned char GO, unsigned char Qk, unsigned char Wk, unsigned char Ek, /*<regrel ebp+0x20>*/ /*|0x1|*/ unsigned char ChatWnd);
+#else
+	void GCSkillKeySend(int aIndex, unsigned char* keybuffer, unsigned char GO, unsigned char Qk, unsigned char Wk, unsigned char Ek, /*<regrel ebp+0x20>*/ /*|0x1|*/ unsigned char ChatWnd, unsigned char Rk);
+#endif
+
+void GCMoneySend(int aIndex, unsigned long money);
+void GCItemInventoryPutSend(int aIndex, unsigned char result, unsigned char iteminfo1, unsigned char iteminfo2);
 void CGItemGetRequest(PMSG_ITEMGETREQUEST* lpMsg, int aIndex);
-BOOL CGItemDropRequest(PMSG_ITEMTHROW* lpMsg, int aIndex, int drop_type);
-void GCItemMoveResultSend(int aIndex, BYTE result, BYTE pos, BYTE ItemInfo[]);
+BOOL CGItemDropRequest(PMSG_ITEMTHROW* lpMsg, int aIndex, int drop_type, BYTE exception);
+void GCItemMoveResultSend(int aIndex, unsigned char result, unsigned char pos, unsigned char* const ItemInfo);
+int getNumberOfExcOptions(int checksum);
+bool SellItemResult(LPOBJ lpObj,int Slot);
 void CGInventoryItemMove(PMSG_INVENTORYITEMMOVE* lpMsg, int aIndex);
 void GCEquipmentChange(int aIndex, int pos);
 void CGTalkRequestRecv(PMSG_TALKREQUEST* lpMsg, int aIndex);
 void GCUserWarehouseSend(LPOBJ lpObj);
 void CGBuyRequestRecv(PMSG_BUYREQUEST* lpMsg, int aIndex);
 void CGSellRequestRecv(PMSG_SELLREQUEST* lpMsg, int aIndex);
-int  GetNeedMoneyItemDurRepaire(class CItem* DurItem, int RequestPos);
+void CGZenSend(int aIndex);
+int  GetNeedMoneyItemDurRepaire(class CItem* DurItem, int RequestPos, LPOBJ lpObj);
 void ItemDurRepaire(LPOBJ lpObj, class CItem* DurItem, int pos, int RequestPos);
 void CGModifyRequestItem(PMSG_ITEMDURREPAIR* lpMsg, int aIndex);
 void CGTradeRequestSend(PMSG_TRADE_REQUEST* lpMsg, int aIndex);
@@ -2245,10 +2021,10 @@ int GCTradeOtherDel(int aIndex, BYTE tradeindex);
 int GCTradeOtherAdd(int aIndex, BYTE tradeindex, LPBYTE iteminfo);
 void CGTradeMoneyRecv(PMSG_TRADE_GOLD* lpMsg, int aIndex);
 BOOL GCTradeMoneyOther(int aIndex, DWORD money);
-BOOL GCTradeOkButtonSend(int aIndex, BYTE flag);
+BOOL GCTradeOkButtonSend(int aIndex, unsigned char flag);
 void CGTradeOkButtonRecv(PMSG_TRADE_OKBUTTON* lpMsg, int aIndex);
 void CGTradeCancelButtonRecv(int aIndex);
-void CGTradeResult(int aIndex, BYTE result);
+void CGTradeResult(int aIndex, unsigned char result);
 void CGPShopReqSetItemPrice(PMSG_REQ_PSHOP_SETITEMPRICE* lpMsg, int aIndex);
 void CGPShopAnsSetItemPrice(int aIndex, BYTE btResult, BYTE btItemPos);
 void CGPShopReqOpen(PMSG_REQ_PSHOP_OPEN* lpMsg, int aIndex);
@@ -2272,13 +2048,13 @@ void CGGuildRequestRecv(PMSG_GUILDJOINQ* lpMsg, int aIndex);
 void CGGuildRequestResultRecv(PMSG_GUILDQRESULT* lpMsg, int aIndex);
 void CGGuildListAll(int pnumber);
 void CGGuildDelUser(PMSG_GUILDDELUSER* lpMsg, int aIndex);
-void GCGuildDelUserResult(int aIndex, BYTE Result);
+void GCGuildDelUserResult(int aIndex, unsigned char Result);
 void GCGuildMasterQuestionSend(int aIndex);
 void CGGuildMasterAnswerRecv(PMSG_GUILDMASTERANSWER* lpMsg, int aIndex);
 void GCGuildMasterManagerRun(int aIndex);
 void CGGuildMasterInfoSave(int aIndex,PMSG_GUILDINFOSAVE* lpMsg);
 void CGGuildMasterCreateCancel(int aIndex);
-void GCGuildViewportNowPaint(int aIndex, char* guildname, BYTE* Mark, int isGuildMaster);
+void GCGuildViewportNowPaint(int aIndex, char* guildname, unsigned char* Mark, int isGuildMaster);
 void GCGuildViewportDelNow(int aIndex, int isGuildMaster);
 void GCManagerGuildWarEnd(char* GuildName);
 void GCManagerGuildWarSet(char* GuildName1, char* GuildName2, int type);
@@ -2286,57 +2062,56 @@ void GCGuildWarRequestResult(char* GuildName, int aIndex, int type);
 void GCGuildWarRequestSend(char* GuildName, int aIndex, int type);
 void GCGuildWarRequestSendRecv(PMSG_GUILDWARSEND_RESULT* lpMsg, int aIndex);
 void GCGuildWarDeclare(int aIndex, char* _guildname);
-void GCGuildWarEnd(int aIndex, BYTE result, char* _guildname);
+void GCGuildWarEnd(int aIndex, unsigned char result, char* _guildname);
 void GCGuildWarScore(int aIndex);
 void CGWarehouseMoneyInOut(int aIndex,PMSG_WAREHOUSEMONEYINOUT* lpMsg);
-void GCWarehouseInventoryMoneySend(int aIndex, BYTE result, int money, int wmoney);
+void GCWarehouseInventoryMoneySend(int aIndex, unsigned char result, int money, int wmoney);
 void CGWarehouseUseEnd(int aIndex);
-void GCWarehouseStateSend(int aIndex, BYTE state);
+void GCWarehouseStateSend(int aIndex, unsigned char state);
 void GCWarehouseRecivePassword(int aIndex,PMSG_WAREHOUSEPASSSEND* lpMsg);
 void GCUserChaosBoxSend(LPOBJ lpObj, int iChaosBoxType);
 void CGChaosBoxItemMixButtonClick(PMSG_CHAOSMIX* aRecv, int aIndex);
 void CGChaosBoxUseEnd(int aIndex);
 void PMoveProc(PMSG_MOVE* lpMove, int aIndex);
 void RecvPositionSetProc(PMSG_POSISTION_SET* lpMove, int aIndex);
-void CGAttack(PMSG_ATTACK* lpMsg, int aIndex);
+void CGAttack(unsigned char * Msg, int aIndex);
 void GCDamageSend(int aIndex, int damage, int iShieldDamage);
 void GCDamageSend(int aIndex, int TargetIndex, int AttackDamage, int MSBFlag, int MSBDamage, int iShieldDamage);
-#ifdef EXPERIENCE_EXTERN
-void GCKillPlayerExpSend(int aIndex, int TargetIndex, __int64 exp, int AttackDamage, int MSBFlag);
-#else
 void GCKillPlayerExpSend(int aIndex, int TargetIndex, int exp, int AttackDamage, int MSBFlag);
-#endif
-void GCSendExp_INT64(int aIndex, int TargetIndex, __int64 exp, int AttackDamage, int MSBFlag);
 void GCDiePlayerSend(LPOBJ lpObj, int TargetIndex, BYTE skill, int KillerIndex);
 void GCActionSend(LPOBJ lpObj, BYTE ActionNumber, int aIndex, int aTargetIndex);
 void CGActionRecv(PMSG_ACTION* lpMsg, int aIndex);
-void CGMagicAttack(PMSG_MAGICATTACK* lpMsg, int aIndex);
-void GCMagicAttackNumberSend(LPOBJ lpObj, WORD MagicNumber, int usernumber, BYTE skillsuccess);
-void GCMagicCancelSend(LPOBJ lpObj, WORD MagicNumber);
+void CGMagicAttack(unsigned char * lpMsg, int aIndex);
+void CGRageAttack(unsigned char * lpMsg, int aIndex);
+void GCMagicAttackNumberSend(LPOBJ lpObj, WORD MagicNumber, int usernumber, unsigned char skillsuccess);
+void GCMagicCancelSend(LPOBJ lpObj, BYTE MagicNumber);
 void GCMagicCancel(PMSG_MAGICCANCEL * lpMsg, int aIndex);
 void GCUseEffectItem(LPOBJ lpObj, int iEffectUseOption, int iOptionType, int iEffectType, int iLeftTime);
 void CGMagicCancel(PMSG_MAGICCANCEL* lpMsg, int aIndex);
 void GCUseMonsterSkillSend(LPOBJ lpObj, LPOBJ lpTargetObj, int iSkillNumber);
-void GCBuffStateInfoSend(LPOBJ lpObj, BYTE state, BYTE btEffectIndex);
+void GCSantaStateInfoSend(LPOBJ lpObj, BYTE state);
+void GCSkillInfoSend(LPOBJ lpObj, BYTE state, int  ViewSkillState);
 void CGTeleportRecv(PMSG_TELEPORT* lpMsg, int aIndex);
+void CGMWindowRecv(PMSG_MWINDOW* lpMsg, int aIndex);
 void CGTargetTeleportRecv(PMSG_TARGET_TELEPORT* lpMsg, int aIndex);
-void GCTeleportSend(LPOBJ lpObj, int MoveNumber, BYTE MapNumber, BYTE MapX, BYTE MapY, BYTE Dir);
-void CGBeattackRecv(BYTE* lpRecv, int aIndex, int magic_send);
-void CGDurationMagicRecv(PMSG_DURATION_MAGIC_RECV* lpMsg, int aIndex);
+void GCTeleportSend(LPOBJ lpObj, WORD MoveNumber, BYTE MapNumber, BYTE MapX, BYTE MapY, BYTE Dir);
+void CGBeattackRecv(unsigned char* lpRecv, int aIndex, int magic_send);
+void CGDurationMagicRecv(unsigned char * Msg, int aIndex);
 void ObjectMapJoinPositionSend(short aIndex);
+void CGUseItemAmuletRecv(int aIndex,BYTE pos);
 void CGUseItemRecv(PMSG_USEITEM* lpMsg, int aIndex);
-void GCReFillSend(int aIndex, int Life, BYTE Ipos, BYTE flag,  int wShield);
-void GCManaSend(int aIndex, int Mana, BYTE Ipos, BYTE flag,  int BP);
-void GCInventoryItemDeleteSend(int aIndex, BYTE pos, BYTE flag);
-void GCItemUseSpecialTimeSend(int aIndex, BYTE number, int time);
-void GCItemDurSend(int aIndex, BYTE pos, BYTE dur, BYTE flag);
-void GCItemDurSend2(int aIndex, BYTE pos, BYTE dur, BYTE flag);
+void GCReFillSend(int aIndex, WORD Life, BYTE Ipos, unsigned char flag,  WORD wShield);
+void GCManaSend(int aIndex, short Mana, BYTE Ipos, unsigned char flag,  WORD BP);
+void GCInventoryItemDeleteSend(int aIndex, BYTE pos, unsigned char flag);
+void GCItemUseSpecialTimeSend(int aIndex, unsigned char number, int time);
+void GCItemDurSend(int aIndex, BYTE pos, unsigned char dur, unsigned char flag);
+void GCItemDurSend2(int aIndex, BYTE pos, unsigned char dur, unsigned char flag);
 void CGWeatherSend(int aIndex, BYTE weather);
-void GCServerCmd(int aIndex, BYTE type, BYTE Cmd1, BYTE Cmd2);
+void GCServerCmd(int aIndex, BYTE type, unsigned char Cmd1, unsigned char Cmd2);
 void GCReqmoveDevilSquare(PMSG_REQ_MOVEDEVILSQUARE* lpMsg, int aIndex);
 void GCReqDevilSquareRemainTime(PMSG_REQ_DEVILSQUARE_REMAINTIME* lpMsg, int aIndex);
-void AllSendMsg(LPBYTE Msg, int size);
-void AllSendSameMapMsg(LPBYTE Msg, int size, BYTE mapnumber);
+void AllSendMsg(unsigned char* Msg, int size);
+void AllSendSameMapMsg(unsigned char* Msg, int size, unsigned char mapnumber);
 void GCSendPing(int aIndex);
 void GCPingSendRecv(PMSG_PING_RESULT* aRecv, int aIndex);
 void GCRegEventChipRecv(PMSG_REGEVENTCHIP* lpMsg, int aIndex);
@@ -2346,7 +2121,7 @@ void GCUseRenaChangeZenRecv(PMSG_EXCHANGE_EVENTCHIP* lpMsg, int aIndex);
 void CGRequestQuestInfo(int aIndex);
 void GCSendQuestInfo(int aIndex, int QuestIndex);
 void CGSetQuestState(PMSG_SETQUEST* lpMsg, int aIndex);
-void GCSendQuestPrize(int aIndex, BYTE Type, BYTE Count);
+void GCSendQuestPrize(int aIndex, unsigned char Type, unsigned char Count);
 void CGCloseWindow(int aIndex);
 void CGRequestEnterBloodCastle(PMSG_REQ_MOVEBLOODCASTLE* lpMsg, int iIndex);
 void CGRequestEnterChaosCastle(PMSG_REQ_MOVECHAOSCASTLE* lpMsg, int iIndex);
@@ -2356,7 +2131,7 @@ void CGRequestLottoRegister(PMSG_REQ_2ANV_LOTTO_EVENT* lpMsg, int aIndex);
 void CGReqMoveOtherServer(PMSG_REQ_MOVE_OTHERSERVER* lpMsg, int aIndex);
 void GCPacketCheckSumRecv(PMSG_PACKETCHECKSUM* aRecv, int aIndex);
 void GCNPggSendCheckSum(int aIndex,_GG_AUTH_DATA* pggAuthData);
-//void GCNPggCheckSumRecv(PMSG_NPROTECTGGCHECKSUM* lpMsg, int aIndex);
+void GCNPggCheckSumRecv(PMSG_NPROTECTGGCHECKSUM* lpMsg, int aIndex);
 void GCSendGetItemInfoForParty(int aIndex, class CMapItem* lpItem);
 void GCSendEffectInfo(int aIndex, BYTE btType);
 void CGRequestPetItemCommand(PMSG_REQUEST_PET_ITEM_COMMAND* lpMsg, int aIndex);
@@ -2415,9 +2190,6 @@ void CGReqCsRegGuildList(PMSG_REQ_CSREGGUILDLIST* lpMsg, int iIndex);
 void CGReqCsAttkGuildList(PMSG_REQ_CSATTKGUILDLIST* lpMsg, int iIndex);
 void CGReqWeaponUse(PMSG_REQ_USEWEAPON* aRecv, int iIndex);
 void CGReqWeaponDamageValue(PMSG_REQ_WEAPON_DAMAGE_VALUE* aRecv, int iIndex);
-//#if(_GSCS==1)
-void GCSendObjectCreationState(int iObjectIndex);
-//#endif
 void CGReqGuildMarkOfCastleOwner(PMSG_REQ_GUILDMARK_OF_CASTLEOWNER* aRecv, int iIndex);
 void CGReqJewelMix(PMSG_REQ_JEWEL_MIX* lpMsg, int iIndex);
 void GCAnsJewelMix(int iIndex, int iResult);
@@ -2429,148 +2201,11 @@ void CGReqAlatrContract(PMSG_REQ_CRYWOLF_ALTAR_CONTRACT* lpMsg, int iIndex);
 void CGReqPlusChaosRate(PMSG_REQ_CRYWOLF_BENEFIT_PLUS_CHAOSRATE* lpMsg, int iIndex);
 void CGReqKanturuStateInfo(PMSG_REQ_KANTURU_STATE_INFO* lpMsg, int iIndex);
 void GCReqEnterKanturuBossMap(PMSG_REQ_ENTER_KANTURU_BOSS_MAP* lpMsg, int iIndex);
-void CGReqPCBangShopBuy(PMSG_REQ_PCBANG_SHOP_BUY* lpMsg, int iIndex); //season4.5 add-on
-void CGReqPCBangShopOpen(PMSG_REQ_PCBANG_SHOP_OPEN* lpMsg, int iIndex); //season4.5 add-on
-void CGReqWerewolfMove(PMSG_REQ_WEREWOLF_MOVE* lpMsg, int iIndex);
-void CGReqGatekeeperMove(PMSG_REQ_GATEKEEPER_MOVE* lpMsg, int iIndex);
-//#if(_GSCS==1)
+
+void CGAnsImperialNoItem(int iIndex);
+
+#if (GS_CASTLE==1)
 void CGReqCastleHuntZoneEntrance(PMSG_REQ_MOVE_TO_CASTLE_HUNTZONE* aRecv, int aIndex);
-//#endif
-void CGReqEnterIllusionTemple(PMSG_ANS_ILLUSIONTEMPLE_ENTER* lpMsg, int iIndex);
-void CGReqUseIllusionTempleKillCntSkill(PMSG_USE_ILLUSIONTEMPLE_KILLCOUNT_SKILL* lpMsg, int iIndex);
-void CGReqIllusionTempleDropReward(PMSG_ILLUSIONTEMPLE_DROP_REWARD* lpMsg, int iIndex);
-void GCSendIllusionTempleKillCount(int aIndex, BYTE KillCount);
-//Season4 add-on
-void CGReqXMasToDeviasMapMove(PMSG_REQ_XMASNPCMAP_MOVE* lpMsg, int iIndex);
-void CGReqXMasSetPayItem(PMSG_REQ_XMAS_PAYITEM* lpMsg, int iIndex);
-void CGCheckNameRequest(PMSG_REQ_CHARACTER_CHECKNAME* lpMsg, int iIndex);
-void CGChangeNameRequest(PMSG_REQ_CHARACTER_CHANGENAME* lpMsg, int iIndex);
-void CGReqRegLuckyCoinItemCount(PMSG_REQ_REG_LUCKYCOIN* lpMsg, int iIndex);
-void GCSendLuckyCoinCount(int iIndex, int CoinCount);
-void CGSearchLuckyCoinItem(PMSG_REQ_SEARCH_LUCKY_COIN *lpMsg, int iIndex);
-void CGReqLuckyCoinRegister(int iIndex, BYTE Result, int Coin, BYTE Ipos);
-void CGReqLuckyCoinTrade(PMSG_REQ_TRADE_LUCKYCOIN* lpMsg, int iIndex);
-void GCSendLuckyCoinResult(int aIndex, BYTE result);
-
-struct PMSG_MONK_MAGICATTACK_SEND	//-> 9
-{
-	PBMSG_HEAD h;			//+0
-	// ----
-	BYTE	MagicNumberH;	//+3
-	BYTE	MagicNumberL;	//+4
-	BYTE	SourceNumberH;	//+5
-	BYTE	SourceNumberL;	//+6
-	BYTE	TargetNumberH;	//+7
-	BYTE	TargetNumberL;	//+8
-	BYTE	Unknown9;		//+9
-};
-// -------------------------------------------------------------------------------
-#pragma pack(1)
-struct PMSG_MONK_DARKSIDE_RECV	//-> 6
-{
-	PBMSG_HEAD h;			//+0
-	// ----
-	BYTE	MagicNumberH;	//+3
-	BYTE	MagicNumberL;	//+4
-	BYTE	TargetNumberH;	//+5
-	BYTE	TargetNumberL;	//+6
-};
-#pragma pack()
-// -------------------------------------------------------------------------------
-
-#pragma pack(1)
-struct PMSG_MONK_DARKSIDE_SEND	//-> 16
-{
-	PBMSG_HEAD2 h;			//+0
-	// ----
-	WORD	MagicNumber;	//+3
-	WORD	wTargetList[5];	//+5
-};
-// -------------------------------------------------------------------------------
-#pragma pack()
-
-struct PMSG_REQ_ENTERZONE
-{
-	PBMSG_HEAD h;	//+0
-	BYTE ukn04;		//+3
-};
-// -------------------------------------------------------------------------------
-
-struct PMSG_REQ_ENTER_DOPPELGANGER
-{
-	PBMSG_HEAD2 h;	//+0
-	BYTE item_pos;	//+4
-};
-// -------------------------------------------------------------------------------
-
-struct PMSG_ANS_HACKTOOL_STATISTICS
-{
-    PBMSG_HEAD2 h; // +0x0(0x4)
-    ULONG dwKey; // +0x4(0x4)
-    BYTE btResult; // +0x8(0x1)
-};
-// ------------------------------------------------------------------------------
-
-struct _tagPMSG_REQ_INVENTORY_EQUIPMENT_ITEM // 0x6
-{
-    struct PBMSG_HEAD2 h; // +0x0(0x4)
-    BYTE btItemPos; // +0x4(0x1)
-    BYTE btValue; // +0x5(0x1)
-};
-// ------------------------------------------------------------------------------
-
-struct _tagPMSG_ANS_INVENTORY_EQUIPMENT_ITEM // 0x6
-{
-    struct PBMSG_HEAD2 h; // +0x0(0x4)
-    BYTE btItemPos; // +0x4(0x1)
-    BYTE btResult; // +0x5(0x1)
-};
-
-
-
-
-struct PMSG_GOSHADOW_RESULT
-{
-	PBMSG_HEAD h;	// C3:19
-	BYTE unk1; //3
-	BYTE MagicNumberL; //4
-	BYTE MagicNumberH;	//5
-	BYTE TargetNumberH1;	// 6
-	BYTE TargetNumberL1;	// 7 
-	BYTE TargetNumberH2;	// 8
-	BYTE TargetNumberL2;	// 9 
-	BYTE TargetNumberH3;	// 10
-	BYTE TargetNumberL3;	// 11 
-	BYTE TargetNumberH4;	// 12
-	BYTE TargetNumberL4;	// 13
-	BYTE TargetNumberH5;	// 14
-	BYTE TargetNumberL5;	// 15
-};
-// ------------------------------------------------------------------------------
-
-void GCMonkMagicAttack(PMSG_MAGICATTACK * lpMsg, int aIndex);	//1.01.00
-void GCMonkMagicAttackNumberSend(LPOBJ lpObj, WORD MagicNumber, int usernumber, BYTE skillsuccess); //1.01.00
-void GCMonkDarkSideTargetSelect(PMSG_MONK_DARKSIDE_RECV * lpMsg, int aIndex); //1.01.00
-void CGPartyDelUserAsExitGameByForce(PMSG_PARTYDELUSER * lpMsg, int aIndex);	//1.01.00
-void CGReqEnterZone(PMSG_REQ_ENTERZONE * pMsg, int aIndex);	//1.01.00
-void CGReqEnterDoppelganger(PMSG_REQ_ENTER_DOPPELGANGER * lpMsg, int iIndex);	//1.01.00
-void CGMoveRorenMarket(int aIndex);		//1.01.00
-void CGReqAttDefPowerInc(int aIndex);	//1.01.00
-void GCResultForExtendInvenOrWarehouse(int aIndex, BYTE byIsSuccess);	//1.01.00
-void GCReqHacktoolStatistics(LPOBJ lpObj, char * pchFilename, DWORD dwKey);	//1.01.03
-void CGAnsHacktoolStatistics(PMSG_ANS_HACKTOOL_STATISTICS * lpMsg, int iIndex);	//1.01.03
-void CGInventoryEquipment(_tagPMSG_REQ_INVENTORY_EQUIPMENT_ITEM * lpMsg, int iIndex); //1.01.03
-// -------------------------------------------------------------------------------
-
-#pragma pack(1)
-struct PMSG_MAP_MOVE
-{
-	PBMSG_HEAD2 h;
-    int iUnk;
-    WORD wMoveNum;
-};
-#pragma pack()
-//Season 5
-void CGMapMoveRecv(PMSG_MAP_MOVE *lpMsg,int aIndex);
+#endif
 
 #endif

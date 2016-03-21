@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #ifndef DIRPATH_H
 #define DIRPATH_H
 
@@ -13,8 +17,8 @@ public:
 	CDirPath();
 	virtual ~CDirPath();
 
-	void SetFirstPath(char* dir_path);
-	LPSTR GetNewPath(const char* npath);
+	void SetFirstPath(LPSTR dir_path);
+	LPSTR GetNewPath(LPSTR npath);
 
 private:
 

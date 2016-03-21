@@ -5,6 +5,8 @@
 #include "stdafx.h"
 #include "CrywolfDarkElf.h"
 
+#if (GS_CASTLE==1)
+
 CCrywolfDarkElf g_CrywolfMON_DarkElf;
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -26,3 +28,5 @@ void CCrywolfDarkElf::CrywolfDarkElfAct(int iIndex)
 
 	return;
 }
+
+#endif

@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 class CKanturuStateInfo
 {
 
@@ -107,4 +109,5 @@ private:
 
 };
 
+#endif
 #endif // !defined(AFX_KANTURUSTATEINFO_H__A947E484_9C13_41C3_8A7A_C55DCF7A987F__INCLUDED_)

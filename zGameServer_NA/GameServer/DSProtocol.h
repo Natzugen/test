@@ -1,3 +1,7 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #ifndef DSPROTOCOL_H
 #define DSPROTOCOL_H
 
@@ -5,9 +9,10 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "StdAfx.h"
 #include "..\include\prodef.h"
 #include "user.h"
+
+
 
 /* * * * * * * * * * * * * * * * * * * * * 
  *	Mu Char List Count Packet
@@ -25,9 +30,6 @@ struct SDHP_CHARLISTCOUNT
 	BYTE Magumsa;	// C
 	char AccountId[11];	// D
 	BYTE MoveCnt;	// 18
-#ifdef EXPINV
-	BYTE ExpandedWarehouse;
-#endif
 };
 
 
@@ -43,10 +45,16 @@ struct SDHP_CHARLIST
 	BYTE btGuildStatus;	// 41
 };
 
+
+
+
+
+
+
 struct SDHP_CREATECHARRESULT
 {
 	PBMSG_HEAD h;
-	BYTE Result;	// 3
+	unsigned char Result;	// 3
 	short Number;	// 4
 	char AccountId[10];	// 6
 	char Name[10];	// 10
@@ -56,19 +64,22 @@ struct SDHP_CREATECHARRESULT
 	WORD Level;	// 34
 };
 
+
+
 struct SDHP_CHARDELETERESULT
 {
 	PBMSG_HEAD h;
-	BYTE Result;	// 3
+	unsigned char Result;	// 3
 	short Number;	// 4
 	char AccountID[10];	// 6
-	char m_Password[20];
 };
+
+
 
 struct SDHP_DBCHAR_INFORESULT
 {
 	PWMSG_HEAD h;
-	BYTE result;	// 4
+	unsigned char result;	// 4
 	short Number;	// 6
 	char AccountID[10];	// 8
 	char Name[11];	// 12
@@ -78,23 +89,20 @@ struct SDHP_DBCHAR_INFORESULT
 	int Exp;	// 24
 	int NextExp;	// 28
 	int Money;	// 2C
-#if( FIX_MAXSTAT == 1 )
-	WORD Str;	// 30
-	WORD Dex;	// 32
-	WORD Vit;	// 34
-	WORD Energy;	// 36
-#else
 	short Str;	// 30
 	short Dex;	// 32
 	short Vit;	// 34
 	short Energy;	// 36
-#endif
 	WORD Life;	// 38
 	WORD MaxLife;	// 3A
 	WORD Mana;	// 3C
 	WORD MaxMana;	// 3E
-	BYTE dbInventory[DB_MAX_INVENTORY_SIZE];	// 40
-	BYTE dbMagicList[MAX_MAGIC*3];	// 700
+	BYTE dbInventory[3776];	// 40
+#if (TOEXDB == 0)
+	BYTE dbMagicList[180];	// 6F4
+#else
+	BYTE dbMagicList[320];	// 6F4
+#endif
 	BYTE MapNumber;	// 7B4
 	BYTE MapX;	// 7B5
 	BYTE MapY;	// 7B6
@@ -109,15 +117,55 @@ struct SDHP_DBCHAR_INFORESULT
 	WORD Leadership;	// 7FA
 	WORD ChatLitmitTime;	// 7FC
 	int iFruitPoint;	// 800
-	int Reset;
-	int GrandReset;
-#ifdef EXPINV
-	int ExpandedInventory;
-#endif
-#ifdef __ALIEN__
-	int DbOffExp;
-#endif
 };
+
+
+
+struct SDHP_DBCHAR_INFORESULTS6E2
+{
+	PWMSG_HEAD h;
+	unsigned char result;	// 4
+	short Number;	// 6
+	char AccountID[10];	// 8
+	char Name[11];	// 12
+	BYTE Class;	// 1D
+	short Level;	// 1E
+	int LevelUpPoint;	// 20
+	int Exp;	// 24
+	int NextExp;	// 28
+	int Money;	// 2C
+	short Str;	// 30
+	short Dex;	// 32
+	short Vit;	// 34
+	short Energy;	// 36
+	WORD Life;	// 38
+	WORD MaxLife;	// 3A
+	WORD Mana;	// 3C
+	WORD MaxMana;	// 3E
+	BYTE dbInventory[3776];	// 40
+#if (TOEXDB == 0)
+	BYTE dbMagicList[180];	// 6F4
+#else
+	BYTE dbMagicList[320];	// 6F4
+#endif
+	BYTE MapNumber;	// 7B4
+	BYTE MapX;	// 7B5
+	BYTE MapY;	// 7B6
+	BYTE Dir;	// 7B7
+	int PkCount;	// 7B8
+	int PkLevel;	// 7BC
+	int PkTime;	// 7C0
+	BYTE CtlCode;	// 7C4
+	BYTE DbVersion;	// 7C5
+	BYTE AccountCtlCode;	// 7C6
+	BYTE dbQuest[50];	// 7C7
+	WORD Leadership;	// 7FA
+	WORD ChatLitmitTime;	// 7FC
+	int iFruitPoint;	// 800
+	BYTE ExInventory;
+	BYTE UpdatedPShop;
+};
+
 
 /* * * * * * * * * * * * * * * * * * * * * 
  *	Mu Warehouse DB Save Packet
@@ -132,7 +180,19 @@ struct SDHP_GETWAREHOUSEDB_SAVE
 	char AccountID[10];	// 4
 	short aIndex;	// E
 	int Money;	// 10
-	BYTE dbItems[DB_MAX_VAULT_SIZE];	// 14
+	BYTE dbItems[1920];	// 14
+	BYTE DbVersion;	// 794
+	short pw;	// 796
+};
+
+
+struct SDHP_GETWAREHOUSEDB_S6E2_SAVE
+{
+	PWMSG_HEAD h;
+	char AccountID[10];	// 4
+	short aIndex;	// E
+	int Money;	// 10
+	BYTE dbItems[3840];	// 14
 	BYTE DbVersion;	// 794
 	short pw;	// 796
 };
@@ -143,6 +203,8 @@ struct SDHP_GETWAREHOUSEDB_RESULT
 	char AccountID[10];	// 3
 	short aIndex;	// E
 };
+
+
 
 struct SDHP_ITEMCREATERECV
 {
@@ -161,25 +223,27 @@ struct SDHP_ITEMCREATERECV
 	int aIndex;	// 14
 	short lootindex;	// 18
 	BYTE SetOption;	// 1A
-#ifdef PERIOD
-	long lDuration;	//New
-	DWORD dwEventIndex;	//New (Unknown for what system it used...)
-#endif
 };
+
 
 struct SDHP_SKILLKEYDATA_SEND
 {
 	PBMSG_HEAD h;
 	int aIndex;	// 4
 	char Name[10];	// 8
-	BYTE SkillKeyBuffer[20];	// 12
+#if (BORDS == 0)
+	BYTE SkillKeyBuffer[10];	// D
+#else
+	BYTE SkillKeyBuffer[20];	// D
+#endif
 	BYTE GameOption;	// 1C
 	BYTE QkeyDefine;	// 1D
 	BYTE WkeyDefine;	// 1E
 	BYTE EkeyDefine;	// 1F
 	BYTE ChatWindow;	// 20
-	BYTE RkeyDefine;	// 21
-	int QWERLevel;	// 22
+#if (BORDS == 1)
+	BYTE RkeyDefine;	// 1A
+#endif
 };
 
 
@@ -188,26 +252,29 @@ struct SDHP_CHARACTER_TRANSFER_RESULT
 	PBMSG_HEAD h;
 	char Account[10];	// 3
 	short Number;	// E
-	BYTE Result;	// 10
+	unsigned char Result;	// 10
 };
 
 
-void DataServerProtocolCore(BYTE protoNum, BYTE *aRecv, int aLen);
+
+void DataServerProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen);
 void TestDSSend();
 void DataServerLogin(int server);
 void DataServerLoginResult( SDHP_RESULT* lpMsg);
 void JGPGetCharList(LPBYTE lpRecv);
-void GetVipStatusFromDB(short aIndex);
-void GetVipTypeFromDB(short aIndex);
 void DataServerGetCharListRequest( short aIndex);
 void JGCharacterCreateRequest( SDHP_CREATECHARRESULT* lpMsg);
 void JGCharacterCreateFailSend(int aIndex, char* id);
 void JGCharDelRequest( SDHP_CHARDELETERESULT* lpMsg);
 void JGGetCharacterInfo( SDHP_DBCHAR_INFORESULT* lpMsg);
+void JGGetCharacterInfoS6E2( SDHP_DBCHAR_INFORESULTS6E2* lpMsg);
 void GCItemListSend(int aIndex);
-void GJSetCharacterInfo(struct OBJECTSTRUCT* lpObj, int aIndex, BOOL bMapServerMove, BYTE byExMapNumber);
+void GJSetCharacterInfo(struct OBJECTSTRUCT* lpObj, int aIndex, BOOL bMapServerMove);
 void GDGetWarehouseList(int aIndex, char* AccountID);
+
 void DGGetWarehouseList( SDHP_GETWAREHOUSEDB_SAVE* lpMsg);
+void DGGetWarehouseList_S6E2(SDHP_GETWAREHOUSEDB_S6E2_SAVE * lpMsg);
+
 void GDGetWarehouseNoItem( SDHP_GETWAREHOUSEDB_RESULT* lpMsg);
 void GDSetWarehouseList(int aIndex);
 void GDUserItemSave( OBJECTSTRUCT* lpObj);
@@ -217,7 +284,11 @@ void ItemSerialCreateSend(int aIndex, BYTE MapNumber, BYTE x, BYTE y, int type, 
 void PetItemSerialCreateSend(int aIndex, BYTE MapNumber, BYTE x, BYTE y, int type, BYTE level,BYTE dur, BYTE Op1, BYTE Op2, BYTE Op3, int LootIndex, BYTE NewOption, BYTE SetOption);
 void ItemSerialCreateRecv( SDHP_ITEMCREATERECV* lpMsg);
 void ItemMovePathSave(char* ActID, char* Name, BYTE level, BYTE mapnumber, BYTE x, BYTE y, char* Item, BYTE op1, BYTE op2, BYTE op3, DWORD serial);
-void DGOptionDataSend(int aIndex, char* szName, unsigned char* KeyBuffer,unsigned char GO,unsigned char Qk,unsigned char Wk, unsigned char Ek,unsigned char ChatWnd, unsigned char Rk, int QWERLevel);
+#if (BORDS == 0)
+	void DGOptionDataSend(int aIndex, char* szName, BYTE * KeyBuffer, BYTE GO, BYTE Qk, BYTE Wk, BYTE Ek, BYTE ChatWnd);
+#else
+	void DGOptionDataSend(int aIndex, char* szName, BYTE * KeyBuffer, BYTE GO, BYTE Qk, BYTE Wk, BYTE Ek, BYTE ChatWnd, BYTE Rk);
+#endif
 void DGOptionDataRecv( SDHP_SKILLKEYDATA_SEND* lpMsg);
 void DGMoveOtherServer( SDHP_CHARACTER_TRANSFER_RESULT* lpMsg);
 void gObjRequestPetItemInfo(int aIndex, int inventype);
@@ -293,175 +364,4 @@ void GDReqCrywolfInfoSave(int iMapSvrGroup, int iCrywolfState, int iOccupationSt
 void DGAnsCrywolfInfoSave(LPBYTE lpRecv);
 
 
-
-typedef struct
-{
-	PBMSG_HEAD h;
-	int aIndex;
-	char szAccountID[10];//8
-	char szName[10];//
-	char szName2[10];
-	BYTE btResult;	// 26
-}SDHP_CHANGENAME_RESULT, *LPSDHP_CHANGENAME_RESULT;
-
-void DGChangeNameResult(SDHP_CHANGENAME_RESULT * lpMsg);
-
-typedef struct
-{
-	PBMSG_HEAD h;
-	char szAccountID[MAX_ACCOUNT_LEN+1];
-	short aIndex;
-	BYTE btResult;
-	BYTE IsSummonerEnable;
-	BYTE IsRageFighterEnable;
-}PMSG_ANS_SUMMONER_CREATE, *LPPMSG_ANS_SUMMONER_CREATE;
-
-void DGSummonerStateUpdatedSend(PMSG_ANS_SUMMONER_CREATE *lpMsg);
-void DGRageFighterStateUpdatedSend(PMSG_ANS_SUMMONER_CREATE *lpMsg);
-
-void GDSummonerStateUpdate(LPOBJ lpObj, int iIndex);
-void GDRageFighterStateUpdate(LPOBJ lpObj, int iIndex);
-
-typedef struct
-{
-	PBMSG_HEAD h;
-	char szAccountID[MAX_ACCOUNT_LEN+1];
-	short aIndex;
-	BYTE btResult;
-}PMSG_ANS_SUMMONER_STATUS, *LPPMSG_ANS_SUMMONER_STATUS;
-
-typedef struct
-{
-	PBMSG_HEAD h;
-	BYTE btResult;
-	BYTE IsSummonerEnable;
-	BYTE IsRageFighterEnable;
-}PMSG_UPD_SUMMONER_CREATE, *LPPMSG_UPD_SUMMONER_CREATE;
-
-void DGSummonerStateRecv(PMSG_ANS_SUMMONER_STATUS *lpMsg);
-void DGRageFighterStateRecv(PMSG_ANS_SUMMONER_STATUS *lpMsg);
-void GDSetGameMasterEvent(char * Name, int aIndex);
-
-// -------------------------------------------------------------------------------
-
-struct SDHP_REQ_SET_EXTENDEDINVEN_COUNT
-{
-	PBMSG_HEAD h;
-	char szCharName[MAX_IDSTRING+1];
-	WORD Number;
-	BYTE ExtendedInvenCount;
-	DWORD EventIndex;
-	int ItemPos;
-	BYTE BuyAtInGameShop;
-	BYTE IsReplace;
-};
-
-struct SDHP_REQ_SET_EXTENDEDWAREHOUSE_COUNT
-{
-	PBMSG_HEAD h;
-	char AccountId[MAX_IDSTRING+1];
-	WORD Number;
-	BYTE ExtendedWarehouseCount;
-	DWORD EventIndex;
-	int ItemPos;
-	BYTE BuyAtInGameShop;
-	BYTE IsReplace;
-};
-
-struct SDHP_ANS_SET_EXTENDEDINVEN_COUNT
-{
-	PBMSG_HEAD h;
-	WORD Number;
-	BYTE Result;
-	BYTE ExtendedInvenCount;
-	DWORD EventIndex;
-	int ItemPos;
-	BYTE BuyAtInGameShop;
-	BYTE IsReplace;
-};
-
-struct SDHP_ANS_SET_EXTENDEDWAREHOUSE_COUNT
-{
-	PBMSG_HEAD h;
-	WORD Number;
-	BYTE Result;
-	BYTE ExtendedWarehouseCount;
-	DWORD EventIndex;
-	int ItemPos;
-	BYTE BuyAtInGameShop;
-	BYTE IsReplace;
-};
-
-//1.01.00 start
-void GDUpdateExtendedInvenCount(LPOBJ lpObj, BYTE btExtendedInvenCount, DWORD dwEventIndex, int iItemPos, bool bBuyAtInGameShop, bool bIsReplace);
-void DGUpdateExtendedInvenCountResult(SDHP_ANS_SET_EXTENDEDINVEN_COUNT * lpMsg);
-void GDUpdateExtendedWarehouseCount(LPOBJ lpObj, BYTE btExtendedWarehouseCount, DWORD dwEventIndex, int iItemPos, bool bBuyAtInGameShop, bool bIsReplace);
-void DGUpdateExtendedWarehouseResult(SDHP_ANS_SET_EXTENDEDWAREHOUSE_COUNT * lpMsg);
-// -------------------------------------------------------------------------------
-
-struct UPDATEGOLDCHANNELSTATUS
-{
-	PBMSG_HEAD2 h;
-	char	AccountID[MAX_IDSTRING+1];
-	int	Duration;
-	int vipType;
-};
-
-struct UPDATEVIPSTATUS
-{
-	PBMSG_HEAD2 h;
-	int Duration;
-};
-
-struct REMOVEVIPSTATUS
-{
-	PBMSG_HEAD2 h;
-	int Value;
-};
-
-struct CHECKVIP
-{
-	PBMSG_HEAD2 h;
-	char AccountId[MAX_IDSTRING+1];
-	int aIndex;
-};
-
-struct GETVIPSTATUS
-{
-	PBMSG_HEAD2 h;
-	char AccountID[MAX_IDSTRING+1];
-	int aIndex;
-};
-
-struct SENDVIPSTATUS
-{
-	PBMSG_HEAD h;
-	int aIndex;
-};
-
-struct SENDVIPTYPE
-{
-	PBMSG_HEAD2 h;
-	int aIndex;
-	int Vip;
-};
-
-struct SENDDISCONNECTVIP
-{
-	PBMSG_HEAD2 h;
-	int aIndex;
-};
-
-#ifdef __MUANGEL__
-#pragma pack(push, 1)
-struct UPDATEWAREHOUSESTATUS
-{
-	PBMSG_HEAD2 h;
-	char	AccountID[MAX_IDSTRING+1];
-	BYTE	Status;
-};
-#pragma pack(pop)
-
-void UpdateWarehouseStatus(LPOBJ lpObj, BYTE State);
-#endif
-#endif
+#endif /*DSPROTOCOL_H*/

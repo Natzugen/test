@@ -1,4 +1,11 @@
-//	GS-CS	1.00.90	JPN	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+
+// GS-N 0.99.60T Status Completed
+//	GS-N	1.00.18	JPN	0x004A5610	-	Completed
+
 #include "stdafx.h"
 #include "WhisperCash.h"
 #include "user.h"

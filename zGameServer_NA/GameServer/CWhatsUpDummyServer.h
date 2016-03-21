@@ -9,7 +9,11 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#ifdef _WIN64
+typedef WNDPROC (__stdcall *WhatsUpDummyServerProc)(HWND, unsigned int, long, unsigned int);
+#else
 typedef long (__stdcall *WhatsUpDummyServerProc)(HWND, unsigned int, unsigned int, long);
+#endif
 
 #define WINSOCK_REQUESTED_VERSION 0x202
 

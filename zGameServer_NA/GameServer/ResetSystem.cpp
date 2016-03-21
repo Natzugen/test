@@ -1,747 +1,557 @@
-#include "StdAfx.h"
-#include "user.h"
+#include "stdafx.h"
+#include "GameServer.h"
+#include "LogProc.h"
 #include "GameMain.h"
-#include "logproc.h"
+#include "TNotice.h"
 #include "..\include\readscript.h"
+//#include "GameServerAuth.h"
+#include "LogToFile.h"
 #include "..\common\winutil.h"
 #include "ResetSystem.h"
-#include "GameShop.h"
-#include "Gate.h"
-#include "ObjCalCharacter.h"
-#include "LogToFile.h"
-#include "MasterLevelSystem.h"
-#include "MasterLevelSkillTreeSystem.h"
+#include "EDSProtocol.h"
+#include "SCFExDBProtocol.h"
+#include "VipSystem.h"
 
-// -------------------------------------------------------------------------
+#if (DSGN_RESET_SYSTEM==0)
+#if (PACK_EDITION>=2)
 
-CLogToFile g_ResetLog("Reset", ".\\LOG\\Reset", TRUE);
-// -------------------------------------------------------------------------
+CLogToFile RESET_LOG("RESET_LOG", ".\\RESET_LOG", 1);
+cResetSystem ResetChar;
 
-#ifdef __CUSTOMS__
-// -------------------------------------------------------------------------
-
-ResetSystem		g_ResetSystem;
-// -------------------------------------------------------------------------
-
-ResetSystem::ResetSystem()
+struct FHP_FRIEND_MEMO_SEND
 {
-	this->Init();
-}
-// -------------------------------------------------------------------------
+	PWMSG_HEAD h;
+	short Number;	// 4
+	DWORD WindowGuid;	// 8
+	char Name[10];	// C
+	char ToName[10];	// 16
+	char Subject[32];	// 20
+	BYTE Dir;	// 40
+	BYTE Action;	// 41
+	short MemoSize;	// 42
+	BYTE Photo[18];	// 44
+	char Memo[1000];	// 56
+};
 
-ResetSystem::~ResetSystem()
+void cResetSystem::Init(char * FilePath, BYTE ResetType)
 {
+	ResetStruct ResetTmp;
 
-}
-// -------------------------------------------------------------------------
-
-void ResetSystem::Init()
-{
-	ZeroMemory(this->m_GroupData, sizeof(this->m_GroupData));
-	this->m_GroupLoadedCount	= 0;
-	this->m_MaxMoney			= 0;
-	this->m_ReqCleanInventory	= true;
-	this->m_ShopCleaning		= true;
-	this->m_ResetStats			= true;
-	this->m_ResetPoints			= true;
-	this->m_NpcID				= 0;
-	this->m_NpcMap				= 0;
-	this->m_NpcX				= 0;
-	this->m_NpcY				= 0;
-	this->m_DynamicExp			= 0;
-	this->m_DynamicExpMin		= 0.0f;
-	this->m_DynamicExpPercent	= 0.0f;
-	this->m_MarlonReset			= 0;
-	this->m_MarlonStatMinLevel	= 220;
-	this->m_MarlonComboMinLevel	= 220;
-	this->m_BonusCommand		= 0;
-
-	this->m_ResetSkill			= 0;
-	this->m_ResetMasterLevel	= 0;
-	this->m_ResetMasterStats	= 0;
-	this->m_ResetMasterSKill	= 0;
-}
-// -------------------------------------------------------------------------
-
-void ResetSystem::Load()
-{
-	this->Init();
-	this->ReadGroupData(gDirPath.GetNewPath("Custom\\ResetGroup.txt"));
-	this->ReadMainData(gDirPath.GetNewPath("Custom\\ResetMain.ini"));
-}
-// -------------------------------------------------------------------------
-
-void ResetSystem::ReadGroupData(char * File)
-{
-	SMDToken Token;
-	SMDFile = fopen(File, "r");
-	// ----
-	if( !SMDFile )
-	{
-		MsgBox("[ResetSystem] %s file not found", File);
-		return;
-	}
-	// ----
-	while(true)
-	{
-		Token = GetToken();
-		// ----
-		if( Token == END )
-		{
-			break;
-		}
-		// ----
-		if( Token != NUMBER )
-		{
-			continue;
-		}
-		// ----
-		int GroupID = TokenNumber;
-		// ----
-		Token = GetToken();
-		this->m_GroupData[GroupID].MinReset		= TokenNumber;
-		// ----
-		Token = GetToken();
-		this->m_GroupData[GroupID].MaxReset		= TokenNumber;
-		// ----
-		Token = GetToken();
-		this->m_GroupData[GroupID].ReqLevel		= TokenNumber;
-		// ----
-		Token = GetToken();
-		this->m_GroupData[GroupID].ReqMoney		= TokenNumber;
-		// ----
-		Token = GetToken();
-		this->m_GroupData[GroupID].ItemCount	= TokenNumber;
-		// ----
-		int RewardPerGroup	= 0;
-		// ----
-		while(true)
-		{
-			if( RewardPerGroup >= MAX_TYPE_PLAYER )
-			{
-				break;
-			}
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].RewardData[RewardPerGroup].LevelPoint = TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].RewardData[RewardPerGroup].GensPoint = TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].RewardData[RewardPerGroup].WCoinC = TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].RewardData[RewardPerGroup].WCoinP = TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].RewardData[RewardPerGroup].GoblinPoint = TokenNumber;
-			// ----
-			RewardPerGroup++;
-		}
-		// ----
-		int ItemPerGroup = 0;
-		// ----
-		while(true)
-		{
-			if( ItemPerGroup >= this->m_GroupData[GroupID].ItemCount )
-			{
-				break;
-			}
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].ID			= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].MinLevel		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].MaxLevel		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].MinOption		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].MaxOption		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].IsLuck		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].IsSkill		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].IsExcellent	= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].IsAncient		= TokenNumber;
-			// ----
-			Token = GetToken();
-			this->m_GroupData[GroupID].ItemData[ItemPerGroup].IsSocket		= TokenNumber;
-			// ----
-			ItemPerGroup++;
-		}
-		// ----
-		this->m_GroupLoadedCount++;
-		// ----
-		if( this->m_GroupLoadedCount >= MAX_RESET_GROUP )
-		{
-			MsgBox("[ResetSystem] m_GroupLoadedCount error [%d]", this->m_GroupLoadedCount);
-		}
-	}
-	// ----
-	fclose(SMDFile);
-	// ----
-#if( RESETSYSTEM_DEBUG == 1 )
-	LogAddC(2, "[DEBUG] [%s] Loaded Groups: %d", __FUNCTION__, this->m_GroupLoadedCount);
-	// ----
-	for( int i = 0; i < this->m_GroupLoadedCount; i++ )
-	{
-		LogAddC(2, "%d", i);
-		LogAddC(2, "%d %d %d %d %d", this->m_GroupData[i].MinReset, this->m_GroupData[i].MaxReset, 
-			this->m_GroupData[i].ReqLevel, this->m_GroupData[i].ReqMoney, this->m_GroupData[i].ItemCount);
-		// ----
-		for( int k = 0; k < 7; k++ )
-		{
-			LogAddC(2, "%d %d %d %d %d", this->m_GroupData[i].RewardData[k].LevelPoint,
-				this->m_GroupData[i].RewardData[k].GensPoint, this->m_GroupData[i].RewardData[k].WCoinC,
-				this->m_GroupData[i].RewardData[k].WCoinP, this->m_GroupData[i].RewardData[k].GoblinPoint);
-		}
-		// ----
-		for( int j = 0; j < this->m_GroupData[i].ItemCount; j++ )
-		{
-			LogAddC(2, "%d %d %d %d %d %d %d %d %d", this->m_GroupData[i].ItemData[j].ID,
-					this->m_GroupData[i].ItemData[j].MinLevel,
-					this->m_GroupData[i].ItemData[j].MaxLevel, this->m_GroupData[i].ItemData[j].MinOption,
-					this->m_GroupData[i].ItemData[j].MaxOption, this->m_GroupData[i].ItemData[j].IsLuck,
-					this->m_GroupData[i].ItemData[j].IsExcellent, this->m_GroupData[i].ItemData[j].IsAncient,
-					this->m_GroupData[i].ItemData[j].IsSocket);
-		}
-		// ----
-		LogAddC(2, "end");
-	}
+	ResetTmp.Enabled			=GetPrivateProfileInt("Reset System", "SCFIsReset",0, FilePath) ;
+	ResetTmp.EnabledWriteLog	=GetPrivateProfileInt("Reset System", "SCFIsResetLog",0, FilePath) ;
+	ResetTmp.LimitCount			=GetPrivateProfileInt("Reset System", "SCFResetLimitCount",-1, FilePath) ;
+#if (PACK_EDITION>=3)
+	ResetTmp.EnabledDBLog		=GetPrivateProfileInt("Reset System", "SCFIsResetDBLog",0, FilePath) ;
 #endif
+	ResetTmp.Level				=GetPrivateProfileInt("Reset System", "SCFResetLevel",400, FilePath) ;
+	ResetTmp.System				=GetPrivateProfileInt("Reset System", "SCFResetSystem",0, FilePath) ;
+	ResetTmp.AddPoints			=GetPrivateProfileInt("Reset System", "SCFResetPoints",250, FilePath) ;
+	ResetTmp.AddPCPoints		=GetPrivateProfileInt("Reset System", "SCFResetAddPCPoints",0, FilePath) ;
+	ResetTmp.AddVIPPoints		=GetPrivateProfileInt("Reset System", "SCFResetAddVIPPoints",0, FilePath) ;
+	ResetTmp.Zen	    		=GetPrivateProfileInt("Reset System", "SCFResetZen",2000000, FilePath) ;
+	ResetTmp.ZenAutoIncrement	=GetPrivateProfileInt("Reset System", "SCFResetIsZenAutoIncrement",0, FilePath) ;
+	ResetTmp.ClearLevelUpPoint	=GetPrivateProfileInt("Reset System", "SCFResetClearLevelUpPoint",1, FilePath) ;
+
+
+	ResetTmp.MailSend			=GetPrivateProfileInt("Reset System", "SCFResetIsStringSend",0, FilePath) ;
+	GetPrivateProfileString		("Reset System","SCFResetString","Guerrero largo fue el camino que recorriste para este momento, ahora te toca renacer, con %d zen y %d %s +%d+%d %s & %s podras lograrlo.",ResetTmp.MailString,sizeof(ResetTmp.MailString),FilePath);
+
+	ResetTmp.ItemNeed			=GetPrivateProfileInt("Reset Items", "SCFResetIsNeedSpecialItem",0, FilePath) ;
+	
+	ResetTmp.ItemNeedType[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[0]		=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[0]	=GetPrivateProfileInt("Reset Items", "SCFDWResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[1]		=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[1]	=GetPrivateProfileInt("Reset Items", "SCFDKResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[2]		=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[2]	=GetPrivateProfileInt("Reset Items", "SCFElfResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[3]		=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[3]	=GetPrivateProfileInt("Reset Items", "SCFMGResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[4]		=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[4]	=GetPrivateProfileInt("Reset Items", "SCFDLResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[5]		=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[5]	=GetPrivateProfileInt("Reset Items", "SCFSUResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ItemNeedType[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemType",12, FilePath) ;
+	ResetTmp.ItemNeedIndex[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemIndex",15, FilePath) ;
+	ResetTmp.ItemNeedLevel[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemLevel",0, FilePath) ;
+	ResetTmp.ItemNeedOpt[5]		=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemOpt",0, FilePath) ;
+	ResetTmp.ItemNeedLuck[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemLuck",0, FilePath) ;
+	ResetTmp.ItemNeedSkill[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemSkill",0, FilePath) ;
+	ResetTmp.ItemNeedCount[5]	=GetPrivateProfileInt("Reset Items", "SCFRFResetNeedSpecialItemCount",1, FilePath) ;
+
+	ResetTmp.ClearInventory		=GetPrivateProfileInt("Reset System", "SCFResetClearInventory",0, FilePath) ;
+	
+	ResetTmp.ClearSkills		=GetPrivateProfileInt("Reset System", "SCFResetClearSkills",0, FilePath) ;
+	ResetTmp.ClearStats			=GetPrivateProfileInt("Reset System", "SCFResetClearStats",0, FilePath) ;
+
+	ResetTmp.System2Level[0]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit1",10, FilePath) ;
+	ResetTmp.System2Level[1]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit2",20, FilePath) ;
+	ResetTmp.System2Level[2]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit3",30, FilePath) ;
+	ResetTmp.System2Level[3]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit4",40, FilePath) ;
+	ResetTmp.System2Level[4]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit5",50, FilePath) ;
+	ResetTmp.System2Level[5]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit6",60, FilePath) ;
+	ResetTmp.System2Level[6]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPLimit7",9999, FilePath) ;
+	ResetTmp.System2Points[0]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints1",450, FilePath) ;
+	ResetTmp.System2Points[1]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints2",400, FilePath) ;
+	ResetTmp.System2Points[2]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints3",350, FilePath) ;
+	ResetTmp.System2Points[3]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints4",300, FilePath) ;
+	ResetTmp.System2Points[4]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints5",250, FilePath) ;
+	ResetTmp.System2Points[5]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints6",200, FilePath) ;
+	ResetTmp.System2Points[6]	=GetPrivateProfileInt("Reset SP System", "SCFResetSPPoints7",150, FilePath) ;
+	switch(ResetType)
+	{
+		case 0:
+		{
+			ResetTmp.ClearResets		=FALSE;
+			ResetTmp.ClearQuests		=GetPrivateProfileInt("Reset System", "SCFResetClearQuests",0, FilePath) ;
+			ResetTmp.ClearEvolutions	=GetPrivateProfileInt("Reset System", "SCFResetClearEvolutions",0, FilePath) ;
+			ResetTmp.ClearMasterPoints	=FALSE;
+			this->Normal = ResetTmp;
+		}break;
+		case 1:
+		{
+			ResetTmp.ClearResets		=GetPrivateProfileInt("Reset System", "SCFResetClearPreviousResets",0, FilePath) ;
+			ResetTmp.ClearMasterPoints  =GetPrivateProfileInt("Reset System", "SCFResetClearMasterPoints",0, FilePath) ;
+			
+			ResetTmp.ClearQuests		=FALSE;
+			ResetTmp.ClearEvolutions	=FALSE;
+			this->Masters = ResetTmp;
+		}break;
+	}
+	LogAddTD("[SCF ResetSystem] - %s file is Loaded",FilePath);
 }
-// -------------------------------------------------------------------------
 
-void ResetSystem::ReadMainData(char * File)
+void cResetSystem::CheckSendMail(LPOBJ lpObj)
 {
-	this->m_MaxMoney			= GetPrivateProfileInt("Common", "MaxMoney", 0, File);
-	this->m_ShopCleaning		= GetPrivateProfileInt("Common", "PShopCleaning", 0, File);
-	this->m_ReqCleanInventory	= GetPrivateProfileInt("Common", "InventoryCheck", 0, File);
-	this->m_ResetStats			= GetPrivateProfileInt("Common", "ResetStats", 1, File);
-	this->m_ResetPoints			= GetPrivateProfileInt("Common", "ResetPoints", 1, File);
-	this->m_MarlonReset			= GetPrivateProfileFloat("Common", "MarlonReset", 0, File);
-	this->m_MarlonStatMinLevel	= GetPrivateProfileFloat("Common", "MarlonStatMinLevel", 220, File);
-	this->m_MarlonComboMinLevel	= GetPrivateProfileFloat("Common", "MarlonComboMinLevel", 220, File);
-	this->m_BonusCommand		= GetPrivateProfileFloat("Common", "BonusCommand", 220, File);
-	this->m_NpcMap				= GetPrivateProfileInt("NPC", "Map", 0, File);
-	this->m_NpcID				= GetPrivateProfileInt("NPC", "ID", 0, File);
-	this->m_NpcMap				= GetPrivateProfileInt("NPC", "Map", 0, File);
-	this->m_NpcX				= GetPrivateProfileInt("NPC", "X", 0, File);
-	this->m_NpcY				= GetPrivateProfileInt("NPC", "Y", 0, File);
-	this->m_DynamicExp			= GetPrivateProfileInt("Experience", "DynamicExp", 0, File);
-	this->m_DynamicExpMin		= GetPrivateProfileFloat("Experience", "MinExpRate", 1.0f, File);
-	this->m_DynamicExpPercent	= GetPrivateProfileFloat("Experience", "Percent", 0.2f, File);
+	if ( lpObj->Type != OBJ_USER )
+		return;
 
-	this->m_ResetSkill			= GetPrivateProfileInt("Common", "ResetSkill", 0, File);
-	this->m_ResetMasterLevel	= GetPrivateProfileInt("Common", "ResetMasterLevel", 0, File);
-	this->m_ResetMasterStats	= GetPrivateProfileInt("Common", "ResetMasterStats", 0, File);
-	this->m_ResetMasterSKill	= GetPrivateProfileInt("Common", "ResetMasterSKill", 0, File);
+	ResetStruct ResetTmp;
+	BOOL MasterReset = FALSE;
+	
+	if((gObjIsNewClass(lpObj) == 1) && (this->Masters.Enabled == 1))
+	{
+		ResetTmp = this->Masters;
+		MasterReset = TRUE;
+	}else
+	{
+		ResetTmp = this->Normal;
+	}
+
+	if(ResetTmp.MailSend == 1)
+	{
+		if( (MasterReset == FALSE && this->Normal.Enabled == 1) || (MasterReset == TRUE && this->Masters.Enabled == 1) )
+		{
+			if( ((ResetTmp.Level == (lpObj->Level - 1) ) && (MasterReset == FALSE)) || ((MasterReset == TRUE) && (ResetTmp.Level == (lpObj->MasterCharacterInfo->MasterLevel -1) )) )
+			{
+				this->SendMail(lpObj);
+			}
+		}
+	}
 }
-// -------------------------------------------------------------------------
 
-int ResetSystem::GetResetMoney(LPOBJ lpUser)
+void cResetSystem::SendMail(LPOBJ lpObj)
 {
-	int Group = this->GetResetGroup(lpUser);
-	// ----
-	if( Group == -1 )
-	{
-		return -1;
-	}
-	// ----
-	int Money = this->m_GroupData[this->GetResetGroup(lpUser)].ReqMoney * (lpUser->Reset + 1);
-	// ----
-	if( Money > this->m_MaxMoney )
-	{
-		Money = this->m_MaxMoney;
-	}
-	// ----
-	return Money;
-}
-// -------------------------------------------------------------------------
+	if ( lpObj->Type != OBJ_USER )
+		return;
 
-int ResetSystem::GetResetGroup(LPOBJ lpUser)
-{
-	for( int Group = 0; Group < this->m_GroupLoadedCount; Group++ )
-	{
-		if( lpUser->Reset >= this->m_GroupData[Group].MinReset 
-			&& lpUser->Reset < this->m_GroupData[Group].MaxReset )
-		{
-			return Group;
-		}
-	}
-	// ----
-	return -1;
-}
-// -------------------------------------------------------------------------
+	int aIndex = lpObj->m_Index;
+	ResetStruct ResetTmp;
 
-bool ResetSystem::SearchQuestItem(LPOBJ lpUser, BYTE QuestItemID)
-{
-	if( this->GetResetGroup(lpUser) == (int)-1 )
+	if(OBJMAX_RANGE(aIndex) == 0)
 	{
-		LogAddC(2, "[ResetSystem] [%s] [%s] Invalid group", lpUser->AccountID, lpUser->Name);
-		return false;
-	}
-	// ----
-	WORD ItemID = this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].ID;
-	// ----
-	for( int i = INVETORY_WEAR_SIZE; i < MAIN_INVENTORY_SIZE; i++ )
-	{
-		if( !lpUser->pInventory[i].IsItem() || lpUser->pInventory[i].m_Type != ItemID )
-		{
-			continue;
-		}
-		// ----
-		if( lpUser->pInventory[i].m_Level < this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MinLevel
-			|| lpUser->pInventory[i].m_Level > this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MaxLevel )
-		{
-			continue;
-		}
-		// ----
-		if( lpUser->pInventory[i].m_Option3 < this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MinOption
-			|| lpUser->pInventory[i].m_Option3 > this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MaxOption )
-		{
-			continue;
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsLuck != 2 )
-		{
-			if( lpUser->pInventory[i].m_Option2 != this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsLuck )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSkill != 2 )
-		{
-			if( lpUser->pInventory[i].m_Option1 != this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSkill )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsExcellent )
-		{
-			if( !lpUser->pInventory[i].m_NewOption )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsAncient )
-		{
-			if( !lpUser->pInventory[i].m_SetOption )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSocket )
-		{
-			if( !gItemSocketOption.IsEnableSocketItem(ItemID) )
-			{
-				continue;
-			}
-		}
-		// ----
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-bool ResetSystem::DeleteQuestItem(LPOBJ lpUser, BYTE QuestItemID)
-{
-	if( this->GetResetGroup(lpUser) == (int)-1 )
-	{
-		LogAddC(2, "[ResetSystem] [%s] [%s] Invalid group", lpUser->AccountID, lpUser->Name);
-		return false;
-	}
-	// ----
-	WORD ItemID = this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].ID;
-	// ----
-	for( int i = INVETORY_WEAR_SIZE; i < MAIN_INVENTORY_SIZE; i++ )
-	{
-		if( !lpUser->pInventory[i].IsItem() || lpUser->pInventory[i].m_Type != ItemID )
-		{
-			continue;
-		}
-		// ----
-		if( lpUser->pInventory[i].m_Level < this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MinLevel
-			|| lpUser->pInventory[i].m_Level > this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MaxLevel )
-		{
-			continue;
-		}
-		// ----
-		if( lpUser->pInventory[i].m_Option3 < this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MinOption
-			|| lpUser->pInventory[i].m_Option3 > this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].MaxOption )
-		{
-			continue;
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsLuck != 2 )
-		{
-			if( lpUser->pInventory[i].m_Option2 != this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsLuck )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSkill != 2 )
-		{
-			if( lpUser->pInventory[i].m_Option1 != this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSkill )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsExcellent )
-		{
-			if( !lpUser->pInventory[i].m_NewOption )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsAncient )
-		{
-			if( !lpUser->pInventory[i].m_SetOption )
-			{
-				continue;
-			}
-		}
-		// ----
-		if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemData[QuestItemID].IsSocket )
-		{
-			if( !gItemSocketOption.IsEnableSocketItem(ItemID) )
-			{
-				continue;
-			}
-		}
-		// ----
-		gObjInventoryDeleteItem(lpUser->m_Index, i);
-		GCInventoryItemDeleteSend(lpUser->m_Index, i, 1);
-		// ----
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------------
-
-bool ResetSystem::Dialog(LPOBJ lpUser, LPOBJ lpNpc)
-{
-	if(		lpNpc->Class		== this->m_NpcID 
-		&&	lpNpc->MapNumber	== this->m_NpcMap
-		&&	lpNpc->X			== this->m_NpcX
-		&&	lpNpc->Y			== this->m_NpcY )
-	{
-		this->SendResetData(lpUser, true);
-		return true;
-	}
-	// ----
-	return false;
-}
-// -------------------------------------------------------------------------
-
-bool ResetSystem::CheckAllReq(LPOBJ lpUser)
-{
-	if( this->GetResetGroup(lpUser) == (int)-1 )
-	{
-		LogAddC(2, "[ResetSystem] [%s] [%s] Invalid group", lpUser->AccountID, lpUser->Name);
-		g_ResetLog.Output("[%s] [%s] [Fail] Invalid group (Reset: %d, Group: %d)", 
-			lpUser->AccountID, lpUser->Name, lpUser->Reset, this->GetResetGroup(lpUser)); 
-		return false;
-	}
-	// ----
-	int	ResetGroup = this->GetResetGroup(lpUser);
-	// ----
-	if( lpUser->Level < this->m_GroupData[ResetGroup].ReqLevel )
-	{
-		g_ResetLog.Output("[%s] [%s] [Fail] Level is small to reset (%d / %d)", 
-			lpUser->AccountID, lpUser->Name, lpUser->Level, this->m_GroupData[ResetGroup].ReqLevel); 
-		return false;
-	}
-	// ----
-	int Money = this->GetResetMoney(lpUser);
-	// ----
-	if( Money == -1 )
-	{
-		g_ResetLog.Output("[%s] [%s] [Fail] Money return == -1", 
-			lpUser->AccountID, lpUser->Name);
-		return false;
-	}
-	// ----
-	if( lpUser->Money < Money )
-	{
-		g_ResetLog.Output("[%s] [%s] [Fail] Not have money for reset (%d / %d)", 
-			lpUser->AccountID, lpUser->Name, lpUser->Money, Money); 
-		return false;
-	}
-	// ----
-	if( this->m_ReqCleanInventory )
-	{
-		for( int i = 0; i < 12; i++ )
-		{
-			if( lpUser->pInventory[i].IsItem() )
-			{
-				g_ResetLog.Output("[%s] [%s] [Fail] User have equiped items (ItemSlot: %d)", 
-					lpUser->AccountID, lpUser->Name, i); 
-				return false;
-			}
-		}
-	}
-	// ----
-	if( this->m_GroupData[ResetGroup].ItemCount > 0 )
-	{
-		for( int i = 0; i < this->m_GroupData[ResetGroup].ItemCount; i++ )
-		{
-			if( !this->SearchQuestItem(lpUser, i) )
-			{
-				g_ResetLog.Output("[%s] [%s] [Fail] User not have req. items ([%d] ItemID: %d)",
-					lpUser->AccountID, lpUser->Name, i, this->m_GroupData[ResetGroup].ItemData[i].ID); 
-				return false;
-			}
-		}
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------
-
-void ResetSystem::FinishResetReq(LPOBJ lpUser)
-{
-	if( this->GetResetGroup(lpUser) == (int)-1 )
-	{
-		LogAddC(2, "[ResetSystem] [%s] [%s] Invalid group", lpUser->AccountID, lpUser->Name);
 		return;
 	}
-	// ----
-	RESET_REQ_USERDATA pSend;
-	pSend.h.set((LPBYTE)&pSend, ResetProtocol::Case, ResetProtocol::ResetFinish, sizeof(pSend));
-	// ----
-	int ResetGroup = this->GetResetGroup(lpUser);
-	// ----
-	if( !this->CheckAllReq(lpUser) )
+
+	if((gObjIsNewClass(lpObj) == 1) && (this->Masters.Enabled == 1))
 	{
-		GCServerMsgStringSend("You must finish all the requirements for make Reset", lpUser->m_Index, 1);
-		return;
+		ResetTmp = this->Masters;
+	}else
+	{
+		ResetTmp = this->Normal;
 	}
-	// ----
-	if( this->m_GroupData[ResetGroup].ItemCount > 0 )
+
+	if(ResetTmp.MailSend == 1)
 	{
-		for( int i = 0; i < this->m_GroupData[ResetGroup].ItemCount; i++ )
-		{
-			if( !this->DeleteQuestItem(lpUser, i) )
+		FHP_FRIEND_MEMO_SEND pMsg;
+
+		pMsg.WindowGuid = 0;
+		pMsg.Number = lpObj->m_Index;
+		pMsg.Dir = 143;
+		pMsg.Action = 27;
+		wsprintf(pMsg.Subject,"Reset Quest");
+		memcpy(pMsg.Name, gObj[aIndex].Name, sizeof(pMsg.Name));
+		memcpy(pMsg.Photo, gObj[aIndex].CharSet, sizeof(pMsg.Photo));
+		memcpy(pMsg.ToName, gObj[aIndex].Name, sizeof(pMsg.ToName));
+		
+		int cClass = lpObj->Class;
+		int Zen = 0;
+		LPSTR Luck;
+		LPSTR Skill;
+		
+		if(ResetTmp.ItemNeed == 1)
+		{		
+			int ItemNr = (ResetTmp.ItemNeedType[cClass] * 512) + ResetTmp.ItemNeedIndex[cClass];
+			LPSTR ItemName = &ItemAttribute[ItemNr].Name[0];
+
+			if(ResetTmp.ZenAutoIncrement == 0)
 			{
-				GCServerMsgStringSend("Please check quest items positions", lpUser->m_Index, 1);
+				Zen = ResetTmp.Zen;
+			}else
+			{
+				Zen = (lpObj->Resets + 1) * ResetTmp.Zen;
+			}
+
+			if(ResetTmp.ItemNeedLuck[cClass] == 1)
+			{
+				Luck = "Luck";
+			}else
+			{
+				Luck = "No Luck";
+			}
+
+			if(ResetTmp.ItemNeedSkill[cClass] == 1)
+			{
+				Skill = "Skill";
+			}else
+			{
+				Skill = "No Skill";
+			}
+
+			wsprintf(pMsg.Memo,ResetTmp.MailString,Zen,ResetTmp.ItemNeedCount[cClass],ItemName,ResetTmp.ItemNeedLevel[cClass],ResetTmp.ItemNeedOpt[cClass],Luck,Skill);
+		}else
+		{
+			wsprintf(pMsg.Memo,ResetTmp.MailString);
+		}
+
+		pMsg.MemoSize = strlen(pMsg.Memo);
+		int bsize = pMsg.MemoSize + sizeof(pMsg) - sizeof(pMsg.Memo);
+		pMsg.h.set((LPBYTE)&pMsg, 0x70, bsize);
+		wsExDbCli.DataSend((PCHAR)&pMsg, bsize);
+
+		LogAdd("[%s] Reset Quest Mail Send", gObj[aIndex].Name);
+	}
+}
+
+void cResetSystem::SetPoints(LPOBJ lpObj, ResetStruct ResetTmp, int ResetNum, int & LvlUpPoint)
+{
+	LvlUpPoint += (ResetTmp.System2Level[0] * ResetTmp.System2Points[0]);
+	
+	if(ResetNum > 0)
+	{
+		for(int i=1;i<ResetNum;i++)
+		{
+			LvlUpPoint += 	((ResetTmp.System2Level[i]-ResetTmp.System2Level[i-1]) * ResetTmp.System2Points[i]);
+		}
+		LvlUpPoint += 	(lpObj->Resets - ResetTmp.System2Level[ResetNum-1])*ResetTmp.System2Points[ResetNum];
+	}
+}
+
+void cResetSystem::Start(LPOBJ lpObj)
+{
+	if ( lpObj->Type != OBJ_USER )
+		return;
+
+	ResetStruct ResetTmp;
+	BOOL MasterReset = FALSE;
+	int LvlUpPoint = 0;
+
+	if((gObjIsNewClass(lpObj) == 1) && (this->Masters.Enabled == 1))
+	{
+		ResetTmp = this->Masters;
+		MasterReset = TRUE;
+	}else
+	{
+		ResetTmp = this->Normal;
+	}
+
+	if( (MasterReset == FALSE && this->Normal.Enabled == 1) || (MasterReset == TRUE && this->Masters.Enabled == 1) )
+	{
+		if(ResetTmp.LimitCount != -1)
+		{
+			if(lpObj->Resets >= ResetTmp.LimitCount)
+			{
+				GCServerMsgStringSend ("Max Reset Reached!!",lpObj->m_Index,0x01 );
 				return;
 			}
 		}
-	}
-	// ----
-	lpUser->Level		= 1;
-	lpUser->Experience	= 0;
-	// ----
-	if( this->m_ResetStats )
-	{
-		lpUser->Strength	= DCInfo.DefClass[lpUser->Class].Strength;
-		lpUser->Dexterity	= DCInfo.DefClass[lpUser->Class].Dexterity;
-		lpUser->Energy		= DCInfo.DefClass[lpUser->Class].Energy;
-		lpUser->Vitality	= DCInfo.DefClass[lpUser->Class].Vitality;
-		lpUser->Leadership	= DCInfo.DefClass[lpUser->Class].Leadership + this->m_BonusCommand;
-	}
-	// ----
-	if( this->m_MarlonReset )
-	{
-		g_QuestInfo.ReSetQuestState(lpUser, 2);
-		g_QuestInfo.ReSetQuestState(lpUser, 3);
-	}
-	// ----
-	if( m_ResetPoints )
-	{
-		lpUser->LevelUpPoint = this->m_GroupData[ResetGroup].RewardData[lpUser->Class].LevelPoint * (lpUser->Reset + 1);
-	}
-	else
-	{
-		lpUser->LevelUpPoint += this->m_GroupData[ResetGroup].RewardData[lpUser->Class].LevelPoint * (lpUser->Reset + 1);
-	}
-
-	if( this->m_ResetSkill && this->m_ResetMasterSKill )
-	{
-		for(int n = 0; n < MAGIC_SIZE;n++)
+		if((lpObj->Vip == 0) && (VipSystem.ResetFreeLimitEnabled == TRUE) && ((lpObj->Resets + 1) > VipSystem.ResetFreeLimitMax))
 		{
-			if(lpUser->Magic[n].IsMagic() == TRUE)
-			{
-				lpUser->Magic[n].Clear();
-			}
+			//Reset Max reached
+			GCServerMsgStringSend ("You need to be VIP for continue reseting!",lpObj->m_Index,0x01 );
+			return;
 		}
-	}
-	else if( this->m_ResetSkill )
-	{
-		for(int n = 0; n < MAGIC_SIZE;n++)
+
+		if (lpObj->PlayerExtraInfoReceived != 1 || lpObj->AccountExtraInfoReceived != 1 )
 		{
-			if(lpUser->Magic[n].IsMagic() == TRUE && g_MasterSkillSystem.CheckMasterLevelSkill(lpUser->Magic[n].m_Skill) == FALSE)
-			{
-				lpUser->Magic[n].Clear();
-			}
+			GCServerMsgStringSend ("ERROR: Please relogin!",lpObj->m_Index,0x01 ) ;
+			LogAddC(2, "ERROR: RESET Info [%s][%s] Line: %d", lpObj->AccountID, lpObj->Name, __LINE__);
+			return;
 		}
-	}
 
-	if( this->m_ResetMasterLevel )
-	{
-		lpUser->m_nMasterLevel = 0;
-		lpUser->m_i64MasterLevelExp = 0;
-		g_MasterLevelSystem.gObjNextMLExpCal(lpUser);
-	}
+		if( ((ResetTmp.Level <= lpObj->Level) && (MasterReset == FALSE)) || ((MasterReset == TRUE) && (ResetTmp.Level <= lpObj->MasterCharacterInfo->MasterLevel)) )
+		{
+			int ResetZen = ResetTmp.Zen;
 
-	if( this->m_ResetMasterStats )
-	{
-		lpUser->m_iMasterLevelPoint = 0;
-	}
+			if(ResetTmp.ZenAutoIncrement == 1)
+			{
+				ResetZen = ResetZen * (lpObj->Resets + 1);
+			}
+			int MeZen = (lpObj->Money - ResetZen);
+		
+			if(MeZen >= 0)
+			{
+				int cClass = lpObj->Class;
+				int item = ((ResetTmp.ItemNeedType[cClass] * 512) + ResetTmp.ItemNeedIndex[cClass]);
+				
+				if( ((ResetTmp.ItemNeed == 1) && (gObjCheckItemsCount(lpObj->m_Index,item,ResetTmp.ItemNeedLevel[cClass],ResetTmp.ItemNeedOpt[cClass],ResetTmp.ItemNeedLuck[cClass],ResetTmp.ItemNeedSkill[cClass]) >= ResetTmp.ItemNeedCount[cClass])) || (ResetTmp.ItemNeed == 0))
+				{
+					if(ResetTmp.ClearInventory == 1)
+					{
+						DeleteAllItems(lpObj->m_Index);
+					}else
+					{
+						if(ResetTmp.ItemNeed == 1)
+						{
+							for(int i=0;i<ResetTmp.ItemNeedCount[cClass];i++)
+								DeleteItemByMultipleValues(lpObj->m_Index,item,ResetTmp.ItemNeedLevel[cClass],ResetTmp.ItemNeedOpt[cClass],ResetTmp.ItemNeedLuck[cClass],ResetTmp.ItemNeedSkill[cClass]);
+						}
+					}
+					lpObj->Money = MeZen;
+					CGZenSend(lpObj->m_Index);	
+					lpObj->Resets++;
+					lpObj->PlayerExtraInfoModified = 1;
 
-	// ----
-#ifdef GENS
-	lpUser->m_ContributePoint		+= this->m_GroupData[ResetGroup].RewardData[lpUser->Class].GensPoint;
+					if(ResetTmp.ClearLevelUpPoint == 1)
+						lpObj->LevelUpPoint = 0;
+
+					if(MasterReset == 1)
+					{
+						lpObj->MasterCharacterInfo->MasterLevel = 1;
+						if(ResetTmp.ClearMasterPoints == 1)
+							lpObj->MasterCharacterInfo->MasterPoints = 0;
+					}else
+					{
+						lpObj->Level = 1;
+						lpObj->MasterCharacterInfo->MasterLevel = 1;
+					}
+
+					if(ResetTmp.ClearStats == 1)
+					{
+						switch(lpObj->Class)
+						{
+							case 5:
+							case 0:
+							{
+								lpObj->Strength = 18;
+								lpObj->Dexterity = 18;
+								lpObj->Vitality = 15;
+								lpObj->Energy = 30;
+							}break;
+							case 1:
+							{
+								lpObj->Strength = 28;
+								lpObj->Dexterity = 20;
+								lpObj->Vitality = 25;
+								lpObj->Energy = 10;
+							}break;
+							case 2:
+							{
+								lpObj->Strength = 22;
+								lpObj->Dexterity = 25;
+								lpObj->Vitality = 20;
+								lpObj->Energy = 15;
+							}break;
+							case 3:
+							{
+								lpObj->Strength = 26;
+								lpObj->Dexterity = 26;
+								lpObj->Vitality = 26;
+								lpObj->Energy = 26;
+							}break;
+							case 4:
+							{
+								lpObj->Strength = 26;
+								lpObj->Dexterity = 20;
+								lpObj->Vitality = 20;
+								lpObj->Energy = 15;
+								lpObj->Leadership = 15;
+							}break;
+							case 6:
+							{
+								lpObj->Strength = 32;
+								lpObj->Dexterity = 27;
+								lpObj->Vitality = 25;
+								lpObj->Energy = 20;
+							}break;
+						}
+					}
+					if(ResetTmp.ClearEvolutions == 1)
+					{
+						switch(lpObj->Class)
+						{
+							case 0:
+							{
+								lpObj->DbClass = 0;
+							}break;
+							case 1:
+							{
+								lpObj->DbClass = 16;
+							}break;
+							case 2:
+							{
+								lpObj->DbClass = 32;
+							}break;
+							case 3:
+							{
+								lpObj->DbClass = 48;
+							}break;
+							case 4:
+							{
+								lpObj->DbClass = 64;
+							}break;
+							case 5:
+							{
+								lpObj->DbClass = 80;
+							}break;
+							case 6:
+							{
+								lpObj->DbClass = 96;
+							}break;
+						}			
+					}
+					if(ResetTmp.ClearSkills == 1)
+					{
+						gObjMagicDelAll(lpObj);
+					}
+					if(ResetTmp.ClearQuests == 1)
+					{			
+						memset(lpObj->m_Quest, (BYTE)-1, sizeof(lpObj->m_Quest));						
+						lpObj->PlusStatQuestClear = 0;
+						lpObj->ComboSkillquestClear = 0;
+					}
+					
+					switch(ResetTmp.System)
+					{
+						case 0:
+						{
+							LvlUpPoint += (lpObj->Resets * ResetTmp.AddPoints);
+						}break;
+						case 1:
+						{
+							if(lpObj->Resets <= ResetTmp.System2Level[0])
+							{
+								LvlUpPoint += (lpObj->Resets * ResetTmp.System2Points[0]);
+							}else if(lpObj->Resets > ResetTmp.System2Level[0] && lpObj->Resets <= ResetTmp.System2Level[1])
+							{
+								LvlUpPoint += ((ResetTmp.System2Points[0] * ResetTmp.System2Level[0]) + ( (lpObj->Resets - ResetTmp.System2Level[0]) * ResetTmp.System2Points[1]));
+							}else if(lpObj->Resets > ResetTmp.System2Level[1] && lpObj->Resets <= ResetTmp.System2Level[2])
+							{
+								LvlUpPoint += ((ResetTmp.System2Level[0] * ResetTmp.System2Points[0]) + ((ResetTmp.System2Level[1]-ResetTmp.System2Level[0]) * ResetTmp.System2Points[1]) + ((lpObj->Resets - ResetTmp.System2Level[1])*ResetTmp.System2Points[2]));
+							}else if(lpObj->Resets > ResetTmp.System2Level[2] && lpObj->Resets <= ResetTmp.System2Level[3])
+							{
+								this->SetPoints(lpObj,ResetTmp,3,LvlUpPoint);
+							}else if(lpObj->Resets > ResetTmp.System2Level[3] && lpObj->Resets <= ResetTmp.System2Level[4])
+							{
+								this->SetPoints(lpObj,ResetTmp,4,LvlUpPoint);
+							}else if(lpObj->Resets > ResetTmp.System2Level[4] && lpObj->Resets <= ResetTmp.System2Level[5])
+							{
+								this->SetPoints(lpObj,ResetTmp,5,LvlUpPoint);
+							}else if(lpObj->Resets > ResetTmp.System2Level[5] && lpObj->Resets <= ResetTmp.System2Level[6])
+							{
+								this->SetPoints(lpObj,ResetTmp,6,LvlUpPoint);
+							}else if(lpObj->Resets > ResetTmp.System2Level[6] && lpObj->Resets <= ResetTmp.System2Level[7])
+							{
+								this->SetPoints(lpObj,ResetTmp,7,LvlUpPoint);
+							}
+						}break;
+						case 2:
+						{
+							LvlUpPoint += ResetTmp.AddPoints;
+						}break;
+					}
+					
+					if(ResetTmp.AddPCPoints > 0)
+					{
+						lpObj->PlayerExtraInfoModified = 1;
+						lpObj->PCPoints += ResetTmp.AddPCPoints;
+					}
+					if(ResetTmp.AddVIPPoints > 0)
+					{
+						lpObj->AccountExtraInfoModified = 1;
+						lpObj->VipMoney += ResetTmp.AddVIPPoints;
+					}
+
+					lpObj->LevelUpPoint += LvlUpPoint;
+
+#if (PACK_EDITION>=3)
+					if(ResetTmp.EnabledDBLog == 1)
+						SetResetLog(lpObj->m_Index,MasterReset);
 #endif
-	lpUser->GameShop.WCoinC			+= this->m_GroupData[ResetGroup].RewardData[lpUser->Class].WCoinC;
-	lpUser->GameShop.WCoinP			+= this->m_GroupData[ResetGroup].RewardData[lpUser->Class].WCoinP;
-	lpUser->GameShop.GoblinPoint	+= this->m_GroupData[ResetGroup].RewardData[lpUser->Class].GoblinPoint;
-	// ----
-	lpUser->Money					-= this->GetResetMoney(lpUser);
-	GCMoneySend(lpUser->m_Index, lpUser->Money);
-	lpUser->Reset++;
-	// ----
-	g_ResetLog.Output("[%s] [%s] [Success] Reset: %d -> %d | Points: %d",
-		lpUser->AccountID, lpUser->Name, lpUser->Reset - 1, lpUser->Reset, lpUser->LevelUpPoint);
-	// ----
-	if( lpUser->PartyNumber >= 0 )
-	{
-		gParty.Delete(lpUser->PartyNumber, lpUser->m_Index, lpUser->DBNumber);
-		gParty.UpdatePKPartyPanalty(lpUser->PartyNumber);
-		// ----
-		for( int n = 0; n < MAX_USER_IN_PARTY; n++ )
-		{
-			int PartyID = gParty.m_PartyS[lpUser->PartyNumber].Number[n];
-			// ----
-			if( PartyID >= 0 )
+					GCServerMsgStringSend(lMsg.Get(MSGGET(14, 59)),lpObj->m_Index, 0x01);
+					GCCloseMsgSend(lpObj->m_Index,2);
+
+					LogAddTD("[ResetSytem][%s][%s] Character Reseted (%d)",lpObj->AccountID,lpObj->Name,lpObj->Resets);
+					if(ResetTmp.EnabledWriteLog == 1)
+						RESET_LOG.Output("[ResetSytem][%s][%s] Character Reseted (Reset Number: %d)",lpObj->AccountID,lpObj->Name,lpObj->Resets);
+				
+				}else
+				{
+					//Need Items
+				GCServerMsgStringSend (lMsg.Get(MSGGET(14, 60)),lpObj->m_Index,0x01 );
+				}
+			}else
 			{
-				GCPartyDelUserSend(PartyID);
+				//Need More Zen
+				GCServerMsgStringSend (lMsg.Get(MSGGET(14, 61)),lpObj->m_Index,0x01 );
 			}
-		}
-		// ----
-		lpUser->PartyNumber		= -1;
-		lpUser->PartyTargetUser	= -1;
-		CGPartyListAll(lpUser->PartyNumber);
-	}
-	// ----
-	int Gate = -1;
-	short X, Y, Level;
-	BYTE MapNumber, Dir;
-	// ----
-	if( lpUser->Class == CLASS_ELF )
-	{
-		Gate = 27;
-	}
-	else if( lpUser->Class == CLASS_SUMMONER )
-	{
-		Gate = 267;
-	}
-	else
-	{
-		Gate = 17;
-	}
-	// ----
-	gGateC.GetGate(Gate, (short&)X, (short&)Y, (BYTE&)MapNumber, (BYTE&)Dir, (short&)Level);
-	// ----
-	lpUser->MapNumber	= MapNumber;
-	lpUser->X			= X;
-	lpUser->Y			= Y;
-	lpUser->Dir			= Dir;
-	// ----
-	DataSend(lpUser->m_Index, (LPBYTE)&pSend, pSend.h.size);
-	g_ResetSystem.SendResetData(lpUser, false);
-	gObjCloseSet(lpUser->m_Index, 1);
-}
-// -------------------------------------------------------------------------
-
-void ResetSystem::SendResetData(LPOBJ lpUser, bool ByDialog)
-{
-	if( ByDialog && this->GetResetGroup(lpUser) == (int)-1 )
-	{
-		LogAddC(2, "[ResetSystem] [%s] [%s] Invalid group", lpUser->AccountID, lpUser->Name);
-		return;
-	}
-	// ----
-	RESET_ANS_USERDATA pSend;
-	pSend.h.set((LPBYTE)&pSend, ResetProtocol::Case, ResetProtocol::UserData, sizeof(pSend));
-	// ----
-	pSend.ByDialog	= ByDialog;
-	pSend.Reset		= lpUser->Reset;
-	pSend.GrandReset = lpUser->GrandReset;
-	// ----
-	if( this->m_GroupData[this->GetResetGroup(lpUser)].ItemCount > 0 )
-	{
-		for( int i = 0; i < this->m_GroupData[this->GetResetGroup(lpUser)].ItemCount; i++ )
+		}else
 		{
-			pSend.ItemCheck[i] = true;
-			// ----
-			if( !this->SearchQuestItem(lpUser, i) )
-			{
-				pSend.ItemCheck[i] = false;
-			}
+			//Need More Levels
+			GCServerMsgStringSend (lMsg.Get(MSGGET(14, 62)),lpObj->m_Index,0x01 );
 		}
-	}
-	// ----
-	DataSend(lpUser->m_Index, (LPBYTE)&pSend, pSend.h.size);
-}
-// -------------------------------------------------------------------------------
-
-float ResetSystem::GetPrivateProfileFloat(char * Section, char * Key, float DefaultValue, char * File)
-{
-	char	Result[255];
-	char	Default[255];
-	float	FloatResult;
-	// ----
-	wsprintf(Default, "%f", DefaultValue);
-	GetPrivateProfileStringA(Section, Key, Default, Result, 255, File); 
-	FloatResult = atof(Result);
-	// ----
-	return FloatResult;
-}
-// -------------------------------------------------------------------------
-
-float ResetSystem::GetDynamicExp(LPOBJ lpUser)
-{
-	if( !this->m_DynamicExp )
+	}else
 	{
-		return gAddExperience;
+		//Reset Dissabled
+		GCServerMsgStringSend (lMsg.Get(MSGGET(14, 63)),lpObj->m_Index,0x01 );
 	}
-	// ----
-	float AddExperience = 0;
-	// ----
-	AddExperience = gAddExperience - (this->m_DynamicExpPercent * lpUser->Reset);
-	// ----
-	if( AddExperience < this->m_DynamicExpMin )
-	{
-		AddExperience = this->m_DynamicExpMin;
-	}
-	// ----
-	return AddExperience;
 }
-// -------------------------------------------------------------------------------
+#endif	//PACK_EDITION
+#else
 
-#endif
-// -------------------------------------------------------------------------------
+#endif	//DSGN_RESET_SYSTEM

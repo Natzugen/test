@@ -1,4 +1,3 @@
-// GS-CS 1.00.90   - 0xXXXXXXXX    complete
 #include "stdafx.h"
 #include "GameServer.h"
 //#include "GameServerAuth.h"
@@ -6,9 +5,11 @@
 #include "LogProc.h"
 #include "..\include\readscript.h"
 #include "GameMain.h"
+#include "..\common\winutil.h"
 #include "..\common\WzMemScript.h"
-#include "ItemSocketOptionSystem.h"
-#include "..\common\SetItemOption.h"
+#include "PCShop.h"
+// GS-N 0.99.60T 0x004EF0A0
+//	GS-N	1.00.18	JPN	0x00518EA0	-	Completed
 
 CShop ShopC[MAX_SHOP];
 
@@ -24,16 +25,14 @@ CShop::~CShop()
 	return;
 }
 
-//056EA30
 void CShop::Init()
 {
-	this->SendItemDataLen	= 0;
-	this->ItemCount			= 0;
+	this->SendItemDataLen = 0;
+	this->ItemCount = 0;
 	memset(this->ShopInventoryMap, 0, sizeof(this->ShopInventoryMap));
 }
 
-//0056EA80
-BOOL CShop::InsertItem(int type, int index, int level, int dur, int op1, int op2 ,int op3, int Excellent, BYTE Ancient)
+BOOL CShop::InsertItem(int type, int index, int level, int dur, int op1, int op2 ,int op3, int Exc)
 {
 	int itemp;
 	int width;
@@ -92,24 +91,17 @@ skiploop:
 	}
 
 	this->m_item[blank].m_Durability = dur;
-	this->m_item[blank].Convert(itemp, op1, op2, op3, Excellent, Ancient, 0,NULL,0xFF, 0, CURRENT_DB_VERSION);
+	this->m_item[blank].Convert(itemp, op1, op2, op3, Exc, 0, 0, CURRENT_DB_VERSION);
 	this->m_item[blank].Value();
-	
-	if(gItemSocketOption.IsEnableSocketItem(itemp) == 1)//Season 4.5 addon
-	{
-		gItemSocketOption.MakeSocketSlot(&this->m_item[blank],g_ShopBuySocketItemSlotCount);
-	}
-
 	this->SendItemData[this->SendItemDataLen] = blank;
 	this->SendItemDataLen++;
 	ItemByteConvert((LPBYTE)&this->SendItemData[this->SendItemDataLen], this->m_item[blank]);
-	this->SendItemDataLen += MAX_ITEM_INFO;//Season 4.5 changed
+	this->SendItemDataLen += 7+5;
 	this->ItemCount++;
 
 	return TRUE;
 }
 
-//0056EE00
 int CShop::InentoryMapCheck(int sx, int sy, int width, int height)
 {
 	int x;
@@ -150,7 +142,6 @@ int CShop::InentoryMapCheck(int sx, int sy, int width, int height)
 	return -1;
 }
 
-
 BOOL CShop::LoadShopItem(char* filename )
 {
 	int Token;
@@ -161,12 +152,11 @@ BOOL CShop::LoadShopItem(char* filename )
 	int op1;
 	int op2;
 	int op3;
-	int Excellent;
-	int Ancient;
+	int exc;
 
 	this->Init();
 
-	SMDFile = fopen(filename, "r");	//ok
+	SMDFile = fopen(filename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -206,13 +196,9 @@ BOOL CShop::LoadShopItem(char* filename )
 			op3 = TokenNumber;
 
 			Token = GetToken();
-			Excellent = TokenNumber;
+			exc = TokenNumber;
 
-			Token = GetToken();
-			Ancient = TokenNumber;
-			Ancient |= 8;
-
-			if (this->InsertItem(type, index, level, dur, op1, op2, op3, Excellent, Ancient) == FALSE )
+			if (this->InsertItem(type, index, level, dur, op1, op2, op3, exc) == FALSE )
 			{
 				MsgBox("error-L3 : %s %s %d", filename, __FILE__, __LINE__);
 			}
@@ -223,14 +209,11 @@ BOOL CShop::LoadShopItem(char* filename )
 	return true;
 }
 
-//0056F570
-BOOL CShop::LoadShopItem(int ShopNumber)
-{
-	gWzAG.RequestData(ShopNumber);
-	int DataBufferSize = gWzAG.GetDataBufferSize();
-	char* DataBuffer = gWzAG.GetDataBuffer();
 
-	CWzMemScript WzMemScript;
+int MossItemType[5];
+int MossItemIndex[5];
+BOOL CShop::LoadMossShopItem(char* filename )
+{
 	int Token;
 	int type;
 	int index;
@@ -239,86 +222,126 @@ BOOL CShop::LoadShopItem(int ShopNumber)
 	int op1;
 	int op2;
 	int op3;
-	int Excellent;
-	int Ancient;
+	int exc;
 
-	WzMemScript.SetBuffer(DataBuffer, DataBufferSize);
 	this->Init();
 
-	
-	while ( true )
+	SMDFile = fopen(filename, "r");
+
+	if ( SMDFile == NULL )
 	{
-		Token = WzMemScript.GetToken();
+		MsgBox("Shop data load error %s", filename);
+		return FALSE;
+	}
 
-		if ( Token == 2 )
+
+	for(int i=0;i<5;i++)
+	{
+		MossItemType[i] = 13;
+		MossItemIndex[i] = 71 + i;
+		this->moss_ItemCount[i] = 0;
+		if (this->InsertItem(MossItemType[i], MossItemIndex[i], 0, 0, 0, 0, 0, 0) == FALSE )
 		{
-			break;
-		}
-
-		if ( Token == 1 )
-		{
-			type = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			index = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			level = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			dur = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			op1 = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			op2 = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			op3 = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			Excellent = WzMemScript.GetNumber();
-
-			Token = WzMemScript.GetToken();
-			Ancient = WzMemScript.GetNumber();
-			Ancient |= 8;
-
-			if (this->InsertItem(type, index, level, dur, op1, op2, op3, Excellent, Ancient) == FALSE )
-			{
-				MsgBox("error-L3 : Shop %d", ShopNumber);
-			}
+			MsgBox("error-L3 : %s %s %d", filename, __FILE__, __LINE__);
 		}
 	}
 
-	return TRUE;
+	int counts=0;
+
+	while ( true )
+	{
+		int iType = GetToken();
+		int aIndex = counts;
+
+		if ( counts < 5 )
+		{
+			while(true)
+			{
+				Token = GetToken();
+				if ( strcmp("end", TokenString) == 0 )
+				{
+					break;
+				}
+				type = TokenNumber;
+
+				Token = GetToken();
+				index = TokenNumber;
+
+				Token = GetToken();
+				level = TokenNumber;
+
+				Token = GetToken();
+				dur = TokenNumber;
+
+				Token = GetToken();
+				op1 = TokenNumber;
+
+				Token = GetToken();
+				op2 = TokenNumber;
+
+				Token = GetToken();
+				op3 = TokenNumber;
+
+				Token = GetToken();
+				exc = TokenNumber;
+
+				/*if(level > 0)
+					level = rand()%level+1;
+				if(op2 > 0)
+					op2 = rand()%op2+1;
+				if(exc > 0)
+					exc = rand()%exc+1;*/
+
+				this->moss_item[aIndex][this->moss_ItemCount[aIndex]].m_Level = level;
+
+				if ( dur == 0 )
+				{
+					dur = ItemGetDurability(ITEMGET(type, index), level, 0, 0);
+				}
+
+				int itemp = type * MAX_SUBTYPE_ITEMS + index;
+
+				this->moss_item[aIndex][this->moss_ItemCount[aIndex]].m_Durability = dur;
+				this->moss_item[aIndex][this->moss_ItemCount[aIndex]].Convert(itemp, op1, op2, op3, exc, 0, 0, CURRENT_DB_VERSION);
+				this->moss_item[aIndex][this->moss_ItemCount[aIndex]].Value();
+				this->moss_ItemCount[aIndex]++;
+			}
+		}
+		if((counts+1)>4)
+			break;
+		counts++;
+	}
+
+	fclose(SMDFile);
+	return true;
 }
 
-
-//0056F810
 BOOL ShopDataLoad()
 {
-	ShopC[0].LoadShopItem(11);
-	ShopC[1].LoadShopItem(12);
-	ShopC[2].LoadShopItem(13);
-	ShopC[3].LoadShopItem(14);
-	ShopC[4].LoadShopItem(15);
-	ShopC[5].LoadShopItem(16);
-	ShopC[6].LoadShopItem(17);
-	ShopC[7].LoadShopItem(18);
-	ShopC[8].LoadShopItem(19);
-	ShopC[9].LoadShopItem(20);
-	ShopC[10].LoadShopItem(21);
-	ShopC[11].LoadShopItem(22);
-	ShopC[12].LoadShopItem(23);
-	ShopC[13].LoadShopItem(30);
-	ShopC[14].LoadShopItem(31);
-	ShopC[15].LoadShopItem(32);
-	ShopC[16].LoadShopItem(33);
-	ShopC[17].LoadShopItem(34);
-	ShopC[18].LoadShopItem(35);
-	ShopC[19].LoadShopItem(36);	//1.01.00
-
+#if (WL_PROTECT==1)  
+	VM_START_WITHLEVEL(19)
+	int MyCheckVar1;
+	CHECK_PROTECTION(MyCheckVar1, 0x79325617)  
+	if (MyCheckVar1 != 0x79325617)
+	{	
+		WLRegDisableCurrentKey(wlMarkStolenKey);
+		WLRegRemoveCurrentKey();
+	}
+	VM_END
+#endif
+	for(int i = 0; i < MAX_SHOP; i++)
+	{
+		if(i != 21)
+			ShopC[i].LoadShopItem(ReadConfig.ConnShopDataFiles[i]);
+		
+		if(i == 21)
+			ShopC[i].LoadMossShopItem(ReadConfig.ConnShopDataFiles[i]);
+		
+	}
+#if (PACK_EDITION>=2)
+	PCShop.LoadShopIni("..\\SCFData\\PointsShops\\SCF_PCPoint.ini");
+	PCShop.LoadShopItem("..\\SCFData\\PointsShops\\SCF_PCPoint.txt");
+#endif
 	LogAdd(lMsg.Get(MSGGET(1, 209)));
 
 	return TRUE;

@@ -9,6 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
 
 #include "KanturuStateInfo.h"
 
@@ -50,12 +51,13 @@ public:
 
 private:
 
-	int m_iBattleStanbyState;	// 4
+	BYTE m_iBattleStanbyState;	// 4
 	BOOL m_bIsSucccess;	// 8
 	BOOL m_bFileDataLoad;	// C
 	CKanturuStateInfo m_StateInfo[KANTURU_STANBY_STATE_INFO];	// 10
-	int m_StateInfoCount;	// 60
+	BYTE m_StateInfoCount;	// 60
 };
 // <size 0x64>
 
+#endif
 #endif // !defined(AFX_KANTURUBATTLESTANBY_H__79AE8375_169A_480E_92BF_1F37EF8BA77B__INCLUDED_)

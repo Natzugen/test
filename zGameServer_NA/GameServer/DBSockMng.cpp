@@ -1,4 +1,11 @@
-//	GS-CS	1.00.90	JPN	0xXXXXXXXX	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+
+// GS-N 0.99.60T Status : Completed
+//	GS-N	1.00.18	JPN	0x00423E80	-	Completed
+
 #include "stdafx.h"
 #include "..\common\MyWinsockBase.h"
 #include "wsJoinServerCli.h"
@@ -7,6 +14,13 @@
 #include "DBSockMng.h"
 #include "DSProtocol.h"
 #include "logproc.h"
+#include "SCFExDBProtocol.h"
+#include "ExServerProtocol.h"
+#include "SCFPostServerProtocol.h"
+#include "IOGSProtocol.h"
+#include "SCFPack.h"
+
+
 
 DBSockMng cDBSMng;	// DataServer Manager
 
@@ -19,6 +33,7 @@ DBSockMng::~DBSockMng()
 {
 
 }
+
 
 void DBSockMng::Connect()
 {
@@ -41,7 +56,7 @@ void DBSockMng::Connect()
 			DataServerLogin(DS_0);
 		}
 	}
-	//-> DS2 Disable
+	
 	if (this->wsCDBS[1].GetSocket() == INVALID_SOCKET)	
 	{
 		int State;
@@ -66,7 +81,7 @@ void DBSockMng::Connect()
 	
 	if ( wsExDbCli.GetSocket()  == INVALID_SOCKET)
 	{
-		//LogAddC(2, "ExDB Server Check..");
+		LogAddC(2, "ExDB Server Check..");
 		wsExDbCli.CreateSocket(ghWnd);
 		ExDataServerConnect(ExDbIp, WM_GM_EXDATA_CLIENT_MSG_PROC);
 	}
@@ -74,10 +89,85 @@ void DBSockMng::Connect()
 	{
 		if ( wsExDbCli.GetConnect() == 0 )
 		{
-			//LogAddC(2, "ExDB Server Check..");
+			LogAddC(2, "ExDB Server Check..");
 			ExDataServerConnect(ExDbIp, WM_GM_EXDATA_CLIENT_MSG_PROC);
 		}
 	}
+
+	//SCFPostServer
+	
+	if(ReadConfig.SCFPSON == 1)
+	{
+		if ( wsSCFPSCli.GetSocket()  == INVALID_SOCKET)
+		{
+			LogAddC(2, "SCFPostServer Check..");
+			wsSCFPSCli.CreateSocket(ghWnd);
+			SCFPSServerConnect(ReadConfig.SCFPSIP,ReadConfig.SCFPSPort, WM_GM_SCFPS_CLIENT_MSG_PROC);
+		}
+		else
+		{
+			if ( wsSCFPSCli.GetConnect() == 0 )
+			{
+				LogAddC(2, "SCFPostServer Check..");		
+				SCFPSServerConnect(ReadConfig.SCFPSIP,ReadConfig.SCFPSPort, WM_GM_SCFPS_CLIENT_MSG_PROC);
+			}
+		}
+	}
+	
+	//Extra Server
+
+	if ( wsExServerCli.GetSocket()  == INVALID_SOCKET)
+	{
+		LogAddC(2, "Extra Server Check..");
+		wsExServerCli.CreateSocket(ghWnd);
+		ExServerConnect(ReadConfig.SCFEXSIP,ReadConfig.SCFEXSPort, WM_GM_EXS_CLIENT_MSG_PROC);
+	}
+	else
+	{
+		if ( wsExServerCli.GetConnect() == 0 )
+		{
+			LogAddC(2, "Extra Server Check..");		
+			ExServerConnect(ReadConfig.SCFEXSIP,ReadConfig.SCFEXSPort, WM_GM_EXS_CLIENT_MSG_PROC);
+		}
+	}
+	
+	//IOGS Server
+	
+	if(ReadConfig.SCFIOGSON == 1)
+	{
+		if ( wsIOGSServerCli.GetSocket()  == INVALID_SOCKET)
+		{
+			LogAddC(2, "Titan IOGS Check..");
+			wsIOGSServerCli.CreateSocket(ghWnd);
+			IOGSConnect(ReadConfig.SCFIOGSIP,ReadConfig.SCFIOGSPort, WM_GM_IOGS_CLIENT_MSG_PROC);
+		}
+		else
+		{
+			if ( wsIOGSServerCli.GetConnect() == 0 )
+			{
+				LogAddC(2, "Titan IOGS Check..");		
+				IOGSConnect(ReadConfig.SCFIOGSIP,ReadConfig.SCFIOGSPort, WM_GM_IOGS_CLIENT_MSG_PROC);
+			}
+		}
+	}
+
+	////SCFPack
+	//
+	//
+	//if ( wsSCFPackCli.GetSocket()  == INVALID_SOCKET)
+	//{
+	//	LogAddC(2, "SCF Pack Server Check..");
+	//		wsSCFPackCli.CreateSocket(ghWnd);
+	//		SCFPackServerConnect("24.232.17.133",55901, WM_GM_SCFPACK_CLIENT_MSG_PROC);
+	//}
+	//else
+	//{
+	//	if ( wsSCFPackCli.GetConnect() == 0 )
+	//	{
+	//		LogAddC(2, "SCF Pack Server Check..");
+	//		SCFPackServerConnect("24.232.17.133",55901, WM_GM_SCFPACK_CLIENT_MSG_PROC);
+	//	}
+	//}
 }
 
 void DBSockMng::ActiveChange()
@@ -117,6 +207,7 @@ int DBSockMng::Send(char* buf, int len)
 
 }
 
+
 int DBSockMng::Send(int server, char* buf, int len)
 {
 	if (server >= 2)
@@ -133,6 +224,7 @@ int DBSockMng::Send(int server, char* buf, int len)
 	}
 	return 1;
 }
+
 
 int DBSockMng::MsgProc(int line, WPARAM wParam, LPARAM lParam)
 {

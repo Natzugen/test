@@ -1,8 +1,9 @@
-//	GS-N	1.00.90	JPN			-	Completed
-//	GS-CS	1.00.90	JPN			-	Completed
 #include "stdafx.h"
 #include "TUnion.h"
 #include "TUnionInfo.h"
+
+// GS-N 0.99.60T 0x004ACBE9
+//	GS-N	1.00.18	JPN	0x004CB350	-	Completed
 
 TUnion UnionManager;
 
@@ -25,7 +26,8 @@ int TUnion::DelAllUnion()
 	
 	for ( _PosItor = this->m_mpUnion.begin() ; _PosItor != this->m_mpUnion.end() ; ++_PosItor )
 	{
-		delete _PosItor->second;
+		if ( _PosItor->second != NULL )
+			delete _PosItor->second;
 	}
 
 	this->m_mpUnion.clear();
@@ -79,17 +81,18 @@ int TUnion::GetGuildRelationShipCount(int iGuildNumber, int iRelationShipType)
 
 TUnionInfo * TUnion::SearchUnion(int iMasterGuildNumber)
 {
-	this->m_Sync.Lock();
+	//MAYBE SYNC COUSE LAG (HAVE CRITICAL SECTION
+	//this->m_Sync.Lock();
 
 	std::map<int, TUnionInfo *>::iterator _Itor = this->m_mpUnion.find(iMasterGuildNumber);
 
 	if ( _Itor != this->m_mpUnion.end() )
 	{
-		this->m_Sync.Unlock();
+		//this->m_Sync.Unlock();
 		return (*(_Itor)).second;
 	}
 
-	this->m_Sync.Unlock();
+	//this->m_Sync.Unlock();
 	return NULL;
 }
 
@@ -183,14 +186,24 @@ int TUnion::GetGuildUnionMemberList(int iMasterGuildNumber, int & iCount, int * 
 	if ( pUnionInfo != NULL )
 	{
 		this->m_Sync.Lock();
-		int * iB = &*pUnionInfo->m_vtUnionMember.begin();
-		int * iE = &*pUnionInfo->m_vtUnionMember.end();
-		
-		for ( ; iB != iE ; iB++ )
+
+
+		std::vector<int>::iterator UnionMember ;
+
+		for ( UnionMember = pUnionInfo->m_vtUnionMember.begin() ; UnionMember != pUnionInfo->m_vtUnionMember.end() ; UnionMember++ )
 		{
-			iList[iCount] = *iB;
+			iList[iCount] = *UnionMember;
 			iCount++;
 		}
+
+		//int * iB = pUnionInfo->m_vtUnionMember.begin();
+		//int * iE = pUnionInfo->m_vtUnionMember.end();
+		//
+		//for ( ; iB != iE ; iB++ )
+		//{
+		//	iList[iCount] = *iB;
+		//	iCount++;
+		//}
 
 		this->m_Sync.Unlock();
 
@@ -206,13 +219,14 @@ int TUnion::GetGuildUnionMemberList(int iMasterGuildNumber, int & iCount, int * 
 
 BOOL TUnion::GetUnionName(int iMasterGuildNumber, char* szMasterGuildName)
 {
+	//MAYBE SYNC COUSE LAG (HAVE CRITICAL SECTION
 	TUnionInfo * pUnionInfo = this->SearchUnion(iMasterGuildNumber);
 
 	if ( pUnionInfo != NULL )
 	{
-		this->m_Sync.Lock();
+		//this->m_Sync.Lock();
 		memcpy(szMasterGuildName, pUnionInfo->m_szMasterGuild, sizeof(pUnionInfo->m_szMasterGuild)-1);
-		this->m_Sync.Unlock();
+		//this->m_Sync.Unlock();
 		return TRUE;
 	}
 

@@ -1,6 +1,5 @@
 // TMonsterAIRule.cpp: implementation of the TMonsterAIRule class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00562270	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -48,7 +47,7 @@ BOOL TMonsterAIRule::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -146,7 +145,7 @@ BOOL TMonsterAIRule::LoadData(LPSTR lpszFileName)
 
 		fclose(SMDFile);
 
-		LogAddC(2, "[Monster AI Rule ] - %s file is Loaded", lpszFileName);
+		LogAddC(2, "[Monster AI Rule] - %s file is Loaded", lpszFileName);
 
 		TMonsterAIRule::s_bDataLoad = TRUE;
 	}

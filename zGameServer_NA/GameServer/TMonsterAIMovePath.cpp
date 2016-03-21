@@ -1,6 +1,5 @@
 // TMonsterAIMovePath.cpp: implementation of the TMonsterAIMovePath class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00561880	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -43,7 +42,7 @@ BOOL TMonsterAIMovePath::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -108,7 +107,7 @@ BOOL TMonsterAIMovePath::LoadData(LPSTR lpszFileName)
 
 		fclose(SMDFile);
 
-		LogAddC(2, "[Monster AI MovePath ] - %s file is Loaded", lpszFileName);
+		LogAddC(2, "[Monster AI MovePath] - %s file is Loaded", lpszFileName);
 
 		this->m_bDataLoad = TRUE;
 	}

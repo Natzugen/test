@@ -1,5 +1,5 @@
 // KanturuTowerOfRefinement.cpp: implementation of the CKanturuTowerOfRefinement class.
-//	GS-CS	1.00.90	JPN	0	-	Completed
+//	GS-N	1.00.18	JPN	0x0057F810	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -13,6 +13,8 @@
 #include "LogProc.h"
 #include "..\include\ReadScript.h"
 #include "KanturuUtil.h"
+
+#if (GS_CASTLE==0)
 
 static CKanturuUtil KANTURU_UTIL;
 
@@ -62,21 +64,17 @@ BOOL CKanturuTowerOfRefinement::LoadData(LPSTR lpszFileName)
 
 	if ( !lpszFileName || !strcmp(lpszFileName, ""))
 	{
-		MsgBox("[ KANTURU ][ TowerOfRefinement ] - File load error : File Name Error");
+		MsgBox("[Kanturu][TowerOfRefinement] - File load error : File Name Error");
 		return FALSE;
 	}
 
 	try
 	{
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
-			DWORD dwLastError = GetLastError();
-
-			MsgBox("[ KANTURU ][ TowerOfRefinement ] - Can't Open %s ",
-				lpszFileName);
-
+			MsgBox("[Kanturu][TowerOfRefinement] - Can't Open %s ", lpszFileName);
 			return FALSE;
 		}
 
@@ -123,7 +121,7 @@ BOOL CKanturuTowerOfRefinement::LoadData(LPSTR lpszFileName)
 
 					if ( this->m_StateInfoCount < 0 || this->m_StateInfoCount >= KANTURU_TOWER_OF_REFINEMENT_STATE_INFO )
 					{
-						MsgBox("[ KANTURU ][ TowerOfRefinement ] - Exceed Max State Time (%d)",
+						MsgBox("[Kanturu][TowerOfRefinement] - Exceed Max State Time (%d)",
 							this->m_StateInfoCount);
 
 						break;
@@ -155,14 +153,14 @@ BOOL CKanturuTowerOfRefinement::LoadData(LPSTR lpszFileName)
 
 		fclose(SMDFile);
 
-		LogAddC(2, "[ KANTURU ][ TowerOfRefinement ] %s file is Loaded",
+		LogAddTD("[Kanturu][TowerOfRefinement] %s file is Loaded",
 			lpszFileName);
 
 		this->m_bFileDataLoad = TRUE;
 	}	// __try
 	catch ( DWORD )
 	{
-		MsgBox("[ KANTURU ][ TowerOfRefinement ] - Loading Exception Error (%s) File. ", lpszFileName);
+		MsgBox("[Kanturu][TowerOfRefinement] - Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
 	return this->m_bFileDataLoad;
@@ -249,7 +247,7 @@ void CKanturuTowerOfRefinement::SetNextState(int iCurrentState)
 
 void CKanturuTowerOfRefinement::SetState_NONE()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> NONE",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> NONE",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_NONE);
@@ -261,7 +259,7 @@ void CKanturuTowerOfRefinement::SetState_NONE()
 
 void CKanturuTowerOfRefinement::SetState_REVITALIZATION()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> REVITALIZATION",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> REVITALIZATION",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_REVITALIZATION);
@@ -273,7 +271,7 @@ void CKanturuTowerOfRefinement::SetState_REVITALIZATION()
 
 void CKanturuTowerOfRefinement::SetState_NOTIFY1()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> NOTIFY1",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> NOTIFY1",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_NOTIFY1);
@@ -286,7 +284,7 @@ void CKanturuTowerOfRefinement::SetState_NOTIFY1()
 
 void CKanturuTowerOfRefinement::SetState_CLOSE()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> CLOSE",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> CLOSE",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_CLOSE);
@@ -299,7 +297,7 @@ void CKanturuTowerOfRefinement::SetState_CLOSE()
 
 void CKanturuTowerOfRefinement::SetState_NOTIFY2()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> NOTIFY2",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> NOTIFY2",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_NOTIFY2);
@@ -311,7 +309,7 @@ void CKanturuTowerOfRefinement::SetState_NOTIFY2()
 
 void CKanturuTowerOfRefinement::SetState_END()
 {
-	LogAddC(5, "[ KANTURU ][ TowerOfRefinement ] State(%d) -> END",
+	LogAddC(5, "[Kanturu][TowerOfRefinement] State(%d) -> END",
 		this->m_iTowerOfRefinementState);
 
 	this->SetTowerOfRefinementState(KANTURU_TOWER_OF_REFINEMENT_END);
@@ -325,7 +323,7 @@ void CKanturuTowerOfRefinement::SetState_END()
 		{
 			gObjMoveGate(iCount, 136);
 
-			LogAddTD("[ KANTURU ][ TowerOfRefinement ] State End:Kick Out [%s][%s]",
+			LogAddTD("[Kanturu][TowerOfRefinement] State End:Kick Out [%s][%s]",
 				gObj[iCount].AccountID, gObj[iCount].Name);
 		}
 	}
@@ -393,3 +391,5 @@ int CKanturuTowerOfRefinement::GetRemainTime()
 	int iCurrentState = this->GetTowerOfRefinementState();
 	return this->m_StateInfo[iCurrentState].GetRemainTime();
 }
+
+#endif

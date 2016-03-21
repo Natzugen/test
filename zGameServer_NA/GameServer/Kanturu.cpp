@@ -1,6 +1,5 @@
 // Kanturu.cpp: implementation of the CKanturu class.
-//	GS-CS	1.00.90	JPN		-	Completed
-//	GS-N	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x00581CD0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -11,7 +10,11 @@
 #include "Gamemain.h"
 #include "LogProc.h"
 #include "..\include\ReadScript.h"
+#include "LogToFile.h"
 
+#if (GS_CASTLE==0)
+
+extern CLogToFile ANTI_HACK_LOG;
 static CKanturuUtil KANTURU_UTIL;
 CKanturu g_Kanturu;
 //////////////////////////////////////////////////////////////////////
@@ -25,6 +28,8 @@ CKanturu::CKanturu()
 	this->m_StateInfoCount = 0;
 	this->m_bFileDataLoad = FALSE;
 	this->m_bEnableCheckMoonStone = FALSE;
+	this->m_iKanturuBattleCounter = 0;
+	this->m_iKanturuBattleDate = 0;
 }
 
 CKanturu::~CKanturu()
@@ -52,19 +57,18 @@ BOOL CKanturu::LoadData(LPSTR lpszFileName)
 
 	if ( !lpszFileName || !strcmp(lpszFileName, ""))
 	{
-		MsgBox("[ KANTURU ] - File load error : File Name Error");
+		MsgBox("[Kanturu] - File load error : File Name Error");
 		return FALSE;
 	}
 
 	try
 	{
 
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
-			DWORD dwError = GetLastError();
-			MsgBox("[ KANTURU ] - Can't Open %s ", lpszFileName);
+			MsgBox("[Kanturu] - Can't Open %s ", lpszFileName);
 			return FALSE;
 		}
 
@@ -108,7 +112,7 @@ BOOL CKanturu::LoadData(LPSTR lpszFileName)
 
 					if ( this->m_StateInfoCount < 0 || this->m_StateInfoCount >= MAX_KANTURU_STATE_INFO )
 					{
-						MsgBox("[ KANTURU ] - Exceed Max State Time (%d)", this->m_StateInfoCount);
+						MsgBox("[Kanturu] - Exceed Max State Time (%d)", this->m_StateInfoCount);
 						break;
 					}
 
@@ -145,19 +149,19 @@ BOOL CKanturu::LoadData(LPSTR lpszFileName)
 		}
 
 		fclose(SMDFile);
-		LogAddC(2, "[ KANTURU ] - %s file is Loaded", lpszFileName);
+		LogAddTD("[Kanturu] - %s file is Loaded", lpszFileName);
 		
 		this->m_bFileDataLoad = TRUE;
 
 		// Load Other Resources from Kanturu.dat
-		this->m_BattleStanby.LoadData(gDirPath.GetNewPath("Event\\Kanturu.dat"));
-		this->m_BattleOfMaya.LoadData(gDirPath.GetNewPath("Event\\Kanturu.dat"));
-		this->m_BattleOfNightmare.LoadData(gDirPath.GetNewPath("Event\\Kanturu.dat"));
-		this->m_TowerOfRefinement.LoadData(gDirPath.GetNewPath("Event\\Kanturu.dat"));
+		this->m_BattleStanby.LoadData(ReadConfig.ConnDataFiles[16]);
+		this->m_BattleOfMaya.LoadData(ReadConfig.ConnDataFiles[16]);
+		this->m_BattleOfNightmare.LoadData(ReadConfig.ConnDataFiles[16]);
+		this->m_TowerOfRefinement.LoadData(ReadConfig.ConnDataFiles[16]);
 	}
 	catch ( DWORD )
 	{
-		MsgBox("[ KANTURU ] - Loading Exception Error (%s) File. ", lpszFileName);
+		MsgBox("[Kanturu] - Loading Exception Error (%s) File. ", lpszFileName);
 	}
 
 	return this->m_bFileDataLoad;
@@ -189,7 +193,7 @@ void CKanturu::SetKanturuMapAttr(BYTE btLevel)
 	MapClass & KanturuMap = this->m_KanturuMap[btLevel];
 	memcpy(MapC[MAP_INDEX_KANTURU_BOSS].m_attrbuf, KanturuMap.m_attrbuf, 256*256);
 
-	LogAddC(2, "[ KANTURU ][ Map Attr Change ] Map(%d) State(%d) DetailState(%d)",
+	LogAddC(2, "[Kanturu][Map Attr Change] Map(%d) State(%d) DetailState(%d)",
 		btLevel, this->GetKanturuState(), this->GetKanturuDetailState());
 
 }
@@ -286,23 +290,24 @@ void CKanturu::ChangeState(int iState, int DetailState)
 
 void CKanturu::SetState_NONE()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> NONE", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> NONE", this->m_iKanturuState);
 	this->SetKanturuState(KANTURU_STATE_NONE);
 }
 
 
 void CKanturu::SetState_BATTLE_STANDBY()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> STANDBY", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> STANDBY", this->m_iKanturuState);
 	g_KanturuBattleUserMng.ResetAllData();
 	this->SetKanturuState(KANTURU_STATE_BATTLE_STANTBY);
 	this->m_BattleStanby.SetState(1);
+	this->SetKanturuTimeAttackEventInfo();
 }
 
 
 void CKanturu::SetState_BATTLE_OF_MAYA()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> BATTLE_OF_MAYA", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> BATTLE_OF_MAYA", this->m_iKanturuState);
 	this->SetKanturuState(KANTURU_STATE_BATTLE_OF_MAYA);
 	this->m_BattleOfMaya.SetState(1);
 }
@@ -310,7 +315,7 @@ void CKanturu::SetState_BATTLE_OF_MAYA()
 
 void CKanturu::SetState_BATTLE_OF_NIGHTMARE()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> BATTLE_OF_NIGHTMARE", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> BATTLE_OF_NIGHTMARE", this->m_iKanturuState);
 	this->SetKanturuState(KANTURU_STATE_BATTLE_OF_NIGHTMARE);
 	this->m_BattleOfNightmare.SetState(1);
 }
@@ -318,7 +323,7 @@ void CKanturu::SetState_BATTLE_OF_NIGHTMARE()
 
 void CKanturu::SetState_TOWER_OF_REFINEMENT()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> TOWER_OF_REFINEMENT", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> TOWER_OF_REFINEMENT", this->m_iKanturuState);
 	this->SetKanturuState(KANTURU_STATE_TOWER_OF_REFINEMENT);
 	this->m_TowerOfRefinement.SetState(1);
 	this->SetKanturuMapAttr(1);
@@ -327,7 +332,7 @@ void CKanturu::SetState_TOWER_OF_REFINEMENT()
 
 void CKanturu::SetState_END()
 {
-	LogAddC(7, "[ KANTURU ] State(%d) -> END", this->m_iKanturuState);
+	LogAddC(7, "[Kanturu] State(%d) -> END", this->m_iKanturuState);
 	this->SetKanturuState(KANTURU_STATE_END);
 	g_KanturuBattleUserMng.ResetAllData();
 }
@@ -498,10 +503,8 @@ void CKanturu::CheckUserOnKanturuBossMap()
 			 gObj[iCount].Type == OBJ_USER &&
 			 gObj[iCount].MapNumber == MAP_INDEX_KANTURU_BOSS)
 		{
-//#if (_GSCS == 0)
-			if ( gObj[iCount].m_bKanturuEntranceByNPC == FALSE )
+			if ( gObj[iCount].m_bKanturuEntranceByNPC == 0 )
 			{
-//#endif
 				if ( (gObj[iCount].Authority&2) != 2 )
 				{
 					if ( gObj[iCount].RegenOk == 0 &&
@@ -510,26 +513,36 @@ void CKanturu::CheckUserOnKanturuBossMap()
 					{
 						gObjMoveGate(iCount, 17);
 
-						LogAddC(2, "[ KANTURU ][ Invalid User ] Invalid Kanturu Boss Map User[%s][%s]",
+						LogAddC(2, "[Kanturu][Invalid User] Invalid Kanturu Boss Map User[%s][%s]",
 							gObj[iCount].AccountID, gObj[iCount].Name);
 					}
 				}
-//#if (_GSCS == 0)
 			}
-//#endif
 		}
 	}
 }
 
-//Season 4.5 - identical
+
 int CKanturu::CheckEnterKanturu(int iUserIndex)
 {
 	if ( !gObjIsConnected(iUserIndex) )
 		return -1;
 
+	if ( gObj[iUserIndex].m_IfState.type != 19 )
+	{
+		ANTI_HACK_LOG.Output("[ANTI-HACK][Kanturu][Entrance Fail] User in map(%d) [%s][%s] State(u:%d,t:%d,s:%d)",
+			gObj[iUserIndex].MapNumber, gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
+			gObj[iUserIndex].m_IfState.use,gObj[iUserIndex].m_IfState.type,gObj[iUserIndex].m_IfState.state);
+
+		return 3;
+	}
+
+	gObj[iUserIndex].m_IfState.use = 0;
+	gObj[iUserIndex].m_IfState.type = 0;
+
 	if ( gObj[iUserIndex].MapNumber != MAP_INDEX_KANTURU2 ) 
 	{
-		LogAddTD("[ KANTURU ][ Entrance Fail ] Invalid Map Number(%d) [%s][%s] State(%d)",
+		LogAddTD("[Kanturu][Entrance Fail] Invalid Map Number(%d) [%s][%s] State(%d)",
 			gObj[iUserIndex].MapNumber, gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 			this->GetKanturuState());
 
@@ -541,7 +554,7 @@ int CKanturu::CheckEnterKanturu(int iUserIndex)
 	{
 		if ( g_KanturuBattleUserMng.IsOverMaxUser() == TRUE )
 		{
-			LogAddTD("[ KANTURU ][ Entrance Fail ] Over Max User [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] Over Max User [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
@@ -550,38 +563,27 @@ int CKanturu::CheckEnterKanturu(int iUserIndex)
 
 		if ( this->CheckEqipmentMoonStone(iUserIndex) == FALSE )
 		{
-			LogAddTD("[ KANTURU ][ Entrance Fail ] Moon Stone is not exist [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] Moon Stone is not exist [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
 			return 2;
 		}
-//#if(_GSCS==0)
-		if ( (gObj[iUserIndex].pInventory[7].m_Type < ITEMGET(12,0) || gObj[iUserIndex].pInventory[7].m_Type > ITEMGET(12,6) ) &&
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(13,30) &&
-			 //Season 3.0 add-on (Summoner
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12,41) &&
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12,42) &&
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12,43) &&
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 49) &&//Season 6 addon
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 50) &&//Season 6 addon
-			gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 130) &&//Season 6 addon
-			gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 131) &&//Season 6 addon
-			gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 132) &&//Season 6 addon
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 133) &&//Season 6 addon
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 134) &&//Season 6 addon
-			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12, 135) &&//Season 6 addon
 
-#ifdef NEWWINGS
-			 !IS_NEWWINGS(gObj[iUserIndex].pInventory[7].m_Type) &&
-#endif
+		if ( (gObj[iUserIndex].pInventory[7].m_Type < ITEMGET(12,0) || gObj[iUserIndex].pInventory[7].m_Type > ITEMGET(12,6) ) &&
+			 (gObj[iUserIndex].pInventory[7].m_Type < ITEMGET(12,36) || gObj[iUserIndex].pInventory[7].m_Type > ITEMGET(12,43) ) &&
+			 (gObj[iUserIndex].pInventory[7].m_Type < ITEMGET(12,130) || gObj[iUserIndex].pInventory[7].m_Type > ITEMGET(12,135) ) &&
+			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(13,30) &&
+			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12,49) &&
+			 gObj[iUserIndex].pInventory[7].m_Type != ITEMGET(12,50) &&
 			 gObj[iUserIndex].pInventory[8].m_Type != ITEMGET(13,3)  &&
-			 gObj[iUserIndex].pInventory[8].m_Type != ITEMGET(13,37) &&
-			 gObj[iUserIndex].pInventory[8].m_Type != ITEMGET(13,4) &&//Season 4.5 addon
-			 //Season 2.5 add-on
-			 (gObj[iUserIndex].pInventory[7].m_Type < ITEMGET(12,36) || gObj[iUserIndex].pInventory[7].m_Type > ITEMGET(12,40) ) )
+			 gObj[iUserIndex].pInventory[8].m_Type != ITEMGET(13,37) 		
+#if (CRYSTAL_EDITION == 1)
+			&& (!(gObj[iUserIndex].pInventory[7].m_Type >= ITEMGET(12,200) && gObj[iUserIndex].pInventory[7].m_Type <= ITEMGET(12,254)))
+#endif
+			 )
 		{
-			LogAddTD("[ KANTURU ][ Entrance Fail ] Wing Item is not exist [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] Wing Item is not exist [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
@@ -590,7 +592,7 @@ int CKanturu::CheckEnterKanturu(int iUserIndex)
 
 		if ( gObj[iUserIndex].pInventory[8].m_Type == ITEMGET(13,2) )
 		{
-			LogAddTD("[ KANTURU ][ Entrance Fail ] Uniria Item is exist [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] Uniria Item is exist [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
@@ -600,73 +602,24 @@ int CKanturu::CheckEnterKanturu(int iUserIndex)
 		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,10) ||
 			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,10) )
 		{
-			LogAddTD("[ KANTURU ][ Entrance Fail ] Trasportation Ring is exist [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] Trasportation Ring is exist [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
 			return 6;
 		}
-//#endif
+
 		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,39) ||
 			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,39) )
 		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] EliteSkelletoneChangeRing is exist [%s][%s] State(%d)-(%d)",
+			LogAddTD("[Kanturu][Entrance Fail] EliteSkelletoneChangeRing is exist [%s][%s] State(%d)-(%d)",
 				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
 			return 6;
 		}
 
-
-		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,40) ||
-			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,40) )
-		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] Jack'O Lantern Polymorph Ring is exist [%s][%s] State(%d)-(%d)",
-				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
-				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
-
-			return 6;
-		}
-	
-		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,41) ||
-			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,41) )
-		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] Santa Polymorph Ring is exist [%s][%s] State(%d)-(%d)",
-				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
-				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
-
-			return 6;
-		}
-		
-		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,68) ||
-			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,68) )
-		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] X-MASEvent Polymorph Ring is exist [%s][%s] State(%d)-(%d)",
-				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
-				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
-
-			return 6;
-		}
-		
-		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13,76) ||
-			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13,76) )
-		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] Panda Polymorph Ring is exist [%s][%s] State(%d)-(%d)",
-				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
-				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
-
-			return 6;
-		}
-		if ( gObj[iUserIndex].pInventory[11].m_Type == ITEMGET(13, 122) || // Season 5 Episode 2 JPN Skeleton Ring
-			gObj[iUserIndex].pInventory[10].m_Type == ITEMGET(13, 122) )
-		{
-			LogAddTD("[ Kanturu ][ Entrance Fail ] Skeleton Polymorph Ring is exist [%s][%s] State(%d)-(%d)",
-				gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
-				this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
-
-			return 6;
-		}
-		LogAddTD("[ KANTURU ][ Entrance Success ] [%s][%s] State(%d)-(%d)",
+		LogAddTD("[Kanturu][Entrance Success] [%s][%s] State(%d)-(%d)",
 			gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 			this->GetKanturuState(), this->m_BattleOfMaya.GetBattleOfMayaState());
 
@@ -676,14 +629,14 @@ int CKanturu::CheckEnterKanturu(int iUserIndex)
 	if ( this->GetKanturuState() == KANTURU_STATE_TOWER_OF_REFINEMENT &&
 		 this->m_TowerOfRefinement.GetEntrancePermit() == TRUE )
 	{
-		LogAddTD("[ KANTURU ][ Entrance Success ] [%s][%s] State(%d)-(%d)",
+		LogAddTD("[Kanturu][Entrance Success] [%s][%s] State(%d)-(%d)",
 			gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 			this->GetKanturuState(), this->m_TowerOfRefinement.GetTowerOfRefinementState());
 
 		return 0;
 	}
 
-	LogAddTD("[ KANTURU ][ Entrance Fail ] [%s][%s] State(%d)",
+	LogAddTD("[Kanturu][Entrance Fail] [%s][%s] State(%d)",
 		gObj[iUserIndex].AccountID, gObj[iUserIndex].Name,
 		this->GetKanturuState());
 
@@ -713,6 +666,11 @@ BOOL CKanturu::CheckCanEnterKanturuBattle()
 
 BOOL CKanturu::CheckEqipmentMoonStone(int iUserIndex)
 {
+	if(OBJMAX_RANGE(iUserIndex) == 0)
+	{
+		return false;
+	}
+
 	if ( !this->GetEnableCheckMoonStone() )
 		return TRUE;
 
@@ -736,7 +694,7 @@ BOOL CKanturu::CheckEqipmentMoonStone(int iUserIndex)
 }
 
 
-//#if(_GSCS == 0)
+#pragma warning ( disable : 4101 )
 void CKanturu::OperateGmCommand(int iUserIndex, int iCommand)
 {
 	return;
@@ -744,10 +702,10 @@ void CKanturu::OperateGmCommand(int iUserIndex, int iCommand)
 		int iCurrentState[3];///???
 	}
 }
-//#endif
+#pragma warning ( default : 4101 )
 
-//#include "LogToFile.h"
-//CLogToFile KANTURU_TEST_LOG("Kanturu", ".\\LOG\\Kanturu", TRUE);
+#include "LogToFile.h"
+CLogToFile KANTURU_TEST_LOG("KANTURU_TEST_LOG", ".\\KANTURU_TEST_LOG", TRUE);
 
 
 
@@ -774,8 +732,8 @@ void CKanturu::UserMonsterCountCheck()
 		}
 	}
 
-	//KANTURU_TEST_LOG.Output("[ KANTURU ][ Debug ] 2. All User Check:%d/(Die:%d)", iUserCount_Live, iUserCount_Die);
-	//KANTURU_TEST_LOG.Output("[ KANTURU ][ Debug ] 3. MonsterMng Count:%d", g_KanturuMonsterMng.GetAliveMonsterCount());
+	KANTURU_TEST_LOG.Output("[Kanturu][Debug] 2. All User Check:%d/(Die:%d)", iUserCount_Live, iUserCount_Die);
+	KANTURU_TEST_LOG.Output("[Kanturu][Debug] 3. MonsterMng Count:%d", g_KanturuMonsterMng.GetAliveMonsterCount());
 
 	int iMonsterCount=0;
 
@@ -791,17 +749,43 @@ void CKanturu::UserMonsterCountCheck()
 			{
 				iMonsterCount++;
 
-				/*KANTURU_TEST_LOG.Output("[ KANTURU ][ Debug ] 4. Monster Info %s(%d/ObjIndex:%d) [%d]%d-%d HP:%0.1f IsAlive:%d Connected:%d State:%d ActState:Attack(%d)/Move(%d) DieRegen:%d",
+				KANTURU_TEST_LOG.Output("[Kanturu][Debug] 4. Monster Info %s(%d/ObjIndex:%d) [%d]%d-%d HP:%0.1f IsAlive:%d Connected:%d State:%d ActState:Attack(%d)/Move(%d) DieRegen:%d",
 					gObj[iAllMonsterCount].Name, gObj[iAllMonsterCount].Class,
 					gObj[iAllMonsterCount].m_Index, gObj[iAllMonsterCount].MapNumber,
 					gObj[iAllMonsterCount].X, gObj[iAllMonsterCount].Y,
 					gObj[iAllMonsterCount].Life, gObj[iAllMonsterCount].Live,
 					gObj[iAllMonsterCount].Connected, gObj[iAllMonsterCount].m_State,
 					gObj[iAllMonsterCount].m_ActState.Attack, gObj[iAllMonsterCount].m_ActState.Move,
-					gObj[iAllMonsterCount].DieRegen);*/
+					gObj[iAllMonsterCount].DieRegen);
 			}
 		}
 	}
 }
 
-//# func deleted
+void CKanturu::SetKanturuTimeAttackEventInfo()
+{
+	tm * today;
+	time_t ltime;
+
+	time(&ltime);
+	today = localtime(&ltime);
+	today->tm_year += 1900;
+
+	int iYear = today->tm_year * 10000;
+	int iMonth = ( today->tm_mon + 1 ) * 100;
+	int iDay = today->tm_mday;
+	int iDateInfo = iYear + iMonth + iDay;
+
+	if ( this->m_iKanturuBattleDate < iDateInfo )
+	{
+		this->m_iKanturuBattleDate = iDateInfo;
+		this->m_iKanturuBattleCounter = 0;
+	}
+
+	this->m_iKanturuBattleCounter++;
+
+	LogAddTD("[Kanturu][TimeAttackEvent] Date:%d, Counter:%d",
+		this->m_iKanturuBattleDate, this->m_iKanturuBattleCounter);
+}
+
+#endif

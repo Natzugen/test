@@ -1,5 +1,9 @@
-//GameServer 1.00.77 JPN - Completed
-//GameServer 1.00.90 JPN - Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
+// GS-N 0.99.60T 0x00453780
+// GS-N	1.00.18	JPN	0x00462B60	-	Completed
 #include "stdafx.h"
 #include "DevilSquare.h"
 #include "GameServer.h"
@@ -10,145 +14,152 @@
 #include "gObjMonster.h"
 #include "BloodCastle.h"
 #include "ChaosCastle.h"
-//#include "GameServerAuth.h"
 #include "..\common\winutil.h"
 #include "CrywolfSync.h"
-#include "IllusionTempleEvent.h"
-#include "Event.h"
-#include "MasterLevelSystem.h"
-#include "BuffEffectSlot.h"
-#ifdef WZQUEST
-#include "QuestExpProgMng.h"
-#endif
-#ifdef __CUSTOMS__
+#include "Crywolf.h"
+
+#include "XMasEvent.h"
+#include "HappyHour.h"
+#include "HitAndUp.h"
 #include "ResetSystem.h"
-#endif
+#include "ObjBotPet.h"
+#include "ViewportGuild.h"
+#include "VIPSystem.h"
+#include "RProtocol.h"
+#include "QuestS5Info.h"
 
 CDevilSquare g_DevilSquare;
 
-unsigned int __stdcall DevilSquareThreadFunc(LPVOID p)
+
+
+unsigned int __stdcall DevilSquareThreadFunc(void * p)
 {
 	CDevilSquare * pDevilSquare = (CDevilSquare *)p;
 	return pDevilSquare->Run();
 }
 
+#pragma warning ( disable : 4060 )
 void DevilSquareProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 {
+	#ifdef TRACE_PROTOCOL
+		LogAddHeadHex("R","DEVIL_SQUARE", aRecv, aLen);
+	#endif
 	switch ( protoNum )
 	{
-#if(DEBUG_EVENT_COUNTER == 1)
-		case 11: //Receive the EnterCount for BloodCastle on T Key
-			EGAnsBloodCastleEnterCount((PMSG_ANS_BLOODCASTLE_ENTERCOUNT *)aRecv);
-			break;
-#endif
-		case 18: //To enter Illusion Temple Increasing the EnterCount thru Ranking Server
-			g_IllusionTempleEvent.EGAnsIllusionTempleEnterCountCheck((LPPMSG_ANS_ILLUSION_TEMPLE_ENTERCOUNTCHECK)aRecv);
-			break;
-		case 20: //Receive the EnterCount for IllusionTemple on T Key
-			g_IllusionTempleEvent.EGAnsIllusionTempleEnterCount((PMSG_ANS_ILLUSIONTEMPLE_ENTERCOUNT *)aRecv);
-			break;
-
 	}
 }
+#pragma warning ( default : 4060 )
+
+
+
 
 void DataSendRank(char* pMsg, int size)
-{
-	if ( IsDevilSquareEventConnected == FALSE && DevilSquareEventConnect == FALSE )
+{	
+	if(ReadConfig.SCFRSON == FALSE)
 	{
-		wsRServerCli.Close();
-		wsRServerCli.CreateSocket(ghWnd);
-
-		if ( GMRankingServerConnect(gDevilSquareEventServerIp, WM_GM_RANKING_CLIENT_MSG_PROC) == FALSE )
+		if ( IsDevilSquareEventConnected == FALSE && DevilSquareEventConnect == FALSE )
 		{
-			IsDevilSquareEventConnected = FALSE;
-			LogAddTD("Can not connect Ranking Server");
-			return;
+			wsRServerCli.Close();
+			wsRServerCli.CreateSocket(ghWnd);
+
+			if ( GMRankingServerConnect(gDevilSquareEventServerIp, WM_GM_RANKING_CLIENT_MSG_PROC) == FALSE )
+			{
+				IsDevilSquareEventConnected = FALSE;
+				LogAddTD("Can not connect Ranking Server");
+
+				return;
+			}
+
+			IsDevilSquareEventConnected = TRUE;
 		}
 
-		IsDevilSquareEventConnected = TRUE;
-	}
-
-	if ( DevilSquareEventConnect == FALSE && IsDevilSquareEventConnected != FALSE )
-	{
-		wsRServerCli.DataSend(pMsg, size);
+		if ( DevilSquareEventConnect == FALSE && IsDevilSquareEventConnected != FALSE )
+		{
+			wsRServerCli.DataSend(pMsg, size);
+		}
 	}
 }
+
 
 CDevilSquare::CDevilSquare()
 {
 	this->m_bQuit = FALSE;
-	this->m_iCloseTime = 2; //30
-	this->m_iOpenTime = 2; //34
+	this->m_iCloseTime = 2;
+	this->m_iOpenTime = 2;
 	this->m_iPlaytime = 10;
 
-	//Dark Wizard until 4th Floor
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_1] = 0;
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_2] = 0;
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_3] = 0;
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_4] = 170;
+	this->m_BonusScoreTable[CLASS_WIZARD][0] = 0;
+	this->m_BonusScoreTable[CLASS_WIZARD][1] = 0;
+	this->m_BonusScoreTable[CLASS_WIZARD][2] = 0;
+	this->m_BonusScoreTable[CLASS_WIZARD][3] = 170;
+	this->m_BonusScoreTable[CLASS_WIZARD][4] = 170;
+	this->m_BonusScoreTable[CLASS_WIZARD][5] = 170;
+	this->m_BonusScoreTable[CLASS_WIZARD][6] = 170;
 	
-	//Dark Knight until 4th Floor
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_1] = 20;
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_2] = 90;
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_3] = 120;
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_4] = 400;
+	this->m_BonusScoreTable[CLASS_KNIGHT][0] = 20;
+	this->m_BonusScoreTable[CLASS_KNIGHT][1] = 90;
+	this->m_BonusScoreTable[CLASS_KNIGHT][2] = 120;
+	this->m_BonusScoreTable[CLASS_KNIGHT][3] = 400;
+	this->m_BonusScoreTable[CLASS_KNIGHT][4] = 400;
+	this->m_BonusScoreTable[CLASS_KNIGHT][5] = 400;
+	this->m_BonusScoreTable[CLASS_KNIGHT][6] = 400;
 
-	//Elf until 4th Floor
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_1] = 10;
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_2] = 10;
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_3] = 10;
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_4] = 200;
+	this->m_BonusScoreTable[CLASS_ELF][0] = 10;
+	this->m_BonusScoreTable[CLASS_ELF][1] = 10;
+	this->m_BonusScoreTable[CLASS_ELF][2] = 10;
+	this->m_BonusScoreTable[CLASS_ELF][3] = 200;
+	this->m_BonusScoreTable[CLASS_ELF][4] = 200;
+	this->m_BonusScoreTable[CLASS_ELF][5] = 200;
+	this->m_BonusScoreTable[CLASS_ELF][6] = 200;
 
-	//Magumsa until 4th Floor
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_1] = 0;
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_2] = 0;
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_3] = 0;
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_4] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][0] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][1] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][2] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][3] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][4] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][5] = 0;
+	this->m_BonusScoreTable[CLASS_MAGICGLADIATOR][6] = 0;
 
-	//Dark Wizard 5th & 6th Floor
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_5] = 170;
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_6] = 170;
+	this->m_BonusScoreTable[CLASS_DARKLORD][0] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][1] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][2] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][3] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][4] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][5] = 0;
+	this->m_BonusScoreTable[CLASS_DARKLORD][6] = 0;
 
-	//Dark Knight 5th & 6th Floor
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_5] = 400;
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_6] = 400;
+	this->m_BonusScoreTable[CLASS_SUMMONER][0] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][1] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][2] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][3] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][4] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][5] = 0;
+	this->m_BonusScoreTable[CLASS_SUMMONER][6] = 0;
 
-	//Elf 5th & 6th Floor
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_5] = 200;
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_6] = 200;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][0] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][1] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][2] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][3] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][4] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][5] = 0;
+	this->m_BonusScoreTable[CLASS_RAGEFIGHTER][6] = 0;
 
-	//Magumsa 5th & 6th Floor
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_5] = 0;
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_6] = 0;
-
-	//Dark Lord All Floors
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_1] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_2] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_3] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_4] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_5] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_6] = 0;
-
-	//Season3 add-on (All Classes 7th Floor)
-	this->m_BonusScoreTable[CLASS_WIZARD][DEVIL_SQUARE_GROUND_7] = 170;
-	this->m_BonusScoreTable[CLASS_KNIGHT][DEVIL_SQUARE_GROUND_7] = 400;
-	this->m_BonusScoreTable[CLASS_ELF][DEVIL_SQUARE_GROUND_7] = 200;
-	this->m_BonusScoreTable[CLASS_MAGUMSA][DEVIL_SQUARE_GROUND_7] = 0;
-	this->m_BonusScoreTable[CLASS_DARKLORD][DEVIL_SQUARE_GROUND_7] = 0;
-
-	for(int i = 0;i < 7; i++)
-	{
-		(float&)this->m_BonusScoreTable[CLASS_SUMMONER][i] = 1.0f;
-	}
 }
+
+
+
 
 CDevilSquare::~CDevilSquare()
 {
 	this->m_bQuit = TRUE;
 }
 
+
+
+
 void CDevilSquare::Init()
 {
+#if(GS_CASTLE_NOEVENTS == 0)
 	this->m_bQuit = TRUE;
 	Sleep(500);
 
@@ -157,8 +168,15 @@ void CDevilSquare::Init()
 
 	DWORD dwThreadId;
 
+//#ifdef _DEBUG
 	this->m_hThread = (UINT)_beginthreadex( 0, 0, DevilSquareThreadFunc, this, 0, (LPUINT)&dwThreadId);
+//#else
+//	this->m_hThread = (UINT)CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)DevilSquareThreadFunc, this, 0, (LPDWORD)&dwThreadId);
+//#endif
+#endif
 }
+
+
 
 void CDevilSquare::Load(char * filename)
 {
@@ -178,7 +196,7 @@ void CDevilSquare::Load(char * filename)
 	int tx;
 	int ty;
 
-	SMDFile = fopen(filename, "r");	//ok
+	SMDFile = fopen(filename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -282,9 +300,6 @@ void CDevilSquare::Load(char * filename)
 				int rank;
 				int zen;
 				int exp;
-				BYTE ItemCount;
-				WORD ItemID;
-				BYTE ItemLevel;
 
 				index = TokenNumber;
 
@@ -297,73 +312,7 @@ void CDevilSquare::Load(char * filename)
 				Token = GetToken();
 				zen = TokenNumber;
 
-#ifdef __CUSTOMS__
-				Token = GetToken();
-				ItemCount = TokenNumber;
-
-				Token = GetToken();
-				int ItemType = TokenNumber;
-
-				Token = GetToken();
-				int ItemIndex = TokenNumber;
-
-				ItemID	= ITEMGET(ItemType,ItemIndex);
-
-				Token = GetToken();
-				ItemLevel = TokenNumber;
-
-				this->m_DevilSquareGround[index].SetBonus(rank, exp, zen, ItemCount, ItemID, ItemLevel);
-#else
 				this->m_DevilSquareGround[index].SetBonus(rank, exp, zen);
-#endif
-			}
-			//season 2.5 add-on
-			else if ( type == 4 ) // Timer Settings (webzen stupid??) -> Identical
-			{
-				Token = GetToken();
-
-				if ( strcmp("end", TokenString) == 0 )
-				{
-					break;
-				}
-
-				DEVILSQUARE_START_TIME Schedule;
-
-				Schedule.m_iHour = TokenNumber;
-
-				Token = GetToken();
-				Schedule.m_iMinute = TokenNumber;
-
-				this->m_listDevilSquareOpenTime.push_back(Schedule);
-			}
-			//Season 4.5 addon
-			else if ( type == 5 ) // Exp Settings  -> Identical
-			{
-				Token = GetToken();
-				
-				if ( strcmp("end", TokenString) == 0 )
-				{
-					for(int i = 0;i < 7;i++)
-					{
-						this->m_DevilSquareGround[i].IncExp((float&)this->m_BonusScoreTable[CLASS_SUMMONER][i]);
-					}
-
-					break;
-				}
-				
-				int level;
-		
-				level = TokenNumber;
-
-				if(DS_LEVEL_RANGE(level))
-				{					
-					Token = GetToken();
-					this->m_BonusScoreTable[CLASS_SUMMONER][level] = (int&)TokenNumber;
-				}
-				else
-				{
-					Token = GetToken();
-				}
 			}
 		}
 	}
@@ -373,23 +322,25 @@ void CDevilSquare::Load(char * filename)
 	LogAdd("%s file load!", filename);
 }
 
+
 void CDevilSquare::SetState(enum eDevilSquareState eState)
 {
 	this->m_eState = eState;
 
 	switch ( this->m_eState )
 	{
-		case DevilSquare_CLOSE:	this->SetClose();	break;
+		case DevilSquare_CLOSE:		this->SetClose();	break;
 		case DevilSquare_OPEN:		this->SetOpen();	break;
 		case DevilSquare_PLAYING:	this->SetPlaying();	break;
 	}
 }
 
+
 void CDevilSquare::SetClose()
 {
-	if ( LogAdd != NULL )
+	if ( LogAdd != NULL )	// LoL
 	{
-		LogAddTD("[DevilSquare] Close");
+		LogAddTD("[DevilSquare] Closed");
 	}
 
 	this->ClearMonstr();
@@ -418,6 +369,10 @@ void CDevilSquare::SetClose()
 	this->m_bSendTimeCount = FALSE;
 }
 
+
+
+
+
 void CDevilSquare::SetOpen()
 {
 	this->m_iRemainTime = this->m_iOpenTime;
@@ -435,6 +390,10 @@ void CDevilSquare::SetOpen()
 
 	this->m_bSendTimeCount = FALSE;
 }
+
+
+
+
 
 void CDevilSquare::SetPlaying()
 {
@@ -457,15 +416,24 @@ void CDevilSquare::SetPlaying()
 	this->m_bSendTimeCount = FALSE;
 }
 
-int CDevilSquare::GetDevilSquareIndex(int iGateNumber)
+
+
+
+
+int  CDevilSquare::GetDevilSquareIndex(int iGateNumber)
 {
 	switch ( iGateNumber )
 	{
+
 		case 58:
 		case 59:
 		case 60:
 		case 61:
 			return iGateNumber - 58;	// Devil 1 - 4
+			break;
+
+		case 78:
+			return iGateNumber - 71;	// Devil 1 - 4
 			break;
 
 		case 111:
@@ -474,7 +442,7 @@ int CDevilSquare::GetDevilSquareIndex(int iGateNumber)
 			break;
 
 		case 270:
-			return ( MAX_DEVILSQUARE_GROUND - 1 ); // Devil 7
+			return iGateNumber - 264; //Devil 7
 			break;
 
 		default:
@@ -483,9 +451,13 @@ int CDevilSquare::GetDevilSquareIndex(int iGateNumber)
 	}
 }
 
-int CDevilSquare::GetUserLevelToEnter(int iUserIndex, int& iMoveGate) //0046A880
+
+
+
+
+int  CDevilSquare::GetUserLevelToEnter(int iUserIndex, WORD& btMoveGate)
 {
-	iMoveGate = (BYTE)-1;
+	btMoveGate = -1;
 
 	if ( gObjIsConnected(iUserIndex) == FALSE )
 	{
@@ -494,31 +466,22 @@ int CDevilSquare::GetUserLevelToEnter(int iUserIndex, int& iMoveGate) //0046A880
 
 	int iENTER_LEVEL = -1;
 
-	// Original, with master level from 400
-	//if(g_MasterLevelSystem.IsMasterLevelUser(&gObj[iUserIndex]) != FALSE)
-	//{
-	//	iENTER_LEVEL = MAX_DEVILSQUARE_GROUND - 1;
-	//	iMoveGate = g_sttDEVILSQUARE_LEVEL[iENTER_LEVEL].MoveGate;
-	//}
-	if( gObj[iUserIndex].ThirdChangeUp > 0 )
+	if(gObjIsNewClass(&gObj[iUserIndex])==1)
 	{
-		iENTER_LEVEL = MAX_DEVILSQUARE_GROUND - 1;
-		iMoveGate = g_sttDEVILSQUARE_LEVEL[iENTER_LEVEL].MoveGate;
-	}
-	else
+		iENTER_LEVEL = 6;
+		btMoveGate = g_sttDEVILSQUARE_LEVEL[6].MoveGate;
+	}else
 	{
 		for ( int i=0;i<MAX_DEVILSQUARE_GROUND-1;i++)
 		{
-			if ( gObj[iUserIndex].Class == CLASS_DARKLORD
-#ifdef MONK
-				|| gObj[iUserIndex].Class == CLASS_MONK
-#endif
-				|| gObj[iUserIndex].Class == CLASS_MAGUMSA )
+			if (gObj[iUserIndex].Class == CLASS_DARKLORD || 
+				gObj[iUserIndex].Class == CLASS_MAGICGLADIATOR || 
+				gObj[iUserIndex].Class == CLASS_RAGEFIGHTER )
 			{
 				if ( gObj[iUserIndex].Level >= g_sttDEVILSQUARE_LEVEL[i].SpecialCharacterMinLevel  && gObj[iUserIndex].Level <= g_sttDEVILSQUARE_LEVEL[i].SpecialCharacterMaxLevel )
 				{
 					iENTER_LEVEL = i;
-					iMoveGate = g_sttDEVILSQUARE_LEVEL[i].MoveGate;
+					btMoveGate = g_sttDEVILSQUARE_LEVEL[i].MoveGate;
 					break;
 				}
 			}
@@ -527,7 +490,7 @@ int CDevilSquare::GetUserLevelToEnter(int iUserIndex, int& iMoveGate) //0046A880
 				if ( gObj[iUserIndex].Level >= g_sttDEVILSQUARE_LEVEL[i].NormalCharacterMinLevel  && gObj[iUserIndex].Level <= g_sttDEVILSQUARE_LEVEL[i].NormalCharacterMaxLevel )
 				{
 					iENTER_LEVEL = i;
-					iMoveGate = g_sttDEVILSQUARE_LEVEL[i].MoveGate;
+					btMoveGate = g_sttDEVILSQUARE_LEVEL[i].MoveGate;
 					break;
 				}
 			}
@@ -560,197 +523,44 @@ BOOL CDevilSquare::Run()
 		{
 			this->SendLiveCall();
 			count = 0;
-
-			if ( szAuthKey[12] != AUTHKEY12 )
-			{
-				DestroyGIocp();
-			}
 		}
 	}
 
 	return TRUE;
 }
 
+
 void CDevilSquare::CheckSync()
 {
-	std::list<DEVILSQUARE_START_TIME>::iterator it; //loc2 -> ebp 4
-	DEVILSQUARE_START_TIME WebzenVar1; //loc 3-4 -> ebp C
-	DEVILSQUARE_START_TIME WebzenVar2; //loc 5-6 -> epb 14
-	int BaseTime = 0; // loc7 -> ebp 18
-	int CheckTime = 0; // loc8 -> ebp 1C
-	DWORD CurrentTime = 0;	// loc9 -> ebp 20
+	tm * today;
+	time_t ltime;
 
-	if(this->m_listDevilSquareOpenTime.size() == 0)
+	time(&ltime);
+	today = localtime(&ltime);
+
+	if ( (today->tm_hour % 2) == 0 )
 	{
-		return;
+		this->m_iRemainTime = 120 - today->tm_min - this->m_iOpenTime;
+	}
+	else if ( today->tm_min >= 55 )
+	{
+		this->m_iRemainTime = 60 - today->tm_min - this->m_iOpenTime;
+		this->m_iRemainTime += 120;
+	}
+	else
+	{
+		this->m_iRemainTime = 60 - today->tm_min - this->m_iOpenTime;
 	}
 
-	tm * today; //loc10 -> ebp 24
-	time_t ltime; //loc11 -> ebp 28
-
-	time(&ltime); //
-	today = localtime(&ltime); //
-
-	int loc12; //loc12 -> ebp 30
-	CurrentTime = (today->tm_hour * 60) + today->tm_min;
-	WebzenVar1 = *m_listDevilSquareOpenTime.begin();
-
-	for( it = m_listDevilSquareOpenTime.begin(); it != m_listDevilSquareOpenTime.end(); ++it ) //for identical
+	if ( this->m_iRemainTime < 0 )
 	{
-		WebzenVar2 = *it; // loc5-6
-		BaseTime = (WebzenVar1.m_iHour * 60) + WebzenVar1.m_iMinute;
-		CheckTime =	(WebzenVar2.m_iHour * 60) + WebzenVar2.m_iMinute;
-
-		if( BaseTime == CheckTime )
-		{
-			if( CurrentTime < CheckTime )
-			{
-				WebzenVar2 = *it;
-				break;
-			}
-			continue;
-		}
-		
-		if( CurrentTime >= BaseTime && CurrentTime < CheckTime )
-		{
-			break;
-		}
-		else
-		{
-			WebzenVar1 = *it;
-		}
+		this->m_iRemainTime += 60;
 	}
 
-	for(loc12 = 2;loc12--;) //good ->func identical so far
-	{
-		if(it == m_listDevilSquareOpenTime.end())
-		{
-			it = m_listDevilSquareOpenTime.begin();
-
-			WebzenVar2 = (*it);
-		}
-
-		CheckTime = WebzenVar2.m_iHour*60+WebzenVar2.m_iMinute;
-
-		if(today->tm_hour <= WebzenVar2.m_iHour)
-		{
-			this->m_iRemainTime = CheckTime - CurrentTime;
-		}
-		else
-		{
-			this->m_iRemainTime = 1440-CurrentTime+CheckTime;
-		}
-
-		if(this->m_iRemainTime <= this->m_iOpenTime)
-		{
-			it++;
-
-			if(it != this->m_listDevilSquareOpenTime.end())
-			{
-				WebzenVar2 = (*it);
-			}
-		}
-		else
-		{
-			this->m_iRemainTime -= this->m_iOpenTime;
-			break;
-		}
-	}
-
-	LogAdd("[DevilSquare] Sync Open Time. [%d]min remain", m_iRemainTime);
+	LogAddTD("[DevilSquare] Sync Open Time. [%d]min remain", this->m_iRemainTime);
 }
 
-int CDevilSquare::CheckCloseTime()
-{
-	std::list<DEVILSQUARE_START_TIME>::iterator it; //loc2 -> ebp 4
-	DEVILSQUARE_START_TIME WebzenVar1; //loc 3-4 -> ebp C
-	DEVILSQUARE_START_TIME WebzenVar2; //loc 5-6 -> epb 14
-	int BaseTime = 0; // loc7 -> ebp 18
-	int CheckTime = 0; // loc8 -> ebp 1C
-	DWORD CurrentTime = 0;	// loc9 -> ebp 20
-	
-	tm * today; //loc10 -> ebp 24
-	time_t ltime; //loc11 -> ebp 28
 
-	int loc12 = 0; //loc12 -> ebp 30
-	int loc13;
-
-	if(this->m_listDevilSquareOpenTime.size() == 0)
-	{
-		return 0;
-	}
-
-	time(&ltime); //
-	today = localtime(&ltime); //
-
-	
-	CurrentTime = (today->tm_hour * 60) + today->tm_min;
-	WebzenVar1 = *m_listDevilSquareOpenTime.begin();
-
-	for( it = m_listDevilSquareOpenTime.begin(); it != m_listDevilSquareOpenTime.end(); ++it ) //for identical
-	{
-		WebzenVar2 = *it; // loc5-6
-		BaseTime = (WebzenVar1.m_iHour * 60) + WebzenVar1.m_iMinute;
-		CheckTime =	(WebzenVar2.m_iHour * 60) + WebzenVar2.m_iMinute;
-
-		if( BaseTime == CheckTime )
-		{
-			if( CurrentTime < CheckTime )
-			{
-				WebzenVar2 = *it;
-				break;
-			}
-			continue;
-		}
-		
-		if( CurrentTime >= BaseTime && CurrentTime < CheckTime )
-		{
-			break;
-		}
-		else
-		{
-			WebzenVar1 = *it;
-		}
-	}
-
-	for(loc13 = 2;loc13--;) //good ->func identical so far
-	{
-		if(it == m_listDevilSquareOpenTime.end())
-		{
-			it = m_listDevilSquareOpenTime.begin();
-
-			WebzenVar2 = (*it);
-		}
-
-		CheckTime = WebzenVar2.m_iHour*60+WebzenVar2.m_iMinute;
-
-		if(today->tm_hour <= WebzenVar2.m_iHour)
-		{
-			loc12 = CheckTime - CurrentTime;
-		}
-		else
-		{
-			loc12 = 1440-CurrentTime+CheckTime;
-		}
-
-		if(loc12 <= this->m_iOpenTime)
-		{
-			it++;
-
-			if(it != this->m_listDevilSquareOpenTime.end())
-			{
-				WebzenVar2 = (*it);
-			}
-		}
-		else
-		{
-			loc12 -= this->m_iOpenTime;
-			break;
-		}
-	}
-
-	return loc12;
-}
 
 void CDevilSquare::ProcClose()
 {
@@ -778,11 +588,12 @@ void CDevilSquare::ProcClose()
 						{
 							if ( CC_MAP_RANGE(gObj[i].MapNumber) == FALSE )
 							{
-								DataSend(i, (LPBYTE)&pMsg, pMsg.h.size);
+								DataSend(i, (BYTE *)&pMsg, pMsg.h.size);
 							}
 						}
 					}
 				}
+
 
 				this->m_bSendTimeCount = TRUE;
 			}		
@@ -790,6 +601,11 @@ void CDevilSquare::ProcClose()
 			if (this->m_iremainTimeSec < 1 )
 			{
 				PMSG_NOTICE pNotice;
+				pNotice.type = 0;	// 3
+				pNotice.btCount = 0;	// 4
+				pNotice.wDelay = 0;	// 6	
+				pNotice.dwColor = 0;	// 8
+				pNotice.btSpeed = 0;	// C
 
 				TNotice::MakeNoticeMsg((TNotice *)&pNotice, 0, lMsg.Get(MSGGET(2, 191)));
 
@@ -801,7 +617,7 @@ void CDevilSquare::ProcClose()
 						{
 							if ( CC_MAP_RANGE(gObj[i].MapNumber) == FALSE )
 							{
-								DataSend(i, (LPBYTE)&pNotice, pNotice.h.size);
+								DataSend(i, (BYTE *)&pNotice, pNotice.h.size);
 							}
 						}
 					}
@@ -843,6 +659,11 @@ void CDevilSquare::ProcClose()
 			if ( (this->m_iRemainTime%5)== 0 )
 			{
 				PMSG_NOTICE pNotice;
+				pNotice.type = 0;	// 3
+				pNotice.btCount = 0;	// 4
+				pNotice.wDelay = 0;	// 6	
+				pNotice.dwColor = 0;	// 8
+				pNotice.btSpeed = 0;	// C
 
 				TNotice::MakeNoticeMsgEx((TNotice *)&pNotice, 0, lMsg.Get(MSGGET(2, 192)), this->m_iRemainTime);
 
@@ -854,7 +675,7 @@ void CDevilSquare::ProcClose()
 						{
 							if ( CC_MAP_RANGE(gObj[i].MapNumber) == FALSE )
 							{
-								DataSend(i, (LPBYTE)&pNotice, pNotice.h.size);
+								DataSend(i, (BYTE *)&pNotice, pNotice.h.size);
 							}
 						}
 					}
@@ -875,6 +696,9 @@ void CDevilSquare::ProcClose()
 		}
 	}
 }
+
+
+
 
 void CDevilSquare::ProcOpen()
 {
@@ -903,7 +727,7 @@ void CDevilSquare::ProcOpen()
 						{
 							if ( CC_MAP_RANGE(gObj[i].MapNumber) == FALSE )
 							{
-								DataSend(i, (LPBYTE)&pMsg, pMsg.h.size);
+								DataSend(i, (BYTE *)&pMsg, pMsg.h.size);
 							}
 						}
 					}
@@ -930,6 +754,11 @@ void CDevilSquare::ProcOpen()
 			if ( this->m_iRemainTime > 0 )
 			{
 				PMSG_NOTICE pNotice;
+				pNotice.type = 0;	// 3
+				pNotice.btCount = 0;	// 4
+				pNotice.wDelay = 0;	// 6	
+				pNotice.dwColor = 0;	// 8
+				pNotice.btSpeed = 0;	// C
 
 				TNotice::MakeNoticeMsgEx(&pNotice, 0, lMsg.Get(MSGGET(2, 193)), this->m_iRemainTime);
 
@@ -941,7 +770,7 @@ void CDevilSquare::ProcOpen()
 						{
 							if ( CC_MAP_RANGE(gObj[i].MapNumber) == FALSE )
 							{
-								DataSend(i, (LPBYTE)&pNotice, pNotice.h.size);
+								DataSend(i, (BYTE *)&pNotice, pNotice.h.size);
 							}
 						}
 					}
@@ -965,10 +794,17 @@ void CDevilSquare::ProcOpen()
 	}
 }
 
+
+
+
+
+
+
 void CDevilSquare::ProcPlaying()
 {
 	if ( this->m_iremainTimeSec != -1 )
 	{
+
 		int lc2 = (GetTickCount() - this->m_iTime)/1000;
 
 		if ( lc2 != 0 )
@@ -982,20 +818,12 @@ void CDevilSquare::ProcPlaying()
 
 				PHeadSetB((LPBYTE)&pMsg, 0x92, sizeof(pMsg));
 				pMsg.Type = DevilSquare_PLAYING;
+				AllSendSameMapMsg((UCHAR*)&pMsg, sizeof(pMsg), MAP_INDEX_DEVILSQUARE);
 
-				for(int i = 0; i < OBJMAX; i++)
-				{
-					if(gObj[i].Connected == PLAYER_PLAYING && gObj[i].Type == OBJ_USER)
-					{
-						if(DS_MAP_RANGE(gObj[i].MapNumber) != FALSE)
-						{
-							DataSend(i, (LPBYTE)&pMsg, sizeof(pMsg));
-						}
-					}
-				}
-				
 				this->m_bSendTimeCount = TRUE;
 			}
+
+
 
 			if ( this->m_iremainTimeSec < 1 )
 			{
@@ -1014,10 +842,15 @@ void CDevilSquare::ProcPlaying()
 				if ( (this->m_iRemainTime%5) == 0 )
 				{
 					PMSG_NOTICE pNotice;
+					pNotice.type = 0;	// 3
+					pNotice.btCount = 0;	// 4
+					pNotice.wDelay = 0;	// 6	
+					pNotice.dwColor = 0;	// 8
+					pNotice.btSpeed = 0;	// C
 
 					TNotice::MakeNoticeMsgEx((TNotice *)&pNotice, 0, lMsg.Get(MSGGET(2, 194)), this->m_iRemainTime);
 					LogAddTD((char*)pNotice.Notice);
-					AllSendSameMapMsg((LPBYTE)&pNotice, pNotice.h.size, MAP_INDEX_DEVILSQUARE);
+					AllSendSameMapMsg((UCHAR*)&pNotice, pNotice.h.size, MAP_INDEX_DEVILSQUARE);
 				}
 
 				for ( int i=0;i<MAX_DEVILSQUARE_GROUND;i++)
@@ -1039,10 +872,13 @@ void CDevilSquare::ProcPlaying()
 	}
 }
 
+
+
+
+
 void CDevilSquare::SetMonster()
 {
 	int result;
-
 	for ( int n=0;n<gMSetBase.m_Count;n++)
 	{
 		if ( DS_MAP_RANGE(gMSetBase.m_Mp[n].m_MapNumber) != FALSE )
@@ -1050,31 +886,45 @@ void CDevilSquare::SetMonster()
 			WORD wMonIndex = gMSetBase.m_Mp[n].m_Type;
 			BYTE btDSIndex = -1;
 
-			if ( gMSetBase.m_Mp[n].m_X == 119 )
+			if (		gMSetBase.m_Mp[n].m_X >= 110 && gMSetBase.m_Mp[n].m_X <= 160 && 
+						gMSetBase.m_Mp[n].m_Y >= 80 && gMSetBase.m_Mp[n].m_Y <= 120 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_1;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 121 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 120 && gMSetBase.m_Mp[n].m_X <= 160 && 
+						gMSetBase.m_Mp[n].m_Y >= 150 && gMSetBase.m_Mp[n].m_Y <= 190 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_2;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 49 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 40 && gMSetBase.m_Mp[n].m_X <= 90 && 
+						gMSetBase.m_Mp[n].m_Y >= 130 && gMSetBase.m_Mp[n].m_Y <= 180 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_3;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 53 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 50 && gMSetBase.m_Mp[n].m_X <= 90 && 
+						gMSetBase.m_Mp[n].m_Y >= 70 && gMSetBase.m_Mp[n].m_Y <= 110 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_4;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 120 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 120 && gMSetBase.m_Mp[n].m_X <= 150 && 
+						gMSetBase.m_Mp[n].m_Y >= 80 && gMSetBase.m_Mp[n].m_Y <= 120 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE2 )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_5;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 122 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 120 && gMSetBase.m_Mp[n].m_X <= 160 && 
+						gMSetBase.m_Mp[n].m_Y >= 150 && gMSetBase.m_Mp[n].m_Y <= 190 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE2 )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_6;
 			}
-			else if ( gMSetBase.m_Mp[n].m_X == 50 )
+			else if (	gMSetBase.m_Mp[n].m_X >= 40 && gMSetBase.m_Mp[n].m_X <= 90 && 
+						gMSetBase.m_Mp[n].m_Y >= 130 && gMSetBase.m_Mp[n].m_Y <= 180 && 
+						gMSetBase.m_Mp[n].m_MapNumber == MAP_INDEX_DEVILSQUARE2 )
 			{
 				btDSIndex = DEVIL_SQUARE_GROUND_7;
 			}
@@ -1090,13 +940,23 @@ void CDevilSquare::SetMonster()
 			if ( result >= 0 )
 			{
 				gObjSetPosMonster(result, n);
-				gObjSetMonster(result, wMonIndex); 
+				gObjSetMonster(result, wMonIndex,"CDevilSquare::SetMonster"); 
 				gObj[result].MaxRegenTime = 1000;	// Rgeneration in 1 second
 				gObj[result].m_bDevilSquareIndex = btDSIndex;
+
+				LogAddTD("[DevilSquare][%d][Mob] ID:%d Location: %d [%d,%d] create ", 
+					btDSIndex,
+					gObj[result].Class,
+					gObj[result].MapNumber, gObj[result].X, gObj[result].Y
+				);
 			}
 		}
 	}
 }
+
+
+
+
 
 void CDevilSquare::ClearMonstr()
 {
@@ -1108,6 +968,10 @@ void CDevilSquare::ClearMonstr()
 		}
 	}
 }
+
+
+
+
 
 void CDevilSquare::gDevilSquareMonsterRegen(LPOBJ lpObj)
 {
@@ -1127,7 +991,7 @@ void CDevilSquare::gDevilSquareMonsterRegen(LPOBJ lpObj)
 
 	WORD monstertype = this->m_DevilSquareGround[devilsquareindex].GetMonsterType(this->m_iPlaytime - this->m_iRemainTime );
 
-	if ( monstertype == (BYTE)-1 )
+	if ( monstertype == (WORD)-1 )
 	{
 		LogAddTD("[DevilSquare] [%d] Invalid MonterType", monstertype);
 		return;
@@ -1138,20 +1002,36 @@ void CDevilSquare::gDevilSquareMonsterRegen(LPOBJ lpObj)
 		lpObj->Magic[n].Clear();
 	}
 
-	gObjSetMonster(lpObj->m_Index, monstertype);
+	gObjSetMonster(lpObj->m_Index, monstertype,"CDevilSquare::gDevilSquareMonsterRegen");
 	lpObj->DieRegen = FALSE;
 	gObjMonsterRegen(lpObj);
 	CreateFrustrum(lpObj->X, lpObj->Y, lpObj->m_Index);
 	lpObj->m_bDevilSquareIndex = devilsquareindex;
 	lpObj->MaxRegenTime = 1000;
 
-	LogAddTD("[DevilSquare] Monter Regen [%d][%d][%d,%d]", monstertype, devilsquareindex, lpObj->X, lpObj->Y);
+	LogAddTD("[DevilSquare] Monter Regen [%d][%d][%d,%d]",
+		monstertype, devilsquareindex, lpObj->X, lpObj->Y);
 }
+
+
+
+
 
 void CDevilSquare::SendEventStartMsg()
 {
 	PMSG_NOTICE pToEventer;
+	pToEventer.type = 0;	// 3
+	pToEventer.btCount = 0;	// 4
+	pToEventer.wDelay = 0;	// 6	
+	pToEventer.dwColor = 0;	// 8
+	pToEventer.btSpeed = 0;	// C
+
 	PMSG_NOTICE pWithOutEvneter;
+	pWithOutEvneter.type = 0;	// 3
+	pWithOutEvneter.btCount = 0;	// 4
+	pWithOutEvneter.wDelay = 0;	// 6	
+	pWithOutEvneter.dwColor = 0;	// 8
+	pWithOutEvneter.btSpeed = 0;	// C
 
 	TNotice::MakeNoticeMsg(&pToEventer, 0, lMsg.Get(MSGGET(2, 195)));
 	TNotice::MakeNoticeMsg(&pWithOutEvneter, 0, lMsg.Get(MSGGET(2, 196)));
@@ -1162,17 +1042,21 @@ void CDevilSquare::SendEventStartMsg()
 		{
 			if ( DS_MAP_RANGE(gObj[n].MapNumber) != FALSE )
 			{
-				DataSend(n, (LPBYTE)&pToEventer, pToEventer.h.size);
+				DataSend(n, (BYTE *)&pToEventer, pToEventer.h.size);
 			}
 			else
 			{
-				DataSend(n, (LPBYTE)&pWithOutEvneter, pWithOutEvneter.h.size);
+				DataSend(n, (BYTE *)&pWithOutEvneter, pWithOutEvneter.h.size);
 			}
 		}
 	}
 
 	LogAddTD("[DevilSquare] Start Event");
 }
+
+
+
+
 
 void CDevilSquare::DieProcDevilSquare(LPOBJ lpObj)
 {
@@ -1182,17 +1066,7 @@ void CDevilSquare::DieProcDevilSquare(LPOBJ lpObj)
 	GCServerMsgStringSend(msg, lpObj->m_Index, 1);
 
 	if ( lpObj->m_nEventScore <= 0 )
-	{
 		return;
-	}
-
-	PMSG_ANS_EVENTUSERSCORE pMsg;
-
-	pMsg.h.c = 0xC1;
-	pMsg.h.headcode = 0x01;
-	pMsg.h.size = sizeof(pMsg);
-	pMsg.SquareNum = lpObj->m_bDevilSquareIndex;
-	pMsg.Class = lpObj->Class;
 
 	if ( lpObj->Class == 1 )
 	{
@@ -1204,21 +1078,32 @@ void CDevilSquare::DieProcDevilSquare(LPOBJ lpObj)
 				
 			}
 		}
-
-		pMsg.Score = lpObj->m_nEventScore;
 	}
-	else
+
+	
+	if(ReadConfig.SCFRSON == FALSE)
 	{
+		PMSG_ANS_EVENTUSERSCORE pMsg;
+
+		pMsg.h.c = 0xC1;
+		pMsg.h.headcode = 0x01;
+		pMsg.h.size = sizeof(pMsg);
+		pMsg.SquareNum = lpObj->m_bDevilSquareIndex;
+		pMsg.Class = lpObj->Class;
 		pMsg.Score = lpObj->m_nEventScore;
+		pMsg.ServerCode = gGameServerCode;
+		memcpy(pMsg.AccountID, lpObj->AccountID, sizeof(pMsg.AccountID));
+		memcpy(pMsg.GameID, lpObj->Name, sizeof(pMsg.GameID));
+
+		DataSendRank((char *)&pMsg, pMsg.h.size);
+	}else
+	{
+		DS_SendRankingInfo(lpObj->m_Index);
 	}
 
-	pMsg.ServerCode = gGameServerCode;
-	memcpy(pMsg.AccountID, lpObj->AccountID, sizeof(pMsg.AccountID));
-	memcpy(pMsg.GameID, lpObj->Name, sizeof(pMsg.GameID));
-
-	DataSendRank((char*)&pMsg, pMsg.h.size);
-
-	LogAddTD("[DevilSquare] Dead [%s][%s][%d][%d]", lpObj->AccountID, lpObj->Name, lpObj->m_nEventExp, lpObj->m_nEventScore);
+	LogAddTD("[DevilSquare] Dead [%s][%s][%d][%d]",
+		lpObj->AccountID, lpObj->Name, 
+		lpObj->m_nEventExp, lpObj->m_nEventScore);
 
 	lpObj->m_nEventScore = 0;
 	lpObj->m_nEventMoney = 0;
@@ -1226,11 +1111,21 @@ void CDevilSquare::DieProcDevilSquare(LPOBJ lpObj)
 
 }
 
-int CDevilSquare::gObjMonsterExpSingle(LPOBJ lpObj, LPOBJ lpTargetObj, int dmg, int tot_dmg)
-{
-	__int64 exp;
-	__int64 maxexp = 0;
 
+
+
+
+
+int  CDevilSquare::gObjMonsterExpSingle(LPOBJ lpObj, LPOBJ lpTargetObj, int dmg, int tot_dmg)
+{
+	if(lpObj->Type != OBJ_USER)
+	{
+		return 0;
+	}
+
+	unsigned int exp;
+	INT maxexp = 0;
+	int totalExpMultiplyer = 0;
 	int level = ((lpTargetObj->Level + 25) * lpTargetObj->Level) / 3;
 
 	if ( (lpTargetObj->Level + 10) < lpObj->Level )
@@ -1262,48 +1157,99 @@ int CDevilSquare::gObjMonsterExpSingle(LPOBJ lpObj, LPOBJ lpTargetObj, int dmg, 
 	}
 
 	exp = (dmg * exp)/tot_dmg;
-	DWORD mymaxexp = gLevelExperience[lpObj->Level];
+	DWORD mymaxexp = gObjExpCal(lpObj, 0);	//gLevelExperience[lpObj->Level];
 
-	if ( exp > mymaxexp )
+	if((ReadConfig.ExpSys == 1) || (ReadConfig.ExpSys == 2))
 	{
-		exp = mymaxexp;
+		if ( exp > mymaxexp )
+		{
+			exp = mymaxexp;
+		}
 	}
 
-	if(g_MasterLevelSystem.IsMasterLevelUser(lpObj) == FALSE)
+	//Get Experience Rate
+	totalExpMultiplyer = gObjGetExperienceRate(lpObj,0);
+
+	exp *= totalExpMultiplyer;
+
+	if ( (lpObj->m_wExprienceRate + lpObj->MasterCharacterInfo->IncExperience) == 0 )
+		exp = 0;
+	else
+		exp =  (float)exp * ((float)(lpObj->m_wExprienceRate + lpObj->MasterCharacterInfo->IncExperience)  / 100.0f);
+
+	if ( (lpObj->pInventory[8].IsItem() == TRUE && lpObj->pInventory[8].m_Type == ITEMGET(13,123)) ) //NEW SKELETON EFFECT
 	{
-#ifdef __CUSTOMS__
-		exp = int(exp * g_ResetSystem.GetDynamicExp(lpObj));
+		exp = (int)(exp * 1.3f);
+	}
+
+	if ( g_CrywolfSync.GetOccupationState() == CRYWOLF_OCCUPATION_FAILED && g_iCrywolfApplyMvpPenalty != FALSE)
+	{
+#if (PACK_EDITION>=2)
+		if ((VipSystem.VipIsApplyCWExpPenalty == 0)&&(lpObj->Vip >= 1))
+		{
+		} else {
+			exp =  (exp * g_CrywolfSync.GetGettingExpPenaltyRate()) / 100;
+		}
 #else
-		exp = int(exp * gAddExperience);
-#endif
-	}
-	
-#ifdef PCBANG
-	if(g_MasterLevelSystem.IsMasterLevelUser(lpObj) == FALSE)//Season 4.5 addon
-	{
-		g_PCBangPointSystem.AddExperience(lpObj,exp);
-	}
-#endif
-
-	if ( g_CrywolfSync.GetOccupationState() == 1 && g_iCrywolfApplyMvpPenalty != FALSE)
-	{
 		exp =  (exp * g_CrywolfSync.GetGettingExpPenaltyRate()) / 100;
+#endif
 	}
 
-	exp +=  (exp * g_MAP_SETTINGS[lpObj->MapNumber].exp_increase) / 100;
+	if(ReadConfig.ExpSys == 0)
+	{
+		if ( exp > mymaxexp )
+		{
+			exp = mymaxexp;
+		}
+	}
+
+#if (PACK_EDITION>=3)
+	if(lpObj->BotNumOwner >= OBJ_MAXMONSTER && lpObj->HaveBot == 1)
+	{
+		int botExp = exp * (gObj[lpObj->BotNumOwner].BotLvlUpExp/100.0f);
+		exp -= botExp;
+		botPet.AddExp(lpObj->BotNumOwner,botExp);
+	}
+#endif
 
 	if ( exp > 0 )
 	{
-		if ( lpObj->Type == OBJ_USER )
+		if(ReadConfig.ExpSys == 2)
 		{
-			CheckItemOptForGetExpEx(lpObj, exp, FALSE); //Seal Exp (Season3 add-on)
-		
-			lpObj->Experience += exp;
-			lpObj->m_nEventExp += exp;
+			int LevelUp;
+			gObjSetExpPetItem(lpObj->m_Index, exp);
 
-			if ( gObjLevelUp(lpObj, exp, lpTargetObj->Class, 0) == false )
+			if((lpObj->m_wExprienceRate + lpObj->MasterCharacterInfo->IncExperience) > 0 && lpObj->m_btDisableExpGain == 0)
 			{
-				return 0;
+				lpObj->Experience += exp;
+			}
+			gObjLevelUp(lpObj, exp, 0, EVENT_TYPE_DEVILSQUARE,LevelUp);
+		}else
+		{
+			if ( (lpObj->m_wExprienceRate + lpObj->MasterCharacterInfo->IncExperience) > 0 && lpObj->m_btDisableExpGain == 0)
+			{
+				gObjSetExpPetItem(lpObj->m_Index, exp);
+
+				lpObj->m_nEventExp += exp;
+				int iMAX_LEVCOUNT = 0, iCAL_EXP = exp;
+
+				while ( iCAL_EXP > 0 )
+				{
+					if ( iCAL_EXP > 0 )
+					{
+						int LevelUp;
+						iCAL_EXP = gObjLevelUp(lpObj, iCAL_EXP, 0, EVENT_TYPE_DEVILSQUARE, LevelUp);
+					}
+
+					if(iCAL_EXP == 0)
+						break;
+
+					iMAX_LEVCOUNT++;
+					if (iMAX_LEVCOUNT > 5)
+						break;
+				}
+				if ((iCAL_EXP < 0)&&(iMAX_LEVCOUNT < 2))
+					return -1;
 			}
 		}
 	}
@@ -1311,14 +1257,14 @@ int CDevilSquare::gObjMonsterExpSingle(LPOBJ lpObj, LPOBJ lpTargetObj, int dmg, 
 	return exp;
 }
 
+
+
 void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage, BOOL MSBFlag)
 {
 	int n;
-
-	__int64 exp;
-	__int64 maxexp = 0;
-	__int64 totalexp;
-
+	unsigned int exp;
+	INT maxexp = 0;
+	int totalexp;
 	int level = ((lpTargetObj->Level + 25) * lpTargetObj->Level) / 3;
 	int number;
 	int partynum = 0;
@@ -1329,11 +1275,12 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 	int viewplayer = 0;
 	int viewpercent = 100;
 	BOOL bApplaySetParty = FALSE;
-	bool bCheckSetParty[MAX_TYPE_PLAYER];
+	BOOL bCheckSetParty[MAX_TYPE_PLAYER];
 	partynum = lpObj->PartyNumber;
 	LPOBJ lpPartyObj;
-	
+
 	int toplevel = 0;
+	int totalExpMultiplyer = 0;
 
 	for (n=0;n<MAX_USER_IN_PARTY;n++)
 	{
@@ -1343,14 +1290,9 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		{
 			lpPartyObj = &gObj[number];
 
-			int dis = gObjCalDistance(lpTargetObj,lpPartyObj); //Season 2.5 add-on
-
-			if(dis < 10) //Season 2.5 add-on
+			if ( lpPartyObj->Level > toplevel )
 			{
-				if ( lpPartyObj->Level+lpPartyObj->m_nMasterLevel > toplevel )//Season 4.5 fix
-				{
-					toplevel = lpPartyObj->Level+lpPartyObj->m_nMasterLevel;//Season 4.5 fix
-				}
+				toplevel = lpPartyObj->Level;
 			}
 		}
 	}
@@ -1371,7 +1313,7 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		{
 			lpPartyObj = &gObj[number];
 
-			if ( lpTargetObj->MapNumber ==lpPartyObj->MapNumber )
+			if ( lpTargetObj->MapNumber == lpPartyObj->MapNumber )
 			{
 				dis[n] = gObjCalDistance(lpTargetObj, &gObj[number]);
 
@@ -1379,13 +1321,13 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 				{
 					lpPartyObj = &gObj[number];
 
-					if ( toplevel >= (lpPartyObj->Level + lpPartyObj->m_nMasterLevel + 200 ) ) // Season 4.5 fix
+					if ( toplevel >= (lpPartyObj->Level + 200 ) ) // #formula
 					{
-						totallevel += lpPartyObj->Level + lpPartyObj->m_nMasterLevel + 200;//Season 4.5 fix
+						totallevel = totallevel + lpPartyObj->Level + 200;
 					}
 					else
 					{
-						totallevel += lpPartyObj->Level + lpPartyObj->m_nMasterLevel; // Season 4.5 fix
+						totallevel += lpPartyObj->Level;
 					}
 
 					viewplayer++;
@@ -1395,8 +1337,7 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		}
 	}
 
-	if ( bCheckSetParty[0] != false && bCheckSetParty[1] != false && bCheckSetParty[2] != false 
-		|| bCheckSetParty[3] != false && bCheckSetParty[4] != false && bCheckSetParty[5] != false )//Season 4.5 addon
+	if ( bCheckSetParty[CLASS_WIZARD] != false && bCheckSetParty[CLASS_KNIGHT] != false && bCheckSetParty[CLASS_ELF] != false )
 	{
 		bApplaySetParty = TRUE;
 	}
@@ -1407,42 +1348,42 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		{
 			if ( viewplayer == 3 )
 			{
-				viewpercent = 230;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent1;
 			}
 			else if ( viewplayer == 4 )
 			{
-				viewpercent = 270;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent2;
 			}
 			else if ( viewplayer >= 5 )
 			{
-				viewpercent = 300;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent3;
 			}
 			else
 			{
-				viewpercent = 120;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent4;
 			}
 		}
 		else
 		{
 			if ( viewplayer == 2 )
 			{
-				viewpercent = 160;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent5;
 			}
 			else if ( viewplayer == 3 )
 			{
-				viewpercent = 180;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent6;
 			}
 			else if ( viewplayer == 4 )
 			{
-				viewpercent = 200;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent7;
 			}
-			else if ( viewplayer >= 5 )
+			else if ( viewplayer == 5 )
 			{
-				viewpercent = 220;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent8;
 			}
 			else
 			{
-				viewpercent = 120;
+				viewpercent = ReadConfig.gObjExpParty_viewpercent9;
 			}
 		}
 
@@ -1462,11 +1403,11 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 	{
 		if ( viewplayer == 1 )
 		{
-			level += ((lpTargetObj->Level+lpTargetObj->m_nMasterLevel) - 64) * (lpTargetObj->Level/ 4);
+			level += (lpTargetObj->Level - 64) * (lpTargetObj->Level/ 4);
 		}
 		else
 		{
-			level += (200.0 - ((lpObj->Level + lpObj->m_nMasterLevel) * 0.2));
+			level += (200.0 - (lpObj->Level * 0.2));
 		}
 	}
 
@@ -1488,7 +1429,7 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		totalexp = level + rand()%maxexp;
 	}
 
-	if( lpTargetObj->Type == OBJ_MONSTER )
+	if ( lpTargetObj->Type == OBJ_MONSTER )
 	{
 		lpTargetObj->Money = totalexp;
 	}
@@ -1500,88 +1441,110 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 		if ( number >= 0 )
 		{
 			lpPartyObj = &gObj[number];
+			if(lpPartyObj->Type != OBJ_USER)
+			{
+				continue;
+			}
 
 			if ( lpTargetObj->MapNumber == lpPartyObj->MapNumber )
 			{
 				if ( dis[n] < 10 )
 				{
-					__int64 myexp = 0;//Season 4.5 changed
+					DWORD myexp = gObjExpCal(lpPartyObj, 0);	//gLevelExperience[lpPartyObj->Level];
+					exp = ((totalexp * viewpercent* lpPartyObj->Level ) / totallevel ) / 100;
 					
-					//Season 4.5 addon start
-					if(g_MasterLevelSystem.CheckMLGetExp(lpPartyObj, lpTargetObj) == 0)
+					if(ReadConfig.ExpSys == 1)
 					{
+						if ( exp > myexp )
+						{
+							exp = myexp;
+						}
+					}
+
+					//Get Exp Rate for the user
+					totalExpMultiplyer = gObjGetExperienceRate(lpPartyObj,0);
+
+					if (totalExpMultiplyer < 1)
+					{
+						totalExpMultiplyer = 1;
+					}
+
+					exp *= totalExpMultiplyer;
+				
+
+					if ( (lpPartyObj->m_wExprienceRate + lpPartyObj->MasterCharacterInfo->IncExperience) == 0 )
 						exp = 0;
-					}
-					else 
+					else
+						exp =  (float)exp * ((float)(lpPartyObj->m_wExprienceRate + lpPartyObj->MasterCharacterInfo->IncExperience)  / 100.0f);
+
+					if ( (lpPartyObj->pInventory[8].IsItem() == TRUE && lpPartyObj->pInventory[8].m_Type == ITEMGET(13,123)) ) //NEW SKELETON EXTRA EXP
 					{
-						if(g_MasterLevelSystem.IsMasterLevelUser(lpPartyObj) != 0)
+						exp = (int)(exp * 1.3f);
+					}
+
+					if ( g_CrywolfSync.GetOccupationState() == CRYWOLF_OCCUPATION_FAILED && g_iCrywolfApplyMvpPenalty != FALSE)
+					{
+#if (PACK_EDITION>=2)
+						if ((VipSystem.VipIsApplyCWExpPenalty == 0)&&(lpPartyObj->Vip >= 1))
 						{
-							myexp = lpPartyObj->m_i64NextMasterLevelExp;
+						} else {
+							exp =  (exp * g_CrywolfSync.GetGettingExpPenaltyRate()) / 100;
 						}
-						else
-						{
-							myexp = gLevelExperience[lpPartyObj->Level];
-						}
-
-						exp = ((totalexp * viewpercent* (lpPartyObj->Level + lpPartyObj->m_nMasterLevel) ) / totallevel ) / 100;
-					}
-					//Season 4.5 addon end
-
-					if ( exp > myexp  )
-					{
-						exp = myexp;
-					}
-
-					if( lpPartyObj->Type == OBJ_USER )
-					{
-						if ( lpTargetObj->Type == OBJ_USER )
-						{
-							exp = 0;
-						}
-					}
-
-					if(g_MasterLevelSystem.IsMasterLevelUser(lpPartyObj) == FALSE)
-					{
-#ifdef __CUSTOMS__
-						exp = int(exp * g_ResetSystem.GetDynamicExp(lpPartyObj));
 #else
-						exp = int(exp * gAddExperience);
-#endif
-					}
-					
-#ifdef PCBANG
-					if(g_MasterLevelSystem.IsMasterLevelUser(lpPartyObj) == FALSE)//Season 4.5 addon
-					{
-						g_PCBangPointSystem.AddExperience(lpPartyObj,exp);
-					}
-#endif
-
-					if ( g_CrywolfSync.GetOccupationState() == 1 && g_iCrywolfApplyMvpPenalty != FALSE)
-					{
 						exp =  (exp * g_CrywolfSync.GetGettingExpPenaltyRate()) / 100;
+#endif
 					}
-					
-					exp +=  (exp * g_MAP_SETTINGS[lpObj->MapNumber].exp_party_increase) / 100;
 
+					if(ReadConfig.ExpSys == 0)
+					{
+						if ( exp > myexp )
+						{
+							exp = myexp;
+						}
+					}
+
+#if (PACK_EDITION>=3)
+					if(lpPartyObj->BotNumOwner >= OBJ_MAXMONSTER && lpPartyObj->HaveBot == 1)
+					{
+						int botExp = exp * (gObj[lpPartyObj->BotNumOwner].BotLvlUpExp/100.0f);
+						exp -= botExp;
+						botPet.AddExp(lpPartyObj->BotNumOwner,botExp);
+					}
+#endif
+					int LevelUp;
 					if ( exp > 0 )
 					{
-						if ( lpPartyObj->Type == OBJ_USER )
+						if ( (lpPartyObj->m_wExprienceRate + lpPartyObj->MasterCharacterInfo->IncExperience) > 0 && lpPartyObj->m_btDisableExpGain == 0 )
 						{
-							CheckItemOptForGetExpEx(lpPartyObj, exp, FALSE); //Seal Exp (Season3 add-on)
-
-							lpPartyObj->Experience += exp;
+							gObjSetExpPetItem(lpPartyObj->m_Index, exp);
 							lpPartyObj->m_nEventExp += exp;
+							int iMAX_LEVCOUNT = 0, iCAL_EXP = exp;
 
-							if ( gObjLevelUp(lpPartyObj, exp, lpTargetObj->Class, EVENT_TYPE_PARTY) == false )
+							while ( iCAL_EXP > 0 )
 							{
-								continue;
+								if ( iCAL_EXP > 0 )
+								{
+									iCAL_EXP = gObjLevelUp(lpPartyObj, iCAL_EXP, 0, EVENT_TYPE_DEVILSQUARE_PARTY, LevelUp);
+								}
+
+								if(iCAL_EXP == 0)
+									break;
+
+								iMAX_LEVCOUNT++;
+								if (iMAX_LEVCOUNT > 5)
+									break;
 							}
+							if ((iCAL_EXP < 0)&&(iMAX_LEVCOUNT < 2))
+								continue;
 						}
 					}
 
-					if ( lpPartyObj->Type == OBJ_USER )
+					if(LevelUp == 0)
 					{
-						GCKillPlayerExpSend(lpPartyObj->m_Index, lpTargetObj->m_Index, exp, AttackDamage, MSBFlag);
+						if ( (lpPartyObj->m_wExprienceRate + lpPartyObj->MasterCharacterInfo->IncExperience) > 0 && lpPartyObj->m_btDisableExpGain == 0 )
+						{
+							GCKillPlayerExpSend(lpPartyObj->m_Index, lpTargetObj->m_Index, exp, AttackDamage, MSBFlag);
+						}
 					}
 				}
 			}
@@ -1589,7 +1552,12 @@ void CDevilSquare::gObjExpParty(LPOBJ lpObj, LPOBJ lpTargetObj, int AttackDamage
 	}
 }
 
-void CDevilSquare::gObjMonsterScoreDivision(LPOBJ lpMonObj, LPOBJ lpObj, int AttackDamage, BOOL MSBFlag) //0046F9D0 identical gs-cs 56
+
+
+
+
+
+void CDevilSquare::gObjMonsterScoreDivision(LPOBJ lpMonObj, LPOBJ lpObj, int AttackDamage, BOOL MSBFlag)
 {
 	::gObjMonsterHitDamageUserDel(lpMonObj);
 	lpMonObj->Money = 0;
@@ -1604,30 +1572,34 @@ void CDevilSquare::gObjMonsterScoreDivision(LPOBJ lpMonObj, LPOBJ lpObj, int Att
 		int lc5 = lpMonObj->sHD[HitIndex].HitDamage / lpMonObj->MaxLife * lpMonObj->Level;
 		lc5 *= lpTargetObj->m_bDevilSquareIndex + 1;
 		lpTargetObj->m_nEventScore += lc5;
-#ifdef WZQUEST
-		g_QuestExpProgMng.ChkUserQuestTypeEventMap(260, lpTargetObj, lpTargetObj->m_bDevilSquareIndex, 2);
-#endif
 	}
 }
 
+
+
+
 void CDevilSquare::ItemClear()
 {
-	int CurTime = GetTickCount();
-
 	for ( int i=0;i<MAX_MAPITEM;i++)
 	{
 		MapC[MAP_INDEX_DEVILSQUARE].m_cItem[i].m_State = 8;
 	}
 }
 
+
+
+
 void CDevilSquare::CalcScore()
 {
-	for ( int n = 0; n < MAX_DEVILSQUARE_GROUND; n++ )
+#if (WL_PROTECT==1)
+	_beginthread( CViewportGuild__SystemProcessesScan, 0, NULL  );
+#endif
+	for ( int n=0;n<MAX_DEVILSQUARE_GROUND;n++)
 	{
 		this->m_DevilSquareGround[n].ClearScore();
 	}
 
-	for ( int n = OBJ_STARTUSERINDEX; n < OBJMAX; n++ )
+	for ( int n=OBJ_STARTUSERINDEX;n<OBJMAX;n++)
 	{
 		if ( gObj[n].Connected == PLAYER_PLAYING )
 		{
@@ -1635,34 +1607,47 @@ void CDevilSquare::CalcScore()
 			{
 				if ( DS_LEVEL_RANGE(gObj[n].m_bDevilSquareIndex) != FALSE )
 				{
+					//QUEST FINISH
+					qs5.FinishEvent(n,1,gObj[n].m_bDevilSquareIndex+1); //FINISH BC QUEST
 					this->m_DevilSquareGround[gObj[n].m_bDevilSquareIndex].InsertObj(&gObj[n]);
 				}
 			}
 		}
 	}
 
-	for ( int n = 0; n < MAX_DEVILSQUARE_GROUND; n++ )
+	for (int n=0;n<MAX_DEVILSQUARE_GROUND;n++)
 	{
 		this->m_DevilSquareGround[n].SortScore();
 		this->m_DevilSquareGround[n].SendScore();
 	}
 }
 
+
+
 struct PMSG_ANS_EVENTLIVE
 {
-	PBMSG_HEAD h;
+	PBMSG_HEAD h;	// C1:03
 };
 
-void CDevilSquare::SendLiveCall()
-{
-	PMSG_ANS_EVENTLIVE pMsg;
-	
-	pMsg.h.c = 0xC1;
-	pMsg.h.headcode = 0x03;
-	pMsg.h.size = sizeof(pMsg);
 
-	DataSendRank((char *)&pMsg, pMsg.h.size);
+
+
+void CDevilSquare::SendLiveCall()
+{	
+	if(ReadConfig.SCFRSON == FALSE)
+	{
+		PMSG_ANS_EVENTLIVE pMsg;
+		
+		pMsg.h.c = 0xC1;
+		pMsg.h.headcode = 0x03;
+		pMsg.h.size = sizeof(pMsg);
+
+		DataSendRank((char *)&pMsg, pMsg.h.size);
+	}
 }
+
+
+
 
 void CDevilSquare::gObjScoreClear()
 {
@@ -1680,6 +1665,11 @@ void CDevilSquare::gObjScoreClear()
 	}
 }
 
+
+
+
+
+
 void CDevilSquare::CheckInvalidUser()
 {
 	for ( int n=OBJ_STARTUSERINDEX;n<OBJMAX;n++)
@@ -1690,27 +1680,11 @@ void CDevilSquare::CheckInvalidUser()
 			{
 				if ( this->m_eState == DevilSquare_CLOSE )
 				{
-					LogAddC(2, "[DevilSquare] [%s][%s] Found user in DevilSquare [State:Close]", gObj[n].AccountID, gObj[n].Name);
+					LogAddC(2, "[DevilSquare] [%s][%s] Found user in DevilSquare [State:Close]",
+						gObj[n].AccountID, gObj[n].Name);
 					gObjUserKill(gObj[n].m_Index);
 				}
 			}
 		}
 	}
-}
-
-//00494e50	-> 100%
-int CDevilSquare::DelUser(int nDevilSquareIndex, int UserIndex)	//1.01.00
-{
-	if( !DS_LEVEL_RANGE(nDevilSquareIndex) )
-	{
-		return false;
-	}
-	// ----
-	m_DevilSquareGround->DelUser(UserIndex);
-}
-
-//00494fa0	-> 100%
-int CDevilSquare::LeaveDevilSquare(int nDevilSquareIndex, int UserIndex)	//1.01.00
-{
-	return this->DelUser(nDevilSquareIndex, UserIndex);
 }

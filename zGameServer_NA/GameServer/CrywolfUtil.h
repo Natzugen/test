@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==1)
+
 #include "user.h"
 
 class CCrywolfScoreSort	// Completed
@@ -41,9 +43,7 @@ public:
   void __cdecl SendAllUserAnyMsg(int iType, LPSTR lpszMsg, ...);
   void SendCrywolfUserAnyData(LPBYTE lpMsg, int iSize);
   void __cdecl SendCrywolfUserAnyMsg(int iType, LPSTR lpszMsg, ...);
-  void __cdecl SendCrywolfChattingMsg(int iObjIndex, LPSTR lpszMsg, ...);
-  int CrywolfMVPLevelUp(int iUserIndex, int iAddExp);
-
 };
 
+#endif
 #endif // !defined(AFX_CRYWOLFUTIL_H__8D1A179E_3D04_4578_A15B_3DAD0E55783B__INCLUDED_)

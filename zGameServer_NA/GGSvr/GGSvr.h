@@ -9,12 +9,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#ifdef GGSVR_EXPORTS
-#define GGSVR_API __declspec(dllexport)
-#else
-#define GGSVR_API __declspec(dllimport)
-#endif
-
 #include "CSAuth2.h"
 
 

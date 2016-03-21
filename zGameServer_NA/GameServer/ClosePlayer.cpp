@@ -1,4 +1,9 @@
-//	GS-CS	1.00.90	JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x0048381C : Completed 
+//	GS-N	1.00.18	JPN	0x0049ED80	-	Completed
 #include "stdafx.h"
 #include "ClosePlayer.h"
 #include "closeplayer.h"
@@ -7,6 +12,7 @@
 #include "user.h"
 #include "giocp.h"
 #include "GameMain.h"
+
 
 Ccloseplayer::Ccloseplayer()
 {
@@ -23,7 +29,7 @@ void Ccloseplayer::Load(char* filename)
 	int Token; 
 	int aIndex;
 	char closeplayerid[50];
-	SMDFile=fopen(filename, "r");	//ok
+	SMDFile=fopen(filename, "r");
 
 	if (SMDFile == 0)
 	{

@@ -1,5 +1,5 @@
 // CrywolfUtil.cpp: implementation of the CCrywolfUtil class.
-//	GS-N	1.00.77	JPN	0xXXXXXXXX - Completed
+//	GS-N	1.00.18	JPN	0x0056F8E0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -10,10 +10,9 @@
 #include "..\common\classdef.h"
 #include "LogProc.h"
 #include "Gamemain.h"
-#include "MasterLevelSystem.h"
-#ifdef __CUSTOMS__
-#include "ResetSystem.h"
-#endif
+#include "HitAndUp.h"
+
+#if (GS_CASTLE==1)
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -27,6 +26,7 @@ CCrywolfUtil::~CCrywolfUtil()
 {
 	return;
 }
+
 
 void CCrywolfUtil::SendMapServerGroupMsg(LPSTR lpszMsg, ...)
 {
@@ -42,6 +42,7 @@ void CCrywolfUtil::SendMapServerGroupMsg(LPSTR lpszMsg, ...)
 
 	GS_GDReqMapSvrMsgMultiCast(g_MapServerManager.GetMapSvrGroup(), szBuffer);
 }
+
 
 void CCrywolfUtil::SendAllUserAnyData(LPBYTE lpMsg, int iSize)
 {
@@ -72,6 +73,11 @@ void CCrywolfUtil::SendAllUserAnyMsg(int iType, LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
 
 	switch ( iType )
 	{
@@ -87,6 +93,8 @@ void CCrywolfUtil::SendAllUserAnyMsg(int iType, LPSTR lpszMsg, ...)
 			break;
 	}
 }
+
+
 
 void CCrywolfUtil::SendCrywolfUserAnyData(LPBYTE lpMsg, int iSize)
 {
@@ -105,6 +113,8 @@ void CCrywolfUtil::SendCrywolfUserAnyData(LPBYTE lpMsg, int iSize)
 	}
 }
 
+
+
 void CCrywolfUtil::SendCrywolfUserAnyMsg(int iType, LPSTR lpszMsg, ...)
 {
 	if ( !lpszMsg )
@@ -118,6 +128,11 @@ void CCrywolfUtil::SendCrywolfUserAnyMsg(int iType, LPSTR lpszMsg, ...)
 	va_end(pArguments);
 
 	PMSG_NOTICE pNotice;
+	pNotice.type = 0;	// 3
+	pNotice.btCount = 0;	// 4
+	pNotice.wDelay = 0;	// 6	
+	pNotice.dwColor = 0;	// 8
+	pNotice.btSpeed = 0;	// C
 
 	switch ( iType )
 	{
@@ -147,131 +162,4 @@ void CCrywolfUtil::SendCrywolfUserAnyMsg(int iType, LPSTR lpszMsg, ...)
 
 }
 
-void CCrywolfUtil::SendCrywolfChattingMsg(int iObjIndex, LPSTR lpszMsg, ...)
-{
-#if(TESTSERVER==0)
-	return;
 #endif
-
-	if ( !lpszMsg )
-	{
-		return;
-	}
-
-	if ( !OBJMAX_RANGE(iObjIndex))
-	{
-		return;
-	}
-
-	LPOBJ lpObj = &gObj[iObjIndex];
-	char szBuffer[512] = "";
-	va_list pArguments;
-
-	va_start(pArguments, lpszMsg);
-	vsprintf(szBuffer, lpszMsg, pArguments);
-	va_end(pArguments);
-
-	char szChat[MAX_CHAT_LEN] = {0};
-	memcpy(szChat, szBuffer, sizeof(szChat)-1);
-
-	for(int i=0;i<MAX_VIEWPORT_MONSTER;i++)
-	{
-		if ( lpObj->VpPlayer2[i].state )
-		{
-			int iTargetNumber = lpObj->VpPlayer2[i].number;
-
-			if ( OBJMAX_RANGE(iTargetNumber) )
-			{
-				ChatTargetSend(lpObj, szChat, iTargetNumber);
-			}
-		}
-	}
-}
-
-int CCrywolfUtil::CrywolfMVPLevelUp(int iUserIndex, int iAddExp)
-{
-	if ( !OBJMAX_RANGE(iUserIndex ) )
-	{
-		return 0;
-	}
-
-	LogAddTD("[ Crywolf ][MVP Exp.] : [%s][%s](%d) %u %d", gObj[iUserIndex].AccountID, gObj[iUserIndex].Name, gObj[iUserIndex].Level, gObj[iUserIndex].Experience, iAddExp);
-
-	if(g_MasterLevelSystem.MasterLevelUp(&gObj[iUserIndex], iAddExp, true, 0) != 0) //season3 add-on
-	{
-		return 0;
-	}
-
-	gObjSetExpPetItem(iUserIndex, iAddExp);
-
-	int iLEFT_EXP = 0;
-
-	LogAddTD("Experience : Map[%d]-(%d,%d) [%s][%s](%d) %u %d MonsterIndex : %d, EventType : %d", gObj[iUserIndex].MapNumber, gObj[iUserIndex].X, gObj[iUserIndex].X, gObj[iUserIndex].AccountID, gObj[iUserIndex].Name, gObj[iUserIndex].Level, gObj[iUserIndex].Experience, iAddExp, 0, EVENT_TYPE_CRYWOLF);
-
-	if ( gObj[iUserIndex].Level >= MAX_CHAR_LEVEL )
-	{
-		GCServerMsgStringSend(lMsg.Get(MSGGET(4, 112)), gObj[iUserIndex].m_Index, 1);
-		return 0;
-	}
-
-	if ( (gObj[iUserIndex].Experience + iAddExp) < gObj[iUserIndex].NextExp )
-	{
-		gObj[iUserIndex].Experience += iAddExp;
-	}
-	else
-	{
-		iLEFT_EXP = gObj[iUserIndex].Experience + iAddExp - gObj[iUserIndex].NextExp;
-		gObj[iUserIndex].Experience = gObj[iUserIndex].NextExp;
-		gObj[iUserIndex].Level++;
-
-		if ( gObj[iUserIndex].Class == CLASS_DARKLORD || gObj[iUserIndex].Class == CLASS_MAGUMSA )
-		{
-			gObj[iUserIndex].LevelUpPoint += 7;
-		}
-		else
-		{
-			gObj[iUserIndex].LevelUpPoint += 5;
-		}
-
-		if ( gObj[iUserIndex].PlusStatQuestClear && gObj[iUserIndex].Level >= g_ResetSystem.m_MarlonStatMinLevel )
-		{
-			gObj[iUserIndex].LevelUpPoint++;
-			LogAddTD("[ Crywolf ][MVP Exp.] [%s][%s] LevelUp PlusStatQuest Clear AddStat %d", gObj[iUserIndex].AccountID, gObj[iUserIndex].Name, gObj[iUserIndex].LevelUpPoint);
-		}
-
-		gObj[iUserIndex].MaxLife += DCInfo.DefClass[gObj[iUserIndex].Class].LevelLife;
-		gObj[iUserIndex].MaxMana += DCInfo.DefClass[gObj[iUserIndex].Class].LevelMana;
-		gObj[iUserIndex].Life = gObj[iUserIndex].MaxLife;
-		gObj[iUserIndex].Mana = gObj[iUserIndex].MaxMana;
-		gObjNextExpCal(&gObj[iUserIndex]);
-		gObjSetBP(gObj[iUserIndex].m_Index);
-		GCLevelUpMsgSend(gObj[iUserIndex].m_Index, 1);
-		gObjCalcMaxLifePower(gObj[iUserIndex].m_Index);
-
-		LogAddTD(lMsg.Get(MSGGET(2, 8)), gObj[iUserIndex].AccountID, gObj[iUserIndex].Name, gObj[iUserIndex].Level);
-
-		//----------------------------------------------------------------------------------------------
-
-		if( gObj[iUserIndex].Level == 400 && gObj[iUserIndex].PartyNumber >= 0 ) //Season 2.5 add-on (Party Level 400 Display)
-		{
-			int iPartyNumber = gObj[iUserIndex].PartyNumber;
-			char szMsg[256];
-			sprintf(szMsg,"400 LevelUp (%s)(%s) Party ",gObj[iUserIndex].AccountID,gObj[iUserIndex].Name);
-			int iPartyNumIndex;
-
-			for( int i = 0; i<MAX_USER_IN_PARTY; i++ )
-			{
-				iPartyNumIndex = gParty.m_PartyS[iPartyNumber].Number[i];
-
-				if( iPartyNumIndex >= 0  )
-				{
-					int iSize = strlen(szMsg);
-					sprintf(&szMsg[iSize],",(%s)(%s) ",gObj[iPartyNumIndex].AccountID,gObj[iPartyNumIndex].Name);
-				}
-			}
-			LogAddTD(szMsg);
-		}
-	}
-
-	return iLEFT_EXP;
-}

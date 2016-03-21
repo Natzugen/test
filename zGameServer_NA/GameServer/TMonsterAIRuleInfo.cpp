@@ -1,6 +1,5 @@
 // TMonsterAIRuleInfo.cpp: implementation of the TMonsterAIRuleInfo class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x00562FB0	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -30,7 +29,7 @@ void TMonsterAIRuleInfo::Reset()
 	this->m_iHour = -1;
 	this->m_iMinute = -1;
 	this->m_iAppliedTime = -1;
-	this->m_iApplyingTime = -1;
+	//this->m_iApplyingTime = -1;
 	memset(this->m_szRuleDesc, 0, sizeof(this->m_szRuleDesc));
 }
 
@@ -42,15 +41,15 @@ BOOL TMonsterAIRuleInfo::IsValid()
 
 	switch ( this->m_iRuleCondition )
 	{
-		case MAR_CONDITION_SPECIFIC_DATE:
+		case 1:
 			bIsValid = this->CheckConditionSpecificDate();
 			break;
 
-		case MAR_CONDITION_CRYWOLF_START:
+		case 71:
 			bIsValid = this->CheckConditionCrywolfStart();
 			break;
 
-		case MAR_CONDITION_CRYWOLF_END:
+		case 72:
 			bIsValid = this->CheckConditionCrywolfEnd();
 			break;
 	}
@@ -58,7 +57,7 @@ BOOL TMonsterAIRuleInfo::IsValid()
 	if ( !bIsValid )
 	{
 		this->m_iAppliedTime = -1;
-		this->m_iApplyingTime = -1;
+		//this->m_iApplyingTime = -1;
 
 		return FALSE;
 	}

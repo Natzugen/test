@@ -1,11 +1,13 @@
 // KanturuBattleUserMng.cpp: implementation of the CKanturuBattleUserMng class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x00580A30	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "KanturuBattleUserMng.h"
 #include "KanturuUtil.h"
 #include "LogProc.h"
+
+#if (GS_CASTLE==0)
 
 CKanturuBattleUserMng g_KanturuBattleUserMng;
 static CKanturuUtil KANTURU_UTIL;
@@ -42,7 +44,7 @@ BOOL CKanturuBattleUserMng::AddUserData(int iIndex)
 {
 	if ( !gObjIsConnected(iIndex))
 	{
-		LogAddTD("[ KANTURU ][ BattleUser ] Add User Fail - Disconnect User [%s][%s]",
+		LogAddTD("[Kanturu][BattleUser] Add User Fail - Disconnect User [%s][%s]",
 			gObj[iIndex].AccountID, gObj[iIndex].Name);
 
 		return FALSE;
@@ -50,7 +52,7 @@ BOOL CKanturuBattleUserMng::AddUserData(int iIndex)
 
 	if ( this->IsOverMaxUser() )
 	{
-		LogAddTD("[ KANTURU ][ BattleUser ] Add User Fail - Over Max User [%s][%s]",
+		LogAddTD("[Kanturu][BattleUser] Add User Fail - Over Max User [%s][%s]",
 			gObj[iIndex].AccountID, gObj[iIndex].Name);
 
 		return FALSE;
@@ -75,7 +77,7 @@ BOOL CKanturuBattleUserMng::DeleteUserData(int iIndex)
 {
 	if ( iIndex < 0 || iIndex > OBJMAX-1)
 	{
-		LogAddTD("[ KANTURU ][ BattleUser ] Delete User Fail - Unvalid Index:%d",
+		LogAddTD("[Kanturu][BattleUser] Delete User Fail - Unvalid Index:%d",
 			iIndex);
 
 		return FALSE;
@@ -89,11 +91,9 @@ BOOL CKanturuBattleUserMng::DeleteUserData(int iIndex)
 			{
 				this->m_BattleUser[iCount].ResetData();
 				this->m_iBattleUserCount--;
-//#if (_GSCS == 0)
-				gObj[iIndex].m_bKanturuEntranceByNPC = FALSE;
-//#endif
+				gObj[iIndex].m_bKanturuEntranceByNPC = 0;
 
-				LogAddTD("[ KANTURU ][ BattleUser ] Delete User - [%s][%s] Current Battle User:%d",
+				LogAddTD("[Kanturu][BattleUser] Delete User - [%s][%s] Current Battle User:%d",
 					gObj[iIndex].AccountID, gObj[iIndex].Name, this->m_iBattleUserCount);
 
 				return TRUE;
@@ -120,7 +120,7 @@ void CKanturuBattleUserMng::CheckUserState()
 			{
 				this->DeleteUserData(iIndex);
 
-				LogAddTD("[ KANTURU ][ BattleUser ] Delete User - Disconnect [%s][%s]",
+				LogAddTD("[Kanturu][BattleUser] Delete User - Disconnect [%s][%s]",
 					gObj[iIndex].AccountID, gObj[iIndex].Name);
 			}
 
@@ -130,7 +130,7 @@ void CKanturuBattleUserMng::CheckUserState()
 			{
 				this->DeleteUserData(iIndex);
 
-				LogAddTD("[ KANTURU ][ BattleUser ] Delete User - Map Move [%s][%s]",
+				LogAddTD("[Kanturu][BattleUser] Delete User - Map Move [%s][%s]",
 					gObj[iIndex].AccountID, gObj[iIndex].Name);
 			}
 		}
@@ -154,14 +154,14 @@ BOOL CKanturuBattleUserMng::MoveAllUser(int iGateNumber)
 
 			if ( bMoveGateSuccess == TRUE )
 			{
-				LogAddTD("[ KANTURU ][ BattleUser ] [%s][%s] MoveGate(%d)",
+				LogAddTD("[Kanturu][BattleUser] [%s][%s] MoveGate(%d)",
 					gObj[iIndex].AccountID, gObj[iIndex].Name, iGateNumber);
 			}
 			else
 			{
 				this->DeleteUserData(iIndex);
 
-				LogAddTD( "[ KANTURU ][ BattleUser ] [%s][%s] MoveGate Fail (%d)",
+				LogAddTD( "[Kanturu][BattleUser] [%s][%s] MoveGate Fail (%d)",
 					gObj[iIndex].AccountID, gObj[iIndex].Name, iGateNumber);
 
 				gObjMoveGate(iIndex, 137);
@@ -182,7 +182,7 @@ void CKanturuBattleUserMng::SetMaxUser(int iMaxUser)
 	{
 		this->m_iBattleMaxUser = MAX_KANTURU_BATTLE_USER;
 
-		LogAddTD("[ KANTURU ][ BattleUser ] Set Max User:%d",
+		LogAddTD("[Kanturu][BattleUser] Set Max User:%d",
 			iMaxUser);
 	}
 }
@@ -223,6 +223,7 @@ BOOL CKanturuBattleUserMng::IsOverMaxUser()
 }
 
 
+
 void CKanturuBattleUserMng::LogBattleWinnerUserInfo(BYTE btFlag, int iElapsedTime)
 {
 	int iIndex = -1;
@@ -234,10 +235,12 @@ void CKanturuBattleUserMng::LogBattleWinnerUserInfo(BYTE btFlag, int iElapsedTim
 		{
 			iIndex = this->m_BattleUser[iCount].GetIndex();
 			
-			LogAddTD("[ KANTURU ][ BATTLE WINNER ] [%d/ElapsedTime:%0.3f] [%s][%s] MapNumber[%d]-(%d/%d)",
+			LogAddTD("[Kanturu][BattleWinner] [%d/ElapsedTime:%0.3f] [%s][%s] MapNumber[%d]-(%d/%d)",
 				btFlag, fTime, gObj[iIndex].AccountID, gObj[iIndex].Name,
 				gObj[iIndex].MapNumber, gObj[iIndex].X, gObj[iIndex].Y);
 
+			//KANTURU_UTIL.SendDataKanturuTimeAttackEvent(iIndex, btFlag, fTime);
 		}
 	}
 }
+#endif

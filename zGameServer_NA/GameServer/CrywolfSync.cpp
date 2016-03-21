@@ -1,8 +1,13 @@
 // CrywolfSync.cpp: implementation of the CCrywolfSync class.
-//	GS-CS	1.00.90	JPN		-	Completed
+//	GS-N	1.00.18	JPN	0x00	0x0056F470	-	Completed
 //////////////////////////////////////////////////////////////////////
+
 #include "stdafx.h"
 #include "CrywolfSync.h"
+#include "Crywolf.h"
+#include "user.h"
+#include "DSprotocol.h"
+#include "..\common\winutil.h"
 
 CCrywolfSync g_CrywolfSync;
 //////////////////////////////////////////////////////////////////////
@@ -28,10 +33,13 @@ CCrywolfSync::~CCrywolfSync()
 	return;
 }
 
+
+
 BOOL CCrywolfSync::CheckEnableCrywolf()
 {
 	return this->m_bCrywolfEnable;
 }
+
 
 void CCrywolfSync::SetEnableCrywolf(BOOL bEnable)
 {
@@ -68,42 +76,62 @@ void CCrywolfSync::SetPlusChaosRate(int iPlusChaosRate)
 	this->m_iPlusChaosRate = iPlusChaosRate;
 }
 
+
 int CCrywolfSync::GetGemDropPenaltiyRate()
 {
 	return this->m_iGemDropPenaltyRate;
 }
+
 
 void CCrywolfSync::SetGemDropPenaltiyRate(int iGemDropPenaltyRate)
 {
 	this->m_iGemDropPenaltyRate = iGemDropPenaltyRate;
 }
 
+
 int CCrywolfSync::GetGettingExpPenaltyRate()
 {
 	return this->m_iGettingExpPenaltyRate;
 }
+
 
 void CCrywolfSync::SetGettingExpPenaltyRate(int iGettingExpPenaltyRate)
 {
 	this->m_iGettingExpPenaltyRate = iGettingExpPenaltyRate;
 }
 
+
 int CCrywolfSync::GetMonHPBenefitRate()
 {
 	return this->m_iMinusMonHPBenefitRate;
 }
+
 
 void CCrywolfSync::SetMonHPBenefitRate(int iMinusMonHPBenefitRate)
 {
 	this->m_iMinusMonHPBenefitRate = iMinusMonHPBenefitRate;
 }
 
+
 int CCrywolfSync::GetKundunHPRefillState()
 {
 	return this->m_iKundunHPRefillState;
 }
 
+
 void CCrywolfSync::SetKundunHPRefillState(int iKundunHPRefillState)
 {
 	this->m_iKundunHPRefillState = iKundunHPRefillState;
+}
+
+void CCrywolfSync::NotifyCrywolfCurrentStateByUserId(int aIndex)
+{
+	PMSG_ANS_CRYWOLF_INFO pMsg = {0};
+
+	PHeadSubSetB((LPBYTE)&pMsg, 0xBD, 0x00, sizeof(pMsg));
+	pMsg.btOccupationState = this->GetOccupationState();
+	pMsg.btCrywolfState = this->GetCrywolfState();
+
+	//DaRKav CryWolf Interface Bug Fix Attempt
+	//DataSend(aIndex, (LPBYTE)&pMsg, sizeof(pMsg));
 }

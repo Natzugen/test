@@ -1,8 +1,8 @@
 // GGSvr.cpp: implementation of the GGSvr class.
 //
 //////////////////////////////////////////////////////////////////////
-
 #include "stdafx.h"
+#include "../source/stdafx.h"
 #include "GGSvr.h"
 
 
@@ -15,6 +15,8 @@ GG_AUTH ggGlobal;
 
 DWORD  InitGameguardAuth(LPSTR szGGAuthName, DWORD nNumberOfUser)
 {
+	__try
+	{
 	ggGlobal.dwProtocolCount = 0;
 	ggGlobal.nMaxCount  = nNumberOfUser;
 	ggGlobal.lpCurrentAuthProtocol = NULL;
@@ -32,14 +34,23 @@ DWORD  InitGameguardAuth(LPSTR szGGAuthName, DWORD nNumberOfUser)
 		}
 	}
 
+#if (WL_PROTECT==1)
+	CODEREPLACE_START
+#endif
 	DWORD dwResult = LoadAuthProtocol("ggauth.dll", TRUE);
-
+#if (WL_PROTECT==1)
+	CODEREPLACE_END
+#endif
 	if ( dwResult != 0 )
 	{
 		CleanupGameguardAuth();
 		return dwResult;
 	}
 	return 0;
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return 0;
+	}
 }
 
 
@@ -67,6 +78,8 @@ DWORD  AddAuthProtocol(LPSTR lpszAuthDll)
 
 DWORD  LoadAuthProtocol(LPSTR lpszAuthDll, BOOL Flag)	// Perfect
 {
+	__try
+	{
 	_GG_AUTH_PROTOCOL * pProtocol = (_GG_AUTH_PROTOCOL *)malloc(sizeof(_GG_AUTH_PROTOCOL));
 	
 	if ( pProtocol == NULL )
@@ -117,30 +130,27 @@ DWORD  LoadAuthProtocol(LPSTR lpszAuthDll, BOOL Flag)	// Perfect
 		free(pProtocol);
 		return 3;
 	}
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+		return 0;
+	}
 
 }
 
-//#pragma optimize("ty", on) 
-
 DWORD  UnloadAuthProtocol(_GG_AUTH_PROTOCOL * pAuthProtocol)
 {
-	_GG_AUTH_PROTOCOL * pProtocol = ggGlobal.lpCurrentAuthProtocol;
-	_GG_AUTH_PROTOCOL * pTempProtocol = pProtocol->lpPrevProtocol;
-	if ( ggGlobal.dwProtocolCount <= 1 || pTempProtocol == NULL )
-		return 10;
+	_GG_AUTH_PROTOCOL * pProtocol;
 
-	
-	/*if ( 
-		return 10;*/
-	
-	while ( true )
+	if ( ggGlobal.dwProtocolCount <= 1 || ggGlobal.lpCurrentAuthProtocol->lpPrevProtocol == NULL )
 	{
-		if ( pTempProtocol == pAuthProtocol )
-			break;
+		return 10;
+	}
 
-		pProtocol = pTempProtocol;
-		pTempProtocol = pTempProtocol->lpPrevProtocol;
-		if ( pTempProtocol == NULL )
+	while ( ggGlobal.lpCurrentAuthProtocol->lpPrevProtocol != pAuthProtocol )
+	{
+		pProtocol = ggGlobal.lpCurrentAuthProtocol;
+
+		if ( ggGlobal.lpCurrentAuthProtocol->lpPrevProtocol == NULL )
 		{
 			return 10;
 		}

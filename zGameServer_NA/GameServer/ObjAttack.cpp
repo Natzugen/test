@@ -1,4 +1,3 @@
-//GameServer 1.00.90 JPN - Completed
 #include "stdafx.h"
 #include "ObjAttack.h"
 #include "BattleSoccerManager.h"
@@ -7,138 +6,154 @@
 #include "gObjMonster.h"
 #include "BloodCastle.h"
 #include "ChaosCastle.h"
-#include "IllusionTempleEvent.h"
-#include "BuffEffectSlot.h"
-#include "MasterLevelSkillTreeSystem.h"
-#include "Gamemain.h"
-#include "ItemAddOption.h"
-
-#ifdef NPVP
-#include "NewPVP.h"
-#endif
-
-#ifdef GENS
-#include "GensSystem.h"
-#endif
-
-#ifdef IMPERIAL
+#include "DuelManager.h"
 #include "ImperialGuardian.h"
+#include "IllusionTemple.h"
+#include "LogToFile.h"
+#include "CustomWings.h"
+
+#include "Gamemain.h"
+#include "CastleSiegeSync.h"
+#include "ObjBotPet.h"
+// GS-N 0.99.60T 0x00496730
+//	GS-N	1.00.18	JPN	0x004B1740	-	Completed
+#if (GS_CASTLE==1)
+#include "GameServer.h"
+#include "Crywolf.h"
 #endif
 
-#include "LuckyItem.h"
-
-//#ifdef __ALIEN__
-#include "BalanceSystem.h"
-#include "ItemOption.h"
-//#endif
-
-#include "SkillAdditionInfo.h"
-
+extern CLogToFile ANTI_HACK_LOG;
 CObjAttack gclassObjAttack;
+
 
 CObjAttack::CObjAttack()
 {
-
+	return;
 }
+
 
 CObjAttack::~CObjAttack()
 {
-
+	return;
 }
 
-BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int magicsend, unsigned char MSBFlag, int AttackDamage, BOOL bCombo,BYTE byBarrageCount, BYTE byReflect)
+
+BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int magicsend, unsigned char MSBFlag, int AttackDamage, BOOL bCombo)
 {
+	//if(OBJMAX_RANGE(lpObj->m_Index)==false || OBJMAX_RANGE(lpTargetObj->m_Index)==false)
+	//{
+	//	return FALSE
+	//}
+
 	int skillSuccess = 0;
 	LPOBJ lpCallObj;
 	LPOBJ lpCallTargetObj;
-	BYTE MsgDamage = 0;
+	unsigned char MsgDamage = MSG_DAMAGE_MISS;
 	int ManaChange = 0;
 	int iTempShieldDamage = 0;
 	int iTotalShieldDamage = 0;
-	int bDragonKickSDAttackSuccess = 0;
 
-	// Fix for the bug of the friendly fire in the Castle Siege event
-	if (g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
+#if (PACK_EDITION>=3)
+
+	if(lpTargetObj->IsBot > 1)
 	{
-		if (lpTargetObj->Type == OBJ_USER && lpObj->Type == OBJ_USER) 
+		return false;
+	}
+
+	bool BotChangeSkill = false;
+
+	if(ReadConfig.S6E2 == 1)
+	{
+		if ( lpObj->Type == OBJ_USER )
 		{
-			if (lpObj->GuildNumber != 0 && lpTargetObj->GuildNumber != 0)
-			{
-				// same guild
-				if (lpObj->GuildNumber == lpTargetObj->GuildNumber)
+			if ( lpObj->Class == CLASS_KNIGHT )
+			{							
+				if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
 				{
-					return false;
-				}
-				// same union
-				if (lpObj->lpGuild->GetGuildUnion() != 0)
-				{
-					if (lpObj->lpGuild->GetGuildUnion() == lpTargetObj->lpGuild->GetGuildUnion())
+					if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
 					{
-						return false;
+						if(lpTargetObj->m_iSkillStunTime <= 0)
+						{
+							if(lpObj->MasterCharacterInfo->MaceStun > 0)
+							{
+								CItem * Right = &lpObj->pInventory[0];
+								CItem * Left = &lpObj->pInventory[1];
+								if((Right->IsItem() && (Right->m_Type >= ITEMGET(2,0) && Right->m_Type < ITEMGET(3,0))) || (Left->IsItem() && (Left->m_Type >= ITEMGET(2,0) && Left->m_Type < ITEMGET(3,0))))
+								{
+									if ( (rand()%100) < lpObj->MasterCharacterInfo->MaceStun )
+										gObjUseSkill.SkillStun(lpObj->m_Index,lpTargetObj->m_Index);
+								}
+							}
+						}
 					}
 				}
 			}
-				
-		}
-			
-	}
-		
-	
-	
-
-	if ( (lpTargetObj->Authority&2) == 2 )
-		return FALSE;
-
-	if ( (lpObj->Authority&32) == 32 ||
-		 (lpTargetObj->Authority&32) == 32 )
-	{
-		if( gObjCheckUsedBuffEffect(lpObj,AT_INVISIBILITY) == TRUE)
-		{
-			return false;
 		}
 	}
 
-#ifdef NPVP
-	if( lpObj->Type == OBJ_USER && g_NewPVP.IsDuel(*lpObj) && g_NewPVP.IsSafeState(*lpObj) )
+	if(lpObj->IsBot == 1)
 	{
-		return false;
-	}
-	// ----
-	if( lpTargetObj->Type == OBJ_USER && g_NewPVP.IsDuel(*lpTargetObj) && g_NewPVP.IsSafeState(*lpTargetObj) )
-	{
-		return false;
-	}
-#endif
-
-#ifdef GENS	//-> Need check
-	//if( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER && !gGensSystem.IsPkEnable(lpObj, lpTargetObj) )
-	//{
-	//	return false;
-	//}
-	if( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
-	{
-		if( gGensSystem.IsMapBattleZone(lpObj->MapNumber) )
+		if(lpObj->m_SkillNumber == lpObj->m_AttackType)
 		{
-			if( gGensSystem.GetGensInfluence(lpObj) == gGensSystem.GetGensInfluence(lpTargetObj) && !gGensSystem.AllowPK )
+			int manareq = MagicDamageC.SkillGetMana(lpObj->m_SkillNumber);
+			if(lpObj->Mana - manareq >= 0)
 			{
-				return false;
+				lpObj->Mana -= manareq;
+			}else
+			{
+				ChatSend(lpObj, "I need more mana!");
+				lpObj->m_AttackType = 0;
+				lpObj->m_AttackRange = 1;
+				if ( lpObj->Class == CLASS_ELF ) // Elf
+				{
+					CItem * Right = &lpObj->pInventory[0];
+					CItem * Left = &lpObj->pInventory[1];
+
+					if ( (Right->m_Type >= ITEMGET(4,8) && Right->m_Type < ITEMGET(4,15) ) ||
+						 (Left->m_Type >= ITEMGET(4,0) && Left->m_Type < ITEMGET(4,7)) ||
+						  Right->m_Type >= ITEMGET(4,16) )
+					{
+						lpObj->m_AttackRange = 5;
+					}
+				}
+				return FALSE;
+			}
+		} else {
+			int manareq = MagicDamageC.SkillGetMana(lpObj->m_SkillNumber);
+			if(lpObj->Mana - manareq >= 0)
+				BotChangeSkill = true;
+		}
+
+		if ( AttackDamage == 0 )
+		{
+			if ( !botPet.BotDecreaseArrow(lpObj) )
+			{
+				return FALSE;
 			}
 		}
 	}
 #endif
 
-	if ( lpObj->MapNumber != lpTargetObj->MapNumber )
+	if ( lpTargetObj->Type == OBJ_USER )
 	{
-		return false;
+		if (gObjIsConnected(lpTargetObj) )
+			if ( (lpTargetObj->Authority&2) == 2 )
+				return FALSE;
 	}
 
-	if(g_Crywolf.GetCrywolfState() == CRYWOLF_STATE_READY || g_Crywolf.GetCrywolfState() == CRYWOLF_STATE_END)
+	if ( lpObj->MapNumber != lpTargetObj->MapNumber )
+		return FALSE;
+
+	/*#if (GS_CASTLE==1)
+	if( g_Crywolf.GetCrywolfState() == CRYWOLF_STATE_READY || g_Crywolf.GetCrywolfState() == CRYWOLF_STATE_END )
 	{
-		if( ((lpTargetObj->MapNumber == MAP_INDEX_CRYWOLF_FIRSTZONE) ? TRUE : FALSE) && lpTargetObj->Type == OBJ_MONSTER)
+		if(CRYWOLF_MAP_RANGE(lpTargetObj->MapNumber))
 		{
-			return FALSE;
+			if(lpTargetObj->Type == OBJ_MONSTER)
+				return FALSE;
 		}
 	}
+	#endif*/
 
 	if ( g_iUseCharacterAutoRecuperationSystem && lpObj->Level <= g_iCharacterRecuperationMaxLevel )
 	{
@@ -169,12 +184,15 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	
 	if ( lpMagic )
 		skill = lpMagic->m_Skill;
+	
+	if(lpTargetObj->m_SkillSleep == 1)
+		gObjUseSkill.SkillSleepRemove(lpTargetObj);
 
 	if ( lpObj->Class == 77 )
 	{
-		if ( lpObj->m_SkyBossMonSheild && skill == 17 )
+		if ( lpObj->m_SkyBossMonSheild && skill == AT_SKILL_ENERGYBALL )
 		{
-			skill = 3;
+			skill = AT_SKILL_THUNDER;
 		}
 	}
 
@@ -212,7 +230,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	{
 		if ( lpTargetObj->m_iMonsterBattleDelay > 0 )
 			return TRUE;
-
+		
 		if ( lpTargetObj->Class == 200 )
 		{
 			if ( skill )
@@ -232,62 +250,48 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			return TRUE;
 		}
 
-		if ( gObjCheckUsedBuffEffect(lpTargetObj,AT_IMMUNE_MAGIC) == TRUE )
+		if ( lpTargetObj->m_ImmuneToMagicCount > 0 )
 		{
 			BOOL bCheckAttackIsMagicType = gObjCheckAttackTypeMagic(lpObj->Class, skill);
 
-			if ( bCheckAttackIsMagicType == 1 )
+			if ( bCheckAttackIsMagicType == TRUE )
 			{
 				GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index, 0);
 				return TRUE;
 			}
 		}
 
-		if ( gObjCheckUsedBuffEffect(lpTargetObj,AT_IMMUNE_HARM) == TRUE  )
+		if ( lpTargetObj->m_ImmuneToHarmCount > 0 )
 		{
 			BOOL bCheckAttackIsMagicType = gObjCheckAttackTypeMagic(lpObj->Class, skill);
 
-			if ( bCheckAttackIsMagicType == 0 )
+			if ( bCheckAttackIsMagicType == FALSE )
 			{
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
+				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
 				return TRUE;
 			}
 		}
-
-
 		if ( lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementImmuneTime > 0 )
 		{
-			if ( lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementImmuneTime == skill )
+			if ( lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementImmuneNumber == skill )
 			{
 				return TRUE;
 			}
 		}
-
-		if ( lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementBerserkTime > 0 )
-		{
-			int MSBDamage = 32;
-			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSBDamage, 0);
-			return TRUE;
-		}
 	}
-
-#ifdef IMPERIAL
-	if ( lpTargetObj->Class == 523 )
-		return TRUE;
-
-	if ( lpTargetObj->Class >= 524 && lpTargetObj->Class <= 528 
-		&& lpTargetObj->Class != 526
-		&& !g_ImperialGuardian.IsAttackAbleMonster(lpTargetObj->m_Index) )
-	{
-		return TRUE;
-	}
-#endif
 
 	if ( lpObj->Type == OBJ_USER )
 	{
 		if ( !gObjIsConnected(lpObj) )
 		{
 			return FALSE;
+		}
+
+		if ( lpObj->m_Change == 8 )
+		{
+			skill = AT_SKILL_POISON;
+			lpMagic = &DefMagicInf[1];
+			magicsend = 1;
 		}
 
 		gDarkSpirit[lpObj->m_Index].SetTarget(lpTargetObj->m_Index);
@@ -311,21 +315,49 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			}
 		}
 	}
+	
+//#if (GS_CASTLE==0)
+	if(lpObj->Type == OBJ_USER )
+	{
+		if(skill == 0 && lpObj->m_AttackType == 0)
+		{
+			int dis = gObjCalDistance(lpObj, lpTargetObj);
+			if( dis > 8 ) 
+			{
+				if(dis != 1000 && lpObj->Class == CLASS_ELF && dis <= 12)
+				{
+				}else
+				{
+					if(ReadConfig.AHLog == TRUE)
+					{
+						ANTI_HACK_LOG.Output("[ATTACK DISTANCE CHECK] [%s][%s](%d) Invalid distance attacker(%d, %d, %d), defender(%d, %d, %d), distance:%d",lpObj->AccountID, lpObj->Name, lpObj->Class,lpObj->MapNumber, lpObj->X, lpObj->Y,lpTargetObj->MapNumber, lpTargetObj->X, lpTargetObj->Y,dis);
+					}
 
-	if ( !gObjAttackQ(lpTargetObj))
+					GCServerMsgStringSend("[Anti-Hack] Invalid Attack distance.",lpObj->m_Index, 0x01);
+					return 0;
+				}
+			}
+		}
+	}
+//#endif
+
+	if ( gObjAttackType(lpTargetObj,lpObj) == 0)
+		return FALSE;
+	if ( this->PkCheck(lpObj, lpTargetObj) == FALSE )
+		return FALSE;
+	if ( this->CheckAttackArea(lpObj, lpTargetObj) == FALSE )
 		return FALSE;
 
 	if ( lpObj->m_RecallMon >= 0 )
 		gObjCallMonsterSetEnemy(lpObj, lpTargetObj->m_Index);
 
-	lpObj->m_TotalAttackCount++;
+	//lpObj->m_TotalAttackCount++;
 
 	if ( AttackDamage == 0 )
 	{
-		if ( skill != 76 )
+		if ( skill != AT_SKILL_FENRIR_ATTACK )
 		{
-			if ( gObjCheckUsedBuffEffect(lpObj,AT_INFINITY_ARROW) == FALSE &&
-				 gObjCheckUsedBuffEffect(lpObj,143) == FALSE )
+			if ( !lpObj->m_iMuseElfInfinityArrowSkillTime )
 			{
 				if ( !this->DecreaseArrow(lpObj) )
 				{
@@ -335,10 +367,19 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 		}
 	}
 
-	if ( this->CheckAttackArea(lpObj, lpTargetObj) == FALSE )
+	/*if(lpTargetObj->Class == 277 && g_CastleSiegeSync.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)		//Castle Gate
 	{
-		return FALSE;
+		//Do nothing
 	}
+	else if(lpTargetObj->Class == 283 && g_CastleSiegeSync.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)	//Guardian Statue
+	{
+		//Do nothing
+	}
+	else
+	{
+		if ( this->CheckAttackArea(lpObj, lpTargetObj) == FALSE )
+			return FALSE;
+	}*/
 
 	lpCallObj = lpObj;
 
@@ -360,21 +401,24 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 		}
 	}
 
-	if ( this->PkCheck(lpCallObj, lpTargetObj) == FALSE )
-		return FALSE;
-
 	int Strength = lpObj->Strength + lpObj->AddStrength;
 	int Dexterity = lpObj->Dexterity + lpObj->AddDexterity;
 	int Vitality = lpObj->Vitality + lpObj->AddVitality;
 	int Energy = lpObj->Energy + lpObj->AddEnergy;
-	BOOL bIsOnDuel = gObjDuelCheck(lpObj, lpTargetObj);
+	BOOL bIsOnDuel = g_DuelManager.gObjDuelCheck(lpObj, lpTargetObj);
+
+	if ( bIsOnDuel )
+	{
+		lpObj->m_iDuelTickCount = GetTickCount();
+		lpTargetObj->m_iDuelTickCount = GetTickCount();
+	}
 
 	if ( lpObj->pInventory[0].m_Type == ITEMGET(2,5) && lpObj->pInventory[0].m_IsValidItem != false )	// Crystal Sword
 	{
 		if ( (rand()%20) == 0 )
 		{
-			skill = 7;
-			lpMagic = &DefMagicInf[7];
+			skill = AT_SKILL_SLOW;
+			lpMagic = &DefMagicInf[AT_SKILL_SLOW];
 			magicsend = 1;
 		}
 	}
@@ -382,314 +426,538 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	{
 		if ( (rand()%20) == 0 )
 		{
-			skill = 7;
-			lpMagic = &DefMagicInf[7];
+			skill = AT_SKILL_SLOW;
+			lpMagic = &DefMagicInf[AT_SKILL_SLOW];
 			magicsend = 1;
 		}
 	}
 
 	MSBFlag = 0;
-	MsgDamage = 0;
+	MsgDamage = MSG_DAMAGE_MISS;
 	skillSuccess = this->ResistanceCheck(lpObj, lpTargetObj, skill);
 	BOOL skillIceArrowSuccess = skillSuccess;
 
-	if ( skill == 51 || skill == 424 )
-	{
+	if ( skill == AT_SKILL_ICEARROW )
 		skillSuccess = 0;
-	}
+
 	BOOL bAllMiss = FALSE;
 	
-	if ( gObjCheckUsedBuffEffect(lpObj,AT_INVISIBILITY) == TRUE && (lpObj->Authority & 32) != 32)
-	{
+	if ( lpObj->m_iSkillInvisibleTime > 0 )
 		gObjUseSkill.RemoveCloakingEffect(lpObj->m_Index);
-	}
 
 	BOOL bDamageReflect = FALSE;
-	
+
 	if ( AttackDamage == 0 )
 	{
 		if ( g_ShieldSystemOn == TRUE )
 		{
 			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 			{
-				if ( !this->MissCheckPvP(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss, byBarrageCount) )
+				if ( !this->MissCheckPvP(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss) )
 				{
 					return FALSE;
 				}
 			}
-			else if ( !this->MissCheck(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss, byBarrageCount) )
+			else if ( !this->MissCheck(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss) )
 			{
 				return FALSE;
 			}
 
 		}
-		else if ( !this->MissCheck(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss, byBarrageCount) )
+		else if ( !this->MissCheck(lpObj, lpTargetObj, skill, skillSuccess, magicsend, bAllMiss) )
 		{
 			return FALSE;
 		}
 
-		if ( (skill == 51 || skill == 424) && skillIceArrowSuccess == TRUE )
+		if ( skill == AT_SKILL_ICEARROW && skillIceArrowSuccess == TRUE )
 		{
-			gObjAddBuffEffect(lpTargetObj,AT_ICE_ARROW,0,0,0,0,7);
+			lpTargetObj->m_SkillHarden = 7;
+			lpTargetObj->m_SkillHardenTime = 7;
 			lpTargetObj->lpAttackObj = lpObj;
+			lpTargetObj->m_ViewSkillState |= 0x20;
 			lpTargetObj->PathCount = 0;
 			lpTargetObj->PathStartEnd = 0;
 			skillSuccess = TRUE;
+
 			gObjSetPosition(lpTargetObj->m_Index, lpTargetObj->X, lpTargetObj->Y);
 		}
 
-		//Check it fuck!
 		int targetdefense = this->GetTargetDefense(lpObj, lpTargetObj, MsgDamage);
 
-		if( gObjCheckUsedBuffEffect(lpTargetObj,AT_BERSERKER) == TRUE ||
-			gObjCheckUsedBuffEffect(lpTargetObj,150) == TRUE ||
-			gObjCheckUsedBuffEffect(lpTargetObj,151) == TRUE ||
-			gObjCheckUsedBuffEffect(lpTargetObj,152) == TRUE )
+		if ( lpTargetObj->m_iSkillNPCDefense )
 		{
-			float fDefense = (lpTargetObj->Dexterity+lpTargetObj->AddDexterity)/3;
-			float fValue = (float)gObjGetTotalValueOfEffect(lpTargetObj, 32);
-			float fPercent = (40- (fValue+lpObj->m_MPSkillOpt.MpsBerserkInc1))/100;
-			fPercent = (0.1f > fPercent) ? 0.1f : fPercent;
+			targetdefense += lpTargetObj->m_iSkillNPCDefense;
 		}
 
-		int iCurseValue = 0;
-		/*if( !gObjCheckUsedBuffEffect(lpTargetObj,BUFF_INNOVATION2,&iCurseValue,0) )*/
-			//gObjCheckUsedBuffEffect(lpTargetObj,AT_INNOVATION,&iCurseValue,0);
-			gObjCheckUsedBuffEffect(lpTargetObj, AT_INNOVATION, &iCurseValue, 0);
-
-		targetdefense -= targetdefense * iCurseValue / 100;
-
-		switch( skill )
+		if ( skill == AT_SKILL_FALLINGSLASH
+			|| skill == AT_SKILL_LUNGE
+			|| skill == AT_SKILL_UPPERCUT
+			|| skill == AT_SKILL_CYCLONE
+			|| skill == AT_SKILL_SLASH
+			|| skill == AT_SKILL_POWERSLASH
+			|| skill == AT_SKILL_TWISTINGSLASH
+			|| skill == AT_SKILL_BKIMPALE
+			|| skill == AT_SKILL_BLOWOFFURY
+			|| skill == AT_SKILL_KNIGHTDINORANT
+			|| skill == AT_SKILL_DEATHSTAB
+			|| (skill == AT_SKILL_FIREBURST && ReadConfig.IsSkillFireBurstStr == 1)
+			|| skill == AT_SKILL_FIRESLASH
+			|| skill == AT_SKILL_CRESCENTSLASH
+			|| skill == AT_SKILL_SPIRALSLASH
+			|| skill == AT_SKILL_SPACE_SPLIT
+			|| skill == AT_SKILL_EXPLOTION
+			|| skill == AT_SKILL_CHARGE		//NEW RAGE FIGHTER SKILL
+			|| (skill>= AT_SKILL_LARGERINGBLOWER && skill<= AT_SKILL_DRAGONSLAYER)	//NEW RAGE FIGHTER SKILLS
+			|| (skill>= 500 && skill<=504 && ReadConfig.S6E2 == 0)//NEW FIRESLASH
+			|| (skill>= 505 && skill<=509 && ReadConfig.S6E2 == 0)//NEW POWERSLASH
+			|| (skill>= 455 && skill<=459 && ReadConfig.S6E2 == 0)//TWISTING NEW
+			|| (skill>= 495 && skill<=499 && ReadConfig.S6E2 == 0)//TWISTING NEW
+			|| (skill>= 460 && skill<=464 && ReadConfig.S6E2 == 0)//Death Stab NEW
+			|| (skill>= 465 && skill<=469 && ReadConfig.S6E2 == 0)//Rageful Blow NEW)
+			)
 		{
-		case AT_SKILL_SWORD1:
-		case AT_SKILL_SWORD2:
-		case AT_SKILL_SWORD3:
-		case AT_SKILL_SWORD4:
-		case AT_SKILL_SWORD5:
-		case AT_SKILL_SWORD6:
-		case AT_SKILL_WHEEL:
-		case AT_SKILL_KNIGHTSPEAR:
-		case AT_SKILL_BLOWOFFURY:
-		case AT_SKILL_KNIGHTDINORANT:
-		case AT_SKILL_STRIKE:
-		case AT_SKILL_DEFENSEDOWN:
-		case AT_SKILL_RUSH:
-		case AT_SKILL_ONE_FLASH:
-		case AT_SKILL_SPACE_SPLIT:
-		case 235:	//MultiShot
-		case 232:	//Destruction
-		case 236:	//Flame Strike
-		case 238:	//Chaotic Diseier
-		case 326:
-		case 327:
-		case 328:
-		case 329:
-		case 330:
-		case 331:
-		case 332:
-		case 333:
-		case 336:
-		case 339:
-		case 342:
-		case 337:
-		//case AT_MSKILL_DK_DESTRUCTION2:
-		//case AT_MSKILL_DK_DESTRUCTION3:
-		case 344:
-		case 346:
-		case 411:
-		case 431:
-		case 479:
-		case 481:
-		case 493:
-		//case AT_MSKILL_MG_FIRESLASH2:
-		case 482:
-		case 492:
-		case 494:
+			AttackDamage = this->GetAttackDamage(lpObj, targetdefense, MsgDamage, bIsOnDuel, lpMagic);
+			AttackDamage += lpObj->m_iSkillNPCAttack;
+			
+			//if((skill>= 455 && skill<=459)//TWISTING NEW
+			//|| (skill>= 495 && skill<=499))//TWISTING NEW
+			if(skill>=435 && skill<=554)
+			{
+				float Mult = (((float)(lpMagic->m_Skill%5) + 1.0f) / 10.0f)+1.0f;
+				AttackDamage = (int)AttackDamage * Mult;
+			}
+
+			if ( AttackDamage > 0 )
+			{
+				gObjWeaponDurDown(lpObj, lpTargetObj, 0);
+			}
+		}
+		else if ( skill == AT_SKILL_FENRIR_ATTACK )	// pluzzmanton
+		{
+			int iFenrirAttackDmg = 0;
+
+			if ( lpObj->Class == CLASS_KNIGHT )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirDKStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirDKAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirDKVitDiv + lpObj->Energy /(float) ReadConfig.FernirDKEneDiv;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_MAGICGLADIATOR )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirMGStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirMGAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirMGVitDiv + lpObj->Energy /(float) ReadConfig.FernirMGEneDiv;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_RAGEFIGHTER )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirRFStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirRFAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirRFVitDiv + lpObj->Energy /(float) ReadConfig.FernirRFEneDiv;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_WIZARD )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirDWStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirDWAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirDWVitDiv + lpObj->Energy /(float) ReadConfig.FernirDWEneDiv ;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_SUMMONER)
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirSUStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirSUAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirSUVitDiv + lpObj->Energy /(float) ReadConfig.FernirSUEneDiv;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_ELF )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirElfStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirElfAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirElfVitDiv + lpObj->Energy /(float) ReadConfig.FernirElfEneDiv;	// #formula
+			}
+			else if ( lpObj->Class == CLASS_DARKLORD )
+			{
+				iFenrirAttackDmg = lpObj->Strength /(float) ReadConfig.FernirDLStrDiv + lpObj->Dexterity /(float) ReadConfig.FernirDLAgiDiv + lpObj->Vitality /(float) ReadConfig.FernirDLVitDiv + lpObj->Energy /(float) ReadConfig.FernirDLEneDiv + lpObj->Leadership /(float) ReadConfig.FernirDLCmdDiv;	// #formula
+			}
+			else
+			{
+				iFenrirAttackDmg = lpObj->Strength / 5.0f + lpObj->Dexterity / 5.0f + lpObj->Vitality / 7.0f + lpObj->Energy / 3.0f;	// #formula
+			}
+
+			if ( iFenrirAttackDmg < 0 )
+				iFenrirAttackDmg = 0;
+
+			if ( lpObj->m_CriticalDamage > 0 )
+			{
+				if ( (rand()%100) < lpObj->m_CriticalDamage )
+				{
+					MsgDamage = MSG_DAMAGE_CRITICAL;
+				}
+			}
+
+			if ( lpObj->m_ExcelentDamage > 0 )
+			{
+				if ( (rand()%100) < lpObj->m_ExcelentDamage )
+				{
+					MsgDamage = MSG_DAMAGE_EXCELLENT;
+				}
+			}
+
+			unsigned char MsgDmgTmp = MsgDamage;
+			if ( lpObj->Class == CLASS_KNIGHT )
+			{
+				if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+				{
+					CItem * Right = &lpObj->pInventory[0];
+					if ( Right->IsItem() == TRUE )
+					{
+						if(Right->m_Type >= ITEMGET(4,0) && Right->m_Type < ITEMGET(5,0))
+						{
+							if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+							{
+								MsgDamage |= MSG_DAMAGE_DOUBLE;
+							}
+						}
+					}
+				}
+			}
+			if ( lpObj->Class == CLASS_RAGEFIGHTER )
+			{
+				if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+				{
+					CItem * Right = &lpObj->pInventory[0];
+					CItem * Left  = &lpObj->pInventory[1];
+					bool enter = false;
+					if ( Right->IsItem() == TRUE )
+					{
+						if(Right->m_Type >= ITEMGET(0,32) && Right->m_Type <= ITEMGET(0,35))
+						{
+							if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+							{
+								MsgDamage |= MSG_DAMAGE_DOUBLE;
+								enter = true;
+							}
+						}
+					}
+					if(enter == false)
+					{
+						if ( Left->IsItem() == TRUE )
+						{
+							if(Left->m_Type >= ITEMGET(0,32) && Left->m_Type <= ITEMGET(0,35))
+							{
+								if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+								{
+									MsgDamage |= MSG_DAMAGE_DOUBLE;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if ( MsgDamage%MSG_DAMAGE_DOUBLE == MSG_DAMAGE_CRITICAL )	// Critical Damage
+			{
+				AttackDamage =  iFenrirAttackDmg + lpMagic->m_DamageMax;
+				AttackDamage += lpObj->SetOpAddCriticalDamage;
+				AttackDamage += lpObj->SkillAddCriticalDamage;
+				AttackDamage += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
+			}
+			else if ( MsgDamage%MSG_DAMAGE_DOUBLE == MSG_DAMAGE_EXCELLENT )	// Excellent Damage
+			{
+				AttackDamage = iFenrirAttackDmg + lpMagic->m_DamageMax;
+				AttackDamage += AttackDamage * 20 / 100;
+				AttackDamage += lpObj->SetOpAddExDamage;
+			}
+			else
+			{
+				AttackDamage = (iFenrirAttackDmg + lpMagic->m_DamageMin) + (rand()%(lpMagic->m_DamageMax - lpMagic->m_DamageMin + 1));
+			}
+
+			//Fix Double Damage :)
+			if (( (MsgDamage > MSG_DAMAGE_BEAT) && (MsgDamage&MSG_DAMAGE_DOUBLE == MSG_DAMAGE_DOUBLE )) || (MsgDamage == MSG_DAMAGE_DOUBLE))
+			{
+				AttackDamage = AttackDamage * 2;
+			}
+
+			AttackDamage -= targetdefense;
+		}
+		else
+		{
+			if ( (	lpObj->Class == CLASS_WIZARD || 
+					lpObj->Class == CLASS_MAGICGLADIATOR || 
+					lpObj->Class == CLASS_RAGEFIGHTER || 
+					lpObj->Class == CLASS_SUMMONER ) && skill )
+			{
+				AttackDamage = this->GetAttackDamageWizard(lpObj, targetdefense, lpMagic, MsgDamage, bIsOnDuel);
+				AttackDamage += lpObj->m_iSkillNPCAttack;
+
+				if ( AttackDamage > 0 )
+				{
+					gObjWeaponDurDown(lpObj, lpTargetObj, 1);
+				}
+			}
+			else
 			{
 				AttackDamage = this->GetAttackDamage(lpObj, targetdefense, MsgDamage, bIsOnDuel, lpMagic);
+				AttackDamage += lpObj->m_iSkillNPCAttack;
+				if(skill>=490 && skill<=494)//New Triple Skill
+				{
+					float Mult = (((float)(lpMagic->m_Skill%5) + 1.0f) / 10.0f)+1.0f;
+					AttackDamage = (int)AttackDamage * Mult;
+				}
 
 				if ( AttackDamage > 0 )
 				{
 					gObjWeaponDurDown(lpObj, lpTargetObj, 0);
 				}
 			}
-			break;
-		case 76:
-			{
-				int iFenrirAttackDmg = 0;
-
-				if ( lpObj->Class == CLASS_KNIGHT || lpObj->Class == CLASS_MAGUMSA )
-				{
-					iFenrirAttackDmg = lpObj->Strength / 3 + lpObj->Dexterity / 5 + lpObj->Vitality / 5 + lpObj->Energy / 7;	// #formula
-				}
-				else if ( lpObj->Class == CLASS_WIZARD )
-				{
-					iFenrirAttackDmg = lpObj->Strength / 5 + lpObj->Dexterity / 5 + lpObj->Vitality / 7 + lpObj->Energy / 3;	// #formula
-				}
-				else if ( lpObj->Class == CLASS_ELF )
-				{
-					iFenrirAttackDmg = lpObj->Strength / 5 + lpObj->Dexterity / 3 + lpObj->Vitality / 7 + lpObj->Energy / 5;	// #formula
-				}
-				else	// Dark Lord
-				{
-					iFenrirAttackDmg = lpObj->Strength / 5 + lpObj->Dexterity / 5 + lpObj->Vitality / 7 + lpObj->Energy / 3 + lpObj->Leadership / 3;	// #formula
-				}
-
-				if ( iFenrirAttackDmg < 0 )
-					iFenrirAttackDmg = 0;
-
-				if ( lpObj->m_CriticalDamage > 0 )
-				{
-					if ( (rand()%100) < lpObj->m_CriticalDamage )
-					{
-						MsgDamage = 3;
-					}
-				}
-
-				if ( lpObj->m_ExcelentDamage > 0 )
-				{
-					if ( (rand()%100) < lpObj->m_ExcelentDamage )
-					{
-						MsgDamage = 2;
-					}
-				}
-
-				if ( MsgDamage == 3 )	// Critical Damage
-				{
-					AttackDamage =  iFenrirAttackDmg + lpMagic->m_DamageMax;
-					AttackDamage += lpObj->SetOpAddCriticalDamage;
-					int adddamage = 0;
-					gObjCheckUsedBuffEffect(lpObj, AT_INCREASE_CRITICAL_DMG, &adddamage, 0);
-					AttackDamage += adddamage;
-					gObjCheckUsedBuffEffect(lpObj, 148, &adddamage, 0);
-					AttackDamage += adddamage;
-					AttackDamage += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
-					AttackDamage -= targetdefense;
-				}
-				else if ( MsgDamage == 2 )	// Excellent
-				{
-					AttackDamage = iFenrirAttackDmg + lpMagic->m_DamageMax;
-					AttackDamage += AttackDamage * 20 / 100;
-					AttackDamage += lpObj->SetOpAddExDamage;
-					AttackDamage -= targetdefense;
-				}
-				else
-				{
-					AttackDamage = (iFenrirAttackDmg + lpMagic->m_DamageMin) + (rand()%(lpMagic->m_DamageMax - lpMagic->m_DamageMin + 1));
-					AttackDamage -= targetdefense;
-				}
-			}
-			break;
-		default:
-			{
-				if ( ( lpObj->Class == CLASS_WIZARD || lpObj->Class == CLASS_MAGUMSA ) && skill )
-				{
-					AttackDamage = GetAttackDamageWizard(lpObj, targetdefense, lpMagic, MsgDamage, bIsOnDuel);
-	
-					if ( AttackDamage > 0 )
-					{
-						gObjWeaponDurDown(lpObj, lpTargetObj, 1);
-					}
-				}
-				else if( lpObj->Class == CLASS_SUMMONER && skill )
-				{
-					AttackDamage = GetAttackDamageSummoner(lpObj, targetdefense, lpMagic, MsgDamage, bIsOnDuel);
-	
-					if ( AttackDamage > 0 )
-					{
-						gObjWeaponDurDown(lpObj, lpTargetObj, 1);
-					}
-				}
-				else if( lpObj->Class == CLASS_MONK )
-				{
-					AttackDamage = GetAttackDamage(lpObj, targetdefense, MsgDamage, bIsOnDuel, lpMagic);
-	
-					if ( AttackDamage > 0 )
-					{
-						gObjWeaponDurDown(lpObj, lpTargetObj, 0);
-					}
-				}
-				else
-				{
-					AttackDamage = GetAttackDamage(lpObj, targetdefense, MsgDamage, bIsOnDuel, lpMagic);
-	
-					if ( AttackDamage > 0 )
-					{
-						gObjWeaponDurDown(lpObj, lpTargetObj, 0);
-					}
-				}
-			}
-			break;
 		}
 
-		int nBuffIndex = -1;
-		int nValue = 0;
-
-		int attackdamagebefore = AttackDamage;
-
-		switch( MsgDamage )
+		if(ReadConfig.S6E2 == 1)
 		{
-		case 3:
-			nBuffIndex = AT_CSHOP_SCROLL_OF_BATTLE;
-
-			if( nBuffIndex > -1 )
+			if(lpObj->Type == OBJ_USER )
 			{
-				gObjCheckUsedBuffEffect(lpObj,nBuffIndex,&nValue,0);
-
-				if( nValue > 0 )
+				switch(skill)
 				{
-					AttackDamage += AttackDamage * nValue / 100;
-				}
-			}
+					case AT_SKILL_POISON:
+					{
+						if(lpTargetObj->Type == OBJ_USER )
+						{
+							if ( lpTargetObj->m_PoisonType == 1 )
+							{
+								if(lpObj->MasterCharacterInfo->IncPoison)
+								{
+									lpTargetObj->m_PoisonAdd = lpObj->MasterCharacterInfo->IncPoison;
+								}
+							}
+						}
+					}break;
+					case AT_SKILL_THUNDER:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncLighting;
+					}break;
+					case AT_SKILL_FLAME:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFlame;
+					}break;
+					case AT_SKILL_SLOW:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncIce;
+					}break;
+					case AT_SKILL_EVIL:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncEvilSpirits;
+					}break;
+					case AT_SKILL_HELL:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncHellFire;
+					}break;
+					case AT_SKILL_POWERWAVE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncWindBook1;
+						if (lpObj->MasterCharacterInfo->IncWindBook2 > 0)
+						{							
+							if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
+							{
+								if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
+								{
+									if(lpTargetObj->m_iSkillStunTime <= 0)
+									{
+										if ( (rand()%100) < lpObj->MasterCharacterInfo->IncWindBook2 )
+										{
+											gObjUseSkill.SkillStun(lpObj->m_Index,lpTargetObj->m_Index);
+										}
+									}
+								}
+							}
+						}
+					}break;
+					case AT_SKILL_BLAST:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncCometFall;
+					}break;
+					case AT_SKILL_INFERNO:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncInferno;
+					}break;
+					case AT_SKILL_FALLINGSLASH:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFallingSlash;
+					}break;
+					case AT_SKILL_LUNGE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncLunge;
+					}break;
+					case AT_SKILL_CYCLONE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncCyclone;
+					}break;
+					case AT_SKILL_SLASH:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncSlash;
+					}break;
+					case AT_SKILL_CROSSBOW:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncTripleShot;	
+						if(lpObj->MasterCharacterInfo->IncTripleShotOneArrow > 0)
+							AttackDamage += AttackDamage/3;
+					}break;
+					case AT_SKILL_EXPPOISON:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncDecay;
+					}break;
+					case AT_SKILL_TWISTINGSLASH:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncTwistingSlash;
+						
+						if(lpObj->MasterCharacterInfo->PullTwistingSlash > 0)
+						{
+							if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
+							{
+								if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
+								{									
+									if ( (rand()%100) < lpObj->MasterCharacterInfo->PullTwistingSlash )
+										gObjBackSpring2(lpTargetObj, lpObj, 2);
+								}
+							}
+						}
+					}break;
+					case AT_SKILL_BLOWOFFURY:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncRagefulBlow;
+					}break;
+					case AT_SKILL_DEATHSTAB:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncDeathStab;
+					}break;
+					case AT_SKILL_PENETRATION:			//45: ERROR
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncPenetration;
+					}
+					case AT_SKILL_ICEARROW:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncIceArrow;
+					}break;
+					case AT_SKILL_FIRESLASH:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFireSlash;
+					}break;
+					case AT_SKILL_POWERSLASH:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncPowerSlash;
+					}break;
+					case AT_SKILL_FIREBURST:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFireBurst1;
+						if (lpObj->MasterCharacterInfo->IncFireBurst2 > 0)
+						{							
+							if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
+							{
+								if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
+								{
+									if(lpTargetObj->m_iSkillStunTime <= 0)
+									{
+										if ( (rand()%100) < lpObj->MasterCharacterInfo->IncFireBurst2 )
+										{
+											gObjUseSkill.SkillStun(lpObj->m_Index,lpTargetObj->m_Index);
+										}
+									}
+								}
+							}
+						}
+					}break;
+					case AT_SKILL_DARKHORSE_ATTACK:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncEarthShake1;
+						if (lpObj->MasterCharacterInfo->IncEarthShake2 > 0)
+						{							
+							if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
+							{
+								if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
+								{
+									if(lpTargetObj->m_iSkillStunTime <= 0)
+									{
+										if ( (rand()%100) < lpObj->MasterCharacterInfo->IncEarthShake2 )
+										{
+											gObjUseSkill.SkillStun(lpObj->m_Index,lpTargetObj->m_Index);
+										}
+									}
+								}
+							}
+						}
+					}break;
+					case AT_SKILL_LONGSPEAR:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncForceWave;
+					}break;
+					case AT_SKILL_FIRESCREAM:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFireScream;
+					}break;
+					case AT_SKILL_DRAIN_LIFE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncDrainLife;
+					}break;
+					case AT_SKILL_CHAIN_LIGHTING:
+					case AT_SKILL_ELECTRIC_SURGE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncLightingBook1;
+						if(lpObj->MasterCharacterInfo->IncLightingBook2 > 0)
+						{
+							if(OBJMAX_RANGE(lpTargetObj->m_Index) == true)
+							{
+								if ( lpTargetObj->Connected >= PLAYER_CONNECTED )
+								{									
+									if ( (rand()%100) < lpObj->MasterCharacterInfo->IncLightingBook2 )
+										gObjBackSpring2(lpTargetObj, lpObj, 2);
+								}
+							}
+						}
+						if(skill == AT_SKILL_CHAIN_LIGHTING)
+						{
+							AttackDamage += lpObj->MasterCharacterInfo->IncChainLighting;
+						}
+					}break;
+					case AT_SKILL_SLEEP:
+					{
+						AttackDamage += (AttackDamage * lpObj->MasterCharacterInfo->IncSleep) / 100.0f;
+					}break;
+					case AT_SKILL_SAHAMUTT:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncFireBook1;
+					}break;
+					case AT_SKILL_RED_STORM:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncLightingShock;
+					}break;
+					case AT_SKILL_EXPLOTION:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncStrikeofDestruction;
+					}break;
+					
+					case AT_SKILL_CHAINDRIVE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncChainDrive;
+					}break;
+					case AT_SKILL_DARKSIDE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncDarkSide;
+					}break;
+					case AT_SKILL_DRAGONLORE:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncDragonLore;
+					}break;
+					case AT_SKILL_LARGERINGBLOWER:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncLargerRingBlower;
+					}break;
+					case AT_SKILL_UPPERBEAST:
+					{
+						AttackDamage += lpObj->MasterCharacterInfo->IncUpperBeast;
+					}break;
+				};
 
-			nValue = 0;
-			nBuffIndex = 0x7A;
-
-			if( nBuffIndex > -1 )
-			{
-				gObjCheckUsedBuffEffect(lpObj,nBuffIndex,&nValue,0);
-				if( nValue > 0 )
+				if(lpObj->Class == CLASS_ELF)
 				{
-					AttackDamage += AttackDamage * nValue / 100;
-				}
-			}
-			break;
-		case 2:
-			nBuffIndex = AT_CSHOP_SCROLL_OF_STRENGTHENER;
-			if( nBuffIndex > -1 )
-			{
-				gObjCheckUsedBuffEffect(lpObj,nBuffIndex,&nValue,0);
-				if( nValue > 0 )
-				{
-					AttackDamage += AttackDamage * nValue / 100;
-				}
-			}
+					/*LogAddTD("[Mastering2][AttackDamage][%s][%s] %d", 
+						lpObj->AccountID, lpObj->Name,
+						AttackDamage
+					);*/
 
-			nValue = 0;
-			nBuffIndex = 0x7B;
-
-			if( nBuffIndex > -1 )
-			{
-				gObjCheckUsedBuffEffect(lpObj,nBuffIndex,&nValue,0);
-				if( nValue > 0 )
-				{
-					AttackDamage += AttackDamage * nValue / 100;
+					if(lpObj->m_iMuseElfInfinityArrowSkillTime > 0)
+					{
+						AttackDamage += (float)(AttackDamage * lpObj->MasterCharacterInfo->IncInfiniteArrow)/100.0f;
+						/*LogAddTD("[Mastering2][AttackDamage2][%s][%s] %d", 
+							lpObj->AccountID, lpObj->Name,
+							AttackDamage
+						);*/
+					}
 				}
-			}
-			break;
-		default:
-			nBuffIndex = -1;
-			break;
-		}
-
-		if( g_bAbilityDebug == TRUE )
-		{
-			if( MsgDamage == 3 || MsgDamage == 2)
-			{
-				char szTmpMsg[256];
-				sprintf(szTmpMsg,"%s AttackDamage: %d %d",(MsgDamage == 3)?"CRITICAL":"EXCELLENT",
-					attackdamagebefore,AttackDamage);
-				GCServerMsgStringSend(szTmpMsg,lpObj->m_Index,1);
 			}
 		}
 
@@ -700,11 +968,11 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 		if ( lpTargetObj->DamageMinus )
 		{
-			int beforeDamage = AttackDamage;
+			//int beforeDamage = AttackDamage;
 			AttackDamage -= ( ( AttackDamage * (int)lpTargetObj->DamageMinus) / 100 );
 		}
 
-		int tlevel = (lpObj->Level+lpObj->m_nMasterLevel) / 10;
+		int tlevel = lpObj->Level / 10;
 
 		if ( AttackDamage < tlevel )
 		{
@@ -716,7 +984,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			AttackDamage = tlevel;
 		}
 
-		if ( lpTargetObj->m_SkillNumber == 18 )
+		if ( lpTargetObj->m_SkillNumber == AT_SKILL_BLOCKING )
 		{
 			if ( AttackDamage > 1 )
 			{
@@ -728,37 +996,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 		if ( gObjSatanSprite(lpObj) == TRUE )
 		{
-			if( lpObj->Class == CLASS_MONK )
-			{
-				if( skill == 263 ||
-					skill == 269 ||
-					skill == 262 )
-				{
-					lpObj->Life -= 4.0f;
-				}
-				else if( skill == 265 )
-				{
-					lpObj->Life -= 100.0f;
-				}
-				else if( skill == 260 ||
-					skill == 261 ||
-					skill == 264 )
-				{
-					lpObj->Life -= 2.0f;
-				}
-				else if( skill == 270 )
-				{
-					lpObj->Life -= 2.0f;
-				}
-				else
-				{
-					lpObj->Life -= 3.0f;
-				}
-			}
-			else
-			{
-				lpObj->Life -= 3.0f;
-			}
+			lpObj->Life -= 3.0f;
 
 			if ( lpObj->Life < 0.0f )
 			{
@@ -769,7 +1007,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				AttackDamage = AttackDamage * 13 / 10;
 			}
 
-			GCReFillSend(lpObj->m_Index,(int)lpObj->Life, 0xFF, 0, lpObj->iShield);
+			GCReFillSend(lpObj->m_Index, lpObj->Life, 0xFF, 0, lpObj->iShield);
 		}
 
 		if ( gObjAngelSprite(lpTargetObj) == TRUE )
@@ -777,69 +1015,29 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			if ( AttackDamage > 1 )
 			{
 				float  damage = (AttackDamage * 8) / 10.0f;
-				AttackDamage = (int)damage;
+				AttackDamage = damage;
 			}
 		}
-		
-		
-		if ( gObjDemonSprite(lpTargetObj) == TRUE )
+
+		if ( lpObj->Type == OBJ_MONSTER )
 		{
-			if ( AttackDamage > 1 )
+			if ( gObjSpiritOfGuardianSprite(lpTargetObj) == TRUE )
 			{
-				float damage = AttackDamage * 7 / 10.0f;
-				AttackDamage = (int)damage;
+				if ( AttackDamage > 1 )
+				{
+					float  damage = (AttackDamage * 8) / 20.0f;
+					AttackDamage = damage;
+				}
 			}
-		}
-
-		if ( (lpObj->pInventory[10].IsItem() &&
-			 lpObj->pInventory[10].m_Type == ITEMGET(13,76) &&
-			 lpObj->pInventory[10].m_Durability > 0.0f) || 
-
-			 (lpObj->pInventory[11].IsItem() &&
-			 lpObj->pInventory[11].m_Type == ITEMGET(13,76) &&
-			 lpObj->pInventory[11].m_Durability > 0.0f) )
-		{
-			AttackDamage += 30;
 		}
 
 		if ( gObjWingSprite(lpObj) == TRUE )
 		{
 			CItem * Wing = &lpObj->pInventory[7];
 
-			if ( lpObj->Class == CLASS_WIZARD || lpObj->Class == CLASS_ELF )
+			if ( lpObj->Class == CLASS_WIZARD || lpObj->Class == CLASS_SUMMONER || lpObj->Class == CLASS_ELF )
 			{
 				lpObj->Life -= 1.0f;
-			}
-			else if ( lpObj->Class == CLASS_SUMMONER )
-			{
-				lpObj->Life -= 1.0f;
-			}
-			else if( lpObj->Class == CLASS_MONK )
-			{
-				if( skill == 263 ||
-					skill == 269 ||
-					skill == 262 )
-				{
-					lpObj->Life -= 4.0f;
-				}
-				else if( skill == 265 )
-				{
-					lpObj->Life -= 100.0f;
-				}
-				else if( skill == 260 ||
-					skill == 261 ||
-					skill == 264 )
-				{
-					lpObj->Life -= 2.0f;
-				}
-				else if( skill == 270 )
-				{
-					lpObj->Life -= 2.0f;
-				}
-				else
-				{
-					lpObj->Life -= 3.0f;
-				}
 			}
 			else
 			{
@@ -852,62 +1050,44 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			}
 			else
 			{
-				if( Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,40) )
+				if ( Wing->m_Type == ITEMGET(13,30) || Wing->m_Type == ITEMGET(12,49))	// Cape Of Lord
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 139) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 120) / 100;	// #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12, 262) )
+				else if (( Wing->m_Type > ITEMGET(12,2) && Wing->m_Type < ITEMGET(12,7)) || ( Wing->m_Type == ITEMGET(12,42)))
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level + 127) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level + 132) / 100 ;	// #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12, 263) )
+				else if (( Wing->m_Type > ITEMGET(12,35) && Wing->m_Type < ITEMGET(12,41)) || ( Wing->m_Type == ITEMGET(12,43)) || ( Wing->m_Type == ITEMGET(12,50))) //Third Wings
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level + 133) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 139) / 100 ;	// #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12, 264) || Wing->m_Type == ITEMGET(12,265) )
+#if (CRYSTAL_EDITION == 1)
+				else if ((Wing->m_Type >= ITEMGET(12,200) && Wing->m_Type <= ITEMGET(12,254)))
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level + 135) / 100;
+					AttackDamage = CWings.GetIncreaseDmg(Wing->m_Type,Wing->m_Level,AttackDamage);
 				}
-				else if( Wing->m_Type == ITEMGET(13,30) || Wing->m_Type == ITEMGET(12,130) || Wing->m_Type == ITEMGET(12,135) )
+#endif
+				else if ( Wing->m_Type == ITEMGET(12,130) )	// Small Cape Of Lord
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 120) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 120) / 100;	// #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12,41) )
+				else if ( Wing->m_Type == ITEMGET(12,135) )	// Small Cape Of rage
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 112) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 120) / 100;	// #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12,42) )
+				else if ( Wing->m_Type >= ITEMGET(12,131) && Wing->m_Type <= ITEMGET(12,134))
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level + 132) / 100;
-				}
-				else if( Wing->m_Type == ITEMGET(12,43) )
-				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 139) / 100;
-				}
-				else if( Wing->m_Type == ITEMGET(12,49) )
-				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 120) / 100;
-				}
-				else if( Wing->m_Type == ITEMGET(12,50) )
-				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 139) / 100;
-				}
-				else if( Wing->m_Type > ITEMGET(12,2) )
-				{
-					AttackDamage = AttackDamage * (Wing->m_Level + 132) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 112) / 100 ;	// #formula
 				}
 				else
 				{
-					AttackDamage = AttackDamage * (Wing->m_Level*2 + 112) / 100;
+					AttackDamage = AttackDamage * (Wing->m_Level * 2 + 112) / 100;	// #formula
 				}
 			}
 
-			GCReFillSend(lpObj->m_Index,(int)lpObj->Life, 0xFF, 0, lpObj->iShield);
+			GCReFillSend(lpObj->m_Index, lpObj->Life, 0xFF, 0, lpObj->iShield);
 		}
-
-		int RestoreHP = 0;
-		int RestoreMP = 0;
-		int RestoreSD = 0;
 
 		if ( gObjWingSprite(lpTargetObj) == TRUE )
 		{
@@ -915,113 +1095,55 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 			if ( AttackDamage > 1 )
 			{
-				if( (Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,40)) ||
-					 Wing->m_Type == ITEMGET(12,43) || Wing->m_Type == ITEMGET(12,50) )
+				if ( (Wing->m_Type > ITEMGET(12,2) && Wing->m_Type < ITEMGET(12,7)) || (Wing->m_Type == ITEMGET(12,42)) )
 				{
-					if( Wing->m_Type == ITEMGET(12,40) )
-					{
-						float damage = AttackDamage * (76 - Wing->m_Level*2) / 100.0f;
-						AttackDamage = (int)damage;
-					}
-					else if( Wing->m_Type == ITEMGET(12,50) )
-					{
-						float damage = AttackDamage * (76 - Wing->m_Level*2) / 100.0f;
-						AttackDamage = (int)damage;
-					}
-					else
-					{
-						float damage = AttackDamage * (61 - Wing->m_Level*2) / 100.0f;
-						AttackDamage = (int)damage;
-					}
-
-					BYTE ExcOp = lpTargetObj->pInventory[7].m_NewOption;
-
-					if ((ExcOp & 4) == 4)
-					{						
-						int m_wingsFullHpRecovery = GetPrivateProfileInt("GameServerInfo", "WingsFullHpRecovery", 0, gDirPath.GetNewPath("CommonServer.cfg"));
-						if (m_wingsFullHpRecovery == 1)
-						{
-							RestoreHP = 0;					
-						}
-						else 
-						{
-							RestoreHP += 5;
-						}
-					}
-					
-					if( (ExcOp&8) == 8 )
-						RestoreMP += 5;
+					float damage = (float)(AttackDamage * (75 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else if( Wing->m_Type >= ITEMGET(12,262) && Wing->m_Type <= ITEMGET(12,265) )
+				else if ( (Wing->m_Type >= ITEMGET(12,0) && Wing->m_Type <= ITEMGET(12,2)) || (Wing->m_Type == ITEMGET(12,41)) )
 				{
-					float damage = AttackDamage * (70 - Wing->m_Level*2) / 100.0f;
-					AttackDamage = (int)damage;
-
-					if( rand()%100 < 5 )
-					{
-						BYTE ExcOp = lpTargetObj->pInventory[7].m_NewOption;
-
-						if( (ExcOp&2) == 2 )
-						{
-							gObjAddMsgSendDelay(lpTargetObj,13,lpObj->m_Index,100,0);
-						}
-					}
+					float damage = (float)(AttackDamage * (88 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12,49) )
+				else if (Wing->m_Type == ITEMGET(12,130))
 				{
-					float damage = AttackDamage * (90 - Wing->m_Level*2) / 100.0f;
-					AttackDamage = (int)damage;
+					float damage = (float)(AttackDamage * (80 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else if( Wing->m_Type == ITEMGET(12,130) || Wing->m_Type == ITEMGET(12,135) )
+				else if (Wing->m_Type == ITEMGET(12,135))
 				{
-					float damage = AttackDamage * (80 - Wing->m_Level*2) / 100.0f;
-					AttackDamage = (int)damage;
+					float damage = (float)(AttackDamage * (80 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else if( Wing->m_Type == ITEMGET(13,30) )
+				else if (Wing->m_Type >= ITEMGET(12,131) && Wing->m_Type <= ITEMGET(12,134))
 				{
-					float damage = AttackDamage * (90 - Wing->m_Level) / 100.0f;
-					AttackDamage = (int)damage;
+					float damage = (float)(AttackDamage * (88 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else if( Wing->m_Type > ITEMGET(12,2) )
+				else if ( (Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,39)) || (Wing->m_Type == ITEMGET(12,43)) )
 				{
-					float damage = AttackDamage * (75 - Wing->m_Level*2) / 100.0f;
-					AttackDamage = (int)damage;
+					float damage = (float)(AttackDamage * (61 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
 				}
-				else
+#if (CRYSTAL_EDITION == 1)
+				else if ( (Wing->m_Type >= ITEMGET(12,200) && Wing->m_Type <= ITEMGET(12,254)) )
 				{
-					float damage = AttackDamage * (88 - Wing->m_Level*2) / 100.0f;
-					AttackDamage = (int)damage;
+					AttackDamage = (int)CWings.GetAbsorbDmg(Wing->m_Type,Wing->m_Level,AttackDamage);
 				}
-			}
-		}
-
-		if( lpTargetObj->Type == OBJ_USER )
-		{
-			//RestoreHP += (int)lpTargetObj->m_MasterSkillEffects->m_RestoreFullLife;
-			//RestoreMP += (int)lpTargetObj->m_MasterSkillEffects->m_RestoreFullMana;
-			//RestoreSD += (int)lpTargetObj->m_MasterSkillEffects->m_RestoreFullShield;
-
-			int numberPlusThat = 0;
-
-			int m_wingsFullHpRecovery = GetPrivateProfileInt("GameServerInfo", "WingsFullHpRecovery", 0, gDirPath.GetNewPath("CommonServer.cfg"));
-			if (m_wingsFullHpRecovery == 1)
-			{
-				int numberPlusThat = 1;
-			}
-			else {
-				int numberPlusThat = 0;
-			}
-			if (RestoreHP && rand() % 100 + numberPlusThat < RestoreHP)
-			{
-				gObjAddMsgSendDelay(lpTargetObj,13,lpObj->m_Index,100,0);
-			}
-			else if( RestoreMP && rand()%100 < RestoreMP )
-			{
-				gObjAddMsgSendDelay(lpTargetObj,14,lpObj->m_Index,100,0);
-			}
-			else if( RestoreSD && rand()%100 < RestoreSD )
-			{
-				gObjAddMsgSendDelay(lpTargetObj,15,lpObj->m_Index,100,0);
+#endif
+				else if ( (Wing->m_Type == ITEMGET(12,40)) || (Wing->m_Type == ITEMGET(12,50)) )
+				{
+					float damage = (float)(AttackDamage * (76 - (Wing->m_Level*2))) / 100.0f;
+					AttackDamage = (int)(damage);	//  #formula
+				}
+				else if ( Wing->m_Type == ITEMGET(13,30) )	// Cape Of Lord
+				{
+					//No such option
+				}
+				else if ( Wing->m_Type == ITEMGET(12,49) )	// Cape Of Lord
+				{
+					//No such option
+				}
 			}
 		}
 
@@ -1038,7 +1160,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				AttackDamage = AttackDamage * 115 / 100;
 			}
 
-			GCReFillSend(lpObj->m_Index, (int)lpObj->Life, 0xFF, 0, lpObj->iShield);
+			GCReFillSend(lpObj->m_Index, lpObj->Life, 0xFF, 0, lpObj->iShield);
 		}
 
 		if ( gObjDenorantSprite(lpTargetObj ) )
@@ -1056,7 +1178,7 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				AttackDamage = AttackDamage * dinorantdecdamage / 100;
 			}
 
-			GCReFillSend(lpObj->m_Index, (int)lpObj->Life, 0xFF, 0, lpObj->iShield);
+			GCReFillSend(lpObj->m_Index, lpObj->Life, 0xFF, 0, lpObj->iShield);
 		}
 
 		if ( gObjDarkHorse(lpTargetObj ) )
@@ -1075,847 +1197,470 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				AttackDamage = AttackDamage * decdamage / 100;
 			}
 
-			GCReFillSend(lpTargetObj->m_Index, (int)lpTargetObj->Life, 0xFF, 0, lpTargetObj->iShield);
+			GCReFillSend(lpTargetObj->m_Index, lpTargetObj->Life, 0xFF, 0, lpTargetObj->iShield);
 		}
 
 		if ( lpTargetObj->Live )
 		{
 			switch ( skill )
 			{
-				case AT_SKILL_SWORD1:
-				case AT_SKILL_SWORD2:
-				case AT_SKILL_SWORD3:
-				case AT_SKILL_SWORD4:
-				case AT_SKILL_SWORD5:
-				case AT_SKILL_WHEEL:
-				case AT_SKILL_BLOWOFFURY:
-				case AT_SKILL_STRIKE:
-				case AT_SKILL_RUSH:
-				case AT_SKILL_KNIGHTDINORANT:
-				case AT_SKILL_DEFENSEDOWN:
-				case AT_SKILL_ONE_FLASH:
-					if ( lpObj->Class == CLASS_DARKLORD || lpObj->Class == CLASS_MAGUMSA )
+
+				case AT_SKILL_LARGERINGBLOWER:
+				case AT_SKILL_UPPERBEAST:
+				case AT_SKILL_CHAINDRIVE:
+				case AT_SKILL_DARKSIDE:
+				case AT_SKILL_DRAGONLORE:
+				case AT_SKILL_DRAGONSLAYER:
+				case AT_SKILL_PHOENIX_G:
 					{
-						AttackDamage *= 2;
-					}
-					else if( lpObj->Class == CLASS_MONK )
-					{
-						AttackDamage *= 2;
-					}
-					else
-					{
-						AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100;
+						if (skill == AT_SKILL_DRAGONSLAYER)
+						{
+							if(lpObj->m_SkillDragonSlayerTime > 0)
+							{
+								//m_SkillDragonSlayerDmg = 3*(50+Ene/10)/100
+								//300+Dmg*m_SkillDragonSlayerDmg
+								AttackDamage = ReadConfig.SkillDragonSlayerDmgBase + (AttackDamage * lpObj->m_SkillDragonSlayerDmg);
+							}
+						}
+						else if (skill == AT_SKILL_DRAGONLORE)
+						{
+							//Dmg*(50+Ene/10)/100
+							float multiFix = (ReadConfig.DragonLoreEnergyBase + Energy / (float)ReadConfig.DragonLoreEnergyDiv) / (float)ReadConfig.DragonLoreAttackMultDiv;
+
+							if (multiFix > ReadConfig.DragonLoreAttackMultMax)
+								multiFix = ReadConfig.DragonLoreAttackMultMax;
+
+							AttackDamage *= multiFix;
+						}
+						else if (skill == AT_SKILL_DARKSIDE)
+						{
+							//(Agi/AgiDiv+Ene/EneDiv+Dmg)*(MultBase+Agi/AgiDiv+Vit/VitDiv)/MultDiv
+							float multiFix = (ReadConfig.DarkSideParchmentMultBase + Dexterity/(float)ReadConfig.DarkSideParchmentAgiDiv + Vitality/(float)ReadConfig.DarkSideParchmentVitDiv)/(float)ReadConfig.DarkSideParchmentMultDiv;
+
+							if (multiFix > ReadConfig.DarkSideParchmentMultMax)
+								multiFix = ReadConfig.DarkSideParchmentMultMax;
+
+							AttackDamage = AttackDamage + Dexterity/(float)ReadConfig.DarkSideParchmentAgiDiv + Energy/(float)ReadConfig.DarkSideParchmentEneDiv;
+							AttackDamage *= multiFix;
+						}
+						else if (skill == AT_SKILL_CHAINDRIVE)
+						{
+							//(Vit/VitDiv+Dmg)*(VitBase+Vit/VitDiv)/MultDiv
+							float multiFix = (ReadConfig.ChainDriveVitBase + Vitality/(float)ReadConfig.ChainDriveVitDiv)/(float)ReadConfig.ChainDriveMultDiv;
+
+							if (multiFix > ReadConfig.ChainDriveMultMax)
+								multiFix = ReadConfig.ChainDriveMultMax;
+
+							AttackDamage = AttackDamage + Vitality/(float)ReadConfig.ChainDriveVitDiv;
+							AttackDamage *= multiFix;
+						}
+						else if (skill == AT_SKILL_LARGERINGBLOWER ||
+								skill == AT_SKILL_UPPERBEAST)
+						{
+							//Dmg*(VitBase+Vit/VitDiv)/MultDiv
+							float multiFix = (ReadConfig.RFGlovesSkillAttackVitBase + Vitality/(float)ReadConfig.RFGlovesSkillAttackVitDiv)/(float)ReadConfig.RFGlovesSkillAttackMultDiv;
+
+							if (multiFix > ReadConfig.RFGlovesSkillAttackMultMax)
+								multiFix = ReadConfig.RFGlovesSkillAttackMultMax;
+
+							AttackDamage *= multiFix;
+						}
 					}
 					break;
-				case AT_SKILL_KNIGHTSPEAR:
-					if ( lpObj->pInventory[8].m_Type == ITEMGET(13,3) ||
-						 lpObj->pInventory[8].m_Type == ITEMGET(13,2) ||
-						 lpObj->pInventory[8].m_Type == ITEMGET(13,37) )
+
+				case AT_SKILL_FALLINGSLASH:
+				case AT_SKILL_LUNGE:
+				case AT_SKILL_UPPERCUT:
+				case AT_SKILL_CYCLONE:
+				case AT_SKILL_SLASH:
+				case AT_SKILL_KNIGHTDINORANT:	//DK
+				case AT_SKILL_BKIMPALE:
+					//if ( lpObj->pInventory[8].m_Type == ITEMGET(13,3) ||
+					//	 lpObj->pInventory[8].m_Type == ITEMGET(13,2) ||
+					//	 lpObj->pInventory[8].m_Type == ITEMGET(13,37) )
 					{
-						if ( lpObj->Class == CLASS_DARKLORD || lpObj->Class == CLASS_MAGUMSA )
+						if ( lpObj->Class == CLASS_DARKLORD )
 						{
-							AttackDamage *= 2;
+							float multiFix = ( Energy/(float)ReadConfig.DLOtherSkillEneDiv + ReadConfig.DLOtherSkillBase ) /(float) ReadConfig.DLOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.DLOtherSkillMultMax)
+								AttackDamage *= ReadConfig.DLOtherSkillMultMax;
+							else if (multiFix < ReadConfig.DLOtherSkillMultMin)
+								AttackDamage *= ReadConfig.DLOtherSkillMultMin;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_MAGICGLADIATOR)
+						{
+							float multiFix = ( Energy/(float)ReadConfig.MGOtherSkillEneDiv + ReadConfig.MGOtherSkillBase ) /(float) ReadConfig.MGOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.MGOtherSkillMultMax)
+								AttackDamage *= ReadConfig.MGOtherSkillMultMax;
+							else if (multiFix < ReadConfig.MGOtherSkillMultMin)
+								AttackDamage *= ReadConfig.MGOtherSkillMultMin;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_RAGEFIGHTER)
+						{
+							float multiFix = ( Energy/(float)ReadConfig.RFOtherSkillEneDiv + ReadConfig.RFOtherSkillBase ) /(float) ReadConfig.RFOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.RFOtherSkillMultMax)
+								AttackDamage *= ReadConfig.RFOtherSkillMultMax;
+							else if (multiFix < ReadConfig.RFOtherSkillMultMin)
+								AttackDamage *= ReadConfig.RFOtherSkillMultMin;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_WIZARD  )
+						{
+							float multiFix = ( Energy/(float)ReadConfig.DWOtherSkillEneDiv + ReadConfig.DWOtherSkillBase ) /(float) ReadConfig.DWOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.DWOtherSkillMultMax)
+								AttackDamage *= ReadConfig.DWOtherSkillMultMax;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_KNIGHT )
+						{
+							float multiFix = ( Energy/(float)ReadConfig.DKOtherSkillEneDiv + ReadConfig.DKOtherSkillBase ) /(float) ReadConfig.DKOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.DKOtherSkillMultMax)
+								AttackDamage *= ReadConfig.DKOtherSkillMultMax;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_ELF  )
+						{
+							float multiFix = ( Energy/(float)ReadConfig.ElfOtherSkillEneDiv + ReadConfig.ElfOtherSkillBase ) /(float) ReadConfig.ElfOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.ElfOtherSkillMultMax)
+								AttackDamage *= ReadConfig.ElfOtherSkillMultMax;
+							else
+								AttackDamage *= multiFix;
+						}
+						else if (lpObj->Class == CLASS_SUMMONER  )
+						{
+							float multiFix = ( Energy/(float)ReadConfig.SUOtherSkillEneDiv + ReadConfig.SUOtherSkillBase ) /(float) ReadConfig.SUOtherSkillMultDiv;
+
+							if (multiFix > ReadConfig.SUOtherSkillMultMax)
+								AttackDamage *= ReadConfig.SUOtherSkillMultMax;
+							else
+								AttackDamage *= multiFix;
 						}
 						else
 						{
-							AttackDamage = ( AttackDamage * ( Energy / 10 + 200 )  ) / 100;
+							AttackDamage = ( AttackDamage * ( Energy / 10.0f + 200 )  ) / 100.0f;
 						}
 					}
 					break;
-				case AT_SKILL_SWORD6:
-					AttackDamage *= 2;
+
+
+				case AT_SKILL_CRESCENTSLASH:	//DK
+					{
+						float multiFix = ( Energy/(float)ReadConfig.CrescentSlashEneDiv + ReadConfig.CrescentSlashBase ) /(float) ReadConfig.CrescentSlashMultDiv;
+						if (multiFix > ReadConfig.CrescentSlashMultMax)
+							AttackDamage *= ReadConfig.CrescentSlashMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
 					break;
-				case AT_SKILL_DEEPIMPACT:
-				case AT_SKILL_ELFHARDEN:
+
+				case AT_SKILL_EXPLOTION:		//DK
+					{
+						float multiFix = ( Energy/(float)ReadConfig.DKExplotionEneDiv + ReadConfig.DKExplotionBase ) /(float) ReadConfig.DKExplotionMultDiv;
+						if (multiFix > ReadConfig.DKExplotionMultMax)
+							AttackDamage *= ReadConfig.DKExplotionMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_DEATHSTAB:		//DK
+				case 460:	//Increase Death Stab Skill
+				case 461:	//Increase Death Stab Skill
+				case 462:	//Increase Death Stab Skill
+				case 463:	//Increase Death Stab Skill
+				case 464:	//Increase Death Stab Skill
+					{
+						float multiFix = ( Energy/(float)ReadConfig.DeathStabEneDiv + ReadConfig.DeathStabBase ) /(float) ReadConfig.DeathStabMultDiv;
+						if (multiFix > ReadConfig.DeathStabMultMax)
+							AttackDamage *= ReadConfig.DeathStabMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_BLOWOFFURY:		//DK
+				case 465:	//Increase Rageful Blow Skill
+				case 466:	//Increase Rageful Blow Skill
+				case 467:	//Increase Rageful Blow Skill
+				case 468:	//Increase Rageful Blow Skill
+				case 469:	//Increase Rageful Blow Skill
+					{
+						float multiFix = ( Energy/(float)ReadConfig.BlowOfFuryEneDiv + ReadConfig.BlowOfFuryBase ) /(float) ReadConfig.BlowOfFuryMultDiv;
+						if (multiFix > ReadConfig.BlowOfFuryMultMax)
+							AttackDamage *= ReadConfig.BlowOfFuryMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_TWISTINGSLASH:	//MG, DK
+				case 455:	//Increase Twisting Slash Skill
+				case 456:	//Increase Twisting Slash Skill
+				case 457:	//Increase Twisting Slash Skill
+				case 458:	//Increase Twisting Slash Skill
+				case 459:	//Increase Twisting Slash Skill
+				case 495:	//Increase Twisting Slash Skill
+				case 496:	//Increase Twisting Slash Skill
+				case 497:	//Increase Twisting Slash Skill
+				case 498:	//Increase Twisting Slash Skill
+				case 499:	//Increase Twisting Slash Skill
+					{
+						if (lpObj->Class == CLASS_MAGICGLADIATOR)
+						{
+							float multiFix = ( Energy/(float)ReadConfig.MGTwistingSlashEneDiv + ReadConfig.MGTwistingSlashBase ) /(float) ReadConfig.MGTwistingSlashMultDiv;
+							if (multiFix > ReadConfig.MGTwistingSlashMultMax)
+								AttackDamage *= ReadConfig.MGTwistingSlashMultMax;
+							else if (multiFix < ReadConfig.MGTwistingSlashMultMin)
+								AttackDamage *= ReadConfig.MGTwistingSlashMultMin;
+							else
+								AttackDamage *= multiFix;
+						} else {
+							float multiFix = ( Energy/(float)ReadConfig.DKTwistingSlashEneDiv + ReadConfig.DKTwistingSlashBase ) /(float) ReadConfig.DKTwistingSlashMultDiv;
+							if (multiFix > ReadConfig.DKTwistingSlashMultMax)
+								AttackDamage *= ReadConfig.DKTwistingSlashMultMax;
+							else
+								AttackDamage *= multiFix;
+						}
+					}
+					break;
+
+				case AT_SKILL_SPIRALSLASH:		//MG
+					{
+						float multiFix = ( Energy/(float)ReadConfig.SpiralSlashEneDiv + ReadConfig.SpiralSlashBase ) /(float) ReadConfig.SpiralSlashMultDiv;
+						if (multiFix > ReadConfig.SpiralSlashMultMax)
+							AttackDamage *= ReadConfig.SpiralSlashMultMax;
+						else if (multiFix < ReadConfig.SpiralSlashMultMin)
+							AttackDamage *= ReadConfig.SpiralSlashMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_FIRESLASH:		//MG
+				case 500:	//Increase Fire Slash Skill
+				case 501:	//Increase Fire Slash Skill
+				case 502:	//Increase Fire Slash Skill
+				case 503:	//Increase Fire Slash Skill
+				case 504:	//Increase Fire Slash Skill
+					{
+						float multiFix = ( Energy/(float)ReadConfig.FireSlashEneDiv + ReadConfig.FireSlashBase ) /(float) ReadConfig.FireSlashMultDiv;
+						if (multiFix > ReadConfig.FireSlashMultMax)
+							AttackDamage *= ReadConfig.FireSlashMultMax;
+						else if (multiFix < ReadConfig.FireSlashMultMin)
+							AttackDamage *= ReadConfig.FireSlashMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_POWERSLASH:	//Power Slash Skill
+				case 505:				//Increase Power Slash Skill
+				case 506:				//Increase Power Slash Skill
+				case 507:				//Increase Power Slash Skill
+				case 508:				//Increase Power Slash Skill
+				case 509:				//Increase Power Slash Skill
+					{
+						float multiFix = ( Energy/(float)ReadConfig.PowerSlashEneDiv + ReadConfig.PowerSlashBase ) /(float) ReadConfig.PowerSlashMultDiv;
+
+						if (multiFix > ReadConfig.PowerSlashMultMax)
+							AttackDamage *= ReadConfig.PowerSlashMultMax;
+						else if (multiFix < ReadConfig.PowerSlashMultMin)
+							AttackDamage *= ReadConfig.PowerSlashMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_STARFALL:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.StarFallEneDiv + ReadConfig.StarFallBase ) /(float) ReadConfig.StarFallMultDiv;
+
+						if (multiFix > ReadConfig.StarFallMultMax)
+							AttackDamage *= ReadConfig.StarFallMultMax;
+						else if (multiFix < ReadConfig.StarFallMultMin)
+							AttackDamage *= ReadConfig.StarFallMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_ICEARROW:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.IceArrowEneDiv + ReadConfig.IceArrowBase ) /(float) ReadConfig.IceArrowMultDiv;
+
+						if (multiFix > ReadConfig.IceArrowMultMax)
+							AttackDamage *= ReadConfig.IceArrowMultMax;
+						else if (multiFix < ReadConfig.IceArrowMultMin)
+							AttackDamage *= ReadConfig.IceArrowMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_PENETRATION:
-					AttackDamage *= 2;
+					{
+						float multiFix = ( Energy/(float)ReadConfig.PenetrationEneDiv + ReadConfig.PenetrationBase ) /(float) ReadConfig.PenetrationMultDiv;
+
+						if (multiFix > ReadConfig.PenetrationMultMax)
+							AttackDamage *= ReadConfig.PenetrationMultMax;
+						else if (multiFix < ReadConfig.PenetrationMultMin)
+							AttackDamage *= ReadConfig.PenetrationMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
 					break;
+
+				case AT_SKILL_FIVE_SHOT:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.FiveShotEneDiv + ReadConfig.FiveShotBase ) /(float) ReadConfig.FiveShotMultDiv;
+
+						if (multiFix > ReadConfig.FiveShotMultMax)
+							AttackDamage *= ReadConfig.FiveShotMultMax;
+						else if (multiFix < ReadConfig.FiveShotMultMin)
+							AttackDamage *= ReadConfig.FiveShotMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_EXPHELL:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.NovaEneDiv + ReadConfig.NovaBase ) /(float) ReadConfig.NovaMultDiv;
+
+						if (multiFix > ReadConfig.NovaMultMax)
+							AttackDamage *= ReadConfig.NovaMultMax;
+						else if (multiFix < ReadConfig.NovaMultMin)
+							AttackDamage *= ReadConfig.NovaMultMin;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_SPEAR:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.ForceEneDiv + ReadConfig.ForceBase ) /(float) ReadConfig.ForceMultDiv;
+
+						if (multiFix > ReadConfig.ForceMultMax)
+							AttackDamage *= ReadConfig.ForceMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_LONGSPEAR:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.ForceWaveEneDiv + ReadConfig.ForceWaveBase ) /(float) ReadConfig.ForceWaveMultDiv;
+
+						if (multiFix > ReadConfig.ForceWaveMultMax)
+							AttackDamage *= ReadConfig.ForceWaveMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_FIREBURST:
+				case 520:	//Increase Fire Burst Skill
+				case 521:	//Increase Fire Burst Skill
+				case 522:	//Increase Fire Burst Skill
+				case 523:	//Increase Fire Burst Skill
+				case 524:	//Increase Fire Burst Skill
+					{
+						if(skill == AT_SKILL_FIREBURST && ReadConfig.IsSkillFireBurstStr == 0)
+							break;
+
+						float multiFix = ( Energy/(float)ReadConfig.FireBurstEneDiv + ReadConfig.FireBurstBase ) /(float) ReadConfig.FireBurstMultDiv;
+
+						if (multiFix > ReadConfig.FireBurstMultMax)
+							AttackDamage *= ReadConfig.FireBurstMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_DARKHORSE_ATTACK:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.DarkHorseEneDiv + ReadConfig.DarkHorseBase ) /(float) ReadConfig.DarkHorseMultDiv;
+
+						if (multiFix > ReadConfig.DarkHorseMultMax)
+							AttackDamage *= ReadConfig.DarkHorseMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_ELECTRICSPARK:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.ElectricSparkEneDiv + ReadConfig.ElectricSparkBase ) /(float) ReadConfig.ElectricSparkMultDiv;
+
+						if (multiFix > ReadConfig.ElectricSparkMultMax)
+							AttackDamage *= ReadConfig.ElectricSparkMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
+				case AT_SKILL_BIRDS:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.BirdsEneDiv + ReadConfig.BirdsBase ) /(float) ReadConfig.BirdsMultDiv;
+
+						if (multiFix > ReadConfig.BirdsMultMax)
+							AttackDamage *= ReadConfig.BirdsMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_SPACE_SPLIT:
+					{
+						float multiFix = ( Energy/(float)ReadConfig.FireBlastEneDiv + ReadConfig.FireBlastBase ) /(float) ReadConfig.FireBlastMultDiv;
+
+						if (multiFix > ReadConfig.FireBlastMultMax)
+							AttackDamage *= ReadConfig.FireBlastMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
+					break;
+
 				case AT_SKILL_FIRESCREAM:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
+				case 525:	//Increase Fire Scream Skill
+				case 526:	//Increase Fire Scream Skill
+				case 527:	//Increase Fire Scream Skill
+				case 528:	//Increase Fire Scream Skill
+				case 529:	//Increase Fire Scream Skill
+					{
+						float multiFix = ( Energy/(float)ReadConfig.FireScreamEneDiv + ReadConfig.FireScreamBase ) /(float) ReadConfig.FireScreamMultDiv;
+
+						if (multiFix > ReadConfig.FireScreamMultMax)
+							AttackDamage *= ReadConfig.FireScreamMultMax;
+						else
+							AttackDamage *= multiFix;
+					}
 					break;
 
 				case AT_SKILL_FENRIR_ATTACK:
 					{
-						int iDamageInc = lpObj->Level - 300;
-						iDamageInc += lpObj->m_nMasterLevel;
+						int iDamageInc = lpObj->Level - ReadConfig.FernirDmgBase;
 
 						if ( iDamageInc < 0 )
 							iDamageInc = 0;
 
-						iDamageInc /= 5;
-						AttackDamage = ( AttackDamage * ( iDamageInc + 200 ) ) / 100;
+						iDamageInc /= (float)ReadConfig.FernirDmgBaseDiv;
+						AttackDamage = ( AttackDamage * ( iDamageInc + ReadConfig.FernirDmgAdd ) ) /(float) ReadConfig.FernirDmgTDiv;
 					}
 					break;
-				case 216:
-					// rename to SplashDamage
-					gObjUseSkill.SkillEletrictSurgeProc(lpObj,lpTargetObj,216,AttackDamage,1,50);
-					break;
-				case 214:
-					{
-						int RestoreHP =0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							RestoreHP = (int)(float(lpObj->Energy / 15) + float(lpTargetObj->Level / 2.5f));
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							RestoreHP = AttackDamage * 10 / 100 + lpObj->Energy / 23;
-						}
-	
-						int totalhp = (int)(lpObj->Life + RestoreHP);
-	
-						if( totalhp > lpObj->MaxLife + lpObj->AddLife )
-						{
-							lpObj->Life = lpObj->MaxLife + lpObj->AddLife;
-						}
-						else	
-						{
-							lpObj->Life = (float)totalhp;
-						}
-	
-						GCReFillSend(lpObj->m_Index,(int)lpObj->Life,0xFF,0,lpObj->iShield);
-					}	
-					break;
-				case 215:
-					switch( bCombo )
-					{
-					case 1:
-						break;
-					case 2:
-						AttackDamage = AttackDamage * 70 / 100;
-						break;
-					case 3:
-						AttackDamage = AttackDamage * 50 / 100;
-						break;
-					default:
-						return FALSE;
-					}
-
-					bCombo = FALSE;
-					break;
-				case 223:
-					{
-						int Damage;
-						if( lpObj->m_MPSkillOpt.MpsFireTomeMastery > 0 )
-						{
-							Damage = AttackDamage * (60.0f+lpObj->m_MPSkillOpt.MpsFireTomeMastery) / 100.0f;
-						}
-						else
-						{
-							Damage = AttackDamage * 60.0f / 100.0f;
-						}
-
-						gObjAddBuffEffect(lpTargetObj,75,18,Damage,0,0,5);
-					}
-					break;
-				case 224:
-					{
-						int Damage = AttackDamage * 60 / 100;
-						gObjAddBuffEffect(lpTargetObj,74,18,Damage,0,0,5);
-					}
-					break;
-				case 219:
-					{
-						int Rate = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							Rate = g_SkillAdditionInfo.m_SleepRateStartVsMob + lpObj->Energy / g_SkillAdditionInfo.m_SleepRateDivVsMob + lpObj->m_Curse / 6;
-
-							if(g_SkillAdditionInfo.m_SleepRateMaxVsMob	!= 0)
-							{
-								if(Rate > g_SkillAdditionInfo.m_SleepRateMaxVsMob)
-								{
-									Rate = g_SkillAdditionInfo.m_SleepRateMaxVsMob;
-								}
-							}
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							Rate = g_SkillAdditionInfo.m_SleepRateStartVsUser + lpObj->Energy / g_SkillAdditionInfo.m_SleepRateDivVsUser + lpObj->m_Curse / 6;
-
-							if(g_SkillAdditionInfo.m_SleepRateMaxVsUser	!= 0)
-							{
-								if(Rate > g_SkillAdditionInfo.m_SleepRateMaxVsUser)
-								{
-									Rate = g_SkillAdditionInfo.m_SleepRateMaxVsUser;
-								}
-							}
-						}
-
-						if( Rate < rand()%100)
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return FALSE;
-						}
-
-						int SleepTime = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							SleepTime = (g_SkillAdditionInfo.m_SleepTimeStartVsMob + lpObj->Energy /g_SkillAdditionInfo.m_SleepTimeDivVsMob) - lpTargetObj->Level / 20;
-
-							if(g_SkillAdditionInfo.m_SleepTimeMaxVsMob != 0)
-							{
-								if(SleepTime > g_SkillAdditionInfo.m_SleepTimeMaxVsMob)
-								{
-									SleepTime = g_SkillAdditionInfo.m_SleepTimeMaxVsMob;
-								}
-							}
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							SleepTime = g_SkillAdditionInfo.m_SleepTimeStartVsUser + ((lpObj->Energy /g_SkillAdditionInfo.m_SleepTimeDivVsUser) + (lpObj->Level - lpTargetObj->Level) / 100);
-
-							if(g_SkillAdditionInfo.m_SleepTimeMaxVsUser != 0)
-							{
-								if(SleepTime > g_SkillAdditionInfo.m_SleepTimeMaxVsUser)
-								{
-									SleepTime = g_SkillAdditionInfo.m_SleepTimeMaxVsUser;
-								}
-							}
-						}
-
-						if( SleepTime < 1 )
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return FALSE;
-						}
-
-						if( gObjCheckPowerfulEffect(lpTargetObj,0x48,SleepTime,0) == TRUE )
-						{
-							GCMagicAttackNumberSend(lpObj,219,lpTargetObj->m_Index,0);
-							return FALSE;
-						}
-
-						gObjAddBuffEffect(lpTargetObj,72,25,SleepTime,0,0,SleepTime);
-						return TRUE;
-					}
-					break;
-				case 221:
-					{
-						int Rate = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							Rate = 32 + lpObj->Energy / 50 + lpObj->m_Curse / 6;
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							Rate = 17 + lpObj->Energy / 50 + lpObj->m_Curse / 6;
-						}
-
-						if( Rate >= rand() % 100 )
-						{
-							int DecValue = 0;
-							int DecTime = 0;
-
-							if( lpTargetObj->Type == OBJ_MONSTER )
-							{
-								int MaxEnergy = lpObj->Energy;
-
-								if( lpObj->Energy > 4000 )
-								{
-									MaxEnergy = 4000;
-								}
-
-								DecValue = g_SkillAdditionInfo.m_WeaknessEffectStartVsMob + MaxEnergy / g_SkillAdditionInfo.m_WeaknessEffectDivVsMob;
-
-								if(g_SkillAdditionInfo.m_WeaknessEffectMaxVsMob != 0)
-								{
-									if(DecValue > g_SkillAdditionInfo.m_WeaknessEffectMaxVsMob)
-									{
-										DecValue = g_SkillAdditionInfo.m_WeaknessEffectMaxVsMob;
-									}
-								}
-
-								DecTime = g_SkillAdditionInfo.m_WeaknessTimeStartVsMob + MaxEnergy / g_SkillAdditionInfo.m_WeaknessTimeDivVsMob - lpTargetObj->Level / 20;
-
-								if(g_SkillAdditionInfo.m_WeaknessTimeMaxVsMob != 0)
-								{
-									if(DecTime > g_SkillAdditionInfo.m_WeaknessTimeMaxVsMob)
-									{
-										DecTime = g_SkillAdditionInfo.m_WeaknessTimeMaxVsMob;
-									}
-								}
-							}
-							else if( lpTargetObj->Type == OBJ_USER )
-							{
-								int MaxEnergy = lpObj->Energy;
-
-								if( lpObj->Energy > 4000 )
-								{
-									MaxEnergy = 4000;
-								}
-
-								DecValue = g_SkillAdditionInfo.m_WeaknessEffectStartVsUser + MaxEnergy / g_SkillAdditionInfo.m_WeaknessEffectDivVsUser;
-
-								if(g_SkillAdditionInfo.m_WeaknessEffectMaxVsUser != 0)
-								{
-									if(DecValue > g_SkillAdditionInfo.m_WeaknessEffectMaxVsUser)
-									{
-										DecValue = g_SkillAdditionInfo.m_WeaknessEffectMaxVsUser;
-									}
-								}
-
-								DecTime = g_SkillAdditionInfo.m_WeaknessTimeStartVsUser + MaxEnergy / g_SkillAdditionInfo.m_WeaknessTimeDivVsUser + (lpObj->Level - lpTargetObj->Level) / 150;
-
-								if(g_SkillAdditionInfo.m_WeaknessTimeMaxVsUser != 0)
-								{
-									if(DecTime > g_SkillAdditionInfo.m_WeaknessTimeMaxVsUser)
-									{
-										DecTime = g_SkillAdditionInfo.m_WeaknessTimeMaxVsUser;
-									}
-								}
-							}
-
-							if( DecValue > 100 )
-								DecValue = 100;
-
-							if( DecTime < 1 )
-							{
-								GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-								return FALSE;
-							}
-
-							if( gObjCheckPowerfulEffect(lpObj,AT_WEAKNESS,DecValue,0) == TRUE )
-							{
-								GCMagicAttackNumberSend(lpObj,skill,lpTargetObj->m_Index,0);
-								return FALSE;
-							}
-
-							gObjAddBuffEffect(lpTargetObj,AT_WEAKNESS,29,DecValue,0,0,DecTime);
-							return TRUE;
-						}
-						else
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return FALSE;
-						}
-					}
-					break;
-				case 222:
-					{
-						int Rate = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							Rate = 32 + lpObj->Energy / 50 + lpObj->m_Curse / 6;
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							Rate = 17 + lpObj->Energy / 50 + lpObj->m_Curse / 6;
-						}
-
-						if( Rate >= rand()%100 )
-						{
-							int DecValue = 0;
-							int DecTime = 0;
-
-							if( lpTargetObj->Type == OBJ_MONSTER )
-							{
-								int MaxEnergy = lpObj->Energy;
-
-								if( lpObj->Energy > 4000 )
-								{
-									MaxEnergy = 4000;
-								}
-
-								DecValue = g_SkillAdditionInfo.m_InnovationEffectStartVsMob + MaxEnergy / g_SkillAdditionInfo.m_InnovationEffectDivVsMob;
-
-								if(g_SkillAdditionInfo.m_InnovationEffectMaxVsMob != 0)
-								{
-									if(DecValue > g_SkillAdditionInfo.m_InnovationEffectMaxVsMob)
-									{
-										DecValue = g_SkillAdditionInfo.m_InnovationEffectMaxVsMob;
-									}
-								}
-
-								DecTime = g_SkillAdditionInfo.m_InnovationTimeStartVsMob + MaxEnergy / g_SkillAdditionInfo.m_InnovationTimeDivVsMob - lpTargetObj->Level / 20;
-
-								if(g_SkillAdditionInfo.m_InnovationTimeMaxVsMob != 0)
-								{
-									if(DecTime > g_SkillAdditionInfo.m_InnovationTimeMaxVsMob)
-									{
-										DecTime = g_SkillAdditionInfo.m_InnovationTimeMaxVsMob;
-									}
-								}
-							}
-							else if( lpTargetObj->Type == OBJ_USER )
-							{
-								int MaxEnergy = lpObj->Energy;
-
-								if( lpObj->Energy > 4000 )
-								{
-									MaxEnergy = 4000;
-								}
-
-								DecValue = g_SkillAdditionInfo.m_InnovationEffectStartVsUser + MaxEnergy / g_SkillAdditionInfo.m_InnovationEffectDivVsUser;
-
-								if(g_SkillAdditionInfo.m_InnovationEffectMaxVsUser	=! 0)
-								{
-									if(DecValue > g_SkillAdditionInfo.m_InnovationEffectMaxVsUser)
-									{
-										DecValue = g_SkillAdditionInfo.m_InnovationEffectMaxVsUser;
-									}
-								}
-
-								DecTime = g_SkillAdditionInfo.m_InnovationTimeStartVsUser + MaxEnergy / g_SkillAdditionInfo.m_InnovationTimeDivVsUser + (lpObj->Level - lpTargetObj->Level) / 150;
-
-								if(g_SkillAdditionInfo.m_InnovationTimeMaxVsUser != 0)
-								{
-									if(DecTime > g_SkillAdditionInfo.m_InnovationTimeMaxVsUser)
-									{
-										DecTime = g_SkillAdditionInfo.m_InnovationTimeMaxVsUser;
-									}
-								}
-							}
-
-							if( DecValue > 100 )
-								DecValue = 0;
-
-							if( DecTime < 1 )
-							{
-								GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-								return FALSE;
-							}
-
-							if( gObjCheckPowerfulEffect(lpObj,AT_INNOVATION,DecValue,0) == TRUE )
-							{
-								GCMagicAttackNumberSend(lpObj,skill,lpTargetObj->m_Index,0);
-								return FALSE;
-							}
-
-							gObjAddBuffEffect(lpTargetObj,AT_INNOVATION,30,DecValue,0,0,DecTime);
-							return TRUE;
-						}
-						else
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return FALSE;
-						}
-					}
-					break;
-				case 225:
-
-					if( gObjCheckUsedBuffEffect(lpTargetObj,56) == FALSE )
-					{
-						lpTargetObj->lpAttackObj = lpObj;
-						lpTargetObj->DelayActionTime = 1000;
-						lpTargetObj->DelayLevel = 1;
-
-						gObjAddBuffEffect(lpTargetObj,56,20,0,0,0,2);
-					}
-					break;
-				case 230:
-					gObjAddBuffEffect(lpTargetObj,85,0,0,0,0,1);
-					break;
-				case 232:
-					lpTargetObj->lpAttackObj = lpObj;
-					lpTargetObj->DelayActionTime = 1000;
-					lpTargetObj->DelayLevel = 1;
-						
-					gObjAddBuffEffect(lpTargetObj, 86, 20,0,0,0,10);
-
-					AttackDamage = AttackDamage*(200 + Energy/10)/100;
-					break;
-				case 236:
-					AttackDamage *= 2;
-					gObjAddBuffEffect(lpTargetObj,AT_FLAME_STRIKE,0,0,0,0,1);
-					break;
-				case 237:
-					gObjAddBuffEffect(lpTargetObj,AT_GIGANTIC_STORM,0,0,0,0,1);
-					break;
-				case 238:
-					AttackDamage = AttackDamage*(200 + Energy/25)/100;
-
-					if( lpMagic->m_Skill == 238 &&
-						lpObj->Class == 561 )	//Medusa, 1.01.00
-					{
-						if( gObjCheckUsedBuffEffect(lpTargetObj,AT_ICE) )
-						{
-							lpObj->DelayActionTime = 800;
-							lpObj->DelayLevel = 1;
-							lpObj->lpAttackObj = lpObj;
-
-							if( rand()%100 < 50 )
-								gObjAddBuffEffect(lpTargetObj,AT_STUN,0,0,0,0,5);
-
-							AttackDamage = 1000;
-						}
-					}
-					break;
-				case 250:
-					AttackDamage *= 2;
-					break;
-				case 251:
-					AttackDamage *= 2.2f;
-					break;
-				case 252:
-					AttackDamage *= 2.3f;
-					break;
-				case 253:
-					AttackDamage *= 2.5;
-					break;
-				case 239:
-					gObjBackSpring(lpTargetObj,lpObj);
-					break;
-				case 260:
-				case 261:
-					AttackDamage = AttackDamage*(50 + (Vitality / 10)) / 100.0f;
-					break;
-				case 262:
-					AttackDamage = (AttackDamage)*(50+(Vitality/10))/100.0f;
-					break;
-				case 263:
-					AttackDamage = (AttackDamage)*(100 + (Dexterity/8) + (Energy/10))/100.0f;
-					break;
-				case 264:
-					AttackDamage = (AttackDamage)*(50 + (Energy/10))/100.0f;
-					break;
-				case 265:
-					if( lpTargetObj->Type == OBJ_USER )
-					{
-						AttackDamage = AttackDamage * (50 + (Energy/10)) / 100.0f;
-					}
-					else
-					{
-						AttackDamage = ((AttackDamage * (50 + (Energy/10)) / 100.0f) + 100.0f)*3.0f;
-					}
-					break;
-				case 269:
-					AttackDamage = AttackDamage*(50 + (Vitality / 10)) / 100.0f;
-					break;
-				case 270:
-					AttackDamage = AttackDamage*( 200 + (Vitality/10) ) / 100.0f;
-					break;
-
-		/*		
-				case 262:
-				case 270:
-				case AT_MSKILL_RF_KILLBLOW1:
-				case AT_MSKILL_RF_KILLBLOW2:
-				case AT_MSKILL_RF_UPERCUT1:
-				case AT_MSKILL_RF_UPERCUT2:
-				case AT_MSKILL_RF_CHAINDRIVE1:
-					AttackDamage = AttackDamage* (50 + (Vitality/10) ) / 100;
-
-					if( (lpMagic->m_Skill == 262 ||
-						lpMagic->m_Skill == AT_MSKILL_RF_CHAINDRIVE1 ) && rand()%8 == FALSE )
-					{
-						if( gObjCheckUsedBuffEffect(lpTargetObj,56) == FALSE )
-						{
-							lpTargetObj->lpAttackObj = lpObj;
-							lpTargetObj->DelayActionTime = 1000;
-							lpTargetObj->DelayLevel = 1;
-
-							gObjAddBuffEffect(lpTargetObj,56,20,0,0,0,0,0,10);
-						}
-					}
-					else if( lpMagic->m_Skill == AT_MSKILL_RF_KILLBLOW2 )
-					{
-						if( rand()%10000 < lpObj->m_MasterSkillEffects->m_KillBlowDecreaseDefRate )
-						{
-							gObjAddBuffEffect(lpTargetObj,BUFF_DECREASE_DEFRATE,ADD_OPTION_DECDEFRATE,10,0,0,0,0,5);
-						}
-					}
-					else if( lpMagic->m_Skill == AT_MSKILL_RF_UPERCUT2 )
-					{
-						if( rand()%10000 < lpObj->m_MasterSkillEffects->m_UpercutDecreaseDefRate )
-						{
-							gObjAddBuffEffect(lpTargetObj,BUFF_DECREASE_DEFRATE,ADD_OPTION_DECDEFRATE,10,0,0,0,0,5);
-						}
-					}
-					break;
-				case 263:
-				case AT_MSKILL_RF_DARKSIDE1:
-					AttackDamage = AttackDamage* (100 + (Energy/10) + (Dexterity/8) ) / 100;
-					break;
-				case 264:
-				case AT_MSKILL_RF_DRAGONRORE1:
-					AttackDamage = AttackDamage* (50 + (Energy/10) ) / 100;
-					break;
-				case 265:
-					AttackDamage = AttackDamage* (50 + (Energy/10) ) / 100;
-					AttackDamage *= 2;
-
-					if( rand()%2 )
-					{
-						AttackDamage *= 2;
-					}
-					break;
-
-				case AT_MSKILL_DW_EARTHPRISON:
-				case AT_MSKILL_DW_EARTHPRISON1:
-					if( !magicsend )	{
-						if( rand()%2 )
-							gObjAddBuffEffect(lpTargetObj,BUFF_EARTHBINDS,0,0,0,0,0,0,5);
-					}
-					break;*/
-
-			}
-
-			if( g_MasterSkillSystem.CheckMasterLevelSkill(skill) )
-			{
-				float iSkillValue = g_MasterSkillSystem.GetMasterSkillValue(MagicDamageC.SkillGet(lpMagic->m_Skill),lpMagic->m_Level);
-				float fPrevValue = 0;
-
-				int iMLSBase = g_MasterSkillSystem.GetBaseMasterLevelSkill(skill);
-
-				switch( iMLSBase )
-				{
-				case 330:
-				case 332:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100;
-					break;
-				case 481:
-					AttackDamage *= 2;
-					break;
-				case 326:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100.0f;
-					break;
-				case 479:
-					AttackDamage *= 2;
-					break;
-				case 327:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100.0f;
-					break;
-				case 328:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100.0f;
-					break;
-				case 329:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100.0f;
-					break;
-				case 337:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100.0f;
-					break;
-				case 416:
-					AttackDamage *= 2;
-					break;
-				case 424:
-					AttackDamage *= 2;
-					break;
-				case 516:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-
-					if( iSkillValue > 0 )
-					{
-						float fPercent = rand()%100;
-
-						if( iSkillValue < fPercent )
-						{
-							gObjAddBuffEffect(lpTargetObj,AT_STUN,0,0,0,0,2);
-							gObjSetPosition(lpTargetObj->m_Index,lpTargetObj->X,lpTargetObj->Y);
-						}
-					}
-					break;
-				case 514:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-
-					if( iSkillValue > 0 )
-					{
-						float fPercent = rand()%100;
-
-						if( fPercent < iSkillValue )
-						{
-							gObjAddBuffEffect(lpTargetObj,AT_STUN,0,0,0,0,2);
-							gObjSetPosition(lpTargetObj->m_Index,lpTargetObj->X,lpTargetObj->Y);
-						}
-					}
-					break;
-				case 509:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-					break;
-				case 512:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-					break;
-				case 508:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-					break;
-				case 336:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100;
-					break;
-				case 331:
-					AttackDamage = ( AttackDamage * ( 200 + ( Energy / 10 ) ) ) / 100;
-					break;
-				case 493:
-					AttackDamage *= 2;
-					break;
-				case 482:
-					AttackDamage *= 2;
-					break;
-				case 518:
-					AttackDamage = ( AttackDamage * ( ( ( lpObj->Energy + lpObj->AddEnergy ) / 20 + 200 ) ) ) / 100;
-					break;
-				case 454:
-					{
-						int skillSuccessRate = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							skillSuccessRate = 20 + lpObj->Energy/30 + lpObj->m_Curse/6;
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							skillSuccessRate = 15 + lpObj->Energy/37 + lpObj->m_Curse/6;
-						}
-
-						skillSuccessRate += iSkillValue;
-
-						if( skillSuccessRate < rand()%100 )
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return 0;
-						}
-
-						int nEffectTime = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							nEffectTime = (5 + lpObj->Energy /100) - lpTargetObj->Level / 20;
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							nEffectTime = 4 + ((lpObj->Energy /250) + (lpObj->Level - lpTargetObj->Level) / 100);
-						}
-
-						if( nEffectTime < 1 )
-						{
-							GCDamageSend(lpObj->m_Index,lpTargetObj->m_Index,0,0,0,0);
-							return FALSE;
-						}
-
-						if( gObjCheckPowerfulEffect(lpTargetObj,72,nEffectTime,0) == TRUE )
-						{
-							GCMagicAttackNumberSend(lpObj,219,lpTargetObj->m_Index,0);
-							return FALSE;
-						}
-
-						gObjAddBuffEffect(lpTargetObj,72,25,nEffectTime,0,0,nEffectTime);
-						return TRUE;
-					}
-					break;
-				case 455:
-					switch( bCombo )
-					{
-					case 1:
-						break;
-					case 2:
-						AttackDamage = AttackDamage * 70 / 100;
-						break;
-					case 3:
-						AttackDamage = AttackDamage * 50 / 100;
-						break;
-					default:
-						return FALSE;
-					}
-
-					bCombo = FALSE;
-					break;
-				case 456:
-					gObjAddBuffEffect(lpTargetObj,85,0,0,0,0,1);
-					break;
-				case 458:
-					{
-						int nAddHP = 0;
-
-						if( lpTargetObj->Type == OBJ_MONSTER )
-						{
-							nAddHP = (int)(float(lpObj->Energy / 15) + float(lpTargetObj->Level / 2.5f));
-							nAddHP += iSkillValue;
-						}
-						else if( lpTargetObj->Type == OBJ_USER )
-						{
-							nAddHP = AttackDamage * 10 / 100 + lpObj->Energy / 23;
-							nAddHP += iSkillValue;
-						}
-	
-						int tmpLife = (int)(lpObj->Life + nAddHP);
-	
-						if( tmpLife > lpObj->MaxLife + lpObj->AddLife )
-						{
-							lpObj->Life = lpObj->MaxLife + lpObj->AddLife;
-						}
-						else	
-						{
-							lpObj->Life = (float)tmpLife;
-						}
-	
-						GCReFillSend(lpObj->m_Index,(int)lpObj->Life,0xFF,0,lpObj->iShield);
-					}
-					break;
-
-				case 551:
-				case 554:
-				case 552:
-				case 555:
-					AttackDamage = AttackDamage*(50 + (Vitality / 10)) / 100.0f;
-					break;
-				case 558:
-					AttackDamage = (AttackDamage+(Vitality/10))*(50+(Vitality/10))/100.0f;
-					break;
-				case 559:
-					//FIX RF SKILL ?
-					//AttackDamage = (AttackDamage)*(100 + (Dexterity / 8) + (Energy / 10)) / 100.0f;
-					AttackDamage = (AttackDamage+(Vitality/8)+(Energy/10))*(100 + (Vitality/8) + (Energy/10))/100.0f;
-					break;
-				case 560:
-					AttackDamage = (AttackDamage+(Energy/10))*(50 + (Energy/10))/100.0f;
-					break;
-				}
-			}
-
-			if ( lpObj->pInventory[1].GetDetailItemType() == 10 &&
-				 lpObj->pInventory[1].m_Special[0] == skill )
-			{
-				if( MagicDamageC.GetSkillAttr(skill) == R_FIRE )
-				{
-					if( lpObj->m_MPSkillOpt.MpsFireTomeStrength > 0.0f )
-					{
-						AttackDamage += lpObj->m_MPSkillOpt.MpsFireTomeStrength;
-					}
-				}
-				else if( MagicDamageC.GetSkillAttr(skill) == R_WIND )
-				{
-					if( lpObj->m_MPSkillOpt.MpsWindTomeStrength > 0.0f )
-					{
-						AttackDamage += lpObj->m_MPSkillOpt.MpsWindTomeStrength;
-					}
-
-					if( lpObj->m_MPSkillOpt.MpsWindTomeMastery > 0.0f )
-					{
-						float fPercent = rand()%100;
-
-						if( fPercent < lpObj->m_MPSkillOpt.MpsWindTomeMastery )
-						{
-							gObjAddBuffEffect(lpTargetObj,AT_STUN,0,0,0,0,3);
-							gObjSetPosition(lpTargetObj->m_Index,lpTargetObj->X,lpTargetObj->Y);
-						}
-					}
-				}
-				else if( MagicDamageC.GetSkillAttr(skill) == R_LIGHTNING )
-				{
-					if( lpObj->m_MPSkillOpt.MpsLightTomeStrength > 0.0f )
-					{
-						AttackDamage += lpObj->m_MPSkillOpt.MpsLightTomeStrength;
-					}
-
-					if( lpObj->m_MPSkillOpt.MpsLightTomeMastery > 0.0f )
-					{
-						float fPercent = rand()%100;
-
-						if( fPercent < lpObj->m_MPSkillOpt.MpsLightTomeMastery )
-						{
-							gObjBackSpring2(lpTargetObj,lpObj,2);
-						}
-					}
-				}
 			}
 
 			if ( skill == 0 )
@@ -1926,36 +1671,17 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				}
 			}
 			
-			if ( gObjCheckUsedBuffEffect(lpTargetObj,AT_WIZARD_DEFENSE) == TRUE  && AttackDamage > 0 )
+			if ( lpTargetObj->m_WizardSkillDefense && AttackDamage > 0)
 			{
-				int iWizardSkillDefense = 0;
-				int iManaRate = 0;
+				int replacemana = (WORD)lpTargetObj->Mana * 2 / 100;
 
-				gObjCheckUsedBuffEffect(lpTargetObj,AT_WIZARD_DEFENSE,&iWizardSkillDefense,&iManaRate);
-
-				int iReplacementMana = 0;
-
-				if( iManaRate > 0 )
+				if ( replacemana < lpTargetObj->Mana )
 				{
-					iReplacementMana = (lpTargetObj->Mana * iManaRate) / 1000;
-				}
-				else
-				{
-					iReplacementMana = (lpTargetObj->Mana * 0.02f);
-				}
-
-				if ( iReplacementMana < lpTargetObj->Mana )
-				{
-					lpTargetObj->Mana -= iReplacementMana;
-					float fWizardSkillDefense = iWizardSkillDefense/100.0f;
-					int decattackdamage = 0;
-					
-					if( iWizardSkillDefense > 0 )
-					{
-						decattackdamage = AttackDamage * fWizardSkillDefense;
-					}
+					lpTargetObj->Mana -= replacemana;
+					int decattackdamage = AttackDamage * lpTargetObj->m_WizardSkillDefense / 100;
 					AttackDamage -= decattackdamage;
 					ManaChange = TRUE;
+
 				}
 			}
 
@@ -1964,34 +1690,13 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 			{
 				AttackDamage += lpObj->m_ItemOptionExFor380.OpAddDamage;
+			}
 
+			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
+			{
 				if ( CC_MAP_RANGE(lpObj->MapNumber ) && CC_MAP_RANGE(lpTargetObj->MapNumber) )
 				{
 					AttackDamage = AttackDamage * 50 / 100;
-				}
-			}
-
-//#if defined __ALIEN__ || __WHITE__
-			if(byReflect == 0)
-			{
-				gBalanceSystem.Main(lpObj,lpTargetObj,AttackDamage);
-				gItemOption.AttackDamage(lpObj,lpTargetObj,AttackDamage);
-			}
-//#endif
-
-			if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE
-				&& lpObj->Type == OBJ_USER
-				&& lpTargetObj->Type == OBJ_USER
-				&& lpObj->MapNumber == MAP_INDEX_CASTLESIEGE
-				&& lpTargetObj->MapNumber == MAP_INDEX_CASTLESIEGE )
-			{
-				if(lpObj->m_btCsJoinSide == lpTargetObj->m_btCsJoinSide)
-				{
-					AttackDamage = AttackDamage * 20 / 100;
-				}
-				else
-				{
-					AttackDamage = AttackDamage * 40 / 100;
 				}
 			}
 
@@ -1999,13 +1704,13 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			{
 				if ( lpTargetObj->Class == 283 )
 				{
-					if ( gObjCheckUsedBuffEffect(lpObj,AT_POTION_OF_BLESS) == TRUE )
+					if ( lpObj->m_iPotionBlessTime > 0 )
 					{
-						//AttackDamage = AttackDamage;
+						AttackDamage += (AttackDamage * 20) / 100;
 					}
-					else if ( gObjCheckUsedBuffEffect(lpObj,AT_POTION_OF_SOUL) == TRUE )
+					else if ( lpObj->m_iPotionSoulTime > 0 )
 					{
-						//AttackDamage = AttackDamage;
+						AttackDamage = AttackDamage;
 					}
 					else 
 					{
@@ -2025,13 +1730,13 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 				if ( lpTargetObj->Class == 277 )
 				{
-					if ( gObjCheckUsedBuffEffect(lpObj,AT_POTION_OF_BLESS) == TRUE )
+					if ( lpObj->m_iPotionBlessTime > 0 )
 					{
-						//AttackDamage = AttackDamage;
+						AttackDamage += (AttackDamage * 20) / 100;
 					}
-					else if ( gObjCheckUsedBuffEffect(lpObj,AT_POTION_OF_SOUL) == TRUE )
+					else if ( lpObj->m_iPotionSoulTime > 0 )
 					{
-						//AttackDamage = AttackDamage;
+						AttackDamage = AttackDamage;
 					}
 					else 
 					{
@@ -2049,8 +1754,6 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 					}
 				}
 			}
-
-			//AttackDamage += AttackDamage/100.0f * lpObj->m_InfinityArrowDmgMul;
 
 			if ( gObjFenrir( lpObj ) )
 			{
@@ -2075,121 +1778,45 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			if ( AttackDamage < 0 )
 				AttackDamage = 0;
 
-			if ( skill == 76 )
+			if ( skill == AT_SKILL_FENRIR_ATTACK )
 			{
 				if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 				{
 					if ( AttackDamage > 0 )
 					{
-						if(lpObj->m_btCsJoinSide == 0 || lpObj->m_btCsJoinSide != lpTargetObj->m_btCsJoinSide)
-						{
 						int iEquipmentPos = rand()%5 + 2;	// Select and Armor
 						CItem * lpEquipment = &lpTargetObj->pInventory[iEquipmentPos];
 
-						if ( lpEquipment && lpEquipment->IsItem() /*&& !lpEquipment->m_bLuckySet*/)
+						if ( lpEquipment && lpEquipment->IsItem() )
 						{
-							int ItemPerc = 50;
-
-							if( lpObj->m_MPSkillOpt.MpsDownDur1 != 0.0f )
-							{
-								ItemPerc += lpObj->m_MPSkillOpt.btMpsDownDur1Level*7;
-							}
-
-							if( ItemPerc < 0 )
-								ItemPerc = 1;
-
-							int iDurEquipment = (int)(lpEquipment->m_Durability * ItemPerc / 100.0f);
-
-							/*for(int iBuffIndex = 0; iBuffIndex < lpTargetObj->btEffectCount; iBuffIndex++)
-							{
-								if( lpObj->pEffectInfo[iBuffIndex].btEffectNum == BUFF_TALISMAN_ITEMPROTECT )
-								{
-									iDurEquipment = lpEquipment->m_Durability;
-									break;
-								}
-							}*/
-
-							if( g_LuckyItemManager.IsLuckyItemEquipment(lpEquipment->m_Type) )
-							{
-								iDurEquipment = lpEquipment->m_Durability;
-							}
-
-							lpEquipment->m_Durability = (float)iDurEquipment;
+							int iDurEquipment = lpEquipment->m_Durability * 50.0f / 100.0f;
+							lpEquipment->m_Durability = iDurEquipment;
 
 							if ( lpEquipment->m_Durability < 0.0f )
 							{
 								lpEquipment->m_Durability = 0.0f;
 							}
 
-							GCItemDurSend(lpTargetObj->m_Index, iEquipmentPos, (BYTE)lpEquipment->m_Durability, 0);
-						}
-
+							GCItemDurSend(lpTargetObj->m_Index, iEquipmentPos, lpEquipment->m_Durability, 0);
 						}
 					}
 				}
 			}
 
-			if ( !byReflect )
+			if ( lpTargetObj->m_SkillIT_Time > 0 )
 			{
-				if( lpObj->m_MPSkillOpt.MpsTwoHandSwordMastery > 0.0f &&
-					lpObj->Type == OBJ_USER &&
-					lpTargetObj->Type == OBJ_USER )
+				if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
 				{
-					AttackDamage += lpObj->m_MPSkillOpt.MpsTwoHandSwordMastery;
-				}
-
-				if( lpObj->m_MPSkillOpt.MpsTwoHandStaffMastery > 0.0f &&
-					lpObj->Type == OBJ_USER &&
-					lpTargetObj->Type == OBJ_USER )
-				{
-					AttackDamage += lpObj->m_MPSkillOpt.MpsTwoHandStaffMastery;
-				}
-
-				if( lpObj->m_MPSkillOpt.MpsCrossbowMastery > 0.0f &&
-					lpObj->Type == OBJ_USER &&
-					lpTargetObj->Type == OBJ_USER )
-				{
-					AttackDamage += lpObj->m_MPSkillOpt.MpsCrossbowMastery;
-				}
-
-				if( lpObj->m_MPSkillOpt.MpsStickMastery > 0.0f &&
-					lpObj->Type == OBJ_USER &&
-					lpTargetObj->Type == OBJ_USER )
-				{
-					AttackDamage += lpObj->m_MPSkillOpt.MpsStickMastery;
-				}
-
-				if( lpObj->m_MPSkillOpt.MpsScepterMastery > 0.0f &&
-					lpObj->Type == OBJ_USER &&
-					lpTargetObj->Type == OBJ_USER )
-				{
-					AttackDamage += lpObj->m_MPSkillOpt.MpsScepterMastery;
+					AttackDamage = 0;
 				}
 			}
 
 			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 			{
-				if( skill == 265 && 
-					rand()%100 < (10+Energy/100) )
-				{
-					bDragonKickSDAttackSuccess = TRUE;
-					int nDecreaseSDRate = 10 + Energy/30;
-
-					if( nDecreaseSDRate > 100 )
-						nDecreaseSDRate = 100;
-
-					int nDecreaseSD = lpTargetObj->iShield*nDecreaseSDRate/100;
-					lpTargetObj->iShield -= nDecreaseSD;
-					lpTargetObj->Life -= AttackDamage;
-					iTotalShieldDamage += nDecreaseSD;
-				}
-				else
-				{
-					iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
-					lpTargetObj->iShield -= iTempShieldDamage;
-					lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
-					iTotalShieldDamage += iTempShieldDamage;
-				}
+				iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
+				lpTargetObj->iShield -= iTempShieldDamage;
+				lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
+				iTotalShieldDamage += iTempShieldDamage;
 
 				if ( lpTargetObj->Life < 0.0f )
 				{
@@ -2209,89 +1836,26 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	}	
 	else
 	{
-		if( skill == 216 )
+		if ( lpTargetObj->m_SkillIT_Time > 0 )
 		{
-			if( g_ShieldSystemOn ==  TRUE )
+			if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
 			{
-				if( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
-				{
-					if( MissCheckPvP(lpObj,lpTargetObj,skill,skillSuccess,magicsend,bAllMiss, byBarrageCount) == FALSE )
-					{
-						return FALSE;
-					}
-				}
-				else
-				{
-					if( MissCheck(lpObj,lpTargetObj,skill,skillSuccess,magicsend,bAllMiss, byBarrageCount) == FALSE )
-					{
-						return FALSE;
-					}
-				}
-			}
-			else
-			{
-				if( MissCheck(lpObj,lpTargetObj,skill,skillSuccess,magicsend,bAllMiss, byBarrageCount) == FALSE )
-				{
-					return FALSE;
-				}
+				AttackDamage = 0;
 			}
 		}
 
-//#if defined __ALIEN__ || __WHITE__
-		if(byReflect == 0)
-		{
-			gBalanceSystem.Main(lpObj,lpTargetObj,AttackDamage);
-			gItemOption.AttackDamage(lpObj,lpTargetObj,AttackDamage);
-		}
-//#endif
-
-		if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE
-			&& lpObj->Type == OBJ_USER
-			&& lpTargetObj->Type == OBJ_USER
-			&& lpObj->MapNumber == MAP_INDEX_CASTLESIEGE
-			&& lpTargetObj->MapNumber == MAP_INDEX_CASTLESIEGE )
-		{
-			if(lpObj->m_btCsJoinSide == lpTargetObj->m_btCsJoinSide)
-			{
-				AttackDamage = AttackDamage * 20 / 100;
-			}
-			else if(g_ShieldSystemOn == FALSE)
-			{
-				AttackDamage = AttackDamage * 40 / 100;
-			}
-		}
-
-		if ( skill != AT_SKILL_EXPLOSION && skill != 216 )
+		if ( skill != AT_SKILL_EXPLOSION /*79*/ )
 		{
 			bDamageReflect = TRUE;
-			MsgDamage = 4;
+			MsgDamage = MSG_DAMAGE_REFLECT;
 		}
-
-		//AttackDamage += AttackDamage/100.0f * lpObj->m_InfinityArrowDmgMul;
 
 		if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 		{
-			if( skill == 265 && 
-					rand()%100 < (10+Energy/100) )
-			{
-				bDragonKickSDAttackSuccess = TRUE;
-				int nDecreaseSDRate = 10 + Energy/30;
-
-				if( nDecreaseSDRate > 100 )
-					nDecreaseSDRate = 100;
-
-				int nDecreaseSD = lpTargetObj->iShield*nDecreaseSDRate/100;
-				lpTargetObj->iShield -= nDecreaseSD;
-				lpTargetObj->Life -= AttackDamage;
-				iTotalShieldDamage += nDecreaseSD;
-			}
-			else
-			{
-				iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
-				lpTargetObj->iShield -= iTempShieldDamage;
-				lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
-				iTotalShieldDamage += iTempShieldDamage;
-			}
+			iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
+			lpTargetObj->iShield -= iTempShieldDamage;
+			lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
+			iTotalShieldDamage += iTempShieldDamage;
 
 			if ( lpTargetObj->Life < 0.0f )
 			{
@@ -2335,16 +1899,10 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	{
 		if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 		{
-			if ( gObjDuelCheck(lpObj, lpTargetObj) )
+			if ( g_DuelManager.gObjDuelCheck(lpObj, lpTargetObj) )
 			{
 				selfdefense = 0;
 			}
-#ifdef NPVP
-			else if( g_NewPVP.IsVulcanusMap(lpObj->MapNumber) || g_NewPVP.IsVulcanusMap(lpTargetObj->MapNumber) )
-			{
-				selfdefense = 0;
-			}
-#endif
 			else if ( CC_MAP_RANGE(lpObj->MapNumber) || CC_MAP_RANGE(lpTargetObj->MapNumber) )
 			{
 				selfdefense = 0;
@@ -2353,22 +1911,12 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			{
 				selfdefense = 0;
 			}
-#ifdef GENS
-			else if( gGensSystem.IsMapBattleZone(lpObj->MapNumber) || gGensSystem.IsMapBattleZone(lpTargetObj->MapNumber) )
-			{
-				selfdefense = 0;
-			}
-#endif
 			else
 			{
 				selfdefense = 1;
 			}
 
 			if ( gObjGetRelationShip(lpObj, lpTargetObj) == 2 )
-			{
-				selfdefense = FALSE;
-			}		
-			if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE && lpObj->m_btCsJoinSide > 0)
 			{
 				selfdefense = FALSE;
 			}
@@ -2383,91 +1931,41 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 		if ( lpTargetObj->Type == OBJ_USER )
 		{
-			gObjArmorRandomDurDown(lpTargetObj, lpObj);
-
-			if( skill == 333 )
+			if(ReadConfig.S6E2 == 1 && skill == AT_SKILL_BLOWOFFURY)
 			{
-				float fDurDownRate = g_MasterSkillSystem.GetMasterSkillValue(MagicDamageC.SkillGet(lpMagic->m_Skill),lpMagic->m_Level);
-
-				if( rand()%100 < fDurDownRate )
+				if ( lpObj->Type == OBJ_USER )
 				{
-					if(lpObj->m_btCsJoinSide == 0 || lpObj->m_btCsJoinSide != lpTargetObj->m_btCsJoinSide)
+					if(lpObj->MasterCharacterInfo->BrokenArmorRagefulBlow > 0)
 					{
-						int item_num[5];
-						item_num[0] = 2;
-						item_num[1] = 3;
-						item_num[2] = 4;
-						item_num[3] = 5;
-						item_num[4] = 6;
-						int iEquipmentPos = rand()%5;	// Select and Armor
-						CItem * lpEquipment = &lpTargetObj->pInventory[item_num[iEquipmentPos]];
-
-						if ( lpEquipment && lpEquipment->IsItem() )
+						if ( (rand()%100) < lpObj->MasterCharacterInfo->BrokenArmorRagefulBlow )
 						{
-							float iDurDecValue = 0;
-
-							if( lpObj->m_MPSkillOpt.MpsDownDur1 != 0.0f )
-							{
-								iDurDecValue += lpObj->m_MPSkillOpt.btMpsDownDur1Level/5.0f;
-							}
-
-							if( iDurDecValue == 0.0f )
-								iDurDecValue = 1.0f;
-
-							int damagemin = lpEquipment->m_BaseDurability/100.0f*(10-iDurDecValue);
-
-							int iDurEquipment = lpEquipment->m_Durability - damagemin;
-
-							/*for(int iBuffIndex = 0; iBuffIndex < lpObj->btEffectCount; iBuffIndex++)
-							{
-								if( lpObj->pEffectInfo[iBuffIndex].btEffectNum == BUFF_TALISMAN_ITEMPROTECT )
-								{
-									iDurEquipment = lpEquipment->m_Durability;
-									break;
-								}
-							}*/
-
-							if( g_LuckyItemManager.IsLuckyItemEquipment(lpEquipment->m_Type) )
-							{
-								iDurEquipment = lpEquipment->m_Durability;
-							}
-
-							lpEquipment->m_Durability = (float)iDurEquipment;
-
-							if ( lpEquipment->m_Durability < 0.0f )
-							{
-								lpEquipment->m_Durability = 0.0f;
-							}
-
-							GCItemDurSend(lpTargetObj->m_Index, iEquipmentPos, (BYTE)lpEquipment->m_Durability, 0);
+							gObjArmorRandomDurDown(lpTargetObj, lpObj,false);
+						}else
+						{
+							gObjArmorRandomDurDown(lpTargetObj, lpObj,true);
 						}
+					}else
+					{
+						gObjArmorRandomDurDown(lpTargetObj, lpObj,true);
 					}
-				}
+				}				
+			}else
+			{
+				gObjArmorRandomDurDown(lpTargetObj, lpObj,true);
 			}
 		}
 
-		if ( gObjCheckUsedBuffEffect(lpTargetObj, AT_ICE_ARROW) == TRUE )	//Ice Arrow
+		if ( lpTargetObj->m_SkillHarden )
 		{
-			gObjChangeBuffValidTime(lpTargetObj, AT_ICE_ARROW, -1);
+			lpTargetObj->m_SkillHarden--;
 
-			if ( gObjCheckUsedBuffEffect(lpTargetObj, AT_ICE_ARROW) == FALSE )
+			if ( lpTargetObj->m_SkillHarden <= 0 )
 			{
+				lpTargetObj->m_SkillHardenTime = 0;
+				lpTargetObj->m_SkillHarden = 0;
+				lpTargetObj->m_ViewSkillState &= -33;
 				GCMagicCancelSend(lpTargetObj, 51);
 			}
-		}
-
-		if ( gObjCheckUsedBuffEffect(lpTargetObj, 72) == TRUE )	//Sleep
-		{
-			gObjRemoveBuffEffect(lpTargetObj, 72);
-		}
-	}
-
-	if ( lpObj->PartyNumber >= 0 &&
-		 lpCallObj->PartyNumber >= 0)
-	{
-		if( lpObj->PartyNumber == lpCallObj->PartyNumber )
-		{
-			selfdefense = 0;
 		}
 	}
 
@@ -2475,24 +1973,24 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 	{
 		if ( !gObjTargetGuildWarCheck(lpObj, lpCallObj) )
 		{
-			if( lpCallObj->PartyNumber >= 0 )
-			{
-				int bTmp = 0;
-				int PartyNumber = lpCallObj->PartyNumber;
-
-				if( gParty.GetPKPartyPenalty(PartyNumber) < 5 )
-				{
-					gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
-				}
-			}
-			else
-			{
-				gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
-			}
+			gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
 		}
 	}
 
 	if ( lpTargetObj->Class == 275 )	// KUNDUN
+	{
+		if ( lpTargetObj->m_iMonsterBattleDelay <= 0 )
+		{
+			if ( (rand()%15) < 1 )
+			{
+				gObjAddMsgSendDelay(lpTargetObj, 4, lpObj->m_Index, 100, 0);
+				lpTargetObj->m_iMonsterBattleDelay = 10;
+				GCActionSend(lpTargetObj, 126, lpTargetObj->m_Index, lpObj->m_Index);
+			}
+		}
+	}
+
+	if ( lpTargetObj->Class == 338 )	// KUNDUN 7
 	{
 		if ( lpTargetObj->m_iMonsterBattleDelay <= 0 )
 		{
@@ -2530,11 +2028,39 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 	if ( ManaChange )
 	{
-		GCManaSend(lpTargetObj->m_Index, (WORD)lpTargetObj->Mana, 0xFF, 0, lpTargetObj->BP);
+		GCManaSend(lpTargetObj->m_Index, lpTargetObj->Mana, 0xFF, 0, lpTargetObj->BP);
 	}
 
 	if ( magicsend )
-	{
+	{	
+#if (PACK_EDITION>=3)
+		if(lpObj->IsBot >= 1)
+		{
+			if(ReadConfig.S5E2 == TRUE)
+			{
+				PMSG_DURATION_MAGIC_RECV_S5E2 pDuration;
+
+
+				pDuration.MagicNumberL = 0;
+				pDuration.Dir = 0;
+				pDuration.X = lpObj->X;
+				pDuration.Y = lpObj->Y;
+
+				CGDurationMagicRecv((unsigned char *) &pDuration, lpObj->m_Index);
+			}else
+			{
+				PMSG_DURATION_MAGIC_RECV pDuration;
+
+
+				pDuration.MagicNumberL = 0;
+				pDuration.Dir = 0;
+				pDuration.X = lpObj->X;
+				pDuration.Y = lpObj->Y;
+
+				CGDurationMagicRecv((unsigned char *) &pDuration, lpObj->m_Index);
+			}
+		}
+#endif
 		GCMagicAttackNumberSend(lpObj, skill, lpTargetObj->m_Index, skillSuccess);
 	}
 
@@ -2548,26 +2074,17 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 
 	if ( lpObj->Class == CLASS_ELF && lpObj->Level == 1 && AttackDamage > 10 )
 	{
-		LogAdd("error-Level1 : [%s][%s] Str:%d %d %d %d %d %d %d",
-			lpObj->AccountID, lpObj->Name, lpObj->Strength,
-			lpObj->m_AttackDamageMinRight, lpObj->m_AttackDamageMaxRight,
-			lpObj->m_AttackDamageMinLeft, lpObj->m_AttackDamageMaxLeft, 
-			lpObj->m_AttackDamageMax, lpObj->m_AttackDamageMin);
+		if(ReadConfig.S6E2 == 0)
+		{
+			LogAdd("error-Level1 : [%s][%s] Str:%d %d %d %d %d %d %d",
+				lpObj->AccountID, lpObj->Name, lpObj->Strength,
+				lpObj->m_AttackDamageMinRight, lpObj->m_AttackDamageMaxRight,
+				lpObj->m_AttackDamageMinLeft, lpObj->m_AttackDamageMaxLeft, 
+				lpObj->m_AttackDamageMax, lpObj->m_AttackDamageMin);
+		}
 	}
 
 	lpObj->m_Rest = 0;
-
-	if ( lpObj->Class >= 504 && lpObj->Class <= 511 )
-	{
-		if( gObjCheckUsedBuffEffect(lpObj, 81) )
-			AttackDamage *= 2;
-	}
-
-	if ( lpTargetObj->Class >= 504 && lpTargetObj->Class <= 511 )
-	{
-		if( gObjCheckUsedBuffEffect(lpTargetObj, 81) )
-			AttackDamage /= 2;
-	}
 
 	if ( AttackDamage > 0 )
 	{
@@ -2583,43 +2100,9 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 			gObjAddMsgSendDelay(lpTargetObj, 10, lpObj->m_Index, 10, AttackDamage);
 		}
 
-		int FullReflect = 0;
-
-		if( gObjWingSprite(lpTargetObj) == TRUE )
+		if ( bCombo )
 		{
-			CItem * Wing = &lpTargetObj->pInventory[7];
-
-			if( (Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,40))
-				 || Wing->m_Type == ITEMGET(12,43) 
-				 || Wing->m_Type == ITEMGET(12,50) )
-			{
-				BYTE ExcOpt = lpTargetObj->pInventory[7].m_NewOption;
-
-				if( (ExcOpt & 2) == 2 )	{
-					FullReflect+=5;
-				}
-			}
-		}
-
-		if( FullReflect && (rand()%100 < FullReflect) )	
-		{
-			if( lpObj->Type == OBJ_MONSTER )
-			{
-				gObjAddMsgSendDelay(lpTargetObj, 12, lpObj->m_Index, 10, lpObj->m_AttackDamageMax);
-			}
-			else if( lpObj->Type == OBJ_USER )
-			{
-				gObjAddMsgSendDelay(lpTargetObj, 12, lpObj->m_Index, 10, AttackDamage);
-			}
-		}
-
-		if( bCombo )
-		{
-#ifdef __ALIEN__
-			int iComboDamage = ( Strength + Dexterity + Energy ) / g_ComboAttackPower;
-#else
-			int iComboDamage = ( Strength + Dexterity + Energy ) / 2;	// #formula
-#endif
+			int iComboDamage = ( Strength + Dexterity + Energy ) / ReadConfig.ComboDivisor;	// #formula
 			AttackDamage += iComboDamage;
 
 			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
@@ -2644,44 +2127,23 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				}
 			}
 
-			MsgDamage |= 0x80;
-			skill = 59;
+			MsgDamage |= MSG_DAMAGE_COMBO;
+			skill = AT_SKILL_COMBO;
 		}
 
-		float fRate = lpObj->SetOpDoubleDamage + lpObj->m_MPSkillOpt.MpsSpearMastery + lpObj->m_MPSkillOpt.MpsFistMastery;
-
-		if ( (rand()%100) < fRate )
+		if ( (rand()%100) < lpObj->SetOpDoubleDamage )
 		{
-			if ( skill == AT_SKILL_FIRESCREAM || skill == 518 || skill == 520 )
+			if (( skill == AT_SKILL_FIRESCREAM ) || (skill >= 525 && skill <= 529)) 
 			{
 				gObjUseSkill.FireScreamExplosionAttack(lpObj, lpTargetObj, AttackDamage);
 			}
 
 			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 			{
-				if( skill == 265 && 
-					rand()%100 < (10+Energy/100) )
-				{	
-					bDragonKickSDAttackSuccess = TRUE;
-					
-					int nDecreaseSDRate = 10 + Energy/30;
-
-					if( nDecreaseSDRate > 100 )
-					nDecreaseSDRate = 100;
-
-					int nDecreaseSD = lpTargetObj->iShield*nDecreaseSDRate/100;
-					lpTargetObj->iShield -= nDecreaseSD;
-					lpTargetObj->Life -= AttackDamage;
-					iTotalShieldDamage += nDecreaseSD;
-				}
-				else
-				{
-					iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
-					lpTargetObj->iShield -= iTempShieldDamage;
-					lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
-					iTotalShieldDamage += iTempShieldDamage;
-				}
-
+				iTempShieldDamage = this->GetShieldDamage(lpObj, lpTargetObj, AttackDamage);
+				lpTargetObj->iShield -= iTempShieldDamage;
+				lpTargetObj->Life -= AttackDamage - iTempShieldDamage;
+				iTotalShieldDamage += iTempShieldDamage;
 				AttackDamage += AttackDamage;
 
 				if ( lpTargetObj->Life < 0.0f )
@@ -2700,10 +2162,10 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 				}
 			}
 
-			MsgDamage |= 0x40;
+			MsgDamage |= MSG_DAMAGE_DOUBLE;
 		}
 
-		if ( g_ShieldSystemOn == TRUE && bDragonKickSDAttackSuccess == 0 )
+		if ( g_ShieldSystemOn == TRUE )
 		{
 			AttackDamage -= iTotalShieldDamage;
 		}
@@ -2717,39 +2179,92 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 					AttackDamage = AttackDamage * 50 / 100;
 				}
 			}
+
+			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
+			{
+				if ( IT_MAP_RANGE(lpObj->MapNumber) && IT_MAP_RANGE(lpTargetObj->MapNumber) )
+				{
+					AttackDamage = AttackDamage * 50 / 100;
+				}
+			}
 		}
 
-		if( lpObj->Class == CLASS_MONK && byBarrageCount )
+		//Season3 Third Wings
+		if(lpTargetObj->Type == OBJ_USER && lpTargetObj->pInventory[7].CheckDamageReturnWing())
 		{
-			if( lpMagic->m_Skill == 261 ||
-				lpMagic->m_Skill == 263 ||
-				g_MasterSkillSystem.GetBaseMasterLevelSkill(skill) == 552 ||
-				g_MasterSkillSystem.GetBaseMasterLevelSkill(skill) == 555 ||
-				g_MasterSkillSystem.GetBaseMasterLevelSkill(skill) == 559 )
+			BYTE tmp_Wings3ReturnDamageSuccessRate = g_iWings3ReturnDamageSuccessRate;
+#if (CRYSTAL_EDITION == 1)
+			if(lpTargetObj->pInventory[7].m_Type >= ITEMGET(12,200) && lpTargetObj->pInventory[7].m_Type <= ITEMGET(12,254))
 			{
-				if( (byBarrageCount%2) == 0 )
+				tmp_Wings3ReturnDamageSuccessRate = CWings.GetExcOption(lpTargetObj->pInventory[7].m_Type,1);
+			}
+#endif
+			if(rand()%100 <= tmp_Wings3ReturnDamageSuccessRate )
+			{
+				int newAttackDmg = AttackDamage;
+
+				if(g_ShieldSystemOn == 1)
 				{
-					MsgDamage |= 0x20;
+					if(lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER)
+					{
+						if(lpObj->iShield > AttackDamage)
+						{
+							lpObj->iShield -= AttackDamage;
+							iTotalShieldDamage += AttackDamage;
+							AttackDamage = 0;
+						}
+						else
+						{
+							AttackDamage -= lpObj->iShield;
+							iTotalShieldDamage += lpObj->iShield;
+							lpObj->iShield = 0;
+
+							lpObj->Life -= AttackDamage;
+
+							if(lpObj->Life < 0)
+							{
+								lpObj->Life = 0;
+							}
+						}
+					}
+					else
+					{
+						lpObj->Life -= AttackDamage;
+
+						if(lpObj->Life < 0)
+						{
+							lpObj->Life = 0;
+						}
+					}
 				}
 				else
 				{
-					MsgDamage |= 0x10;
+					lpObj->Life -= AttackDamage;
+
+					if(lpObj->Life < 0)
+					{
+						lpObj->Life = 0;
+					}
 				}
+
+				lpTargetObj->Life += newAttackDmg;
+				if(lpTargetObj->Life > lpTargetObj->MaxLife + lpTargetObj->AddLife)
+					lpTargetObj->Life = lpTargetObj->MaxLife + lpTargetObj->AddLife;
+
+				GCReFillSend(lpObj->m_Index,lpObj->Life,0xFF,FALSE,lpObj->iShield);
+				GCReFillSend(lpTargetObj->m_Index,lpTargetObj->Life,0xFF,FALSE,lpTargetObj->iShield);
+
+				gObjLifeCheck(lpObj, lpTargetObj, AttackDamage, DAMAGE_TYPE_REG, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
 			}
 			else
 			{
-				if( (byBarrageCount%4) == 0 )
-				{
-					MsgDamage |= 0x20;
-				}
-				else
-				{
-					MsgDamage |= 0x10;
-				}
+				gObjLifeCheck(lpTargetObj, lpObj, AttackDamage, DAMAGE_TYPE_REG, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
 			}
 		}
-
-		gObjLifeCheck(lpTargetObj, lpObj, AttackDamage, 0, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
+		else
+		{
+			gObjLifeCheck(lpTargetObj, lpObj, AttackDamage, DAMAGE_TYPE_REG, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
+		}
 
 		if ( iTotalShieldDamage > 0 )
 		{
@@ -2783,48 +2298,78 @@ BOOL CObjAttack::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf* lpMagic,  int
 		}
 	}
 
-	CItem* Right = &lpObj->pInventory[0];
-	CItem* Left = &lpObj->pInventory[1];
-
-	if( Right->GetDetailItemType() == 2 ||
-		Left->GetDetailItemType() == 2 )
+	BYTE tmp_g_iWings3RecoverFullLifeSuccessRate = g_iWings3RecoverFullLifeSuccessRate;
+#if (CRYSTAL_EDITION == 1)
+	if(lpTargetObj->pInventory[7].m_Type >= ITEMGET(12,200) && lpTargetObj->pInventory[7].m_Type <= ITEMGET(12,254))
 	{
-		if( lpObj->m_MPSkillOpt.MpsMaceMastery > 0.0f )
-		{
-			float fPercent = rand()%100;
+		tmp_g_iWings3RecoverFullLifeSuccessRate = CWings.GetExcOption(lpTargetObj->pInventory[7].m_Type,2);
+	}
+#endif
+	//Season3 Third Wings
+	if(lpTargetObj->Type == OBJ_USER &&
+	   lpTargetObj->pInventory[7].CheckFullLifeRecoveryWing() &&
+	   rand()%100 <= tmp_g_iWings3RecoverFullLifeSuccessRate &&
+	   lpTargetObj->Life > 0.0f)
+	{
+		//lpTargetObj->Life = lpTargetObj->MaxLife;
+		int tLife = 0;
 
-			if( fPercent < lpObj->m_MPSkillOpt.MpsMaceMastery )
-			{
-				gObjAddBuffEffect(lpTargetObj,AT_STUN,0,0,0,0,2);
-				gObjSetPosition(lpTargetObj->m_Index,lpTargetObj->X,lpTargetObj->Y);
-			}
-		}
+		tLife += ((int)(lpTargetObj->MaxLife + lpTargetObj->AddLife));
+
+		lpTargetObj->Life += tLife;
+
+		if ( lpTargetObj->Life > (lpTargetObj->MaxLife+lpTargetObj->AddLife-1.0f) )
+				lpTargetObj->Life = lpTargetObj->MaxLife+lpTargetObj->AddLife;
+
+		GCReFillSend(lpTargetObj->m_Index,lpTargetObj->Life,0xFF,FALSE,lpTargetObj->iShield);
+
+		lpTargetObj->FillLifeMax = tLife;
+		lpTargetObj->FillLife = tLife;
 	}
 
-	if ( lpMagic && lpMagic->m_Skill == 332 )
+	BYTE tmp_g_iWings3RecoverFullManaSuccessRate = g_iWings3RecoverFullManaSuccessRate;
+#if (CRYSTAL_EDITION == 1)
+	if(lpTargetObj->pInventory[7].m_Type >= ITEMGET(12,200) && lpTargetObj->pInventory[7].m_Type <= ITEMGET(12,254))
 	{
-		float fSpringValue = g_MasterSkillSystem.GetMasterSkillValue(MagicDamageC.SkillGet(lpMagic->m_Skill),lpMagic->m_Level);
+		tmp_g_iWings3RecoverFullManaSuccessRate = CWings.GetExcOption(lpTargetObj->pInventory[7].m_Type,3);
+	}
+#endif
 
-		if( fSpringValue > 0.0f )
-		{
-			float fPercent = rand()%100;
+	if(lpTargetObj->Type == OBJ_USER &&
+	   lpTargetObj->pInventory[7].CheckFullManaRecoveryWing() &&
+	   rand()%100 <= tmp_g_iWings3RecoverFullManaSuccessRate )
+	{
+		//lpTargetObj->Mana = lpTargetObj->MaxMana;
+		int tMana = 0;
 
-			if( fPercent < fSpringValue )
-			{
-				gObjBackSpring2(lpTargetObj,lpObj,2);
-			}
-		}
+		tMana += ((int)(lpTargetObj->MaxMana + lpTargetObj->AddMana));
+
+		lpTargetObj->Mana += tMana;
+
+		if ( lpTargetObj->Mana > (lpTargetObj->MaxMana+lpTargetObj->AddMana-1.0f) )
+				lpTargetObj->Mana = lpTargetObj->MaxMana+lpTargetObj->AddMana;
+
+		GCManaSend(lpTargetObj->m_Index,lpTargetObj->Mana,0xFF,FALSE,lpTargetObj->BP);
 	}
 
 	if ( lpMagic )
 	{
 		gObjUseSkill.SpecificSkillAdditionTreat(lpObj, lpTargetObj, lpMagic, AttackDamage);
 	}
+
+#if (PACK_EDITION>=3)
+	if(BotChangeSkill == true && lpObj->BotSkillAttack == 1)
+	{
+		lpObj->m_AttackType = lpObj->m_SkillNumber;
+		lpObj->m_AttackRange = MagicDamageC.GetSkillDistance(lpObj->m_SkillNumber);
+	}
+#endif
+
 	return TRUE;
 }
 
-//0051A6D0
-int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BOOL bIsOnDuel, CMagicInf* lpMagic) //004B9FA0
+
+int  CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& MsgDamage, BOOL bIsOnDuel, CMagicInf* lpMagic)
 {
 	if ( g_ShieldSystemOn == TRUE )
 	{
@@ -2833,7 +2378,6 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 			bIsOnDuel = FALSE;
 		}
 	}
-
 	int ad;
 	int sub;
 	int SkillRightMaxDamage =0;
@@ -2843,12 +2387,21 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 	CItem * Right = &lpObj->pInventory[0];
 	CItem * Left = &lpObj->pInventory[1];
 	BOOL bTwoHandWeapon = FALSE;
+	BOOL isMagic=FALSE;
 
-	if( lpObj->Type == OBJ_MONSTER || lpObj->Type == OBJ_NPC )
+	if (( lpObj->Type == OBJ_MONSTER || lpObj->Type == OBJ_NPC )
+#if (PACK_EDITION>=3)
+		&& (lpObj->IsBot == 0)
+#endif
+		)
 	{
 		int AttackMin = 0;
 		sub = lpObj->m_AttackDamageMax - lpObj->m_AttackDamageMin;
-		AttackMin = lpObj->m_AttackDamageMin + (rand()%(sub+1));
+		if (sub > 0)
+			AttackMin = lpObj->m_AttackDamageMin + (rand()%(sub+1));
+		else
+			AttackMin = lpObj->m_AttackDamageMin;
+
 		lpObj->m_AttackDamageRight = AttackMin;
 		lpObj->m_AttackDamageLeft = AttackMin;
 	}
@@ -2858,8 +2411,8 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 
 		if ( lpObj->Class == CLASS_DARKLORD ||
 			 lpObj->Class == CLASS_KNIGHT   ||
-			 lpObj->Class == CLASS_MAGUMSA  ||
-			 lpObj->Class == CLASS_MONK )
+			 lpObj->Class == CLASS_MAGICGLADIATOR || 
+			 lpObj->Class == CLASS_RAGEFIGHTER )
 		{
 			if ( Right->m_Type >= ITEMGET(0,0) && Right->m_Type < ITEMGET(4,0) &&
 				 Left->m_Type >= ITEMGET(0,0) && Left->m_Type < ITEMGET(4,0) )
@@ -2873,22 +2426,34 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 
 		if ( lpMagic )
 		{
-			if ( lpMagic->m_Skill == 60 || lpMagic->m_Skill == 509 && lpObj->SkillLongSpearChange )
+			isMagic = TRUE;
+			if ( lpMagic->m_Skill == AT_SKILL_SPEAR && lpObj->SkillLongSpearChange )	// #error 60 and skil from GEt is 66???
 			{
-				SkillRightMaxDamage = DefMagicInf[66].m_DamageMax;
-				SkillRightMinDamage = DefMagicInf[66].m_DamageMin;
+				SkillRightMaxDamage = DefMagicInf[AT_SKILL_SPEAR].m_DamageMax;// FIX
+				SkillRightMinDamage = DefMagicInf[AT_SKILL_SPEAR].m_DamageMin;// FIX
+				//SkillRightMaxDamage = DefMagicInf[AT_SKILL_LONGSPEAR].m_DamageMax;// #error ???
+				//SkillRightMinDamage = DefMagicInf[AT_SKILL_LONGSPEAR].m_DamageMin;// #error ???
 			}
 			else
 			{
-				SkillRightMaxDamage = lpMagic->m_DamageMax;
-				SkillRightMinDamage = lpMagic->m_DamageMin;
-			}
-#pragma message("CHECK ME")
-			if( g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) )
-			{
-				float fDamage = g_MasterSkillSystem.GetSkillAttackDamage(lpObj, lpMagic->m_Skill);
-				SkillRightMaxDamage += fDamage;
-				SkillRightMinDamage += fDamage;
+				if (( lpMagic->m_Skill >= 455 && lpMagic->m_Skill <= 459 ) || 
+					( lpMagic->m_Skill >= 495 && lpMagic->m_Skill <= 499 ))
+				{
+					SkillRightMaxDamage = DefMagicInf[AT_SKILL_TWISTINGSLASH].m_DamageMax;
+					SkillRightMinDamage = DefMagicInf[AT_SKILL_TWISTINGSLASH].m_DamageMax;
+				}else if(lpMagic->m_Skill >= 460 && lpMagic->m_Skill <= 464)
+				{
+					SkillRightMaxDamage = DefMagicInf[AT_SKILL_DEATHSTAB].m_DamageMax;
+					SkillRightMinDamage = DefMagicInf[AT_SKILL_DEATHSTAB].m_DamageMax;				
+				}else if(lpMagic->m_Skill >= 465 && lpMagic->m_Skill <= 469)
+				{
+					SkillRightMaxDamage = DefMagicInf[AT_SKILL_BLOWOFFURY].m_DamageMax;
+					SkillRightMinDamage = DefMagicInf[AT_SKILL_BLOWOFFURY].m_DamageMax;
+				}else
+				{
+					SkillRightMaxDamage = lpMagic->m_DamageMax;
+					SkillRightMinDamage = lpMagic->m_DamageMin;
+				}
 			}
 
 			if ( bTwoHandWeapon == FALSE )
@@ -2902,24 +2467,14 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 			SkillLeftMaxDamage += lpObj->SetOpAddSkillAttack;
 			SkillLeftMinDamage += lpObj->SetOpAddSkillAttack;
 
-			int SkillAttr = MagicDamageC.GetSkillAttr(lpMagic->m_Skill);
+			int SkillAttr = MagicDamageC.GetSkillResistance(lpMagic->m_Skill);
 
 			if ( SkillAttr != -1 )
 			{
-				if((lpObj->Authority&32) == 32 && (lpObj->pInventory[10].m_Type == ITEMGET(13,42) || lpObj->pInventory[11].m_Type == ITEMGET(13,42))) //season 2.5 add-on
-				{
-					SkillRightMaxDamage += (BYTE)255;
-					SkillRightMinDamage += (BYTE)255;
-					SkillLeftMaxDamage  += (BYTE)255;
-					SkillLeftMinDamage  += (BYTE)255;
-				}
-				else
-				{
-					SkillRightMaxDamage += (BYTE)lpObj->m_AddResistance[SkillAttr];
-					SkillRightMinDamage += (BYTE)lpObj->m_AddResistance[SkillAttr];
-					SkillLeftMaxDamage  += (BYTE)lpObj->m_AddResistance[SkillAttr];
-					SkillLeftMinDamage  += (BYTE)lpObj->m_AddResistance[SkillAttr];
-				}
+				SkillRightMaxDamage += (BYTE)lpObj->m_AddResistance[SkillAttr];
+				SkillRightMinDamage += (BYTE)lpObj->m_AddResistance[SkillAttr];
+				SkillLeftMaxDamage  += (BYTE)lpObj->m_AddResistance[SkillAttr];
+				SkillLeftMinDamage  += (BYTE)lpObj->m_AddResistance[SkillAttr];
 			}
 
 			SkillRightMaxDamage += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
@@ -2927,51 +2482,71 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 			SkillLeftMaxDamage += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 			SkillLeftMinDamage += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 
-			if ( lpMagic->m_Skill == 65 )
+			int addskilldamage = 0;
+			int iadddamage = 0;
+
+			if ( lpMagic->m_Skill == AT_SKILL_ELECTRICSPARK )
 			{
 				int iPartyCount = this->GetPartyMemberCount(lpObj);
-				int addskilldamage = ( lpObj->Leadership + lpObj->AddLeadership ) / 10 + ( iPartyCount * 50 );
+
+				if (ReadConfig.ElectricSparkDmgCmdDiv > 0)
+					addskilldamage = ( (lpObj->Leadership + lpObj->AddLeadership) / (float)ReadConfig.ElectricSparkDmgCmdDiv ) + ( iPartyCount * ReadConfig.ElectricSparkDmgPartyMul );	// #formula
+				else
+					addskilldamage = ( (lpObj->Leadership + lpObj->AddLeadership) / 10 ) + ( iPartyCount * ReadConfig.ElectricSparkDmgPartyMul );	// #formula
 
 				SkillRightMaxDamage += addskilldamage;
 				SkillRightMinDamage += addskilldamage;
 				SkillLeftMaxDamage += addskilldamage;
 				SkillLeftMinDamage += addskilldamage;
 			}
-			else if( lpMagic->m_Skill == 62 || g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill) == 512 || lpMagic->m_Skill == 516 )
+			else if((lpMagic->m_Skill == AT_SKILL_DARKHORSE_ATTACK) || 
+					(lpMagic->m_Skill >= 515 && lpMagic->m_Skill <= 519))
 			{
-				if ( lpObj->pInventory[8].m_Type == ITEMGET(13,4) )
+				if ( lpObj->pInventory[8].m_Type == ITEMGET(13,4) )	// Dark Horse
 				{
-					int addskilldamage = ( lpObj->Strength + lpObj->AddStrength ) / 10 + ( lpObj->Leadership + lpObj->AddLeadership ) / 5 + lpObj->pInventory[8].m_PetItem_Level * 10;
+					if (ReadConfig.DarkHorseDmgStrDiv > 0 && ReadConfig.DarkHorseDmgCmdDiv > 0)
+						addskilldamage = ( lpObj->Strength + lpObj->AddStrength ) / (float)ReadConfig.DarkHorseDmgStrDiv + ( lpObj->Leadership + lpObj->AddLeadership ) / (float)ReadConfig.DarkHorseDmgCmdDiv + lpObj->pInventory[8].m_PetItem_Level * ReadConfig.DarkHorseDmgLvlMul;	// #formula
+					else
+						addskilldamage = (( lpObj->Strength + lpObj->AddStrength ) / 10 ) + (( lpObj->Leadership + lpObj->AddLeadership ) / 5) + lpObj->pInventory[8].m_PetItem_Level * ReadConfig.DarkHorseDmgLvlMul;	// #formula
 
 					SkillRightMaxDamage += addskilldamage;
 					SkillRightMinDamage += addskilldamage;
 					SkillLeftMaxDamage += addskilldamage;
 					SkillLeftMinDamage += addskilldamage;
+					if (lpMagic->m_Skill >= 515 && lpMagic->m_Skill <= 519)
+					{
+						int Max = lpMagic->m_DamageMax - DefMagicInf[AT_SKILL_DARKHORSE_ATTACK].m_DamageMax;
+						int Min = lpMagic->m_DamageMin - DefMagicInf[AT_SKILL_DARKHORSE_ATTACK].m_DamageMin;
+
+						if(Max > 0 && Min > 0)
+						{
+							SkillRightMaxDamage += Max;
+							SkillRightMinDamage += Min;
+							SkillLeftMaxDamage += Max;
+							SkillLeftMinDamage += Min;
+						}
+					}
 				}
 			}
-			else if( lpObj->Class == CLASS_DARKLORD && lpMagic->m_Skill == 238 )
+			else if ( lpObj->Class == CLASS_DARKLORD )
 			{
-				int iadddamage = ( lpObj->Strength + lpObj->AddStrength ) / 30 + ( lpObj->Energy + lpObj->AddEnergy ) / 55;	// #formula
+				if (ReadConfig.DLAddSkillDmgEneDiv > 0 && ReadConfig.DLAddSkillDmgStrDiv > 0)
+					iadddamage = ( lpObj->Strength + lpObj->AddStrength ) / (float)ReadConfig.DLAddSkillDmgStrDiv + ( lpObj->Energy + lpObj->AddEnergy ) / (float)ReadConfig.DLAddSkillDmgEneDiv;	// #formula
+				else
+					iadddamage = ( lpObj->Strength + lpObj->AddStrength ) / 25 + ( lpObj->Energy + lpObj->AddEnergy ) / 50;	// #formula
 
 				SkillRightMaxDamage += iadddamage;
 				SkillRightMinDamage += iadddamage;
 				SkillLeftMaxDamage += iadddamage;
 				SkillLeftMinDamage += iadddamage;
 			}
-			else if( lpObj->Class == CLASS_DARKLORD )
-			{
-				int iadddamage = ( lpObj->Strength + lpObj->AddStrength ) / 25 + ( lpObj->Energy + lpObj->AddEnergy ) / 50;	// #formula
 
-				SkillRightMaxDamage += iadddamage;
-				SkillRightMinDamage += iadddamage;
-				SkillLeftMaxDamage += iadddamage;
-				SkillLeftMinDamage += iadddamage;
-			}
-			
-			if ( lpObj->Class == CLASS_ELF && lpMagic->m_Skill == 235 ) //season4 add-on
+			if ( lpObj->Type == OBJ_USER )
 			{
-				SkillLeftMaxDamage = SkillLeftMaxDamage * 80 / 100;
-				SkillLeftMinDamage = SkillLeftMinDamage * 80 / 100;
+				SkillRightMaxDamage += lpObj->MasterCharacterInfo->IncMaxSkillPower + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower;
+				SkillRightMinDamage += lpObj->MasterCharacterInfo->IncMinSkillPower + lpObj->MasterCharacterInfo->IncMinDmgSkillPower;
+				SkillLeftMaxDamage += lpObj->MasterCharacterInfo->IncMaxSkillPower + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower;
+				SkillLeftMinDamage += lpObj->MasterCharacterInfo->IncMinSkillPower + lpObj->MasterCharacterInfo->IncMinDmgSkillPower;
 			}
 		}
 
@@ -2980,43 +2555,111 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 			if ( (rand()%100) < lpObj->m_CriticalDamage )
 			{
 				cDamage = TRUE;
-				effect = 3;
+				MsgDamage = MSG_DAMAGE_CRITICAL;
 			}
-		}
-
+		} 
+		
 		if ( lpObj->m_ExcelentDamage > 0 )
 		{
 			if ( (rand()%100) < lpObj->m_ExcelentDamage )
 			{
 				cDamage = TRUE;
-				effect = 2;
+				MsgDamage = MSG_DAMAGE_EXCELLENT;
+			}
+		} 
+		
+		//BYTE effectTmp = MsgDamage;
+		if ( lpObj->Class == CLASS_KNIGHT )
+		{
+			if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+			{
+				CItem * Right = &lpObj->pInventory[0];
+				if ( Right->IsItem() == TRUE )
+				{
+					if(Right->m_Type >= ITEMGET(4,0) && Right->m_Type < ITEMGET(5,0))
+					{
+						if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+						{
+							cDamage = TRUE;
+							MsgDamage |= MSG_DAMAGE_DOUBLE;
+						}
+					}
+				}
 			}
 		}
 
-		int iValue1 = 0;
-		int iValue2 = 0;
-
-		if(gObjCheckUsedBuffEffect(lpObj, AT_BERSERKER) == 1)
+		if ( lpObj->Class == CLASS_RAGEFIGHTER )
 		{
-			this->GetBerserkerSkillAttackDamage(lpObj, iValue1, iValue2); 
-		}
-		else if(gObjCheckUsedBuffEffect(lpObj, 150) == 1)
-		{
-			this->GetBerserkerSkillAttackDamage(lpObj, iValue1, iValue2); 
-		}
-		else if(gObjCheckUsedBuffEffect(lpObj, 151) == 1)
-		{
-			this->GetBerserkerSkillAttackDamage(lpObj, iValue1, iValue2); 
-		}
-		else if(gObjCheckUsedBuffEffect(lpObj, 152) == 1)
-		{
-			this->GetBerserkerSkillAttackDamage(lpObj, iValue1, iValue2); 
+			if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+			{
+				CItem * Right = &lpObj->pInventory[0];
+				CItem * Left  = &lpObj->pInventory[1];
+				bool enter = false;
+				if ( Right->IsItem() == TRUE )
+				{
+					if(Right->m_Type >= ITEMGET(0,32) && Right->m_Type <= ITEMGET(0,35))
+					{
+						if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+						{
+							cDamage = TRUE;
+							MsgDamage |= MSG_DAMAGE_DOUBLE;
+							enter = true;
+						}
+					}
+				}
+				if(enter == false)
+				{
+					if ( Left->IsItem() == TRUE )
+					{
+						if(Left->m_Type >= ITEMGET(0,32) && Left->m_Type <= ITEMGET(0,35))
+						{
+							if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+							{
+								cDamage = TRUE;
+								MsgDamage |= MSG_DAMAGE_DOUBLE;
+							}
+						}
+					}
+				}
+			}
 		}
 
 		__try
 		{
-			sub = ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage + iValue2) - ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + iValue1); //season4 changed
-			lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + iValue1) + (rand()%(sub+1)); //season4 changed
+			if(isMagic == FALSE)
+			{
+				if ( lpObj->Type == OBJ_USER )
+				{
+					sub = ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage + lpObj->MasterCharacterInfo->IncMaxDmg + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower) - ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower);	// #formula
+					if (sub > 0)
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower );
+				} else {
+					sub = ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage + SkillRightMinDamage);
+					if (sub > 0)
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage );
+				}
+			}
+			else
+			{
+				if ( lpObj->Type == OBJ_USER )
+				{
+					sub = ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage + lpObj->MasterCharacterInfo->IncMaxDmg) - ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg);	// #formula
+					if (sub > 0)
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage + lpObj->MasterCharacterInfo->IncMinDmg );
+				} else {
+					sub = ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage ) - ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage );	// #formula
+					if (sub > 0)
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageRight = ( lpObj->m_AttackDamageMinRight + SkillRightMinDamage );
+				}
+			}
 		}
 		__except ( sub=1, 1 )
 		{
@@ -3025,8 +2668,40 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 
 		__try
 		{
-			sub = ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage + iValue2) - ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + iValue1); //season4 changed
-			lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + iValue1) + (rand()%(sub+1)); //season4 changed
+			if(isMagic == FALSE)
+			{
+				if ( lpObj->Type == OBJ_USER )
+				{
+					sub = ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage + lpObj->MasterCharacterInfo->IncMaxDmg + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower) - ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower);	// #formula
+					if (sub > 0)
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg + lpObj->MasterCharacterInfo->IncMinDmgSkillPower);
+				} else {
+					sub = ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage ) - ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage );
+					if (sub > 0)
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage );
+				}
+			}
+			else
+			{				
+				if ( lpObj->Type == OBJ_USER )
+				{
+					sub = ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage + lpObj->MasterCharacterInfo->IncMaxDmg) - ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg);	// #formula
+					if (sub > 0)
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage + lpObj->MasterCharacterInfo->IncMinDmg);
+				} else {
+					sub = ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage ) - ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage );
+					if (sub > 0)
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage ) + (rand()%(sub+1));
+					else
+						lpObj->m_AttackDamageLeft = ( lpObj->m_AttackDamageMinLeft + SkillLeftMinDamage );
+				}
+			}
 		}
 		__except ( sub=1, 1 )
 		{
@@ -3035,33 +2710,41 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 
 		if ( cDamage )
 		{
-			lpObj->m_AttackDamageRight = lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage + iValue2; //season4 changed
-			lpObj->m_AttackDamageLeft = lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage + iValue2; //season4 changed
+			lpObj->m_AttackDamageRight = lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage;
+			lpObj->m_AttackDamageLeft = lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage;
 
-			lpObj->m_AttackDamageRight += lpObj->SetOpAddCriticalDamage;
-			lpObj->m_AttackDamageLeft += lpObj->SetOpAddCriticalDamage;
+			if ( lpObj->Type == OBJ_USER )
+			{
+				lpObj->m_AttackDamageRight += lpObj->MasterCharacterInfo->IncMaxDmg + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower;
+				lpObj->m_AttackDamageLeft += lpObj->MasterCharacterInfo->IncMaxDmg + lpObj->MasterCharacterInfo->IncMaxDmgSkillPower;
+			}
 
-			lpObj->m_AttackDamageRight += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
-			lpObj->m_AttackDamageLeft += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
+			if ( MsgDamage%MSG_DAMAGE_DOUBLE == MSG_DAMAGE_CRITICAL ) //Critical Damage
+			{
+				lpObj->m_AttackDamageRight += lpObj->SetOpAddCriticalDamage;
+				lpObj->m_AttackDamageLeft += lpObj->SetOpAddCriticalDamage;
 
-			int SkillAddCriticalDamage = 0;
-			gObjCheckUsedBuffEffect(lpObj, AT_INCREASE_CRITICAL_DMG, &SkillAddCriticalDamage, 0);
+				lpObj->m_AttackDamageRight += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
+				lpObj->m_AttackDamageLeft += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
 
-			lpObj->m_AttackDamageRight += SkillAddCriticalDamage;
-			lpObj->m_AttackDamageLeft += SkillAddCriticalDamage;
-
-			gObjCheckUsedBuffEffect(lpObj, 148, &SkillAddCriticalDamage, 0);
-
-			lpObj->m_AttackDamageRight += SkillAddCriticalDamage;
-			lpObj->m_AttackDamageLeft += SkillAddCriticalDamage;
-
-			if ( effect == 2 )
+				lpObj->m_AttackDamageRight += lpObj->SkillAddCriticalDamage;
+				lpObj->m_AttackDamageLeft += lpObj->SkillAddCriticalDamage;
+			}
+			
+			if ( MsgDamage%MSG_DAMAGE_DOUBLE == MSG_DAMAGE_EXCELLENT )	//Excelent Damage
 			{
 				lpObj->m_AttackDamageRight += ( lpObj->m_AttackDamageMaxRight + SkillRightMaxDamage ) * 20 / 100;
 				lpObj->m_AttackDamageLeft += ( lpObj->m_AttackDamageMaxLeft + SkillLeftMaxDamage ) * 20 / 100;
 
 				lpObj->m_AttackDamageRight += lpObj->SetOpAddExDamage;
 				lpObj->m_AttackDamageLeft += lpObj->SetOpAddExDamage;
+			}
+
+			if (( (MsgDamage > MSG_DAMAGE_BEAT) && (MsgDamage&MSG_DAMAGE_DOUBLE == MSG_DAMAGE_DOUBLE )) || (MsgDamage == MSG_DAMAGE_DOUBLE))	//Double Damage
+			{
+				//MsgDamage = effectTmp;
+				lpObj->m_AttackDamageRight = lpObj->m_AttackDamageRight * 2;
+				lpObj->m_AttackDamageLeft = lpObj->m_AttackDamageLeft * 2;
 			}
 		}
 	}
@@ -3070,32 +2753,23 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 	{
 		if ( bIsOnDuel )
 		{
-			ad = ( lpObj->m_AttackDamageRight + lpObj->m_AttackDamageLeft ) * 60 / 100 - targetDefense;
+			ad = (( lpObj->m_AttackDamageRight + lpObj->m_AttackDamageLeft ) * 60 / 100) - targetDefense;
 		}
 		else
 		{
 			ad = ( lpObj->m_AttackDamageRight + lpObj->m_AttackDamageLeft ) - targetDefense;
 		}
-		ad -= lpObj->SetOpAddCriticalDamage; //season4 add-on
 	}
 	else if ( (Left->m_Type >= ITEMGET(4, 0) && Left->m_Type < ITEMGET(4, 7)) ||
-			 Left->m_Type == ITEMGET(4,20) || Left->m_Type == ITEMGET(4,21)  ||
-			 Left->m_Type == ITEMGET(4,22) ||
-			 Left->m_Type == ITEMGET(4,23) ||//season4 add-on
-			 Left->m_Type == ITEMGET(4,24) ) //season4.6 add-on
+			 Left->m_Type == ITEMGET(4,20) || Left->m_Type == ITEMGET(4,21) || Left->m_Type == ITEMGET(4,22) || Left->m_Type == ITEMGET(4,23)  )
 	{
 		if ( bIsOnDuel )
 		{
-			ad = ( lpObj->m_AttackDamageLeft ) * 60 / 100 - targetDefense;
+			ad = (( lpObj->m_AttackDamageLeft ) * 60 / 100) - targetDefense;
 		}
 		else
 		{
 			ad = lpObj->m_AttackDamageLeft - targetDefense;
-		}
-
-		if( lpObj->m_MPSkillOpt.MpsBowStrength > 0.0f )
-		{
-			ad += lpObj->m_MPSkillOpt.MpsBowStrength;
 		}
 	}
 	else if ( (Right->m_Type >= ITEMGET(4, 8) && Right->m_Type < ITEMGET(4, 15)) ||
@@ -3103,39 +2777,29 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 	{
 		if ( bIsOnDuel )
 		{
-			ad = ( lpObj->m_AttackDamageRight ) * 60 / 100 - targetDefense;
+			ad = (( lpObj->m_AttackDamageRight ) * 60 / 100) - targetDefense;
 		}
 		else
 		{
 			ad = lpObj->m_AttackDamageRight - targetDefense;
-		}
-
-		if( lpObj->m_MPSkillOpt.MpsCrossbowStrength > 0.0f )
-		{
-			ad += lpObj->m_MPSkillOpt.MpsCrossbowStrength;
 		}
 	}
 	else if ( Right->m_Type >= ITEMGET(0,0) && Right->m_Type < ITEMGET(4,0) )
 	{
 		if ( bIsOnDuel )
 		{
-			ad = ( lpObj->m_AttackDamageRight ) * 60 / 100 - targetDefense;
+			ad = (( lpObj->m_AttackDamageRight ) * 60 / 100) - targetDefense;
 		}
 		else
 		{
 			ad = lpObj->m_AttackDamageRight - targetDefense;
-		}
-
-		if( lpObj->m_MPSkillOpt.MpsTwoHandSwordStrength > 0.0f )
-		{
-			ad += lpObj->m_MPSkillOpt.MpsTwoHandSwordStrength;
 		}
 	}
 	else if ( Right->m_Type >= ITEMGET(5,0) && Right->m_Type < ITEMGET(6,0) )
 	{
 		if ( bIsOnDuel )
 		{
-			ad = ( lpObj->m_AttackDamageRight ) * 60 / 100 - targetDefense;
+			ad = (( lpObj->m_AttackDamageRight ) * 60 / 100) - targetDefense;
 		}
 		else
 		{
@@ -3144,7 +2808,7 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 	}
 	else if ( bIsOnDuel )
 	{
-		ad = ( lpObj->m_AttackDamageLeft ) * 60 / 100 - targetDefense;
+		ad = (( lpObj->m_AttackDamageLeft ) * 60 / 100) - targetDefense;
 	}
 	else
 	{
@@ -3156,14 +2820,16 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 		ad += ad * lpObj->SetOpTwoHandSwordImproveDamage  / 100;
 	}
 
-	int SkillAttack = 0;
+	ad += lpObj->m_SkillAttack;
 
-	SkillAttack = gObjGetTotalValueOfEffect(lpObj, ADD_OPTION_ATTACK_DAMAGE);
-	SkillAttack += gObjGetTotalValueOfEffect(lpObj, ADD_OPTION_WRATH);
-
-	ad += SkillAttack;
+	if(lpObj->m_SkillReduceDamage > 0)
+	{
+		ad -= lpObj->m_SkillReduceDamage;
+		if ( ad < 0 )
+			ad = 0;
+	}
 	
-	if ( lpObj->m_SkillAttack )
+	if ( lpObj->m_SkillAttack2 )
 	{
 		ad += 15;
 	}
@@ -3178,165 +2844,40 @@ int CObjAttack::GetAttackDamage(LPOBJ lpObj, int targetDefense, BYTE& effect, BO
 		}
 	}
 
-	int iValue = 0;
-
-	gObjCheckUsedBuffEffect(lpObj, AT_WEAKNESS, &iValue, 0);
-
-	ad -= ad * iValue / 100;
-
-	float nAddAttackDamageLeft	= 0;
-	float nAddAttackDamageRight = 0;
-	switch(Left->GetDetailItemType())
-	{
-	case 1:
-		{
-			if( lpObj->m_MPSkillOpt.MpsOneHandSwordStrength > 0.0f )
-			{
-				nAddAttackDamageLeft += lpObj->m_MPSkillOpt.MpsOneHandSwordStrength;
-			}
-		}
-		break;
-	case 2:
-		{
-			if( lpObj->m_MPSkillOpt.MpsMaceStrength > 0.0f )
-			{
-				nAddAttackDamageLeft += lpObj->m_MPSkillOpt.MpsMaceStrength;
-			}
-		}
-		break;
-	case 3:
-		{
-			if( lpObj->m_MPSkillOpt.MpsSpearStrength > 0.0f )
-			{
-				nAddAttackDamageLeft += lpObj->m_MPSkillOpt.MpsSpearStrength;
-			}
-		}
-		break;
-	case 11:
-		{
-			if( lpObj->m_MPSkillOpt.MpsScepterStrength > 0.0f )
-			{
-				nAddAttackDamageLeft += lpObj->m_MPSkillOpt.MpsScepterStrength;
-			}
-		}
-		break;
-	case 12:
-		{
-			if( lpObj->m_MPSkillOpt.MpsFistStrength > 0.0f )
-			{
-				nAddAttackDamageLeft += lpObj->m_MPSkillOpt.MpsFistStrength;
-			}
-		}
-		break;
-	}
-
-	switch(Right->GetDetailItemType())
-	{
-	case 1:
-		{
-			if( lpObj->m_MPSkillOpt.MpsOneHandSwordStrength > 0.0f )
-			{
-				nAddAttackDamageRight += lpObj->m_MPSkillOpt.MpsOneHandSwordStrength;
-			}
-		}
-		break;
-	case 2:
-		{
-			if( lpObj->m_MPSkillOpt.MpsMaceStrength > 0.0f )
-			{
-				nAddAttackDamageRight += lpObj->m_MPSkillOpt.MpsMaceStrength;
-			}
-		}
-		break;
-	case 3:
-		{
-			if( lpObj->m_MPSkillOpt.MpsSpearStrength > 0.0f )
-			{
-				nAddAttackDamageRight += lpObj->m_MPSkillOpt.MpsSpearStrength;
-			}
-		}
-		break;
-	case 11:
-		{
-			if( lpObj->m_MPSkillOpt.MpsScepterStrength > 0.0f )
-			{
-				nAddAttackDamageRight += lpObj->m_MPSkillOpt.MpsScepterStrength;
-			}
-		}
-		break;
-	case 12:
-		{
-			if( lpObj->m_MPSkillOpt.MpsFistStrength > 0.0f )
-			{
-				nAddAttackDamageRight += lpObj->m_MPSkillOpt.MpsFistStrength;
-			}
-		}
-		break;
-	}
-
-	if( bTwoHandWeapon )
-	{
-		ad += nAddAttackDamageRight * 0.5f + nAddAttackDamageLeft * 0.5f;
-	}
-	else
-	{
-		ad += nAddAttackDamageRight + nAddAttackDamageLeft;
-	}
-
-	if( lpObj->Class == CLASS_KNIGHT 
-		|| lpObj->Class == CLASS_MAGUMSA 
-		|| lpObj->Class == CLASS_DARKLORD 
-		|| lpObj->Class == CLASS_MONK )
-	{
-		if( lpObj->m_MPSkillOpt.MpsWeaponMastery > 0.0f )
-		{
-			ad += lpObj->m_MPSkillOpt.MpsWeaponMastery;
-		}
-	}
-
-	if( lpObj->Class == CLASS_ELF )
-	{
-		if( lpObj->m_MPSkillOpt.MpsWeaponMastery2 > 0.0f )
-		{
-			ad += lpObj->m_MPSkillOpt.MpsWeaponMastery2;
-		}
-	}
-
-	if( lpObj->m_MPSkillOpt.MpsCommandAttackInc > 0.0f )
-	{
-		if( lpObj->pInventory[0].GetDetailItemType() == 11 || lpObj->pInventory[1].GetDetailItemType() == 11 )
-		{
-			int nAddAttack = (lpObj->AddLeadership + lpObj->Leadership) / lpObj->m_MPSkillOpt.MpsCommandAttackInc;
-			ad += nAddAttack;
-		}
-	}
-
 	return ad;
 }
 
-//0051bcc0	-> Ok...
-int CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf* lpMagic, BYTE& effect, BOOL bIsOnDuel) //0x4BAD10
+
+
+
+
+int  CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf* lpMagic, BYTE& effect, BOOL bIsOnDuel)
 {
-	if( g_ShieldSystemOn )
+	if ( g_ShieldSystemOn == TRUE )
 	{
-		if( bIsOnDuel )
+		if ( bIsOnDuel == TRUE )
 		{
-			bIsOnDuel = false;
+			bIsOnDuel = FALSE;
 		}
 	}
-	// ----
+
 	int damagemin;
 	int damagemax;
 	int ad;
-	// ----
-	if( lpMagic->m_Skill == 40 )
+
+	if ( lpMagic->m_Skill == AT_SKILL_EXPHELL )
 	{
-		if( lpObj->SkillHellFire2Count >= 0 )
+		if ( lpObj->SkillHellFire2Count >= 0 )
 		{
-			int SkillHellFire2CountDamageTable[13] = { 0, 20, 50, 99, 160, 225, 325, 425, 550, 700, 880, 1090, 1320 };
+			int SkillHellFire2CountDamageTable[13] =
+			{
+				0,	20,	50,	99,	160,
+				225,	325,	425,	550,	700,
+				880,	1090,	1320
+			};
 			int CountDamage;
-			// ----
-			if( lpObj->SkillHellFire2Count > 12 )
+
+			if ( lpObj->SkillHellFire2Count > 12 )
 			{
 				CountDamage = 0;
 			}
@@ -3344,27 +2885,22 @@ int CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf*
 			{
 				CountDamage = SkillHellFire2CountDamageTable[lpObj->SkillHellFire2Count];
 			}
-			// ----
-			ad = (lpObj->Strength + lpObj->AddStrength) / 2 + CountDamage;
-			// ----
-			damagemin =		ad + lpObj->m_MagicDamageMin;
-			damagemax =		ad + lpObj->m_MagicDamageMax;
-			damagemin +=	lpObj->SetOpAddSkillAttack;
-			damagemax +=	lpObj->SetOpAddSkillAttack;
-			// ----
-			int SkillAttr = MagicDamageC.GetSkillAttr(lpMagic->m_Skill);
-			// ----
-			if( SkillAttr != -1 )
+
+			ad = ( lpObj->Strength + lpObj->AddStrength ) / 2 + CountDamage;
+			damagemin = ad + lpObj->m_MagicDamageMin;
+			damagemax = ad + lpObj->m_MagicDamageMax;
+
+			damagemin += lpObj->SetOpAddSkillAttack;
+			damagemax += lpObj->SetOpAddSkillAttack;
+
+			int SkillAttr = MagicDamageC.GetSkillResistance(lpMagic->m_Skill);
+
+			if ( SkillAttr != -1 )
 			{
-				if( (lpObj->Authority & 32) == 32 
-					&& (lpObj->pInventory[10].m_Type == ITEMGET(13,42) 
-					|| lpObj->pInventory[11].m_Type == ITEMGET(13,42)) )
-				{
-					damagemin += (BYTE)255;
-					damagemax += (BYTE)255;
-				}
+				damagemin += (BYTE)lpObj->m_AddResistance[SkillAttr];
+				damagemax += (BYTE)lpObj->m_AddResistance[SkillAttr];
 			}
-			// ----
+
 			damagemin += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 			damagemax += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 		}
@@ -3372,84 +2908,64 @@ int CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf*
 	else
 	{
 		ad = lpMagic->GetDamage();
-		// ----
-		damagemin =	lpMagic->m_DamageMin + lpObj->m_MagicDamageMin;
-		damagemax =	lpMagic->m_DamageMax + lpObj->m_MagicDamageMax;
-		// ----
-		if( g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) )
-		{
-			float fDamage	= g_MasterSkillSystem.GetSkillAttackDamage(lpObj, lpMagic->m_Skill);
-			damagemin		+= (INT64)fDamage;
-			damagemax		+= (INT64)fDamage;
-		}
-		// ----
+
+		damagemin = lpMagic->m_DamageMin + lpObj->m_MagicDamageMin;
+		damagemax = lpMagic->m_DamageMax + lpObj->m_MagicDamageMax;
+
 		damagemin += lpObj->SetOpAddSkillAttack;
 		damagemax += lpObj->SetOpAddSkillAttack;
-		// ----
-		int SkillAttr = MagicDamageC.GetSkillAttr(lpMagic->m_Skill);
-		// ----
-		if( SkillAttr != -1 )
+
+		int SkillAttr = MagicDamageC.GetSkillResistance(lpMagic->m_Skill);
+
+		if ( SkillAttr != -1 )
 		{
-			if( (lpObj->Authority&32) == 32 
-				&& (lpObj->pInventory[10].m_Type == ITEMGET(13,42) 
-				|| lpObj->pInventory[11].m_Type == ITEMGET(13,42)) )
-			{
-				damagemin += (BYTE)255;
-				damagemax += (BYTE)255;
-			}
+			damagemin += (BYTE)lpObj->m_AddResistance[SkillAttr];
+			damagemax += (BYTE)lpObj->m_AddResistance[SkillAttr];
 		}
-		// ----
+
 		damagemin += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 		damagemax += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
 	}
-	// ----
+
 	CItem * Right = &lpObj->pInventory[0];
-	// ----
-	if( Right->IsItem() )
+
+	if ( Right->IsItem() )
 	{
-		if( (Right->m_Type >= ITEMGET(5, 0) && Right->m_Type < ITEMGET(6, 0)) ||
-			 Right->m_Type == ITEMGET(0, 31) ||
-			 Right->m_Type == ITEMGET(0, 21) ||
-			 Right->m_Type == ITEMGET(0, 23) ||
-			 Right->m_Type == ITEMGET(0, 25) ||
-			 Right->m_Type == ITEMGET(0, 28) )
+		if ( (Right->m_Type >= ITEMGET(5,0) && Right->m_Type < ITEMGET(6,0) ) ||
+			 Right->m_Type == ITEMGET(0,31) ||
+			 Right->m_Type == ITEMGET(0,21) ||
+			 Right->m_Type == ITEMGET(0,23) ||
+			 Right->m_Type == ITEMGET(0,25) )
 		{
-			if( Right->m_IsValidItem  )
+			if ( Right->m_IsValidItem  )
 			{
-				int damage	= Right->m_Magic / 2 + Right->m_Level * 2;
-				damage		-= (WORD)(Right->m_CurrentDurabilityState * damage);
-				damagemin	+= damagemin * damage / 100;
-				damagemax	+= damagemax * damage / 100;
+				int damage = Right->m_Magic / 2 + Right->m_Level * 2;	// #formula
+				damage -= (WORD)(Right->m_CurrentDurabilityState * damage);	// #formula
+
+				damagemin += damagemin * damage / 100;	// #formula
+				damagemax += damagemax * damage / 100;	// #formula
 			}
 		}
 	}
-	// ----
+
 	int subd = damagemax - damagemin;
-	// ----
+
 	__try
 	{
-		if( bIsOnDuel )
+		if ( bIsOnDuel )
 		{
-			ad = (damagemin + (rand()%(subd+1))) * 60 / 100 - targetDefense;
+			ad = ( damagemin + (rand()%(subd+1)) ) * 60 / 100 - targetDefense;	// #formula
 		}
 		else
 		{
-			ad = (damagemin + (rand()%(subd+1))) - targetDefense;
+			ad = ( damagemin + (rand()%(subd+1)) ) - targetDefense;
 		}
-		// ----
-		int nCritical = lpObj->m_CriticalDamage;
-		// ----
-		if( gObjCheckUsedBuffEffect(lpObj, 139) )
+
+		if ( lpObj->m_CriticalDamage > 0 )
 		{
-			float fValue = lpObj->m_MPSkillOpt.ukn_11C;
-			nCritical += fValue;
-		}
-		// ----
-		if( nCritical > 0 )
-		{
-			if( (rand()%100) < nCritical )
+			if ( (rand()%100) < lpObj->m_CriticalDamage )
 			{
-				if( bIsOnDuel )
+				if ( bIsOnDuel )
 				{
 					ad = damagemax * 60 / 100 - targetDefense;
 				}
@@ -3457,25 +2973,19 @@ int CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf*
 				{
 					ad = damagemax - targetDefense;
 				}
-				// ----
+
 				ad += lpObj->SetOpAddCriticalDamage;
 				ad += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
-				// ----
-				int iValue = 0;
-				// ----
-				gObjCheckUsedBuffEffect(lpObj, AT_INCREASE_CRITICAL_DMG, &iValue, 0);
-				ad += iValue;
-				gObjCheckUsedBuffEffect(lpObj, 148, &iValue, 0);
-				ad += iValue;
+				ad += lpObj->SkillAddCriticalDamage;
 				effect = 3;
 			}
 		}
-		// ----
-		if( lpObj->m_ExcelentDamage > 0 )
+
+		if ( lpObj->m_ExcelentDamage > 0 )
 		{
-			if( (rand()%100) < lpObj->m_ExcelentDamage )
+			if ( (rand()%100) < lpObj->m_ExcelentDamage )
 			{
-				if( bIsOnDuel )
+				if ( bIsOnDuel )
 				{
 					ad = damagemax * 60 / 100 - targetDefense;
 				}
@@ -3483,33 +2993,117 @@ int CObjAttack::GetAttackDamageWizard(LPOBJ lpObj, int targetDefense, CMagicInf*
 				{
 					ad = damagemax - targetDefense;
 				}
-				// ----
+
 				ad += damagemax * 20 / 100;
 				ad += lpObj->SetOpAddExDamage;
 				effect = 2;
 			}
 		}
+
+		/*if ( lpObj->Class == CLASS_KNIGHT )	//BK NEVER GETS IN TO THIS FUNCTION
+		{
+			if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+			{
+				CItem * Right = &lpObj->pInventory[0];
+				if ( Right->IsItem() == TRUE )
+				{
+					if(Right->m_Type >= ITEMGET(4,0) && Right->m_Type < ITEMGET(5,0))
+					{
+						if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+						{							
+							if ( bIsOnDuel )
+							{
+								ad = damagemax * 60 / 100 - targetDefense;
+							}
+							else
+							{
+								ad = damagemax - targetDefense;
+							}
+
+							ad = ad * 2;
+						}
+					}
+				}
+			}
+		}*/
+
+		if ( lpObj->Class == CLASS_RAGEFIGHTER )
+		{
+			if(lpObj->MasterCharacterInfo->SpearDoubleDmg > 0)
+			{
+				CItem * Right = &lpObj->pInventory[0];
+				CItem * Left  = &lpObj->pInventory[1];
+				bool enter = false;
+				if ( Right->IsItem() == TRUE )
+				{
+					if(Right->m_Type >= ITEMGET(0,32) && Right->m_Type <= ITEMGET(0,35))
+					{
+						if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+						{		
+							if ( bIsOnDuel )
+							{
+								ad = damagemax * 60 / 100 - targetDefense;
+							}
+							else
+							{
+								ad = damagemax - targetDefense;
+							}
+
+							ad = ad * 2;
+							enter = true;
+						}
+					}
+				}
+				if(enter == false)
+				{
+					if ( Left->IsItem() == TRUE )
+					{
+						if(Left->m_Type >= ITEMGET(0,32) && Left->m_Type <= ITEMGET(0,35))
+						{
+							if ( (rand()%100) < lpObj->MasterCharacterInfo->SpearDoubleDmg )
+							{		
+								if ( bIsOnDuel )
+								{
+									ad = damagemax * 60 / 100 - targetDefense;
+								}
+								else
+								{
+									ad = damagemax - targetDefense;
+								}
+
+								ad = ad * 2;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-	__except(subd = 1, 1)
+	__except ( subd=1, 1 )
 	{
-		// --
+
 	}
-	// ----
-	int iIncreaseDamage = 0;
-	// ----
-	iIncreaseDamage = gObjGetTotalValueOfEffect(lpObj, ADD_OPTION_ATTACK_DAMAGE);
-	iIncreaseDamage += gObjGetTotalValueOfEffect(lpObj, ADD_OPTION_WIZARDRY);
-	ad += iIncreaseDamage;
-	// ----
-	if( lpObj->m_SkillAttack )
+
+	ad += lpObj->m_SkillAttack;
+
+	if(lpObj->m_SkillReduceDamage > 0)
+	{
+		ad -= lpObj->m_SkillReduceDamage;
+		if ( ad < 0 )
+			ad = 0;
+	}
+
+	if ( lpObj->m_SkillAttack2 )
 	{
 		ad += 10;
 	}
-	// ----
+
 	return ad;
 }
 
-//0051C4C0	->
+
+
+
 BOOL gObjDenorantSprite(LPOBJ lpObj)
 {
 	if ( lpObj->Type != OBJ_USER )
@@ -3535,7 +3129,9 @@ BOOL gObjDenorantSprite(LPOBJ lpObj)
 	return FALSE;
 }
 
-//0051C560	->
+
+
+
 BOOL gObjDarkHorse(LPOBJ lpObj)
 {
 	if ( lpObj->Type != OBJ_USER )
@@ -3561,7 +3157,8 @@ BOOL gObjDarkHorse(LPOBJ lpObj)
 	return FALSE;
 }
 
-//0051C600	->
+
+
 BOOL gObjFenrir(LPOBJ lpObj)
 {
 	if ( lpObj->Type != OBJ_USER )
@@ -3576,7 +3173,7 @@ BOOL gObjFenrir(LPOBJ lpObj)
 
 	CItem * lpFenrir = & lpObj->pInventory[8];
 
-	if ( lpFenrir->m_Type == ITEMGET(13,37) )
+	if ( lpFenrir->m_Type == ITEMGET(13,37) )	// Fenrir
 	{
 		if ( lpFenrir->m_Durability > 0.0f )
 		{
@@ -3587,11 +3184,9 @@ BOOL gObjFenrir(LPOBJ lpObj)
 	return FALSE;
 }
 
-//0051C6A0	->
+
 int CObjAttack::GetShieldDamage(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage)
 {
-	int iShieldDamage = 0;
-
 	if ( g_ShieldSystemOn == FALSE )
 		return 0;
 
@@ -3660,263 +3255,4 @@ int CObjAttack::GetShieldDamage(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamag
 	}
 
 	return iReduceShield;
-}
-
-//0051c980	->
-int CObjAttack::GetAttackDamageSummoner(LPOBJ lpObj, int targetDefense, CMagicInf * lpMagic, BYTE & effect, BOOL bIsOnDuel)
-{
-	if( g_ShieldSystemOn == true )
-	{
-		if( bIsOnDuel == true )
-		{
-			bIsOnDuel = false;
-		}
-	}
-	// ----
-	float fCurseDamageMin	= 0;
-	float fCurseDamageMax	= 0;
-	float fMagicDamageMin	= 0;
-	float fMagicDamageMax	= 0;
-	int damagemin;
-	int damagemax;
-	int ad;
-	int iIncreaseDamage		= 0;
-	// ----
-	ad = lpMagic->GetDamage();
-	// ----
-	switch(lpMagic->m_Skill)
-	{
-	case 219:
-	case 220:
-	case 221:
-	case 222:
-	case 223:
-	case 224:
-	case 225:
-		{
-			if( gObjCheckUsedBuffEffect(lpObj, 81) == true )
-			{
-				int iValue		= gObjGetTotalValueOfEffect(lpObj, 31);
-				fCurseDamageMax = ((float)((lpObj->Energy + lpObj->AddEnergy) / 4) + 0.015) * iValue / 100.0;
-				fCurseDamageMin = (float)(((lpObj->Energy + lpObj->AddEnergy) / 9) * iValue / 100);
-			}
-			// ----
-			if( gObjCheckUsedBuffEffect(lpObj, 150) == true
-				|| gObjCheckUsedBuffEffect(lpObj, 151) == true
-				|| gObjCheckUsedBuffEffect(lpObj, 152) == true )
-			{
-				float iValue = gObjGetTotalValueOfEffect(lpObj, 31);
-				// ----
-				if( lpObj->m_MPSkillOpt.ukn_D8 > 0.0f )
-				{
-					iValue += lpObj->m_MPSkillOpt.ukn_D8;
-				}
-				// ----
-				fCurseDamageMax = ((float)((lpObj->Energy + lpObj->AddEnergy) / 4) + 0.015) * iValue / 100.0;
-				fCurseDamageMin = (float)(((lpObj->Energy + lpObj->AddEnergy) / 9) * iValue / 100);
-			}
-			// ----
-			damagemin = (int)((float)(lpMagic->m_DamageMin + lpObj->m_CurseDamgeMin) + fCurseDamageMin);
-			damagemax = (int)((float)(lpMagic->m_DamageMax + lpObj->m_CurseDamgeMax) + fCurseDamageMax);
-			// ----
-			if( g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) )
-			{
-				float fDamage = g_MasterSkillSystem.GetSkillAttackDamage(lpObj, lpMagic->m_Skill);
-				damagemin += fDamage;
-				damagemax += fDamage;
-			}
-			// ----
-			if( lpObj->m_MPSkillOpt.MpsMagicMastery2 > 0.0f )
-			{
-				damagemin += lpObj->m_MPSkillOpt.MpsMagicMastery2;
-				damagemax += lpObj->m_MPSkillOpt.MpsMagicMastery2;
-			}
-			// ----
-			if( lpObj->m_MPSkillOpt.MpsMinWizCurseInc > 0.0f )
-			{
-				damagemin += lpObj->m_MPSkillOpt.MpsMinWizCurseInc;
-			}
-			// ----
-			CItem * Left = &lpObj->pInventory[1];
-			// ----
-			if( Left->IsItem() )
-			{
-				if( Left->m_Type >= ITEMGET(5, 0) && Left->m_Type < ITEMGET(6, 0) )
-				{
-					if( Left->m_IsValidItem )
-					{
-						int damage = Left->m_Curse/2+Left->m_Level*2;
-						damage -= (WORD)(Left->m_CurrentDurabilityState*damage);
-						damagemin += damagemin*damage/100;
-						damagemax += damagemax*damage/100;
-					}
-				}
-			}
-			// ----
-			iIncreaseDamage += gObjGetTotalValueOfEffect(lpObj, 27);
-		}
-		break;
-	default:
-		{
-			if( gObjCheckUsedBuffEffect(lpObj, 81) == true )
-			{
-				int iValue		= gObjGetTotalValueOfEffect(lpObj, 31);
-				fMagicDamageMin = (float)(((lpObj->Energy+lpObj->AddEnergy)/9)*iValue/100);
-				fMagicDamageMax = (float)(((lpObj->Energy+lpObj->AddEnergy)/4)*iValue/100);
-			}
-			// ----
-			if( gObjCheckUsedBuffEffect(lpObj, 150) == true
-				|| gObjCheckUsedBuffEffect(lpObj, 151) == true
-				|| gObjCheckUsedBuffEffect(lpObj, 152) == true )
-			{
-				float iValue = gObjGetTotalValueOfEffect(lpObj, 31);
-				// ----
-				if( lpObj->m_MPSkillOpt.ukn_DC > 0.0f )
-				{
-					iValue += lpObj->m_MPSkillOpt.ukn_DC;
-				}
-				// ----
-				fMagicDamageMin = (float)(((lpObj->Energy+lpObj->AddEnergy)/9)*iValue/100);
-				fMagicDamageMax = (float)(((lpObj->Energy+lpObj->AddEnergy)/4)*iValue/100);
-			}
-			// ----
-			damagemin = (int)((float)(lpMagic->m_DamageMin + lpObj->m_MagicDamageMin)+fMagicDamageMin);
-			damagemax = (int)((float)(lpMagic->m_DamageMax + lpObj->m_MagicDamageMax)+fMagicDamageMax);
-			// ----
-			if( g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) )
-			{
-				float fDamage = g_MasterSkillSystem.GetSkillAttackDamage(lpObj, lpMagic->m_Skill);
-				damagemin += fDamage;
-				damagemax += fDamage;
-			}
-			// ----
-			if( lpObj->m_MPSkillOpt.MpsMagicMastery2 > 0.0f )
-			{
-				damagemin += lpObj->m_MPSkillOpt.MpsMagicMastery2;
-				damagemax += lpObj->m_MPSkillOpt.MpsMagicMastery2;
-			}
-			// ----
-			if( lpObj->m_MPSkillOpt.MpsMinWizCurseInc > 0.0f )
-			{
-				damagemin += lpObj->m_MPSkillOpt.MpsMinWizCurseInc;
-			}
-			// ----
-			CItem * Right = &lpObj->pInventory[0];
-			// ----
-			if( Right->IsItem() )
-			{
-				if( Right->m_Type >= ITEMGET(5, 0) && Right->m_Type < ITEMGET(6, 0) )
-				{
-					if( Right->m_IsValidItem )
-					{
-						int damage = Right->m_Magic/2+Right->m_Level*2;
-						damage -= (WORD)(Right->m_CurrentDurabilityState*damage);
-						damagemin += damagemin*damage/100;
-						damagemax += damagemax*damage/100;
-					}
-				}
-			}
-			// ----
-			iIncreaseDamage += gObjGetTotalValueOfEffect(lpObj, 15);
-		}
-		break;
-	}
-	// ----
-	damagemin += lpObj->SetOpAddSkillAttack;
-	damagemax += lpObj->SetOpAddSkillAttack;
-	int SkillAttr = MagicDamageC.GetSkillAttr(lpMagic->m_Skill);
-	// ----
-	if( SkillAttr != -1 )
-	{
-		if( (lpObj->Authority&32) == 32 && 
-			(lpObj->pInventory[10].m_Type == ITEMGET(13, 42) || 
-			lpObj->pInventory[11].m_Type == ITEMGET(13, 42)) )
-		{
-			damagemin += (BYTE)255;
-			damagemax += (BYTE)255;
-		}
-		else
-		{
-			damagemin += (BYTE)lpObj->m_AddResistance[SkillAttr];
-			damagemax += (BYTE)lpObj->m_AddResistance[SkillAttr];
-		}
-	}
-	// ----
-	damagemin += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
-	damagemax += lpObj->m_JewelOfHarmonyEffect.HJOpAddSkillAttack;
-	int subd = damagemax-damagemin;
-	// ----
-	__try
-	{
-		if( bIsOnDuel )
-			ad = ( damagemin+(rand()%(subd+1)))*60/100-targetDefense;
-		else ad = (damagemin+(rand()%(subd+1)))-targetDefense;
-		if( lpObj->m_CriticalDamage > 0 ) 
-		{
-			if( (rand()%100) < lpObj->m_CriticalDamage )
-			{
-				if( bIsOnDuel )
-					ad = damagemax*60/100-targetDefense;
-				else ad = damagemax-targetDefense;
-
-				ad += lpObj->SetOpAddCriticalDamage;
-				ad += lpObj->m_JewelOfHarmonyEffect.HJOpAddCriticalDamage;
-
-				int iValue = 0;
-				gObjCheckUsedBuffEffect(lpObj, 5, &iValue, 0);
-				ad += iValue;
-				gObjCheckUsedBuffEffect(lpObj, 148, &iValue, 0);
-				ad += iValue;
-				effect = 3;
-			}
-		}
-		if( lpObj->m_ExcelentDamage > 0 )
-		{
-			if( (rand()%100) < lpObj->m_ExcelentDamage )
-			{
-				if( bIsOnDuel )
-					ad = damagemax*60/100-targetDefense;
-				else ad = damagemax-targetDefense;
-
-				ad += damagemax*20/100;
-				ad += lpObj->SetOpAddExDamage;
-				effect = 2;
-			}
-		}
-	}
-	__except( subd= 1, 1 )
-	{
-	}
-
-	iIncreaseDamage += gObjGetTotalValueOfEffect(lpObj, 2);
-
-	ad += iIncreaseDamage;
-
-	if( lpObj->m_SkillAttack )	
-	{
-		ad += 10;
-	}
-
-	if( lpObj->m_MPSkillOpt.ukn_DC > 0.0f )
-	{
-		ad += (double)ad * lpObj->m_MPSkillOpt.ukn_DC / 100.0f;
-	}
-
-	return ad;
-}
-
-//GetBuffTypePhysicalIncrease (0051D690)
-BYTE CObjAttack::GetBerserkerSkillAttackDamage(LPOBJ lpObj, int& Value1, int& Value2)
-{
-	Value1 = 140 + (lpObj->Strength + lpObj->AddStrength + lpObj->Dexterity + lpObj->AddDexterity) / 50;
-	Value2 = 160 + (lpObj->Strength + lpObj->AddStrength + lpObj->Dexterity + lpObj->AddDexterity) / 30;
-
-	int iBerserkerValue = 0;
-
-	gObjCheckUsedBuffEffect(lpObj, AT_BERSERKER, &iBerserkerValue, 0);
-
-	Value1 = Value1 * iBerserkerValue / 100;
-	Value2 = Value2 * iBerserkerValue / 100;
-
-	return true;
 }

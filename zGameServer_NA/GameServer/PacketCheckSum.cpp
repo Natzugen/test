@@ -1,20 +1,29 @@
-// GS-CS	1.00.90	JPN		-	Completed
 #include "stdafx.h"
 #include "PacketCheckSum.h"
 #include "GameMain.h"
 #include "logproc.h"
+// GS-N 0.99.60T 0x00452B80
+// GS-N	1.00.18	JPN	0x00461F60	-	Completed
+
 
 CPacketCheckSum gPacketCheckSum;
+
+
 
 CPacketCheckSum::CPacketCheckSum()
 {
 	this->Init();
 }
 
+
+
+
 CPacketCheckSum::~CPacketCheckSum()
 {
 	return;
 }
+
+
 
 void CPacketCheckSum::Init()
 {
@@ -25,20 +34,27 @@ void CPacketCheckSum::Init()
 	memset(this->PaketChecksum, 0, sizeof(this->PaketChecksum));
 }
 
+
+
+
 void CPacketCheckSum::Check(int aIndex)
 {
-	if ( gObj[aIndex].m_InWebzen != false )	// Olny for Local Test and Test Mains
-	{
-		return;
-	}
+	//if ( gObj[aIndex].m_InWebzen != false )	// Olny for Local Test and Test Mains
+	//{
+	//	return;
+	//}
 
 	for ( int i=0 ; i<MAX_PACKET_CHECKSUM_FUNCTION_INDEX ; i++)
 	{
 		if ( this->PaketChecksum[aIndex].Check[i] == 0 )
 		{
+			char szPacketError[256];
+
 			LogAddTD("PacketCheckSum Error [%d][%s][%s] %d",
 				aIndex, gObj[aIndex].AccountID, gObj[aIndex].Name, i);
 			
+			wsprintf(szPacketError, "PacketCheckSum Error %d", i);
+
 			this->ClearCheckSum(aIndex);
 
 			if ( gDisconnectHackUser != FALSE )
@@ -54,17 +70,21 @@ void CPacketCheckSum::Check(int aIndex)
 	this->ClearCheckSum(aIndex);
 }
 
+
+
 void CPacketCheckSum::ClearCheckSum(int aIndex)
 {
 	memset(&this->PaketChecksum[aIndex], 0, sizeof(PAKETCHECKSUM) );
 }
 
+
+
 BOOL CPacketCheckSum::Add(int aIndex, int funcindex, DWORD checksum)
 {
-	if ( gObj[aIndex].m_InWebzen != false )
-	{
-		return true;
-	}
+	//if ( gObj[aIndex].m_InWebzen != false )
+	//{
+	//	return true;
+	//}
 
 	if ( this->m_ChecksumTableAllClearState == 0 )
 	{
@@ -78,8 +98,12 @@ BOOL CPacketCheckSum::Add(int aIndex, int funcindex, DWORD checksum)
 	}
 	else
 	{
+		char szPacketError[256];
+
 		LogAddTD("PacketCheckSum : Compare Fail : [%d][%s][%s] (%d,%d)", aIndex,
 			gObj[aIndex].AccountID, gObj[aIndex].Name, funcindex, checksum);
+
+		wsprintf(szPacketError, "PacketCheckSum : Compare Fail : (%d,%d)", funcindex, checksum);
 
 		if ( gDisconnectHackUser != FALSE )
 		{
@@ -89,6 +113,10 @@ BOOL CPacketCheckSum::Add(int aIndex, int funcindex, DWORD checksum)
 
 	return TRUE;
 }
+
+
+
+
 
 void CPacketCheckSum::AddCheckSum(int aIndex, int funcindex, DWORD checksum)
 {
@@ -121,6 +149,9 @@ void CPacketCheckSum::AddCheckSum(int aIndex, int funcindex, DWORD checksum)
 	}
 }
 
+
+
+
 void CPacketCheckSum::SetClearChecksumFunc(int funcindex)
 {
 	int iCount = 0;
@@ -139,7 +170,7 @@ void CPacketCheckSum::SetClearChecksumFunc(int funcindex)
 		this->m_ChecksumTableClearState[funcindex] = 1;
 		this->m_ChecksumTableAllClearState = TRUE;
 
-		for (int i=0;i<MAX_PACKET_CHECKSUM_FUNCTION_INDEX;i++)
+		for ( int i=0;i<MAX_PACKET_CHECKSUM_FUNCTION_INDEX;i++)
 		{
 			if ( this->m_ChecksumTableClearState[i] == 0 )
 			{
@@ -153,7 +184,7 @@ void CPacketCheckSum::SetClearChecksumFunc(int funcindex)
 		{
 			LogAddTD("Complete Init Checksum");
 
-			for (int i=0;i<MAX_PACKET_CHECKSUM_FUNCTION_INDEX;i++)
+			for ( int i=0;i<MAX_PACKET_CHECKSUM_FUNCTION_INDEX;i++)
 			{
 				this->m_ChecksumTable[i] = this->m_ChecksumTableAVG[i][0];
 				LogAddTD("%d, %d", i, this->m_ChecksumTable[i]);

@@ -1,25 +1,25 @@
 // TMonsterSkillElement.cpp: implementation of the TMonsterSkillElement class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+/*	GS-N	1.00.18	JPN	0x00554F40	-	Completed
+		BOOL TMonsterSkillElement::ApplyElementHP(int iIndex, int iTargetIndex)	-	Wrong compilation with same result
+		BOOL TMonsterSkillElement::ApplyElementMP(int iIndex, int iTargetIndex)	-	Wrong compilation with same result*/
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "TMonsterSkillElement.h"
+
 #include "ObjUseSkill.h"
+#include "ObjAttack.h"
+
 #include "protocol.h"
 #include "gObjMonster.h"
 #include "Gamemain.h"
+
 #include "..\include\ReadScript.h"
 #include "LogProc.h"
 #include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
-#include "LuckyItem.h"	//1.01.00
-#ifdef IMPERIAL
-#include "ImperialGuardian.h"	//1.01.00
-#endif
+
 
 BOOL TMonsterSkillElement::s_bDataLoad = FALSE;
-
 TMonsterSkillElement TMonsterSkillElement::s_MonsterSkillElementArray[MAX_MONSTER_SKILL_ELEMENT];
 
 //////////////////////////////////////////////////////////////////////
@@ -36,6 +36,7 @@ TMonsterSkillElement::~TMonsterSkillElement()
 	return;
 }
 
+
 void TMonsterSkillElement::Reset()
 {
 	this->m_iSuccessRate = -1;
@@ -50,6 +51,7 @@ void TMonsterSkillElement::Reset()
 	memset(this->m_szElementName, 0, sizeof(this->m_szElementName));
 }
 
+
 BOOL TMonsterSkillElement::LoadData(LPSTR lpszFileName)
 {	
 	TMonsterSkillElement::s_bDataLoad = FALSE;
@@ -63,7 +65,7 @@ BOOL TMonsterSkillElement::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -177,6 +179,7 @@ BOOL TMonsterSkillElement::LoadData(LPSTR lpszFileName)
 	return FALSE;
 }
 
+
 BOOL TMonsterSkillElement::DelAllSkillElement()
 {
 	for(int i=0;i<MAX_MONSTER_SKILL_ELEMENT;i++)
@@ -186,6 +189,7 @@ BOOL TMonsterSkillElement::DelAllSkillElement()
 
 	return FALSE;
 }
+
 
 TMonsterSkillElement * TMonsterSkillElement::FindSkillElement(int iElementNumber)
 {
@@ -207,6 +211,8 @@ TMonsterSkillElement * TMonsterSkillElement::FindSkillElement(int iElementNumber
 
 	return  NULL;
 }
+
+
 
 void TMonsterSkillElement::ForceSkillElement(int iIndex, int iTargetIndex)
 {
@@ -278,46 +284,38 @@ void TMonsterSkillElement::ForceSkillElement(int iIndex, int iTargetIndex)
 		case MSE_TYPE_NORMALATTACK:
 			this->ApplyElementNormalAttack(iIndex, iTargetIndex);
 			break;
-		case MSE_TYPE_BERSERK://Season 4.5 addon
-			this->ApplyElementBerserk(iIndex, iTargetIndex);//Season 4.5 addon
-			break;
 	}
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementStun(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	lpTargetObj->m_iSkillStunTime = this->m_iContinuanceTime;
+	lpTargetObj->m_ViewSkillState |= 0x1000;
 
-	int SkillStunTime = 0;
-
-	if(this->m_iContinuanceTime == -1)
-	{
-		SkillStunTime = -10;
-	}
-	else
-	{
-		SkillStunTime = this->m_iContinuanceTime;//  Season 4.5 fix
-	}
-
-	gObjAddBuffEffect(lpTargetObj, AT_STUN, 0, 0, 0, 0, SkillStunTime);
-
+	GCSkillInfoSend(lpTargetObj, 1, 0x3D);
 	gObjSetPosition(iTargetIndex, lpTargetObj->X, lpTargetObj->Y);
 
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementMove(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	return FALSE;
 }
 
+
+
+
 BOOL TMonsterSkillElement::ApplyElementHP(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 	int iIncDecValue = 0;
 
@@ -328,9 +326,9 @@ BOOL TMonsterSkillElement::ApplyElementHP(int iIndex, int iTargetIndex)
 			 this->m_iIncAndDecType == MSE_INCDEC_TYPE_CYCLE_PERCENTINC ||
 			 this->m_iIncAndDecType == MSE_INCDEC_TYPE_CYCLE_PERCENTDEC )
 		{
-			iIncDecValue = (((float)(lpTargetObj->Life) * (float)(this->m_iIncAndDecValue)))/100.0f;
+			iIncDecValue = (lpTargetObj->Life * this->m_iIncAndDecValue) / 100.0f;
 
-			if ( this->m_iIncAndDecType == MSE_INCDEC_TYPE_PERCENTDEC )
+			if ( this->m_iIncAndDecType == MSE_INCDEC_TYPE_PERCENTDEC )	// #error LACKING THE OTHER NEGATEVE???
 				iIncDecValue = -iIncDecValue;
 		}
 
@@ -382,9 +380,10 @@ BOOL TMonsterSkillElement::ApplyElementHP(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementMP(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 	int iIncDecValue = 0;
 
@@ -392,7 +391,7 @@ BOOL TMonsterSkillElement::ApplyElementMP(int iIndex, int iTargetIndex)
 	{
 		if ( this->m_iIncAndDecType < MSE_INCDEC_TYPE_CONSTANTINC )
 		{
-			iIncDecValue = (((float)(lpTargetObj->Mana) * (float)(this->m_iIncAndDecValue)))/100.0f;
+			iIncDecValue = lpTargetObj->Mana * this->m_iIncAndDecValue / 100.0f;
 
 			if ( this->m_iIncAndDecType == MSE_INCDEC_TYPE_PERCENTDEC )
 				iIncDecValue = -iIncDecValue;
@@ -412,7 +411,8 @@ BOOL TMonsterSkillElement::ApplyElementMP(int iIndex, int iTargetIndex)
 	if ( lpTargetObj->Mana < 0 )
 	{
 		lpTargetObj->Mana = 0;
-		GCManaSend(lpTargetObj->m_Index, lpTargetObj->Mana, 0xFF, 0, lpObj->BP);
+		GCManaSend(lpTargetObj->m_Index, lpTargetObj->Mana, 0xFF, 0, lpTargetObj->BP);	// #error Change lpObj to lpTargetObj-->FIX
+
 		return TRUE;
 	}
 
@@ -429,9 +429,10 @@ BOOL TMonsterSkillElement::ApplyElementMP(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementAG(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 	int iIncDecValue = 0;
 
@@ -464,9 +465,9 @@ BOOL TMonsterSkillElement::ApplyElementAG(int iIndex, int iTargetIndex)
 		return TRUE;
 	}
 
-	if ( (lpTargetObj->MaxBP + lpTargetObj->AddBP) < lpTargetObj->Mana )
+	if ( (lpTargetObj->MaxBP + lpTargetObj->AddBP) < lpTargetObj->BP )	// #error Change Mana->BP -->FIX
 	{
-		lpTargetObj->Mana = lpTargetObj->MaxBP + lpTargetObj->AddBP;
+		lpTargetObj->BP = lpTargetObj->MaxBP + lpTargetObj->AddBP;	// #error Change Mana->BP -->FIX
 		GCManaSend(lpTargetObj->m_Index, lpTargetObj->Mana, 0xFF, 0, lpTargetObj->BP);
 
 		return TRUE;
@@ -477,9 +478,11 @@ BOOL TMonsterSkillElement::ApplyElementAG(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
+
 BOOL TMonsterSkillElement::ApplyElementDefense(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 	int iIncDecValue = 0;
 
@@ -505,20 +508,13 @@ BOOL TMonsterSkillElement::ApplyElementDefense(int iIndex, int iTargetIndex)
 	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementDefenseTime = this->m_iContinuanceTime;
 	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementDefense = iIncDecValue;
 
-#ifdef IMPERIAL
-	if ( CImperialGuardian::IsEventMap(lpObj->MapNumber) )
-	{
-		if ( m_iIncAndDecType == MSE_INCDEC_TYPE_CONSTANTDEC || m_iIncAndDecType == MSE_INCDEC_TYPE_PERCENTDEC )
-			gObjAddBuffEffect(lpTargetObj, 58, 23, 10, 0, 0, 10);
-	}
-#endif
-
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementAttack(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 	int iIncDecValue = 0;
 
@@ -547,9 +543,10 @@ BOOL TMonsterSkillElement::ApplyElementAttack(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementDurability(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	if ( lpTargetObj->Type != OBJ_USER )
@@ -560,11 +557,6 @@ BOOL TMonsterSkillElement::ApplyElementDurability(int iIndex, int iTargetIndex)
 
 	if ( lpEquipment == NULL || lpEquipment->IsItem() == FALSE )
 		return FALSE;
-
-	if( g_LuckyItemManager.IsLuckyItemEquipment(lpEquipment->m_Type) )
-    {
-		return false;
-    }
 
 	int iDurEquipment = lpEquipment->m_Durability;
 	int iIncDecValue = 0;
@@ -603,37 +595,28 @@ BOOL TMonsterSkillElement::ApplyElementDurability(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementSummon(int iIndex, int iTargetIndex)
 {
 	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
-	if (lpObj->Class == 459	&& lpObj->Connected == 3 && lpObj->MapNumber == 58 && 	iIndex == iTargetIndex )//Season 4.5 addon
-	{
-		LogAddTD("[TMonsterSkillElement][ApplyElementSummon] Selupan use summon.");
-		return FALSE;
-	}
-
-	if ( lpTargetObj->Connected < PLAYER_PLAYING || lpTargetObj->Type != OBJ_MONSTER )
+	if ( lpTargetObj->Connected < PLAYER_PLAYING ||
+		 lpTargetObj->Type != OBJ_MONSTER )
 		 return FALSE;
 
 	lpTargetObj->Life = lpTargetObj->MaxLife + lpTargetObj->AddLife;
 	lpTargetObj->Mana = lpTargetObj->MaxMana + lpTargetObj->AddMana;
 	lpTargetObj->Live = TRUE;
-
-	gObjRemoveBuffEffect(lpTargetObj, AT_POISON);
-	gObjRemoveBuffEffect(lpTargetObj, AT_ICE);
-	gObjRemoveBuffEffect(lpTargetObj, AT_ICE_ARROW);
-
-	lpTargetObj->m_ViewState = 0;
+	lpTargetObj->m_PoisonBeattackCount = 0;
+	lpTargetObj->m_ColdBeattackCount = 0;
+	//lpTargetObj->m_ViewState = 0;
 	lpTargetObj->Teleport = 0;
-
-	gObjClearBuffEffect(lpTargetObj, CLEAR_TYPE_LOGOUT);
+	lpTargetObj->m_ViewSkillState = 0;
 
 	for ( int i=0;i<MAX_SELF_DEFENSE;i++)
-	{
 		lpTargetObj->SelfDefenseTime[i] = 0;
-	}
 
 	gObjTimeCheckSelfDefense(lpTargetObj);
 	gObjViewportListProtocolDestroy(lpTargetObj);
@@ -648,12 +631,10 @@ BOOL TMonsterSkillElement::ApplyElementSummon(int iIndex, int iTargetIndex)
 	lpTargetObj->NextActionTime = 5000;
 
 	if ( this->m_iIncAndDecValue < 0 )
-	{
 		this->m_iIncAndDecValue = 10;
-	}
 
-	BYTE cX;
-	BYTE cY;
+	BYTE cX=0;
+	BYTE cY=0;
 	BOOL bGetPosition = FALSE;
 	int iCount = 100;
 
@@ -690,6 +671,8 @@ BOOL TMonsterSkillElement::ApplyElementSummon(int iIndex, int iTargetIndex)
 	lpTargetObj->TY = lpTargetObj->Y;
 	lpTargetObj->StartX = lpTargetObj->X;
 	lpTargetObj->StartY = lpTargetObj->Y;
+		//lpTargetObj->m_OldX = lpTargetObj->X;
+		//lpTargetObj->m_OldY = lpTargetObj->Y;
 
 	gObjMonsterHitDamageInit(lpTargetObj);
 	CreateFrustrum(lpTargetObj->X, lpTargetObj->Y, lpTargetObj->m_Index);
@@ -701,15 +684,12 @@ BOOL TMonsterSkillElement::ApplyElementSummon(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementPush(int iIndex, int iTargetIndex)
 {
 	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
-	
-	if ( lpObj->Class == 459 && lpObj->Connected == 3 && lpObj->MapNumber == 58 && iIndex == iTargetIndex )//Season 4.5 addon
-	{
-		return FALSE;
-	}
 
 	if ( this->m_iNullifiedSkill == -1 )
 		this->m_iNullifiedSkill = 0;
@@ -729,41 +709,43 @@ BOOL TMonsterSkillElement::ApplyElementPush(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementStatEnergy(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	return FALSE;
 }
 
 BOOL TMonsterSkillElement::ApplyElementStatStrength(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	return FALSE;
 }
 
 BOOL TMonsterSkillElement::ApplyElementStatDexiterity(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	return FALSE;
 }
 
 BOOL TMonsterSkillElement::ApplyElementStatVitality(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
+	//LPOBJ lpObj = &gObj[iIndex];
+	//LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	return FALSE;
 }
 
+
 BOOL TMonsterSkillElement::ApplyElementRemoveSkill(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	gObjUseSkill.RemoveSpecificSkillState(lpTargetObj, this->m_iNullifiedSkill);
@@ -771,9 +753,9 @@ BOOL TMonsterSkillElement::ApplyElementRemoveSkill(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
 BOOL TMonsterSkillElement::ApplyElementResistSkill(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementResistNumber = this->m_iNullifiedSkill;
@@ -782,49 +764,33 @@ BOOL TMonsterSkillElement::ApplyElementResistSkill(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
 BOOL TMonsterSkillElement::ApplyElementImmuneSkill(int iIndex, int iTargetIndex)
 {
-	LPOBJ lpObj = &gObj[iIndex];
 	LPOBJ lpTargetObj = &gObj[iTargetIndex];
 
 	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementImmuneNumber = this->m_iNullifiedSkill;
 	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementImmuneTime = this->m_iContinuanceTime;
+	//lpTargetObj->m_ViewSkillState |= 0x200000;
+#pragma message(" [TO FIX] !!! : Set Immunity proper skill view state missing")
+	//GCSkillInfoSend(lpTargetObj, 1, 0x200000);		//???
 
-	int SkillImmune = 0;
-
-	if(this->m_iContinuanceTime == -1)
-	{
-		SkillImmune = -10;
-	}
-	else
-	{
-		SkillImmune = this->m_iContinuanceTime / 1000;
-	}
-
-	gObjAddBuffEffect(lpTargetObj, AT_IMMUNE_MAGIC, 0, 0, 0, 0, SkillImmune);
 	return FALSE;
 }
+
 
 BOOL TMonsterSkillElement::ApplyElementTeleportSkill(int iIndex, int iTargetIndex)
 {
 	if ( !OBJMAX_RANGE(iIndex))
 		return FALSE;
 
-	if(gObjCheckUsedBuffEffect(&gObj[iIndex], AT_STUN) == 1)
-	{
+	if ( gObj[iIndex].m_iSkillStunTime > 0 )
 		return FALSE;
-	}
-
-	if(gObjCheckUsedBuffEffect(&gObj[iIndex], AT_SLEEP) == 1)
-	{
-		return FALSE;
-	}
 
 	LPOBJ lpObj = &gObj[iIndex];
 	BYTE x;
 	BYTE y;
 	int depth = rand()%4 + 3;
-	PMSG_MAGICATTACK_RESULT pAttack;
 
 	if ( (rand()%2) == 0 )
 		x = lpObj->X + depth;
@@ -844,18 +810,40 @@ BOOL TMonsterSkillElement::ApplyElementTeleportSkill(int iIndex, int iTargetInde
 		return FALSE;
 	}
 
-	PHeadSetBE((LPBYTE)&pAttack, 0x19, sizeof(pAttack));
-	pAttack.MagicNumberH = SET_NUMBERH(6);
-	pAttack.MagicNumberL = SET_NUMBERL(6);
-	pAttack.SourceNumberH = SET_NUMBERH(iIndex);
-	pAttack.SourceNumberL = SET_NUMBERL(iIndex);
-	pAttack.TargetNumberH = SET_NUMBERH(iIndex);
-	pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+	if(ReadConfig.S5E2 == TRUE)
+	{
+		PMSG_MAGICATTACK_RESULT_S5E2 pAttack;
+		PHeadSetBE((LPBYTE)&pAttack, 0x19, sizeof(pAttack));
+		//pAttack.MagicNumber = 6;
+		pAttack.MagicNumberH = 0;
+		pAttack.MagicNumberL = 6;
+		pAttack.SourceNumberH = SET_NUMBERH(iIndex);
+		pAttack.SourceNumberL = SET_NUMBERL(iIndex);
+		pAttack.TargetNumberH = SET_NUMBERH(iIndex);
+		pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+		pAttack.UnkS5E2 = 1;
 
-	if ( lpObj->Type == OBJ_USER )
-		DataSend(iIndex, (LPBYTE)&pAttack, pAttack.h.size);	
+		if ( lpObj->Type == OBJ_USER )
+			DataSend(iIndex, (LPBYTE)&pAttack, pAttack.h.size);	
 
-	MsgSendV2(lpObj, (LPBYTE)&pAttack, pAttack.h.size);	
+		MsgSendV2(lpObj, (LPBYTE)&pAttack, pAttack.h.size);	
+	}else
+	{
+		PMSG_MAGICATTACK_RESULT pAttack;
+		PHeadSetBE((LPBYTE)&pAttack, 0x19, sizeof(pAttack));
+		//pAttack.MagicNumber = 6;
+		pAttack.MagicNumberH = 0;
+		pAttack.MagicNumberL = 6;
+		pAttack.SourceNumberH = SET_NUMBERH(iIndex);
+		pAttack.SourceNumberL = SET_NUMBERL(iIndex);
+		pAttack.TargetNumberH = SET_NUMBERH(iIndex);
+		pAttack.TargetNumberL = SET_NUMBERL(iIndex);
+
+		if ( lpObj->Type == OBJ_USER )
+			DataSend(iIndex, (LPBYTE)&pAttack, pAttack.h.size);	
+
+		MsgSendV2(lpObj, (LPBYTE)&pAttack, pAttack.h.size);	
+	}
 
 	LogAddC(2, "[%s] Warp [%d,%d] -> [%d,%d]",
 		lpObj->Name, lpObj->X, lpObj->Y, x, y);
@@ -865,6 +853,7 @@ BOOL TMonsterSkillElement::ApplyElementTeleportSkill(int iIndex, int iTargetInde
 
 	return FALSE;
 }
+
 
 BOOL TMonsterSkillElement::ApplyElementDoubleHP(int iIndex, int iTargetIndex)
 {
@@ -880,6 +869,8 @@ BOOL TMonsterSkillElement::ApplyElementDoubleHP(int iIndex, int iTargetIndex)
 	return FALSE;
 }
 
+
+
 BOOL TMonsterSkillElement::ApplyElementPoison(int iIndex, int iTargetIndex)
 {
 	LPOBJ lpObj = &gObj[iIndex];
@@ -888,14 +879,18 @@ BOOL TMonsterSkillElement::ApplyElementPoison(int iIndex, int iTargetIndex)
 	if ( lpTargetObj->Connected < PLAYER_PLAYING )
 		return FALSE;
 
-	if(gObjCheckUsedBuffEffect(lpTargetObj, AT_POISON) == 0)
+	if ( lpTargetObj->m_PoisonType == 0 )
 	{
 		if ( this->m_iNullifiedSkill  < 1 )
 		{
-			if ( retResistance(lpTargetObj, 1) == 0 )
+			if ( retResistance(lpTargetObj, R_POISON) == 0 )
 			{
+				lpTargetObj->m_PoisonType = 1;
+				lpTargetObj->m_PoisonBeattackCount = this->m_iIncAndDecValue;
 				lpTargetObj->lpAttackObj = lpObj;
-				gObjAddBuffEffect(lpTargetObj, AT_POISON, 19, 3, 0, 0, this->m_iIncAndDecValue);
+				lpTargetObj->m_ViewSkillState |= 1;
+
+				GCSkillInfoSend(lpTargetObj, 1, 0x37);
 			}
 		}
 		else
@@ -906,6 +901,8 @@ BOOL TMonsterSkillElement::ApplyElementPoison(int iIndex, int iTargetIndex)
 
 	return FALSE;
 }
+
+
 
 BOOL TMonsterSkillElement::ApplyElementNormalAttack(int iIndex, int iTargetIndex)
 {
@@ -920,17 +917,12 @@ BOOL TMonsterSkillElement::ApplyElementNormalAttack(int iIndex, int iTargetIndex
 
 	if ( this->m_iIncAndDecType != -1 && this->m_iIncAndDecValue != -1 )
 	{
-		//Season 4.5 changed
-		if(lpTargetObj->pInventory[9].m_Type == ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue) && lpTargetObj->pInventory[9].m_Durability > 0.0 
-		|| lpTargetObj->pInventory[10].m_Type == ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue)	&& lpTargetObj->pInventory[10].m_Durability > 0.0 
-		|| lpTargetObj->pInventory[11].m_Type == ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue)	&& lpTargetObj->pInventory[11].m_Durability > 0.0)  
-		{
-			
-		}
-		else
+		if ( lpTargetObj->pInventory[9].m_Type != ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue)  &&
+			 lpTargetObj->pInventory[10].m_Type != ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue) &&
+			 lpTargetObj->pInventory[11].m_Type != ITEMGET(this->m_iIncAndDecType, this->m_iIncAndDecValue) )
 		{
 			lpTargetObj->Life = 0;
-			gObjLifeCheck(lpTargetObj, lpObj, 100, 0, 0, 0, 0 ,0);
+			gObjLifeCheck(lpTargetObj, lpObj, 100, DAMAGE_TYPE_REG, 0, 0, 0 ,0);
 
 			return FALSE;
 		}
@@ -938,38 +930,12 @@ BOOL TMonsterSkillElement::ApplyElementNormalAttack(int iIndex, int iTargetIndex
 
 	if ( this->m_iNullifiedSkill == 0 )
 	{
-		gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0 ,0, 0, 0);
+		gObjAttack(lpObj, lpTargetObj, 0, 0, 0, 0 ,0);
 	}
 	else
 	{
 		gObjAddMsgSendDelay(lpObj, 55, iTargetIndex, this->m_iNullifiedSkill, 0);
 	}
-	
 
-	return FALSE;
-}
-
-//005E1480  - identical
-BOOL TMonsterSkillElement::ApplyElementBerserk(int iIndex, int iTargetIndex)
-{
-	LPOBJ lpObj = &gObj[iIndex];
-	LPOBJ lpTargetObj = &gObj[iTargetIndex];
-
-	lpTargetObj->m_MonsterSkillElementInfo.m_iSkillElementBerserkTime = this->m_iContinuanceTime;
-
-	int DurationTime = 0;
-	
-	if(this->m_iContinuanceTime == -1)
-	{
-		DurationTime = -10;
-	}
-	else
-	{
-		DurationTime = this->m_iContinuanceTime / 1000;
-	}
-		
-	gObjAddBuffEffect(lpTargetObj, 63, 0, 0, 0, 0, DurationTime);
-	gObjAddBuffEffect(lpTargetObj, 64, 0, 0, 0, 0, DurationTime);
-	
 	return FALSE;
 }

@@ -36,15 +36,15 @@ private:
 
 struct RINGMONSTER_DATA
 {
-	int m_iType;	// 0
-	BOOL m_bDoRegen;	// 4
-	BOOL m_bDoAttackFirst;	// 8
+	short m_iType;	// 0
+	BYTE m_bDoRegen;	// 4
+	BYTE m_bDoAttackFirst;	// 8
 };
 
 struct RINGMONSTER_EVENT_TIME
 {
-	int m_iHour;	// 0
-	int m_iMinute;	// 4
+	char m_iHour;	// 0
+	char m_iMinute;	// 4
 };
 
 class CRingAttackEvent
@@ -86,10 +86,10 @@ private:
 	int m_iTIME_MONSTER_TO_DEST;	// 100
 	int m_iTIME_TICK_COUNT;	// 104
 	int m_iTIME_NOTIFY_COUNT;	// 108
-	int m_iEVENT_STATE;	// 10C
-	int m_iMOVE_RAND_SIZE;	// 110
-	int m_iRADIUS_MIN;	// 114
-	int m_iRADIUS_MAX;	// 118
+	BYTE m_iEVENT_STATE;	// 10C
+	BYTE m_iMOVE_RAND_SIZE;	// 110
+	BYTE m_iRADIUS_MIN;	// 114
+	BYTE m_iRADIUS_MAX;	// 118
 	std::vector<RINGMONSTER_DATA> m_vtMonsterAddData;	// 11C
 	CRITICAL_SECTION m_critMonsterAddData;	// 12C
 	std::vector<RINGMONSTER_EVENT_TIME> m_vtEventTime;	// 144

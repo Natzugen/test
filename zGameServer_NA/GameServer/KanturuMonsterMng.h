@@ -9,6 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
 
 #include "KanturuObjInfo.h"
 
@@ -52,17 +53,17 @@ public:
 
 private:
 
-	int m_iMaxMonsterCount;	// 4
+	short m_iMaxMonsterCount;	// 4
 	KANTURU_MONSTER_SETBASE_INFO m_SetBaseInfo[MAX_KANTURU_MONSTER];	// 8
-	int m_iMayaObjIndex;	// 7D8
-	int m_bFileDataLoad;	// 7DC
+	short m_iMayaObjIndex;	// 7D8
+	BYTE m_bFileDataLoad;	// 7DC
 	CKanturuObjInfo m_KanturuMonster;	// 7E0
-	int m_iMaxRegenMonsterCount;	// 1468
-	int m_iAliveMonsterCount;	// 146C
+	short m_iAliveMonsterCount;	// 146C
 
 };
 
 
 extern CKanturuMonsterMng g_KanturuMonsterMng;
 
+#endif
 #endif // !defined(AFX_KANTURUMONSTERMNG_H__250ABD41_01B7_47A1_AB68_094FED15A3BC__INCLUDED_)

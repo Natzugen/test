@@ -9,6 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==1)
 
 #define MAX_CRYWOLF_OBJ_INFO	300
 
@@ -47,8 +48,9 @@ public:
 
 public:
 
-	int m_iObjCount;	// 0
-	int m_iObjIndex[MAX_CRYWOLF_OBJ_INFO];	// 4
+	short m_iObjCount;	// 0
+	short m_iObjIndex[MAX_CRYWOLF_OBJ_INFO];	// 4
 };
 
+#endif
 #endif // !defined(AFX_CRYWOLFOBJINFO_H__2EEB27CF_775F_4F38_AB30_14D63464E751__INCLUDED_)

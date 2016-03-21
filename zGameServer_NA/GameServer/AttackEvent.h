@@ -31,12 +31,12 @@ private:
 	bool EventState;	// 4
 	DWORD EventStartTime;	// 8
 	BYTE m_MapNumber;	// C
-	int m_BossMap55;	// 10
-	int m_BossMapX55;	// 14
-	int m_BossMapY55;	// 18
-	int m_BossMap53;	// 1C
-	int m_BossMapX53;	// 20
-	int m_BossMapY53;	// 24
+	BYTE m_BossMap55;	// 10
+	BYTE m_BossMapX55;	// 14
+	BYTE m_BossMapY55;	// 18
+	BYTE m_BossMap53;	// 1C
+	BYTE m_BossMapX53;	// 20
+	BYTE m_BossMapY53;	// 24
 	BOOL m_bMenualStart;	// 28
 
 };

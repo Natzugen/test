@@ -1,4 +1,10 @@
+// GameServer.h
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #ifndef	GAMESERVER_H
+
 #define	GAMESERVER_H
 
 #if _MSC_VER > 1000
@@ -6,10 +12,22 @@
 #endif // _MSC_VER > 1000
 
 #include "RingAttackEvent.h"
-#include "XMasAttackEvent.h"
-#include "BlueEvent.h"
-
 #include "CWhatsUpDummyServer.h"
+
+//***************************************************
+// GLOBAL DEFINE SETTINGS
+//***************************************************
+
+#define LOG_INMEDIATLY	1
+
+// Protocol Trace
+//--------------------------
+//#define TRACE_PROTOCOL	0
+
+#define HACK_LOG_SERVER_ENABLED	0
+#define CSAUTH_VERSION	1
+
+//***************************************************
 
 #define WM_GM_SERVER_MSG_PROC			0x401
 #define WM_GM_CLIENT_MSG_PROC			0x402
@@ -36,12 +54,10 @@
 #define WM_CONNECT_DATASERVER			0x3EF
 #define WM_GUILD_LIST_REQUEST			0x3F0
 #define WM_AI_MONSTER_MOVE_PROC			0x3F2
+#define WM_GSCS_SYNC					0x3F3
 
-#define WM_CONNECTMEMBERUPDATE			0x3F3
-
-#define WM_VIPSTATUSUPDATE				0x3F4
-#define WM_VIPSTATUSREMOVE				0x3F5
-
+//*********** DO NOT CHANGE THIS *********************
+#define FINAL_PATH "..\\data\\"
 
 extern char ExDbIp[256];
 extern char DataServerIp2[256];
@@ -54,15 +70,8 @@ extern int gCurPaintPlayer;
 extern int gCurPaintType;
 extern int gCurPaintMapNumber;
 extern CRingMonsterHerd g_MonsterHerdTest;
-
 extern CRingAttackEvent g_RingAttackEvent;
-
-extern CXMasAttackEvent g_XMasAttackEvent;
-
-extern CBlueEvent g_BlueEvent;
-
 extern CWhatsUpDummyServer gWhatsUpDummyServer;
-
 
 extern HINSTANCE hInst; // Current Instance
 extern HWND ghWnd;
@@ -74,6 +83,12 @@ extern char szWindowClass[64];
 #define EVENT_CHIP_SERVER_PORT 44456
 #define MAX_LENGTH_SN 100
 
+
 BOOL AllServerStart(void); // Start all Servers
+void WriteMemoryInt(DWORD Offset, DWORD bValue, DWORD bValueMax, DWORD OffsetLen);
+void DestroyFunction(DWORD Address, BYTE ReplaceTo);
+//void PrintDestroyFunction(DWORD Address, int Size);
+void ReplaceBytes(DWORD Address, BYTE ReplaceTo, int HowMany);
+bool GameServerCommandCase(INT cmd);
 
 #endif

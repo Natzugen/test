@@ -14,9 +14,12 @@ class TMonsterSkillElementInfo
 {
 
 public:
-	void SetSkillElement(int iSkillElement);//NEW
 
-	TMonsterSkillElementInfo();
+	TMonsterSkillElementInfo()
+	{
+		// Reset Data
+		this->Reset();
+	}
 
 	void  Reset();
 	void  ResetDefense();
@@ -27,48 +30,50 @@ public:
 	void  ResetImmune();
 	void  ResetResist();
 	void  ResetModifyStat();
-	void  ResetBerserkTime();//NEW
 	int  CheckDefenseTime();
 	int  CheckAttackTime();
 	int  CheckAutoHPTime();
 	int  CheckAutoMPTime();
 	int  CheckAutoAGTime();
+	int  CheckImmuneTime();
 	int  CheckResistTime();
 	int  CheckModifyStatTime();
-	int	 CheckBerserkTime();//NEW
 	int  DecDefenseTime();
 	int  DecAttackTime();
 	int  DecAutoHPTime();
 	int  DecAutoMPTime();
 	int  DecAutoAGTime();
+	int  DecImmuneTime();
 	int  DecResistTime();
 	int  DecModifyStatTime();
-	int	 DecBerserkTime();//NEW
+
 	static void CheckSkillElementInfoProc(struct OBJECTSTRUCT * lpObj);
 
 public:
 
-	int m_iSkillElementDefense;	// 0
+	short m_iSkillElementDefense;	// 0
 	int m_iSkillElementDefenseTime;	// 4
-	int m_iSkillElementAttack;	// 8
+	short m_iSkillElementAttack;	// 8
 	int m_iSkillElementAttackTime;	// C
-	int m_iSkillElementAutoHP;	// 10
-	int m_iSkillElementAutoHPCycle;	// 14
+	short m_iSkillElementAutoHP;	// 10
+	short m_iSkillElementAutoHPCycle;	// 14
 	int m_iSkillElementAutoHPTime;	// 18
-	int m_iSkillElementAutoMP;	// 1C
-	int m_iSkillElementAutoMPCycle;	// 20
+	short m_iSkillElementAutoMP;	// 1C
+	short m_iSkillElementAutoMPCycle;	// 20
 	int m_iSkillElementAutoMPTime;	// 24
-	int m_iSkillElementAutoAG;	// 28
-	int m_iSkillElementAutoAGCycle;	// 2C
+	short m_iSkillElementAutoAG;	// 28
+	short m_iSkillElementAutoAGCycle;	// 2C
 	int m_iSkillElementAutoAGTime;	// 30
-	int m_iSkillElementImmuneNumber;	// 34
+	short m_iSkillElementImmuneNumber;	// 34
 	int m_iSkillElementImmuneTime;	// 38
-	int m_iSkillElementResistNumber;	// 3C
+	short m_iSkillElementResistNumber;	// 3C
 	int m_iSkillElementResistTime;	// 40
-	int m_iSkillElementModifyStat;	// 44
-	int m_iSkillElementModifyStatType;	// 48
+	short m_iSkillElementModifyStat;	// 44
+	short m_iSkillElementModifyStatType;	// 48
 	int m_iSkillElementModifyStatTime;	// 4C
-	int m_iSkillElementBerserkTime; //50
+
+
+
 };
 
 

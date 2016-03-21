@@ -1,6 +1,5 @@
 // TMonsterAIGroup.cpp: implementation of the TMonsterAIGroup class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
+//	GS-N	1.00.18	JPN	0x0055FB90	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -47,7 +46,7 @@ BOOL TMonsterAIGroup::LoadData(LPSTR lpszFileName)
 	try
 	{
 		SMDToken Token;
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -167,7 +166,7 @@ BOOL TMonsterAIGroup::LoadData(LPSTR lpszFileName)
 
 		fclose(SMDFile);
 
-		LogAddC(2, "[Monster AI Group ] - %s file is Loaded", lpszFileName);
+		LogAddC(2, "[Monster AI Group] - %s file is Loaded", lpszFileName);
 
 		TMonsterAIGroup::s_bDataLoad = TRUE;
 	}
@@ -277,7 +276,7 @@ int TMonsterAIGroup::FindGroupLeader(int iGroupNumber)
 	if ( iGroupNumber < 0 || iGroupNumber >= MAX_MONSTER_AI_GROUP )
 	{
 		LogAddTD("[Monster AI Group] FindGroupLeader() Error - (GroupNumber=%d)", iGroupNumber);
-		return 0;
+		return 0;	// #error Change this to -1
 	}
 
 	for ( int i=0;i<MAX_MONSTER_AI_GROUP_MEMBER;i++)
@@ -299,7 +298,7 @@ int TMonsterAIGroup::FindGroupMemberObjectIndex(int iGroupNumber, int iGuid)
 	if ( iGroupNumber < 0 || iGroupNumber >= MAX_MONSTER_AI_GROUP )
 	{
 		LogAddTD("[Monster AI Group] FindGroupMemberObjectIndex() Error - (GroupNumber=%d Guid=%d)", iGroupNumber, iGuid);
-		return 0;
+		return 0;	// #error Change this to -1
 	}
 
 	for ( int i=0;i<MAX_MONSTER_AI_GROUP_MEMBER;i++)
@@ -455,8 +454,8 @@ void TMonsterAIGroup::Init(int iGroupNumber)
 			gObjViewportListProtocolDestroy(&gObj[iResult]);
 			gObjViewportClose(&gObj[iResult]);
 
-			BYTE cX;
-			BYTE cY;
+			BYTE cX=0;
+			BYTE cY=0;
 
 			if ( Memb.m_iCreateType == 1 )
 			{
@@ -467,7 +466,8 @@ void TMonsterAIGroup::Init(int iGroupNumber)
 				while ( iCount-- != 0 )
 				{
 					cX = ( rand() % (iRadius+1) ) * (((rand()%2==0)?-1:1)) + Memb.m_iStartX;
-					cY = ( rand() % (iRadius+1) ) * (((rand()%2==0)?-1:1)) + Memb.m_iStartX;
+					//cY = ( rand() % (iRadius+1) ) * (((rand()%2==0)?-1:1)) + Memb.m_iStartX;	// #error Change to m_iStartY
+					cY = ( rand() % (iRadius+1) ) * (((rand()%2==0)?-1:1)) + Memb.m_iStartY;	// #FIX
 
 					BYTE btMapAttr = MapC[Memb.m_iMapNumber].GetAttr(cX, cY);
 
@@ -502,9 +502,11 @@ void TMonsterAIGroup::Init(int iGroupNumber)
 			gObj[iResult].TY = gObj[iResult].Y;
 			gObj[iResult].StartX = gObj[iResult].X;
 			gObj[iResult].StartY = gObj[iResult].Y;
+				//gObj[iResult].m_OldX = gObj[iResult].X;
+				//gObj[iResult].m_OldY = gObj[iResult].Y;
 
 
-			gObjSetMonster(iResult, Memb.m_iClass);
+			gObjSetMonster(iResult, Memb.m_iClass,"TMonsterAIGroup::Init");
 
 			gObj[iResult].m_iGroupNumber = Memb.m_iGroupNumber;
 			gObj[iResult].m_iGroupMemberGuid = Memb.m_iGuid;
@@ -526,11 +528,11 @@ void TMonsterAIGroup::Init(int iGroupNumber)
 				continue;
 			}
 			
-//#if(_GSCS==0)
-			LogAddTD("[ KANTURU ][ SetAIMonster ] %s(Index:%d ObjIndex:%d) Map:%d-[%d][%d]",
+			#if (GS_CASTLE==0)
+			LogAddTD("[Kanturu][SetAIMonster] %s(Index:%d ObjIndex:%d) Map:%d-[%d][%d]",
 				gObj[iResult].Name, gObj[iResult].Class, iResult, gObj[iResult].MapNumber,
 				gObj[iResult].X, gObj[iResult].Y);
-//#endif
+			#endif
 		}
 	}
 }

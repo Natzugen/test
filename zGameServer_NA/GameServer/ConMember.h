@@ -20,10 +20,6 @@ public:
 	void Init();
 	BOOL IsMember(LPSTR AccountID);
 	void Load(LPSTR filename);
-	void InsertUser(char * AccountId);
-	void UpdateVipStatus();
-	void RemoveVipStatus();
-	void CheckVipStatus(char * AccountId, int aIndex);
 
 private:
 	

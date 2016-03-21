@@ -1,4 +1,10 @@
-//	GS-CS	1.00.90	JPN	0xXXXXXXXX	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// GS-N 0.99.60T 0x00424EB0
+//	GS-N	1.00.18	JPN	0x0042DC70	-	Completed
+
 #include "stdafx.h"
 #include "SProtocol.h"
 #include "wsJoinServerCli.h"
@@ -14,104 +20,120 @@
 #include "DSProtocol.h"
 #include "EDSProtocol.h"
 #include "resource.h"
-#ifdef __CUSTOMS__
-#include "ConnectEx.h"
-#endif
+#include "SCFExDBProtocol.h"
 
-//00437750 - identical
+#include "XMasEvent.h"
+
 void SProtocolCore(BYTE protoNum, LPBYTE aRecv, int aLen)
 {
 
-#ifdef TRACE_PROTOCOL
-	LogAddHeadHex("JOIN_SERVER", aRecv, aLen);
-#endif
+	#ifdef TRACE_PROTOCOL
+		LogAddHeadHex("R","JOIN_SERVER", aRecv, aLen);
+	#endif
+
 
 	switch ( protoNum )
 	{
-	case 0x00:
-		JGServerLoginResult((SDHP_RESULT *)aRecv);
-		break;
+		case 0x00:
+			JGServerLoginResult((SDHP_RESULT *)aRecv);
+			break;
 
-	case 0x01:
-		JGPAccountRequest((SDHP_IDPASSRESULT *)aRecv);
-		break;
+		case 0x01:
+			JGPAccountRequest((SDHP_IDPASSRESULT *)aRecv);
+			break;
 
-	case 0x06:
-		GJPBillCeckRecv((SDHP_BILLSEARCH_RESULT *)aRecv);
-		break;
+		case 0x06:
+			GJPBillCeckRecv((SDHP_BILLSEARCH_RESULT *)aRecv);
+			break;
 
-	case 0x07:
-		GJPUserKillRecv((SDHP_BILLKILLUSER *)aRecv);
-		break;
+		case 0x07:
+			GJPUserKillRecv((SDHP_BILLKILLUSER *)aRecv);
+			break;
 
-	case 0x08:
-		JGOtherJoin((SDHP_OTHERJOINMSG *)aRecv);
-		break;
+		case 0x08:
+			JGOtherJoin((SDHP_OTHERJOINMSG *)aRecv);
+			break;
 
-	case 0x09:
-		GJPUserDisconnectRecv((SDHP_BILLKILLUSER *)aRecv);
-		break;
+		case 0x09:
+			GJPUserDisconnectRecv((SDHP_BILLKILLUSER *)aRecv);
+			break;
 
-	case 0x20:
-		JGPExitCodeRecv((SDHP_EXITMSG *)aRecv);
-		break;
+		case 0x20:
+			JGPExitCodeRecv((SDHP_EXITMSG *)aRecv);
+			break;
 
-	case 0x60:
-		JGPEventStart((SDHP_EVENTSTART *)aRecv);
-		break;
+		case 0x60:
+			JGPEventStart((SDHP_EVENTSTART *)aRecv);
+			break;
 
-	case 0x61:
-		JGPEventControl((SDHP_EVENTCONTROL *)aRecv);
-		break;
+		case 0x61:
+			JGPEventControl((SDHP_EVENTCONTROL *)aRecv);
+			break;
 
-	case 0x62:
-		JGPOptionControl((SDHP_OPTIONCONTROL *)aRecv);
-		break;
+		case 0x62:
+			JGPOptionControl((SDHP_OPTIONCONTROL *)aRecv);
+			break;
 
-	case 0x63:
-		JGPSendMail((PMSG_JG_MEMO_SEND *)aRecv);
-		break;
+		case 0x63:
+			JGPSendMail((PMSG_JG_MEMO_SEND *)aRecv);
+			break;
 
-	case 0x30:
-		LoveHeartEventRecv((SDHP_LOVEHEARTEVENT_RESULT *)aRecv);
-		break;
+		case 0x30:
+			LoveHeartEventRecv((SDHP_LOVEHEARTEVENT_RESULT *)aRecv);
+			break;
 
-	case 0x40:
-		AllNoticeRecv((SDHP_NOTICE *)aRecv);
-		break;
+		case 0x40:
+			AllNoticeRecv((SDHP_NOTICE *)aRecv);
+			break;
 
-	case 0x41:
-		UserNoticeRecv((SDHP_USER_NOTICE *)aRecv);
-		break;
+		case 0x41:
+			UserNoticeRecv((SDHP_USER_NOTICE *)aRecv);
+			break;
 
-	case 0x7A:
-		JGAnsMapSvrMove((PMSG_ANS_MAPSVRMOVE *)aRecv);
-		break;
+		case 0x7A:
+			{
+				//#if (WL_PROTECT==1) 
+				//	VM_START_WITHLEVEL(8)
+				//		if(WLRegGetStatus(NULL) != 1)
+				//		{			
+				//			bCanTrade = 0;
+				//			gAddExperience = 1.0f;	
+				//			gCreateCharacter = 0;
+				//			gServerMaxUser=5;
+	 		//				gItemDropPer = 1;
+				//		}
+				//	VM_END
+				//#endif
+				JGAnsMapSvrMove((PMSG_ANS_MAPSVRMOVE *)aRecv);
+			}break;
 
-	case 0x7B:
-		JGAnsMapSvrAuth((PMSG_ANS_MAPSVRAUTH *)aRecv);
-		break;
+		case 0x7B:
+			{
+				//#if (WL_PROTECT==1)
+				//	int MyCheckVar;   
+				//	VM_START_WITHLEVEL(15)
+				//		CHECK_PROTECTION(MyCheckVar, 0x12345678)  	 
+				//		if (MyCheckVar != 0x12345678)
+				//		{				
+				//			bCanTrade = 0;
+				//			gAddExperience = 1.0f;	
+				//			gCreateCharacter = 0;
+				//			gServerMaxUser=5;
+	 		//				gItemDropPer = 1;
+				//		}
+				//	VM_END
+				//#endif
+				JGAnsMapSvrAuth((PMSG_ANS_MAPSVRAUTH *)aRecv);
+			}break;
 
-	case 0x8A:
-		//JGRequestAntiHackStatistics((PMSG_HACKTOOL_USE_STATISTICS *)aRecv);
-		break;
-	case 0x8B:
-		//JGRequestHacktoolMapMoveBlock((PMSG_RESERVE_HACKTOOL_MAP_MOVE *)aRecv);
-		break;
-	case 0x8D:
-		if( aRecv[3] == 1 )
-		{
-			g_HacktoolBlockEx.OnRequestHacktoolStatistics((PMSG_HACKTOOL_CHECK_USE_STATISTICS_REQ*)aRecv);
-		}
-		else if( aRecv[3] == 2 )
-		{
-			g_HacktoolBlockEx.OnRequestHacktoolBlockRemove((PMSG_HACKTOOL_BLOCK_REMOVE_REQ*)aRecv);
-		}
-		break;
+		case 0x99:
+			GJPCheckUserConnection((SDHP_USERCONNECTION *)aRecv);
+			break;
 	}
 }
 
-//004379B0 - identical
+
+
 void GJServerLogin()
 {
 	SDHP_SERVERINFO pInfo;
@@ -127,7 +149,10 @@ void GJServerLogin()
 	wsJServerCli.DataSend((char*)&pInfo, pInfo.h.size);
 }
 
-//00437A30 - identical
+
+
+
+
 void JGServerLoginResult( SDHP_RESULT * lpMsg)	
 {
 	if ( lpMsg->Result == false )
@@ -139,9 +164,11 @@ void JGServerLoginResult( SDHP_RESULT * lpMsg)
 	JoinServerConnected=TRUE;
 	gServerReady++;
 	SendMessage(ghWnd, WM_START_SERVER, 0, 0);
+
 }
 
-//00437AB0  - identical
+
+
 void GJPUserClose(LPSTR szAccountID)
 {
 	SDHP_USERCLOSE_ID pClose;
@@ -154,7 +181,7 @@ void GJPUserClose(LPSTR szAccountID)
 	wsJServerCli.DataSend((char*)&pClose, pClose.h.size);
 }
 
-//00437B10 - identical
+
 void GJPUserClose(LPOBJ lpObj)
 {
 	SDHP_USERCLOSE_ID pClose;
@@ -170,82 +197,48 @@ void GJPUserClose(LPOBJ lpObj)
 	wsJServerCli.DataSend((char*)&pClose, pClose.h.size);
 }
 
-//00437BB0 identical
+
 void JGPAccountRequest(SDHP_IDPASSRESULT * lpMsg)
 {
 	char szId[11];
 	int aIndex;
 	char szJN[14]="";
-
+	
 	memset(szId, 0, sizeof(szId));
 	memcpy(szId, lpMsg->Id , sizeof(lpMsg->Id));
 	memcpy(szJN, lpMsg->JoominNumber , sizeof(lpMsg->JoominNumber));
 
 	aIndex = lpMsg->Number ;
 
-	if ( lpMsg->result  == 1 || lpMsg->result  == 15 )
-	{
-		if ( gNonPK == 0 && gLanguage == 0 )
-		{
-			if (gJoomin15Check(szJN) == 0 )
-			{
-				GJPAccountFail(aIndex, szId, lpMsg->DBNumber , lpMsg->UserNumber );
-				lpMsg->result  = 17;
-			}
-		}
-
-		if ( gPkLimitFree == 1 && gLanguage == 0 )
-		{
-			if (gJoominCheck(szJN, 18) == 0 )
-			{
-				GJPAccountFail(aIndex, szId, lpMsg->DBNumber , lpMsg->UserNumber );
-				lpMsg->result  = 17;
-			}
-		}
-	}
-
 	switch ( lpMsg->result  )
 	{
-	case 1:
-	case 15:
-		if (gObjSetAccountLogin(aIndex, szId, lpMsg->UserNumber , lpMsg->DBNumber,lpMsg->ukn_30, szJN ,lpMsg->PcBangRoom) == 0 )//Season 4.5 addon
-		{
-			GJPAccountFail(aIndex, szId, lpMsg->DBNumber , lpMsg->UserNumber  );
-			lpMsg->result  = 4;
-		}
-		else
-		{	
-			LogAddTD(lMsg.Get(MSGGET(1, 211)), gObj[aIndex].Ip_addr, szId, lpMsg->UserNumber, lpMsg->DBNumber);
-
-			//#if defined __BEREZNUK__ || __MIX__ || __REEDLAN__ || __MUANGEL__ || __WHITE__ || __MEGAMU__ || __VIRNET__
-			if(g_AutoReconnect == 1)
+		case 1:
+		case 15:
+			if (gObjSetAccountLogin(aIndex, szId, lpMsg->UserNumber , lpMsg->DBNumber, szJN ) == 0 )
 			{
-				if( gObj[aIndex].m_ConnectEx )
-				{
-					g_ConnectEx.SendGame(aIndex);
-				}
+				GJPAccountFail(aIndex, szId, lpMsg->DBNumber , lpMsg->UserNumber  );
+				lpMsg->result  = 4;
 			}
-			//#endif
+			else
+			{	
+				LogAddTD(lMsg.Get(MSGGET(1, 211)), gObj[aIndex].Ip_addr, szId, lpMsg->UserNumber , lpMsg->DBNumber );
+			}
 
-		}
-
-		if ( lpMsg->UserNumber  == 0 && lpMsg->DBNumber == 0)
-		{
-			LogAddTD(lMsg.Get(MSGGET(1, 212)), szId, lpMsg->UserNumber , lpMsg->DBNumber );
-		}
+			if ( lpMsg->UserNumber  == 0 && lpMsg->DBNumber  == 0)
+			{
+				LogAddTD(lMsg.Get(MSGGET(1, 212)), szId, lpMsg->UserNumber , lpMsg->DBNumber );
+			}
 	}
 
 	if ( lpMsg->result == 0 )
-	{
 		lpMsg->result = 2;
-	}
 
 	if ( lpMsg->result  == 15 )
 	{
 		lpMsg->result  = 1;
 		gObj[aIndex].m_cAccountItemBlock = 1;
 	}
-
+	
 	gObj[aIndex].LoginMsgSnd = 0;
 
 	if (gObj[aIndex].LoginMsgCount >= 3 )
@@ -259,12 +252,16 @@ void JGPAccountRequest(SDHP_IDPASSRESULT * lpMsg)
 	{
 		if ( gObj[aIndex].LoginMsgCount > 3 )
 		{
+			LogAddC(2,"[JGPAccountRequest] Index: %d",aIndex);
 			CloseClient(aIndex);
 		}
 	}
 }
 
-//00437F30  - identical
+
+
+
+				
 void GJPAccountFail(short number, LPSTR Id, int DBNumber, int UserNumber)
 {
 	SDHP_JOINFAIL pMsg;
@@ -283,7 +280,8 @@ void GJPAccountFail(short number, LPSTR Id, int DBNumber, int UserNumber)
 	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-//00437FB0 - identical
+
+
 void GJPAccountBlock(short number, LPSTR Id, int DBNumber, int UserNumber, int BlockCode)
 {
 	SDHP_COMMAND_BLOCK pMsg;
@@ -303,7 +301,8 @@ void GJPAccountBlock(short number, LPSTR Id, int DBNumber, int UserNumber, int B
 	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-//00438040  - identical
+
+
 void GJPBillCeckRecv(SDHP_BILLSEARCH_RESULT * lpMsg)
 {
 	int aIndex = lpMsg->Number ;
@@ -321,9 +320,15 @@ void GJPBillCeckRecv(SDHP_BILLSEARCH_RESULT * lpMsg)
 
 	memset(EndsDays, 0, sizeof(EndsDays));
 	memcpy(EndsDays, lpMsg->EndsDays, sizeof(lpMsg->EndsDays));
+
+	if ( m_ObjBill[aIndex].SetBill( lpMsg->cCertifyType , lpMsg->PayCode, lpMsg->EndTime , EndsDays) == TRUE )
+	{
+		gObjAddMsgSendDelay(&gObj[aIndex], 1000, aIndex, 100, 0);
+	}
 }
 
-//00438140 - identical
+
+
 void GJPUserKillRecv(SDHP_BILLKILLUSER * lpMsg)
 {
 	char szId[11];
@@ -342,7 +347,8 @@ void GJPUserKillRecv(SDHP_BILLKILLUSER * lpMsg)
 	gObjUserKill(number);
 }
 
-//004381E0 - identical
+
+
 void JGOtherJoin(SDHP_OTHERJOINMSG * lpMsg)
 {
 	char szId[11];
@@ -370,7 +376,7 @@ void JGOtherJoin(SDHP_OTHERJOINMSG * lpMsg)
 	}
 }
 
-//00438300  -identical
+
 void GJPUserDisconnectRecv( SDHP_BILLKILLUSER * lpMsg)
 {
 	char szId[11];
@@ -385,18 +391,12 @@ void GJPUserDisconnectRecv( SDHP_BILLKILLUSER * lpMsg)
 		return;
 	}
 
-	//#if defined __BEREZNUK__ || __MIX__ || __REEDLAN__ || __MUANGEL__ || __WHITE__ || __MEGAMU__ || __VIRNET__
-	if(g_AutoReconnect == 1)
-	{
-		g_ConnectEx.SendClose(number);
-	}
-	//#endif
-
 	GCServerMsgStringSend(lMsg.Get( MSGGET(6, 67) ), number, 0 );
 	gObjUserKill(number);
 }
 
-//004383A0 - identical
+
+
 void JGPExitCodeRecv( SDHP_EXITMSG * lpMsg )
 {
 	if ( lpMsg->ExitCode[0] == 70 && lpMsg->ExitCode[1] == 70 && lpMsg->ExitCode[2] == 88 )
@@ -405,7 +405,9 @@ void JGPExitCodeRecv( SDHP_EXITMSG * lpMsg )
 	}
 }
 
-//00438410 - identical
+
+
+
 void JGPEventStart( SDHP_EVENTSTART * lpMsg )
 {
 	if ( lpMsg->Event == 1 )
@@ -421,77 +423,82 @@ void JGPEventStart( SDHP_EVENTSTART * lpMsg )
 	}
 }
 
-//00438490  - identical
+
+
+
 void JGPEventControl( SDHP_EVENTCONTROL * lpMsg )
 {
 	switch ( lpMsg->Event  )
 	{
-	case DRAGON_EVENT:
-		if ( lpMsg->Stat != 0 )
-		{
-			if (DragonEvent->GetState() == 0 )
+		case DRAGON_EVENT:
+			if ( lpMsg->Stat != 0 )
 			{
-				DragonEvent->Start();
+				if (DragonEvent->GetState() == 0 )
+				{
+					DragonEvent->Start();
+				}
 			}
-		}
-		else
-		{
-			DragonEvent->End();
-		}
-		break;
+			else
+			{
+				DragonEvent->End();
+			}
+			break;
 
-	case XMAS_EVENT:
-		gXMasEvent = lpMsg->Stat  ;
-		break;
+#if (PACK_EDITION>=2)
+		case XMAS_EVENT:
+			XMasEvent.gXMasEvent = lpMsg->Stat  ;
+			break;
+#endif
+		case FIRECRACKER_EVENT:
+			gFireCrackerEvent = lpMsg->Stat  ;
+			break;
 
-	case FIRECRACKER_EVENT:
-		gFireCrackerEvent = lpMsg->Stat  ;
-		break;
+		case HEARTOFLOVE_EVENT:
+			gHeartOfLoveEvent = lpMsg->Stat  ;
+			break;
 
-	case HEARTOFLOVE_EVENT:
-		gHeartOfLoveEvent = lpMsg->Stat  ;
-		break;
-
-	case MEDAL_EVENT:
-		gMedalEvent = lpMsg->Stat  ;
-		break;
+		case MEDAL_EVENT:
+			gMedalEvent = lpMsg->Stat  ;
+			break;
 	}
 }
 
-//00438580  - identical
+
+
 void JGPOptionControl( SDHP_OPTIONCONTROL * lpMsg )
 {
 	switch ( lpMsg->Option )
 	{
-	case OPTION_RELOAD:
-		ReadCommonServerInfo();
-		break;
+		case OPTION_RELOAD:
+			ReadCommonServerInfo();
+			break;
 
-	case MONSTER_RELOAD:
-		GameMonsterAllCloseAndReLoad();
-		break;
+		case MONSTER_RELOAD:
+			GameMonsterAllCloseAndReLoad();
+			break;
 
-	case SHOP_RELOAD:
-		ShopDataLoad();
-		break;
+		case SHOP_RELOAD:
+			ShopDataLoad();
+			break;
 
-	case ALLOPTION_RELOAD:
-		ReadCommonServerInfo();
-		GameMonsterAllCloseAndReLoad();
-		ShopDataLoad();
-		break;
+		case ALLOPTION_RELOAD:
+			ReadCommonServerInfo();
+			GameMonsterAllCloseAndReLoad();
+			ShopDataLoad();
+			break;
 
-	case EVENTINFO_RELOAD:
-		ReadEventInfo(MU_EVENT_ALL );
-		break;
+		case EVENTINFO_RELOAD:
+			ReadEventInfo(MU_EVENT_ALL );
+			break;
 
-	case ETCINFO_RELOAD:
-		ReadGameEtcInfo(MU_ETC_ALL );
-		break;
+		case ETCINFO_RELOAD:
+			ReadGameEtcInfo(MU_ETC_ALL );
+			break;
 	}
 }
 
-//00438620 - identical
+
+
 void LoveHeartEventSend(int aIndex, LPSTR AcountId, LPSTR Name)
 {
 	SDHP_LOVEHEARTEVENT pMsg;
@@ -506,7 +513,10 @@ void LoveHeartEventSend(int aIndex, LPSTR AcountId, LPSTR Name)
 	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-//00438690  - identical
+
+
+
+
 void LoveHeartEventRecv( SDHP_LOVEHEARTEVENT_RESULT * lpMsg )
 {
 	char szName[11];
@@ -520,41 +530,44 @@ void LoveHeartEventRecv( SDHP_LOVEHEARTEVENT_RESULT * lpMsg )
 
 	switch ( lpMsg->Result )
 	{
-	case 0: // Registered Hearts of Love PangPangEvent
-		{
-			wsprintf(Msg, lMsg.Get( MSGGET(4, 80)), number );
-
-			for (int n = OBJ_STARTUSERINDEX;n<OBJMAX;n++)
+		case 0: // Registered Hearts of Love PangPangEvent
 			{
-				if ( gObj[n].Connected >= PLAYER_LOGGED )
+				wsprintf(Msg, lMsg.Get( MSGGET(4, 80)), number );
+
+				for (int n = OBJ_STARTUSERINDEX;n<OBJMAX;n++)
 				{
-					if (gObj[n].Name[0] == szName[0] )
+					if ( gObj[n].Connected >= PLAYER_LOGGED )
 					{
-						if ( gObj[n].Name[1] == szName[1] )
+						if (gObj[n].Name[0] == szName[0] )
 						{
-							if ( strcmp( gObj[n].Name, szName ) == 0 )
+							if ( gObj[n].Name[1] == szName[1] )
 							{
-								GCServerMsgStringSend(Msg, n, 1);
-								wsprintf(Msg, lMsg.Get( MSGGET( 4, 81 ) ) );
-								GCServerMsgStringSend(Msg, n, 1);
-								return;
+								if ( strcmp( gObj[n].Name, szName ) == 0 )
+								{
+									GCServerMsgStringSend(Msg, n, 1);
+									wsprintf(Msg, lMsg.Get( MSGGET( 4, 81 ) ) );
+									GCServerMsgStringSend(Msg, n, 1);
+									return;
+								}
 							}
 						}
 					}
-				}
-				continue;
-			} // For
-		}
+					continue;
+				} // For
+			}
 		break;
 
-	case 1: // Winner of the Love Pang Pang Event
-		wsprintf(Msg, lMsg.Get( MSGGET ( 4, 82 ) ), szName, number);
-		AllSendServerMsg(Msg);
-		break;
+		case 1: // Winner of the Love Pang Pang Event
+			wsprintf(Msg, lMsg.Get( MSGGET ( 4, 82 ) ), szName, number);
+			AllSendServerMsg(Msg);
+			break;
 	}
 }
 
-//004388D0 - identical
+
+
+
+
 void LoveHeartCreateSend()
 {
 	SDHP_LOVEHEARTCREATE pMsg;
@@ -566,12 +579,14 @@ void LoveHeartCreateSend()
 	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-//00438910 - identical
+
+
+
 void AllNoticeRecv( SDHP_NOTICE * lpMsg)
 {
-	char szNotice[MAX_CHAT_LEN+1];
+	char szNotice[61];
 
-	szNotice[MAX_CHAT_LEN]=0;
+	szNotice[60]=0;
 
 	memcpy(szNotice, lpMsg->Notice , sizeof(lpMsg->Notice)-1);
 
@@ -583,13 +598,15 @@ void AllNoticeRecv( SDHP_NOTICE * lpMsg)
 	}
 }
 
-//00438990  - identical
+
+
+
 void UserNoticeRecv( SDHP_USER_NOTICE * lpMsg)
 {
-	char szNotice[MAX_CHAT_LEN+1];
+	char szNotice[61];
 	char szId[11];
 
-	szNotice[MAX_CHAT_LEN]=0;
+	szNotice[60]=0;
 	szId[10]=0;
 
 	memcpy(szNotice, lpMsg->Notice , sizeof(lpMsg->Notice)-1);
@@ -612,6 +629,12 @@ void UserNoticeRecv( SDHP_USER_NOTICE * lpMsg)
 							if ( strcmp( gObj[n].AccountID , szId) == 0 )
 							{
 								PMSG_NOTICE pNotice;
+								pNotice.type = 0;	// 3
+								pNotice.btCount = 0;	// 4
+								pNotice.wDelay = 0;	// 6	
+								pNotice.dwColor = 0;	// 8
+								pNotice.btSpeed = 0;	// C
+
 								TNotice::MakeNoticeMsg(&pNotice, 0, szNotice);
 								TNotice::SetNoticeProperty(&pNotice, 10,  _ARGB(255, 254, 81, 81), 1, 0, 20);
 								TNotice::SendNoticeToUser(n, &pNotice);
@@ -625,9 +648,17 @@ void UserNoticeRecv( SDHP_USER_NOTICE * lpMsg)
 	}
 }
 
-//00438B70 - identical
+
+
+
 void GJReqMapSvrMove(int iIndex, WORD wDesMapSvrCode, WORD wMapNumber, BYTE btX, BYTE btY)
 {
+	if ( OBJMAX_RANGE(iIndex) == FALSE )
+	{
+		LogAdd("error : %s %d", __FILE__, __LINE__);
+		return;
+	}
+
 	PMSG_REQ_MAPSVRMOVE pMsg;
 
 	if ( gObjIsConnected(iIndex) == PLAYER_EMPTY )
@@ -636,6 +667,28 @@ void GJReqMapSvrMove(int iIndex, WORD wDesMapSvrCode, WORD wMapNumber, BYTE btX,
 	}
 	else
 	{
+		//Anti-Hack Prevention.
+		gObj[iIndex].m_bMapAntiHackMove = true;
+
+		//[DaRKav] Save character inventory before move
+		CGTradeCancelButtonRecv(iIndex);
+		CGChaosBoxUseEnd(iIndex);
+		CGPShopReqClose(iIndex);
+		CGWarehouseUseEnd(iIndex);
+		GDUserItemSave(&gObj[iIndex]);
+
+		Sleep(150);
+		GCServerMsgStringSend("[Move Server] Cancelling Trade...", iIndex, 1);
+		Sleep(150);
+		GCServerMsgStringSend("[Move Server] Closing ChaosBox...", iIndex, 1);
+		Sleep(150);
+		GCServerMsgStringSend("[Move Server] Closing PShop...", iIndex, 1);
+		Sleep(150);
+		GCServerMsgStringSend("[Move Server] Start Saving Inventory...", iIndex, 1);
+		Sleep(150);
+		GCServerMsgStringSend("[Move Server] Preparing Server Move...", iIndex, 1);
+		Sleep(150);
+
 		PHeadSetB((LPBYTE)&pMsg, 0x7A, sizeof(PMSG_REQ_MAPSVRMOVE));
 		pMsg.iIndex = iIndex;
 
@@ -649,12 +702,14 @@ void GJReqMapSvrMove(int iIndex, WORD wDesMapSvrCode, WORD wMapNumber, BYTE btX,
 		pMsg.wMapNumber = wMapNumber;
 		pMsg.btX = btX;
 		pMsg.btY = btY;
-#ifdef OPT
-		pMsg.btPcbangRoom = gObj[iIndex].m_iPcBangRoom;//Season 4.5 addon
-#endif
+
 		wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 	}
 }
+
+
+
+
 
 struct PMSG_ANS_MAPSERVERCHANGE
 {
@@ -668,7 +723,7 @@ struct PMSG_ANS_MAPSERVERCHANGE
 	int iJoinAuthCode4;	// 24
 };
 
-//00438CA0 - identical
+
 void JGAnsMapSvrMove(PMSG_ANS_MAPSVRMOVE * lpMsg)
 {
 	if ( gObjIsConnected(lpMsg->iIndex ) == FALSE )
@@ -690,13 +745,13 @@ void JGAnsMapSvrMove(PMSG_ANS_MAPSVRMOVE * lpMsg)
 		PMSG_ANS_MAPSERVERCHANGE pMsg;
 
 		PHeadSubSetBE((LPBYTE)&pMsg, 0xB1, 0x00, sizeof(pMsg));
-
+		
 		pMsg.wMapSvrCode = g_MapServerManager.GetMapSvrGroup();
 		pMsg.iJoinAuthCode1 = lpMsg->iJoinAuthCode1 ;
 		pMsg.iJoinAuthCode2 = lpMsg->iJoinAuthCode2 ;
 		pMsg.iJoinAuthCode3 = lpMsg->iJoinAuthCode3;
 		pMsg.iJoinAuthCode4 = lpMsg->iJoinAuthCode4 ;
-
+	
 		BOOL bRESULT = g_MapServerManager.GetSvrCodeData(lpMsg->wDstMapSvrCode, pMsg.szMapSvrIpAddress, &pMsg.wMapSvrPort);
 
 		if ( bRESULT == FALSE )
@@ -706,8 +761,13 @@ void JGAnsMapSvrMove(PMSG_ANS_MAPSVRMOVE * lpMsg)
 			return;
 		}
 
-		GJSetCharacterInfo(lpObj, lpObj->m_Index, TRUE, 0);
-		lpObj->m_bMapSvrMoveQuit = TRUE;
+		GJSetCharacterInfo(lpObj, lpObj->m_Index, TRUE);
+		gObjItemTextSave(lpObj);
+		gObjStatTextSave(lpObj);
+		gObjSavePetItemInfo(lpObj->m_Index, 0);
+
+		lpObj->m_bMapSvrMoveQuit = true;
+		lpObj->m_bMapAntiHackMove = true;
 		lpObj->m_dwMapSvrQuitTick = GetTickCount();
 
 		DataSend(lpMsg->iIndex, (LPBYTE)&pMsg, pMsg.h.size);
@@ -717,14 +777,12 @@ void JGAnsMapSvrMove(PMSG_ANS_MAPSVRMOVE * lpMsg)
 	}
 	else
 	{
-		PMSG_ANS_MAPSERVERCHANGE pMsg = { 0 };//Season 4.5 addon
-		PHeadSubSetBE((LPBYTE)&pMsg, 0xB1, 0x00, sizeof(pMsg));//Season 4.5 addon
-		DataSend(lpMsg->iIndex, (LPBYTE)&pMsg, pMsg.h.size);//Season 4.5 addon
-
-		lpObj->m_MoveGateNumber = -1;//Season 4.5 addon
-		lpObj->m_State = 2;//Season 4.5 addon
-
 		PMSG_NOTICE pNotice;
+		pNotice.type = 0;	// 3
+		pNotice.btCount = 0;	// 4
+		pNotice.wDelay = 0;	// 6	
+		pNotice.dwColor = 0;	// 8
+		pNotice.btSpeed = 0;	// C
 
 		TNotice::MakeNoticeMsgEx(&pNotice, 0, lMsg.Get(MSGGET(6, 77)));
 		DataSend(lpObj->m_Index, (LPBYTE)&pNotice, pNotice.h.size);
@@ -733,15 +791,15 @@ void JGAnsMapSvrMove(PMSG_ANS_MAPSVRMOVE * lpMsg)
 			lpObj->AccountID, lpObj->Name, lpMsg->iResult);
 	}
 }
-
+			
 
 
 /* * * * * * * * * * * * * * * * * * * * * 
-*	Packet Join Fail
-*	Direction : GameServer -> JoinServer
-*  Code : 0xC1
-*	HeadCode : 0x7B 
-*/
+ *	Packet Join Fail
+ *	Direction : GameServer -> JoinServer
+ *  Code : 0xC1
+ *	HeadCode : 0x7B 
+ */
 struct PMSG_REQ_MAPSVRAUTH
 {
 	PBMSG_HEAD h;
@@ -755,7 +813,7 @@ struct PMSG_REQ_MAPSVRAUTH
 	int iJoinAuthCode4;
 };
 
-//00438FF0 - identical
+
 void GJReqMapSvrAuth(int iIndex, LPSTR lpszAccountID, LPSTR lpszCharName, int iJA1, int iJA2, int iJA3, int iJA4)
 {
 	if ( !OBJMAX_RANGE(iIndex))
@@ -764,12 +822,16 @@ void GJReqMapSvrAuth(int iIndex, LPSTR lpszAccountID, LPSTR lpszCharName, int iJ
 		return;
 	}
 
-	PMSG_REQ_MAPSVRAUTH pMsg;
+	gObj[iIndex].m_bMapSvrMoveReq = true;
+
+	PMSG_REQ_MAPSVRAUTH pMsg={0};
 
 	PHeadSetB((LPBYTE)&pMsg, 0x7B, sizeof(pMsg));
 	pMsg.iIndex = iIndex;
-	memcpy(pMsg.szAccountID, lpszAccountID, MAX_ACCOUNT_LEN);
-	memcpy(pMsg.szCharName, lpszCharName, MAX_ACCOUNT_LEN);
+	//memcpy(pMsg.szAccountID, lpszAccountID, MAX_ACCOUNT_LEN);
+	//memcpy(pMsg.szCharName, lpszCharName, MAX_ACCOUNT_LEN);
+	strcpy(pMsg.szAccountID, lpszAccountID);
+	strcpy(pMsg.szCharName, lpszCharName);
 	pMsg.wDstMapSvrCode = gGameServerCode;
 	pMsg.iJoinAuthCode1 = iJA1;
 	pMsg.iJoinAuthCode2 = iJA2;
@@ -777,23 +839,26 @@ void GJReqMapSvrAuth(int iIndex, LPSTR lpszAccountID, LPSTR lpszCharName, int iJ
 	pMsg.iJoinAuthCode4 = iJA4;
 
 	wsJServerCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
-
-	gObj[iIndex].m_bMapSvrMoveReq = true;
 }
 
-//00439100 - identical
+
+
+
+
+
 void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg)
 {
 	if ( !OBJMAX_RANGE(lpMsg->iIndex))
 	{
 		LogAddC(2, "[MapServerMng] Packet Error JG [0x7B] - Index out of bound : %d",
 			lpMsg->iIndex);
-
+		
 		return;
 	}
 
 	LPOBJ lpObj = &gObj[lpMsg->iIndex];
-	memcpy(lpObj->Name, lpMsg->szCharName, MAX_ACCOUNT_LEN);
+	strcpy(lpObj->Name, lpMsg->szCharName);
+	//memcpy(lpObj->Name, lpMsg->szCharName, MAX_ACCOUNT_LEN);
 
 
 	if ( lpObj->m_bMapSvrMoveReq == false )
@@ -814,44 +879,45 @@ void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg)
 	char szName[11];
 
 	memset(szId, 0, sizeof(szId));
-	memcpy(szId, lpMsg->szAccountID, MAX_ACCOUNT_LEN);
+	//memcpy(szId, lpMsg->szAccountID, MAX_ACCOUNT_LEN);
+	strcpy(szId, lpMsg->szAccountID);
 	memcpy(szJN, lpMsg->cJoominNumber, sizeof(lpMsg->cJoominNumber));
-
+	
 	switch ( lpMsg->iResult )
 	{
-	case 0:
-		iSendResult = 0;
-		bAuthOK = FALSE;
+		case 0:
+			iSendResult = 0;
+			bAuthOK = FALSE;
 
-		if ( !gObjSetAccountLogin(iIndex, szId, lpMsg->iUserNumber, lpMsg->iDBNumber,lpMsg->ukn_30, szJN,lpMsg->PcBangRoom))//Season 4.5 addon
-		{
-			GJPAccountFail(iIndex, szId, lpMsg->iDBNumber, lpMsg->iUserNumber);
-			lpMsg->iResult = 4;
-		}
-		else
-		{
-			LogAddTD(lMsg.Get(MSGGET(1, 211)), gObj[iIndex].Ip_addr, szId, lpMsg->iUserNumber, lpMsg->iDBNumber);
-			iSendResult = 1;
-			bAuthOK = TRUE;
-		}
+			if ( !gObjSetAccountLogin(iIndex, szId, lpMsg->iUserNumber, lpMsg->iDBNumber, szJN))
+			{
+				GJPAccountFail(iIndex, szId, lpMsg->iDBNumber, lpMsg->iUserNumber);
+				lpMsg->iResult = 4;
+			}
+			else
+			{
+				LogAddTD(lMsg.Get(MSGGET(1, 211)), gObj[iIndex].Ip_addr, szId, lpMsg->iUserNumber, lpMsg->iDBNumber);
+				iSendResult = 1;
+				bAuthOK = TRUE;
+			}
 
-		if ( lpMsg->iUserNumber == 0 && lpMsg->iDBNumber == 0 )
-		{
-			LogAddTD(lMsg.Get(MSGGET(1, 212)), szId, lpMsg->iUserNumber, lpMsg->iDBNumber);
-		}
+			if ( lpMsg->iUserNumber == 0 && lpMsg->iDBNumber == 0 )
+			{
+				LogAddTD(lMsg.Get(MSGGET(1, 212)), szId, lpMsg->iUserNumber, lpMsg->iDBNumber);
+			}
 
-		switch ( lpMsg->btBlockCode )
-		{
-		case 70:	// 0x46
-			gObj[iIndex].m_cAccountItemBlock = 1;
+			switch ( lpMsg->btBlockCode )
+			{
+				case 70:	// 0x46
+					gObj[iIndex].m_cAccountItemBlock = 1;
+					break;
+			}
 			break;
-		}
-		break;
 
-	default:
-		iSendResult = 0;
-		bAuthOK = FALSE;
-		break;
+		default:
+			iSendResult = 0;
+			bAuthOK = FALSE;
+			break;
 	}
 
 	GCAnsMapSvrAuth(iIndex, iSendResult);
@@ -864,15 +930,12 @@ void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg)
 
 		return;
 	}
-
+	
 	gObj[iIndex].m_sPrevMapSvrCode = lpMsg->wPrevMapSvrCode;
 	gObj[iIndex].m_sDestMapNumber  = lpMsg->wMapNumber;
 	gObj[iIndex].m_btDestX = lpMsg->btX;
 	gObj[iIndex].m_btDestY = lpMsg->btY;
-#ifdef OPT
-	gObj[iIndex].m_iPcBangRoom = lpMsg->PcBangRoom;//Season 4.5 addon
-#endif
-	gObj[iIndex].bEnableDelCharacter = FALSE;
+	gObj[iIndex].bEnableDelCharacter = false;
 
 	PHeadSetB((LPBYTE)&pMsg, 0x06, sizeof(pMsg));
 	memset(szName, 0, sizeof(szName));
@@ -884,6 +947,8 @@ void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg)
 
 	cDBSMng.Send((PCHAR)&pMsg, pMsg.h.size);
 
+	//GDGetMasterInfo(lpObj->m_Index,lpMsg->szAccountID,szName);
+
 	LogAddTD("[MapServerMng] [%s][%s] JG [0x7B] - Join Result OK : RST:%d, BLK:%c",
 		szId, lpMsg->szCharName, lpMsg->iResult, lpMsg->btBlockCode);
 
@@ -892,11 +957,11 @@ void JGAnsMapSvrAuth(PMSG_ANS_MAPSVRAUTH * lpMsg)
 
 
 /* * * * * * * * * * * * * * * * * * * * * 
-*	Packet Notify Max User
-*	Direction : GameServer -> JoinServer
-*  Code : 0xC1
-*	HeadCode : 0x7C
-*/
+ *	Packet Notify Max User
+ *	Direction : GameServer -> JoinServer
+ *  Code : 0xC1
+ *	HeadCode : 0x7C
+ */
 struct PMSG_NOTIFY_MAXUSER
 {
 	PBMSG_HEAD h;
@@ -905,7 +970,6 @@ struct PMSG_NOTIFY_MAXUSER
 	int iCurUserCount;	//	C
 };
 
-//00439630  - identical
 void GJNotifyMaxUserCount()
 {
 	PMSG_NOTIFY_MAXUSER pMsg;
@@ -914,15 +978,17 @@ void GJNotifyMaxUserCount()
 	pMsg.iSvrCode = gGameServerCode;
 	pMsg.iMaxUserCount = gServerMaxUser;
 	pMsg.iCurUserCount = gObjTotalUser;
-
+	
 	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }
 
-//004396A0 - identical
 void JGPSendMail(PMSG_JG_MEMO_SEND * lpMsg)
 {
 	MngFriendMemoSend(lpMsg);
 }
+
+
+
 
 struct SDHP_REQ_UPDATE_MATCHDB_USERCHARACTERS
 {
@@ -933,7 +999,7 @@ struct SDHP_REQ_UPDATE_MATCHDB_USERCHARACTERS
 	BYTE DbClass;	// 1A
 };
 
-//004396D0 - identical
+
 void GJUpdateMatchDBUserCharacters(LPOBJ lpObj)
 {
 	SDHP_REQ_UPDATE_MATCHDB_USERCHARACTERS pMsg;
@@ -945,4 +1011,35 @@ void GJUpdateMatchDBUserCharacters(LPOBJ lpObj)
 	memcpy(pMsg.szName, lpObj->BackName, sizeof(pMsg.szName));
 
 	wsJServerCli.DataSend((PCHAR)&pMsg, pMsg.h.size);
+}
+
+void GJPCheckUserConnection( SDHP_USERCONNECTION * lpMsg)
+{
+	char szId[11]={0};
+
+	memcpy( szId, lpMsg->Id , sizeof( lpMsg->Id ) );
+
+	if ( gObjGetIndexbyAccount(szId ) == -1 )
+	{
+		SDHP_USERCLOSE_ID pClose;
+
+		pClose.h.c =0xC1;
+		pClose.h.size= sizeof(SDHP_USERCLOSE_ID);
+		pClose.h.headcode = 0x99;
+		memcpy(pClose.szId , szId, sizeof( pClose.szId ));
+
+		wsJServerCli.DataSend((char*)&pClose, pClose.h.size);
+	}
+}
+
+void GDSendGoldChannel(int aIndex, DWORD GoldTime)
+{
+	SDHP_SETGOLDCHANNELTIME	pMsg = {0};
+
+	PHeadSetB((LPBYTE)&pMsg, 0x98, sizeof(pMsg));
+	pMsg.aIndex = aIndex;
+	pMsg.GoldChannelTime = GoldTime;
+	strcpy(pMsg.AccountID, gObj[aIndex].AccountID);
+
+	wsJServerCli.DataSend((char*)&pMsg, pMsg.h.size);
 }

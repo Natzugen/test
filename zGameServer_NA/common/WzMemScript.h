@@ -29,6 +29,9 @@ public:
 	//enum SMDToken __thiscall TokenType();
 	int GetNumber();
 	char* GetString();
+
+protected:
+
 	int GetC();
 	void UnGetC(int ch);
 

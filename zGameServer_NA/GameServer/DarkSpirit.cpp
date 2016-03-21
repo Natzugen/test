@@ -1,6 +1,3 @@
-//-> Revised by DarkSim | 27.06.2013 | 1.01.00 GS-N
-// -------------------------------------------------------------------------------
-
 #include "stdafx.h"
 #include "DarkSpirit.h"
 #include "MapClass.h"
@@ -10,210 +7,201 @@
 #include "gObjMonster.h"
 #include "ObjAttack.h"
 #include "ChaosCastle.h"
-#include "IllusionTempleEvent.h"
 #include "..\common\winutil.h"
-#include "BuffEffectSlot.h"
-#include "ItemAddOption.h"
-#include "ImperialGuardian.h"
-#ifdef __CUSTOMS__
-#include "ClassCalc.h"
-#endif
-// -------------------------------------------------------------------------------
+#include "DuelManager.h"
+#include "IllusionTemple.h"
+
+
+// GS-N 0.99.60T 0x004AA110
+//	GS-N	1.00.18	JPN	0x004C7E00	-	Completed
 
 CDarkSpirit gDarkSpirit[OBJMAX];
-// -------------------------------------------------------------------------------
 
-//0053bf30	-> 100%
+
 CDarkSpirit::CDarkSpirit() : m_ActionMode(PetItem_Mode_Normal)
 {
 	this->Init();
 }
-// -------------------------------------------------------------------------------
 
-//0053c000	-> 100%
+
+
+
+
 CDarkSpirit::~CDarkSpirit()
 {
 	return;
 }
-// -------------------------------------------------------------------------------
 
-//0053c030	-> 100%
+
+
+
+
 void CDarkSpirit::Init()
 {
-	this->m_AttackDamageMin		= 0;
-	this->m_AttackDamageMax		= 0;
-	this->m_AttackSpeed			= 0;
-	this->m_SuccessAttackRate	= 0;
-	this->m_dwLastAttackTime	= 0;
-	this->m_iMasterIndex		= -1;
-	this->m_iTargetIndex		= -1;
-	this->m_pPetItem			= 0;
+	this->m_AttackDamageMin = 0;
+	this->m_AttackDamageMax = 0;
+	this->m_AttackSpeed = 0;
+	this->m_SuccessAttackRate = 0;
+	this->m_dwLastAttackTime = 0;
+	this->m_iMasterIndex = -1;
+	this->m_iTargetIndex = -1;
+	this->m_pPetItem = NULL;
 }
-// -------------------------------------------------------------------------------
 
-//0053c0b0	-> 100%
+
+
+
+
 void CDarkSpirit::Run()
 {
-	if( this->m_iMasterIndex == -1 )
+	__try
+	{
+
+	if ( this->m_iMasterIndex == -1 )
 	{
 		return;
 	}
-	// ----
+
 	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	// ----
-	if( lpObj->Class != CLASS_DARKLORD )
+
+	if ( lpObj->Class != 4 ) // dñl
 	{
 		return;
 	}
-	// ----
-	if( this->m_pPetItem == 0 )
+
+	if ( this->m_pPetItem == NULL )
 	{
 		return;
 	}
-	// ----
-	if( this->m_pPetItem->m_Durability <= 0.0f )
+
+	if ( this->m_pPetItem->m_Durability <= 0.0f )
 	{
 		return;
 	}
-	// ----
+
 	BYTE attr = MapC[lpObj->MapNumber].GetAttr(lpObj->X, lpObj->Y);
-	// ----
-	if( (attr&1) != 0 )
+
+	if ( (attr&1) != 0 )
 	{
 		return;
 	}
-	// ----
-	if( this->m_pPetItem->m_RequireLeaderShip != 0 && (lpObj->Leadership + lpObj->AddLeadership < this->m_pPetItem->m_RequireLeaderShip) )
+
+	if ( this->m_dwLastAttackTime > GetTickCount() )
 	{
 		return;
 	}
-	// ----
-	if( this->m_dwLastAttackTime > GetTickCount() )
+
+	this->m_dwLastAttackTime = ( GetTickCount() + 1500 ) - ( this->m_AttackSpeed * 10 );
+
+	switch ( this->m_ActionMode )
 	{
-		return;
-	}
-	// ----
-	this->m_dwLastAttackTime = (GetTickCount() + 1500) - (this->m_AttackSpeed * 10);
-	// ----
-	switch(this->m_ActionMode)
-	{
-	case PetItem_Mode_Normal:
-		{
+		case PetItem_Mode_Normal:
 			this->ModeNormal();
-		}
-		break;
-		// --
-	case PetItem_Mode_Attack_Random:
-		{
+			break;
+
+		case PetItem_Mode_Attack_Random:
 			this->ModeAttackRandom();
-		}
-		break;
-		// --
-	case PetItem_Mode_Attack_WithMaster:
-		{
+			break;
+
+		case PetItem_Mode_Attack_WithMaster:
 			this->ModeAttackWithMaster();
-		}
-		break;
-		// --
-	case PetItem_Mode_Attack_Target:
-		{
+			break;
+
+		case PetItem_Mode_Attack_Target:
 			this->ModeAttakTarget();
-		}
-		break;
+			break;
+	}
+
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
 	}
 }
-// -------------------------------------------------------------------------------
 
-//0053c290	-> 100%
+
+
+
+
 void CDarkSpirit::ModeNormal()
 {
-	LPOBJ lpObj = &gObj[this->m_iMasterIndex];	//mmm...
+	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
 }
-// -------------------------------------------------------------------------------
 
-//0053c2d0	-> 100%
+
+
+
 void CDarkSpirit::ModeAttackRandom()
 {
-	LPOBJ lpObj			= &gObj[this->m_iMasterIndex];
+	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
 	int tObjNum;
-	int count			= 0;
+	int count = 0;
 	int FindObj[MAX_VIEWPORT];
-	int FindObjCount	= 0;
+	int FindObjCount = 0;
 	int dis;
-	int DuelIndex		= lpObj->m_iDuelUser;
+	int DuelIndex = lpObj->m_iDuelUser;
 	BOOL EnableAttack;
-	int criticaldamage	= 0;
-	int iActionType		= 0;
-	// ----
-	if( this->m_CriticalAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr2 > rand() % 100 )
+	int criticaldamage = 0;
+
+	if(ReadConfig.S6E2 == 0)
 	{
-		criticaldamage	= 1;
-		iActionType		= 1;	
-	}
-	// ----
-	if( this->m_ExcellentAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr3 > rand() % 100 )
-	{
-		criticaldamage	= 2;
-		iActionType		= 1;
-	}
-	// ----
-	while(true)
-	{
-		if( lpObj->VpPlayer2[count].state != 0 )
+		if ( (rand()%10) < 3 )
 		{
-			if( lpObj->VpPlayer2[count].type == OBJ_MONSTER )
+			criticaldamage = 1;
+		}
+	}else
+	{
+		if ( (rand()%45) < (lpObj->MasterCharacterInfo->IncDarkSpirit2 + 3) )
+		{
+			criticaldamage = 1;
+		}
+	}
+
+	while ( true )
+	{
+		if ( lpObj->VpPlayer2[count].state != 0 )
+		{
+			if ( lpObj->VpPlayer2[count].type == OBJ_MONSTER )
 			{
 				tObjNum = lpObj->VpPlayer2[count].number;
-				// ----
-				if( tObjNum >= 0 )
+
+				if ( tObjNum >= 0 )
 				{
-					EnableAttack = false;
-					// ----
-					if( gObj[tObjNum].Life > 0.0f && (gObj[tObjNum].Class < 100 || gObj[tObjNum].Class  > 110 ) )
+					EnableAttack = FALSE;
+
+					if ( gObj[tObjNum].Life > 0.0f && ((gObj[tObjNum].Class < 100 || gObj[tObjNum].Class  > 110 ) && gObj[tObjNum].Class != 523) )
 					{
-						if( lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+						if ( lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 						{
-							EnableAttack = true;
+							EnableAttack = TRUE;
 						}
-						else if( DuelIndex == tObjNum )
+						else if ( DuelIndex == tObjNum )
 						{
-							EnableAttack = true;
+							EnableAttack = TRUE;
 						}
 						else
 						{
-							int CallMonIndex = gObj[tObjNum].m_Index;
-							// ----
-							if( gObj[tObjNum].Type == OBJ_MONSTER )
+							int lc85 = gObj[tObjNum].m_Index;
+
+							if ( gObj[tObjNum].Type == OBJ_MONSTER )
 							{
-								if( gObj[tObjNum].m_RecallMon >= 0 )
+								if ( gObj[tObjNum].m_RecallMon >= 0 )
 								{
-									CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index; 
+									lc85 = gObj[gObj[tObjNum].m_RecallMon].m_Index; 
 								}
 							}
-							// ----
-							if( gObjTargetGuildWarCheck(lpObj, &gObj[CallMonIndex]) == true )
+
+							if ( gObjTargetGuildWarCheck(lpObj, &gObj[lc85]) == TRUE )
 							{
-								EnableAttack = true;
+								EnableAttack = TRUE;
 							}
 						}
-						// ----
-#ifdef IMPERIAL
-						if( g_ImperialGuardian.IsEventMap(gObj[tObjNum].MapNumber) )
+
+						if ( EnableAttack != FALSE )
 						{
-							if( gObj[tObjNum].Live && g_ImperialGuardian.IsAttackAbleMonster(gObj[tObjNum].m_Index) )
-							{
-								EnableAttack = true;
-							}
-						}
-#endif
-						// ----
-						if( EnableAttack != false )
-						{
-							if( lpObj->MapNumber == gObj[tObjNum].MapNumber )
+							if ( lpObj->MapNumber == gObj[tObjNum].MapNumber )
 							{
 								dis = gObjCalDistance(lpObj, &gObj[tObjNum]);
-								// ---
-								if( dis < RAVEN_ATTACK_DISTANCE-2 )
+
+								if ( dis < ReadConfig.RAVEN_ATTACK_DISTANCE-2 )
 								{
 									FindObj[FindObjCount] = tObjNum;
 									FindObjCount++;
@@ -224,110 +212,72 @@ void CDarkSpirit::ModeAttackRandom()
 				}
 			}
 		}
-		// ----
+
 		count++;
-		// ----
-		if( count > MAX_VIEWPORT-1 )
+
+		if ( count > MAX_VIEWPORT-1 )
 		{
 			break;
 		}
 	}
-	// ----
-	if( FindObjCount != 0 )
+
+	if ( FindObjCount != 0 )
 	{
-		if( criticaldamage != 0 )
+		if ( criticaldamage != 0 )
 		{
-			int targetindex = FindObj[rand() % FindObjCount];
-			this->SendAttackMsg(lpObj->m_Index, targetindex, criticaldamage, iActionType);
+			int target = FindObj[rand()%FindObjCount];
+			this->SendAttackMsg( lpObj->m_Index, target, criticaldamage, 0);
 		}
 		else
 		{
-			int targetindex = FindObj[rand() % FindObjCount];
-			this->RangeAttack(lpObj->m_Index, targetindex);
+			int target = FindObj[rand()%FindObjCount];
+			this->RangeAttack( lpObj->m_Index, target);
 		}
 	}
 }
-// -------------------------------------------------------------------------------
 
-//0053c860	-> 100%
+
+
+
+
+
 void CDarkSpirit::ModeAttackWithMaster()
 {
 	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	int count	= 0;
 	int dis;
-	// ----
-	if( this->m_iTargetIndex == -1 )
-	{
-		return;
-	}
-	// ----
-	if( lpObj->MapNumber == gObj[this->m_iTargetIndex].MapNumber )
-	{
-		if( gObj[this->m_iTargetIndex].Life > 0.0f )
-		{
-			dis = gObjCalDistance(lpObj, &gObj[this->m_iTargetIndex]);
-			// ----
-			if( dis < RAVEN_ATTACK_DISTANCE )
-			{
-				int criticaldamage	= 0;
-				int iActionType		= 0;
-				// ----
-				if( this->m_CriticalAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr2 > rand() % 100 )
-				{
-					criticaldamage	= 1;
-					iActionType		= 1;	
-				}
-				// ----
-				if( this->m_ExcellentAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr3 > rand() % 100 )
-				{
-					criticaldamage	= 2;
-					iActionType		= 1;
-				}
-				// ----
-				if( criticaldamage != false )
-				{
-					this->SendAttackMsg(lpObj->m_Index, this->m_iTargetIndex, criticaldamage, iActionType);
-				}
-				else
-				{
-					this->RangeAttack(lpObj->m_Index, this->m_iTargetIndex);
-				}
-			}
-		}
-		else
-		{
-			this->ReSetTarget(this->m_iTargetIndex);
-		}
-	}
-}
-// -------------------------------------------------------------------------------
 
-//0053ca50	-> 100%
-void CDarkSpirit::ModeAttakTarget()
-{
-	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	int count	= 0;
-	int dis;
-	// ----
-	if( this->m_iTargetIndex == -1 )
+	if ( this->m_iTargetIndex == -1 )
 	{
 		return;
 	}
-	// ----
-	if( lpObj->MapNumber == gObj[this->m_iTargetIndex].MapNumber )
+
+	if ( lpObj->MapNumber == gObj[this->m_iTargetIndex].MapNumber )
 	{
 		if ( gObj[this->m_iTargetIndex].Life > 0.0f )
 		{
 			dis = gObjCalDistance(lpObj, &gObj[this->m_iTargetIndex]);
-			// ----
-			if( dis < RAVEN_ATTACK_DISTANCE )
+
+			if ( dis < ReadConfig.RAVEN_ATTACK_DISTANCE )
 			{
-				int criticaldamage	= 1;
-				int iActionType		= 1;
-				// ----
-				if( criticaldamage != false )	//ahahah, and again nice trick by WZ :D
+				int criticaldamage = 0;
+
+				if(ReadConfig.S6E2 == 0)
 				{
-					this->SendAttackMsg(lpObj->m_Index, this->m_iTargetIndex, criticaldamage, iActionType);
+					if ( (rand()%10) < 3 )
+					{
+						criticaldamage = 1;
+					}
+				}else
+				{
+					if ( (rand()%45) < (lpObj->MasterCharacterInfo->IncDarkSpirit2 + 3) )
+					{
+						criticaldamage = 1;
+					}
+				}
+
+				if ( criticaldamage != FALSE )
+				{
+					this->SendAttackMsg(lpObj->m_Index, this->m_iTargetIndex, criticaldamage, 0);
 				}
 				else
 				{
@@ -341,79 +291,124 @@ void CDarkSpirit::ModeAttakTarget()
 		}
 	}
 }
-// -------------------------------------------------------------------------------
 
-//0053cbb0	-> 100%
-void CDarkSpirit::RangeAttack(int aIndex, int aTargetIndex)
+
+
+
+
+
+void CDarkSpirit::ModeAttakTarget()
 {
-	LPOBJ lpObj		= &gObj[aIndex];
-	int StartDis	= 1;
-	int tObjNum;
-	int count		= 0;
-	int loopcount	= 0;
-	int attackcheck;
-	int EnableAttack;
-	int HitCount	= 0;
-	// ----
-	this->SendAttackMsg(lpObj->m_Index, aTargetIndex, 0, 0);
-	// ----
-	while(true)
+	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
+	int dis;
+
+	if ( this->m_iTargetIndex == -1 )
 	{
-		if( lpObj->VpPlayer2[count].state != 0 )
+		return;
+	}
+
+	if ( lpObj->MapNumber == gObj[this->m_iTargetIndex].MapNumber )
+	{
+		if ( gObj[this->m_iTargetIndex].Life > 0.0f )
 		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-			// ----
-			if( tObjNum >= 0 && aTargetIndex != tObjNum )
+			dis = gObjCalDistance(lpObj, &gObj[this->m_iTargetIndex]);
+
+			if ( dis < ReadConfig.RAVEN_ATTACK_DISTANCE )
 			{
-				EnableAttack = false;
-				// ----
-				if( lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				int criticaldamage = TRUE;
+				int msg = 1;	// Attack with picada
+
+				if ( criticaldamage != FALSE )
 				{
-					EnableAttack = true;
-				}
-				else if( tObjNum == aTargetIndex )
-				{
-					EnableAttack = true;
+					this->SendAttackMsg(lpObj->m_Index, this->m_iTargetIndex, criticaldamage, msg);
 				}
 				else
 				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-					// ----
-					if( gObj[tObjNum].Type == OBJ_MONSTER )
+					this->RangeAttack(lpObj->m_Index, this->m_iTargetIndex);
+				}
+			}
+		}
+		else
+		{
+			this->ReSetTarget(this->m_iTargetIndex);
+		}
+	}
+}
+
+
+
+
+
+
+void CDarkSpirit::RangeAttack(int aIndex, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int loopcount = 0;
+	int attackcheck;
+	int EnableAttack;
+	int HitCount = 0;
+
+	this->SendAttackMsg(lpObj->m_Index, aTargetIndex, 0, 0);
+
+	while ( true )
+	{
+		if ( lpObj->VpPlayer2[count].state != 0 )
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if ( tObjNum >= 0 && aTargetIndex != tObjNum )
+			{
+				EnableAttack = FALSE;
+				
+				if ( lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = TRUE;
+				}
+				else if ( tObjNum == aTargetIndex )
+				{
+					EnableAttack = TRUE;
+				}
+				else
+				{
+					int lc10 = gObj[tObjNum].m_Index;
+
+					if ( gObj[tObjNum].Type == OBJ_MONSTER )
 					{
-						if( gObj[tObjNum].m_RecallMon >= 0 )
+						if ( gObj[tObjNum].m_RecallMon >= 0 )
 						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+							lc10 = gObj[gObj[tObjNum].m_RecallMon].m_Index;
 						}
 					}
-					// ----
-					if( gObjTargetGuildWarCheck(lpObj, &gObj[CallMonIndex]) == true )
+
+					if ( gObjTargetGuildWarCheck(lpObj, &gObj[lc10]) == TRUE )
 					{
-						EnableAttack = true;
+						EnableAttack = TRUE;
 					}
 				}
-				// ----
-				if( EnableAttack != false )
+
+				if ( EnableAttack != FALSE )
 				{
-					attackcheck = false;
-					// ----
-					if( loopcount == 0 )
+					attackcheck = FALSE;
+
+					if ( loopcount == 0 )
 					{
-						attackcheck = true;
+						attackcheck = TRUE;
 					}
-					else if( (rand()%3) == 0 )
+					else if ( (rand()%3) == 0 )
 					{
-						attackcheck = true;
+						attackcheck = TRUE;
 					}
-					// ----
-					if( attackcheck != false )
+
+					if ( attackcheck != FALSE )
 					{
-						if( gObjCalDistance(&gObj[aTargetIndex], &gObj[tObjNum]) < RAVEN_ATTACK_DISTANCE-3 )
+						if ( gObjCalDistance(&gObj[aTargetIndex], &gObj[tObjNum]) < ReadConfig.RAVEN_ATTACK_DISTANCE-3 )
 						{
 							this->SendAttackMsg(lpObj->m_Index, tObjNum, 2, 0);
 							HitCount++;
-							// ----
-							if( HitCount > 3 )
+
+							if ( HitCount > 3 )
 							{
 								break;
 							}
@@ -422,61 +417,63 @@ void CDarkSpirit::RangeAttack(int aIndex, int aTargetIndex)
 				}
 			}				
 		}
-		// ----
+
 		count++;
-		// ----
-		if( count > MAX_VIEWPORT-1 )
+
+		if ( count > MAX_VIEWPORT-1 )
 		{
 			break;
 		}
 	}
 }
-// -------------------------------------------------------------------------------
+
+
 
 struct PMSG_PET_ITEM_ATTACK_COMMAND
 {
-	PBMSG_HEAD h;
-	BYTE PetType;
-	BYTE SkillType;
-	BYTE NumberH;
-	BYTE NumberL;
-	BYTE TargetNumberH;
-	BYTE TargetNumberL;
+	PBMSG_HEAD h;	// C1:A8
+	BYTE PetType;	//	3
+	BYTE SkillType;	// 4
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
+	BYTE TargetNumberH;	// 7
+	BYTE TargetNumberL;	// 8
 };
-// -------------------------------------------------------------------------------
 
-//0053ce90	->
+
 void CDarkSpirit::SendAttackMsg(int aIndex, int aTargetIndex, int criticaldamage, int iActionType)
 {
 	PMSG_PET_ITEM_ATTACK_COMMAND pMsg;
 
-	if( criticaldamage != 3 )
+	if ( criticaldamage != 2 )
 	{
-		pMsg.PetType		= 0;
-		pMsg.SkillType		= (criticaldamage) ? 0 : 1;
-		pMsg.NumberH		= SET_NUMBERH(aIndex);
-		pMsg.NumberL		= SET_NUMBERL(aIndex);
-		pMsg.TargetNumberH	= SET_NUMBERH(aTargetIndex);
-		pMsg.TargetNumberL	= SET_NUMBERL(aTargetIndex);
-		// ----
+		pMsg.PetType = 0;
+		pMsg.SkillType = (criticaldamage)? 0 : 1;
+		pMsg.NumberH = SET_NUMBERH(aIndex);
+		pMsg.NumberL = SET_NUMBERL(aIndex);
+		pMsg.TargetNumberH = SET_NUMBERH(aTargetIndex);
+		pMsg.TargetNumberL = SET_NUMBERL(aTargetIndex);
 		pMsg.h.set((LPBYTE)&pMsg, 0xA8, sizeof(pMsg));
-		// ----
-		DataSend(aIndex, (LPBYTE)&pMsg, pMsg.h.size);
-		MsgSendV2(&gObj[aIndex], (LPBYTE)&pMsg, pMsg.h.size);
-		// ----
-		if( iActionType == 1 )
+		
+		DataSend(aIndex, (UCHAR*)&pMsg, pMsg.h.size);
+		MsgSendV2(&gObj[aIndex], (UCHAR*)&pMsg, pMsg.h.size);
+
+		if ( iActionType == 1 )
 		{
-			criticaldamage			= 0;
-			LPOBJECTSTRUCT lpObj	= &gObj[this->m_iMasterIndex];
-			// ----
-			if( this->m_CriticalAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr2 > rand() % 100 )
+			criticaldamage = 0;
+			
+			if(ReadConfig.S6E2 == 0)
 			{
-				criticaldamage	= 1;	
-			}
-			// ----
-			if( this->m_ExcellentAttackRate + lpObj->m_MPSkillOpt.MpsDarkSpiritStr3 > rand() % 100 )
+				if ( (rand()%10) < 3 )
+				{
+					criticaldamage = 1;
+				}
+			}else
 			{
-				criticaldamage	= 2;
+				if ( (rand()%45) < (gObj[aIndex].MasterCharacterInfo->IncDarkSpirit2 + 3) )
+				{
+					criticaldamage = 1;
+				}
 			}
 		}
 	}
@@ -484,87 +481,91 @@ void CDarkSpirit::SendAttackMsg(int aIndex, int aTargetIndex, int criticaldamage
 	{
 		criticaldamage = 0;
 	}
-	// ----
+
 	gObjAddAttackProcMsgSendDelay(&gObj[aIndex], 51, aTargetIndex, 600, criticaldamage, iActionType);
 }
-// -------------------------------------------------------------------------------
 
-//0053d060	-> 100%
+
+
+
+
 void CDarkSpirit::SetTarget(int aTargetIndex)
 {
-	if( this->m_iMasterIndex == -1 )
+	if ( this->m_iMasterIndex == -1 )
 	{
 		return;
 	}
-	// ----
+
 	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	// ----
-	if( lpObj->Class != CLASS_DARKLORD )
+
+	if ( lpObj->Class != 4 )	// DL
 	{
 		return;
 	}
-	// ----
+
 	this->m_iTargetIndex = aTargetIndex;
 }
-// -------------------------------------------------------------------------------
 
-//0053d0d0	-> 100%
+
+
+
+
 void CDarkSpirit::ReSetTarget(int aTargetIndex)
 {
-	if( this->m_iMasterIndex == -1 )
+	if ( this->m_iMasterIndex == -1 )
 	{
 		return;
 	}
-	// ----
+
 	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	// ----
-	if( lpObj->Class != CLASS_DARKLORD )
+
+	if ( lpObj->Class != 4 )	// DL
 	{
 		return;
 	}
-	// ----
-	if( aTargetIndex == this->m_iTargetIndex )
+
+	if ( aTargetIndex == this->m_iTargetIndex )
 	{
 		this->m_iTargetIndex = -1;
-		// ----
-		if( this->m_ActionMode == PetItem_Mode_Attack_Target )
+
+		if ( this->m_ActionMode == PetItem_Mode_Attack_Target )
 		{
 			this->SetMode(PetItem_Mode_Normal, -1);
 		}
 	}
 }
-// -------------------------------------------------------------------------------
+
+
+
 
 struct PMSG_SEND_PET_ITEM_COMMAND
 {
-	PBMSG_HEAD h;
-	BYTE PetType;
-	BYTE Command;
-	BYTE NumberH;
-	BYTE NumberL;
+	PBMSG_HEAD h;	// C1:A7
+	BYTE PetType;	// 3
+	BYTE Command;	// 4
+	BYTE NumberH;	// 5
+	BYTE NumberL;	// 6
 };
-// -------------------------------------------------------------------------------
 
-//0053d160	-> 100%
 void CDarkSpirit::SetMode(ePetItem_Mode mode, int iTargetindex)
 {
-	if( this->m_iMasterIndex == -1 )
+	if ( this->m_iMasterIndex == -1 )
 	{
 		return;
 	}
-	// ----
+
 	LPOBJ lpObj = &gObj[this->m_iMasterIndex];
-	// ----
-	if( lpObj->Class != CLASS_DARKLORD )
+
+	if ( lpObj->Class != CLASS_DARKLORD )	// DL
 	{
 		return;
 	}
-	// ----
-	if( mode == PetItem_Mode_Attack_Target || this->m_ActionMode != mode)
+
+	if ( mode == PetItem_Mode_Attack_Target || this->m_ActionMode != mode)
 	{
-		if( mode == PetItem_Mode_Attack_Target )
+		if ( mode == PetItem_Mode_Attack_Target )
 		{
-			if( OBJMAX_RANGE(iTargetindex) != false )
+			if ( OBJMAX_RANGE(iTargetindex) != FALSE )
 			{
 				this->m_iTargetIndex = iTargetindex;
 			}
@@ -573,139 +574,113 @@ void CDarkSpirit::SetMode(ePetItem_Mode mode, int iTargetindex)
 				return;
 			}
 		}
-		// ----
+
 		this->m_ActionMode = mode;
-		// ----
 		PMSG_SEND_PET_ITEM_COMMAND pMsg;
-		// ----
+
 		pMsg.h.set((LPBYTE)&pMsg, 0xA7, sizeof(pMsg));
 		pMsg.PetType = 0;
 		pMsg.Command = mode;
 		pMsg.NumberH = SET_NUMBERH(this->m_iTargetIndex);
 		pMsg.NumberL = SET_NUMBERL(this->m_iTargetIndex);
-		// ----
-		DataSend(this->m_iMasterIndex, (LPBYTE)&pMsg, sizeof(pMsg));
-		// ----
-		char strMode[4][255] =
+
+		DataSend(this->m_iMasterIndex, (UCHAR*)&pMsg, sizeof(pMsg));
+
+/*		char strMode[4][255] =
 		{
-			"[????]",
-			"[·???°?°?]",
-			"[????°?°°??°?°?]",
-			"[»????????¤]"
+			"[ÀÏ¹Ý]",
+			"[·£´ý°ø°Ý]",
+			"[ÁÖÀÎ°ú°°ÀÌ°ø°Ý]",
+			"[»ç¿ëÀÚÁöÁ¤]"
 		};
+
+		char szNormal[256] = "[Raven Mode Normal]";
+		char szRandom[256] = "[Raven Mode Random]";
+		char szMaster[256] = "[Raven Mode With Master]";
+		char szTarget[256] = "[Raven Mode Attack Target]";
+*/
 	}
 }
-// -------------------------------------------------------------------------------
 
-//0053d3e0	-> 100%
+
+
+
+
+
 void CDarkSpirit::Set(int aIndex, CItem * pPetItem)
 {
+	__try
+	{
+
 	LPOBJ lpObj = &gObj[aIndex];
-	// ----
-	if( lpObj->Class != CLASS_DARKLORD )
+
+	if ( lpObj->Class != 4 )	// DL
 	{
 		return;
 	}
-	// ----
-	BOOL bChange = false;
-	// ----
-	if( this->m_iMasterIndex == -1 )
+
+	BOOL bChange = FALSE;
+
+	if ( this->m_iMasterIndex == -1 )
 	{
-		bChange = true;
+		bChange = TRUE;
 	}
-	// ----
+
 	this->Init();
-	// ----
-	if( pPetItem->m_Type != ITEMGET(13, 5) )
+
+	if ( pPetItem->m_Type != ITEMGET(13,5) ) // Talon of Dark Raven
 	{
 		return;
 	}
-	// ----
-	if( pPetItem->m_Durability <= 0.0f )
+
+	if ( pPetItem->m_Durability <= 0.0f )
 	{
 		return;
 	}
-	// ----
-	int petitemlevel				= pPetItem->m_PetItem_Level;
-	int leadership					= lpObj->Leadership + lpObj->AddLeadership;
-	// ----
-#ifdef __CUSTOMS__
-	this->m_AttackDamageMin			= petitemlevel * g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMinFact + leadership / g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMinDiv + g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMinStart;
-	this->m_AttackDamageMax			= petitemlevel * g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMaxFact + leadership / g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMaxDiv + g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackDamageMaxStart;
-	this->m_CriticalAttackRate		= (float)g_ClassCalc.m_Data[CLASS_DARKLORD].PetCriticalAttackRate;
-	this->m_AttackSpeed				= petitemlevel * g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackSpeedFact / g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackSpeedDiv1 + leadership / g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackSpeedDiv2 + g_ClassCalc.m_Data[CLASS_DARKLORD].PetAttackSpeedStart;
-	this->m_SuccessAttackRate		= petitemlevel + petitemlevel / g_ClassCalc.m_Data[CLASS_DARKLORD].PetSuccessAttackRateDiv + g_ClassCalc.m_Data[CLASS_DARKLORD].PetSuccessAttackRateStart;
-#else
-	this->m_AttackDamageMin			= petitemlevel * 15 + leadership / 8 + 180;
-	this->m_AttackDamageMax			= petitemlevel * 15 + leadership / 4 + 200;
-	this->m_CriticalAttackRate		= 30.0f;
-	this->m_AttackSpeed				= petitemlevel * 4 / 5 + leadership / 50 + 20;
-	this->m_SuccessAttackRate		= petitemlevel + petitemlevel / 15 + 1000;
-#endif
-	// ----
-	this->m_ExcellentAttackRate		= 0;
-	this->m_Unknown28				= 0;
-	this->m_Unknown32				= 0;
-	this->m_iMasterIndex			= aIndex;
-	this->m_pPetItem				= pPetItem;
-	// ----
-	if( bChange != false )
+
+	int petitemlevel = pPetItem->m_PetItem_Level;
+	int leadership = lpObj->Leadership + lpObj->AddLeadership;
+	this->m_AttackDamageMin = petitemlevel*ReadConfig.DarkSpiritAttackDamageMinConstB + leadership/ReadConfig.DarkSpiritAttackDamageMinConstC + ReadConfig.DarkSpiritAttackDamageMinConstA;
+	this->m_AttackDamageMax = petitemlevel*ReadConfig.DarkSpiritAttackDamageMaxConstB + leadership/ReadConfig.DarkSpiritAttackDamageMaxConstC + ReadConfig.DarkSpiritAttackDamageMaxConstA;
+	this->m_AttackSpeed = petitemlevel * ReadConfig.DarkSpiritAttackSpeedConstB / ReadConfig.DarkSpiritAttackSpeedConstC + leadership / ReadConfig.DarkSpiritAttackSpeedConstD + ReadConfig.DarkSpiritAttackSpeedConstA;
+	this->m_SuccessAttackRate= petitemlevel + petitemlevel / ReadConfig.DarkSpiritAttackSuccessRateConstB + ReadConfig.DarkSpiritAttackSuccessRateConstA;
+	this->m_iMasterIndex = aIndex;
+	this->m_pPetItem = pPetItem;
+
+	if ( bChange != FALSE )
 	{
 		this->SetMode(PetItem_Mode_Normal, -1);
 	}
-}
-// -------------------------------------------------------------------------------
 
-//0053d5c0	->
+	}__except( EXCEPTION_ACCESS_VIOLATION == GetExceptionCode() )
+	{
+	}
+}
+
+
+
+
+
 BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int criticaldamage, int iActionType)
 {
 	int skillSuccess = 0;
 	LPOBJ lpCallObj;
 	LPOBJ lpCallTargetObj;
-	BYTE MsgDamage = 0;
+	unsigned char MsgDamage = MSG_DAMAGE_MISS;
 	int ManaChange = 0;
 	int iTempShieldDamage = 0;
 	int iTotalShieldDamage = 0;
 
-	if ( (lpTargetObj->Authority&2) == 2 )
-	{
-		return false;
-	}
+	//if ( (lpTargetObj->Authority&2) == 2 )
+	//	return FALSE;
 
 	if ( lpObj->MapNumber != lpTargetObj->MapNumber )
-	{
-		return false;
-	}
-
-#ifdef IMPERIAL
-	if( g_ImperialGuardian.IsEventMap(lpObj->MapNumber) )
-	{
-		if( !g_ImperialGuardian.IsAttackAbleMonster(lpTargetObj->m_Index) )
-		{
-			return false;
-		}
-	}
-#endif
-
-//#if(_GSCS==1)
-	if( g_Crywolf.GetCrywolfState() == 3 || g_Crywolf.GetCrywolfState() == 5 )
-	{
-		if(CRYWOLF_MAP_RANGE(lpTargetObj->MapNumber))
-		{
-			if(lpTargetObj->Type == OBJ_MONSTER)
-			{
-				return FALSE;
-			}
-		}
-	}
-//#endif
+		return FALSE;
 
 	int skill = 0;
 	
 	if ( lpMagic )
-	{
 		skill = lpMagic->m_Skill;
-	}
 
 	skillSuccess = TRUE;
 
@@ -759,7 +734,7 @@ BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, in
 		}
 	}
 
-	if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_MONSTER )
+	if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_MONSTER )	// PLAYER VS MONSTER
 	{
 		if ( lpObj->m_RecallMon >= 0 )
 		{
@@ -770,30 +745,14 @@ BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, in
 		}
 	}
 
-	if ( !gObjAttackQ(lpTargetObj))
-	{
+	if ( gObjAttackType(lpTargetObj,lpObj) == 0)
 		return FALSE;
-	}
-
-//#if(_GSCS==1)
-	if ( g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-	{
-		if( lpObj->m_btCsJoinSide > 0 )
-		{
-			if( lpObj->m_btCsJoinSide == lpTargetObj->m_btCsJoinSide )
-			{
-				return FALSE;
-			}
-		}
-	}
-//#endif
-
-	lpObj->m_TotalAttackCount++;
-
+	if ( this->PkCheck(lpObj, lpTargetObj) == FALSE )
+		return FALSE;
 	if ( this->CheckAttackArea(lpObj, lpTargetObj) == FALSE )
-	{
 		return FALSE;
-	}
+
+	//lpObj->m_TotalAttackCount++;
 
 	lpCallObj = lpObj;
 	lpCallTargetObj = lpTargetObj;
@@ -806,16 +765,11 @@ BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, in
 		}
 	}
 
-	if ( this->PkCheck(lpCallObj, lpTargetObj) == FALSE )
-	{
-		return FALSE;
-	}
-
 	int Strength = lpObj->Strength + lpObj->AddStrength;
 	int Dexterity = lpObj->Dexterity + lpObj->AddDexterity;
 	int Vitality = lpObj->Vitality + lpObj->AddVitality;
 	int Energy = lpObj->Energy + lpObj->AddEnergy;
-	BOOL bIsOnDuel = gObjDuelCheck(lpObj, lpTargetObj);
+	BOOL bIsOnDuel = g_DuelManager.gObjDuelCheck(lpObj, lpTargetObj);
 
 	if ( bIsOnDuel )
 	{
@@ -824,18 +778,34 @@ BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, in
 	}
 
 	int MSBFlag = 0;
+	//MsgDamage = MSG_DAMAGE_MISS;
 	
-	if( criticaldamage == 1 )
+	if(ReadConfig.S6E2 == 1)
 	{
-		MsgDamage = 3;
-	}
-	else if( criticaldamage == 2 )
+		if ( (rand()%100) < lpObj->MasterCharacterInfo->IncDarkSpirit3 )
+		{
+			MsgDamage = MSG_DAMAGE_EXCELLENT;
+		}else
+		{
+			if ( criticaldamage )
+			{
+				MsgDamage = MSG_DAMAGE_CRITICAL;
+			}
+			else
+			{
+				MsgDamage = MSG_DAMAGE_MISS;
+			}
+		}
+	}else
 	{
-		MsgDamage = 2;
-	}
-	else
-	{
-		MsgDamage = 0;
+		if ( criticaldamage )
+		{
+			MsgDamage = MSG_DAMAGE_CRITICAL;
+		}
+		else
+		{
+			MsgDamage = MSG_DAMAGE_MISS;
+		}
 	}
 
 	BOOL bAllMiss = FALSE;
@@ -862,27 +832,26 @@ BOOL CDarkSpirit::Attack(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, in
 	}
 
 	int targetdefense = this->GetTargetDefense(lpObj, lpTargetObj, MsgDamage);
-	AttackDamage = this->GetAttackDamage(lpObj, targetdefense, bIsOnDuel, criticaldamage);
+	
+	if(ReadConfig.S6E2 == 0)
+		AttackDamage = this->GetAttackDamage(lpObj, targetdefense, bIsOnDuel, criticaldamage);
+	else
+		AttackDamage = this->GetAttackDamage(lpObj, targetdefense, bIsOnDuel, MsgDamage);
 
-if (criticaldamage == 0 && iActionType == 0)
+	if ( criticaldamage == 0 && iActionType == 0 )
 	{
 		AttackDamage /= 1.5;
 	}
-	
-	if (criticaldamage == 2)
-    {
-		AttackDamage += AttackDamage * 20.0f / 100.0f;
+
+	if ( bAllMiss )
+	{
+		AttackDamage = ( AttackDamage * 30 ) / 100;
 	}
 
-	if (bAllMiss)
+	if ( lpTargetObj->DamageMinus )
 	{
-		AttackDamage = (AttackDamage * 30) / 100;
-	}
-	
-	if (lpTargetObj->DamageMinus)
-	{
-		int beforeDamage = AttackDamage;
-		AttackDamage	-= ((AttackDamage * (int)lpTargetObj->DamageMinus) / 100);
+		//int beforeDamage = AttackDamage;
+		AttackDamage -= ( ( AttackDamage * (int)lpTargetObj->DamageMinus) / 100 );
 	}
 
 	int tlevel = lpObj->Level / 10;
@@ -905,35 +874,38 @@ if (criticaldamage == 0 && iActionType == 0)
 		}
 	}
 
-	lpObj->pInventory[1].m_DurabilitySmall += AttackDamage * 2 / 100;
+	lpObj->pInventory[1].m_DurabilitySmall += AttackDamage * ReadConfig.DarkSpiritDurSmallConstA / ReadConfig.DarkSpiritDurSmallConstB;
 
-	int Defense = 800 + (800 * gIncreaseDarkSpiritDefencePercent / 100);
-
-	if( lpObj->pInventory[1].m_DurabilitySmall >= (800 + lpObj->m_MPSkillOpt.MpsPetDurDownSpeed) )
+	if ( lpObj->pInventory[1].m_DurabilitySmall >= ReadConfig.DarkSpiritDurSmallConstC )
 	{
-		lpObj->pInventory[1].m_DurabilitySmall	 = 0;
-		lpObj->pInventory[1].m_Durability		-= 1.0f;
+		lpObj->pInventory[1].m_DurabilitySmall = 0;
 		
-		if (lpObj->pInventory[1].m_Durability < 1.0f)
+		if(gObjIsNewClass(lpObj) == 1 && lpObj->MasterCharacterInfo->DecPetLifeReduction > 0)
+			lpObj->pInventory[1].m_Durability -= (100 - lpObj->MasterCharacterInfo->DecPetLifeReduction)/100.0f;
+		else
+			lpObj->pInventory[1].m_Durability -= 1.0f;
+		
+
+		if ( lpObj->pInventory[1].m_Durability < 1.0f )
 		{
 			lpObj->pInventory[1].m_Durability = 0;
+			int iPetExp = lpObj->pInventory[1].m_PetItem_Exp;
 
-			int exp = lpObj->pInventory[1].m_PetItem_Exp;
-			
-			if (lpObj->pInventory[1].DecPetItemExp(10))
+			if ( lpObj->pInventory[1].DecPetItemExp(10) )
 			{
-				LogAddTD("[%s][%s][PetItemExpDown] [%s] Level:[%d]Exp:[%d]DecExp[%d]", lpObj->AccountID, lpObj->Name,
-					lpObj->pInventory[1].GetName(),	lpObj->pInventory[1].m_PetItem_Level, lpObj->pInventory[1].m_PetItem_Exp,
-					exp - lpObj->pInventory[1].m_PetItem_Exp);
-				
+				LogAddTD("[%s][%s][PetItemExpDown] [%s] Level:[%d]Exp:[%d]DecExp[%d]",
+					lpObj->AccountID, lpObj->Name, lpObj->pInventory[1].GetName(),
+					lpObj->pInventory[1].m_PetItem_Level,
+					lpObj->pInventory[1].m_PetItem_Exp, iPetExp - lpObj->pInventory[1].m_PetItem_Exp);
+
 				this->Set(lpObj->m_Index, &lpObj->pInventory[1]);
 				this->SendLevelmsg(lpObj->m_Index, 1, 0, 0xFF);
 			}
-			
-			LogAddTD("[%s][%s] ´ÙÅ©½ºÇÇ¸´ÀÇ¹ßÅé Item is Broken because durability is exhausted [%d]", lpObj->AccountID, lpObj->Name,
-				lpObj->pInventory[1].m_Number);
+
+			LogAddTD("[%s][%s] Item is Broken because durability is exhausted [%d]",
+				lpObj->AccountID, lpObj->Name, lpObj->pInventory[1].m_Number);
 		}
-		
+
 		GCItemDurSend(lpObj->m_Index, 1, lpObj->pInventory[1].m_Durability, 0);
 	}
 
@@ -946,61 +918,71 @@ if (criticaldamage == 0 && iActionType == 0)
 		}
 	}
 
+	if ( gObjSpiritOfGuardianSprite(lpTargetObj) == TRUE )
+	{
+		if ( AttackDamage > 1 )
+		{
+			float  damage = (AttackDamage * 8) / 20.0f;
+			AttackDamage = damage;
+		}
+	}
+
+
 	if ( gObjWingSprite(lpTargetObj) == TRUE )
 	{
 		CItem * Wing = &lpTargetObj->pInventory[7];
 
 		if ( AttackDamage > 1 )
 		{
-			if (Wing->m_Type == ITEMGET(12,36) || 
-				Wing->m_Type == ITEMGET(12,37) || 
-				Wing->m_Type == ITEMGET(12,38) || 
-				Wing->m_Type == ITEMGET(12,39))
-			{
-				float damage = (float)(AttackDamage * (61 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-			else if (Wing->m_Type == ITEMGET(12,40))
-			{
-				float damage = (float)(AttackDamage * (76 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-			else if (Wing->m_Type == ITEMGET(12,41))
-			{
-				float damage = (float)(AttackDamage * (88 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-			else if (Wing->m_Type == ITEMGET(12,42))
+			if ( (Wing->m_Type > ITEMGET(12,2) && Wing->m_Type < ITEMGET(12,7)) || (Wing->m_Type == ITEMGET(12,42)) )
 			{
 				float damage = (float)(AttackDamage * (75 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
+				AttackDamage = (int)(damage);	//  #formula
 			}
-			else if (Wing->m_Type == ITEMGET(12,43))
-			{
-				float damage = (float)(AttackDamage * (61 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-			else if (Wing->m_Type == ITEMGET(12,50))
-			{
-				float damage = (float)(AttackDamage * (76 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-			else if (Wing->m_Type > ITEMGET(12,2))
-			{
-				float damage = (float)(AttackDamage * (75 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-#ifdef NEWWINGS
-			else if( IS_NEWWINGS(Wing->m_Type) )
-			{
-				float damage = (float)(AttackDamage * (50 - (Wing->m_Level*2))) / 100.0f;
-				AttackDamage = (int)(damage);
-			}
-#endif
-			else
+			else if ( (Wing->m_Type >= ITEMGET(12,0) && Wing->m_Type <= ITEMGET(12,2)) || (Wing->m_Type == ITEMGET(12,41)) )
 			{
 				float damage = (float)(AttackDamage * (88 - (Wing->m_Level*2))) / 100.0f;
 				AttackDamage = (int)(damage);	//  #formula
+			}
+			else if (Wing->m_Type == ITEMGET(12,130))
+			{
+				float damage = (float)(AttackDamage * (80 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+			else if (Wing->m_Type == ITEMGET(12,135))
+			{
+				float damage = (float)(AttackDamage * (80 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+			else if (Wing->m_Type >= ITEMGET(12,131) && Wing->m_Type <= ITEMGET(12,134))
+			{
+				float damage = (float)(AttackDamage * (88 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+			else if ( (Wing->m_Type >= ITEMGET(12,36) && Wing->m_Type <= ITEMGET(12,39)) || (Wing->m_Type == ITEMGET(12,43)) )
+			{
+				float damage = (float)(AttackDamage * (61 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+#if (CRYSTAL_EDITION == 1)
+			else if ( (Wing->m_Type >= ITEMGET(12,200) && Wing->m_Type <= ITEMGET(12,263)))
+			{
+				float damage = (float)(AttackDamage * (61 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+#endif
+			else if ( (Wing->m_Type == ITEMGET(12,40)) || (Wing->m_Type == ITEMGET(12,50)) )
+			{
+				float damage = (float)(AttackDamage * (76 - (Wing->m_Level*2))) / 100.0f;
+				AttackDamage = (int)(damage);	//  #formula
+			}
+			else if ( Wing->m_Type == ITEMGET(13,30) )	// Cape Of Lord
+			{
+				//No such option
+			}
+			else if ( Wing->m_Type == ITEMGET(12,49) )	// Cape Of Lord
+			{
+				//No such option
 			}
 		}
 	}
@@ -1044,37 +1026,17 @@ if (criticaldamage == 0 && iActionType == 0)
 
 	if ( lpTargetObj->Live )
 	{
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_WIZARD_DEFENSE) == 1 && AttackDamage > 0)
+		if ( lpTargetObj->m_WizardSkillDefense && AttackDamage > 0)
 		{
-			int iWizardSkillDefense = 0;
-			int iWizardSkillTime = 0;
+			int replacemana = (WORD)lpTargetObj->Mana * 2 / 100;
 
-			gObjCheckUsedBuffEffect(lpTargetObj, AT_WIZARD_DEFENSE, &iWizardSkillDefense, &iWizardSkillTime);
-
-			int iReplacementMana = 0;
-
-			if(iWizardSkillTime > 0)
+			if ( replacemana < lpTargetObj->Mana )
 			{
-				iReplacementMana = (WORD)lpTargetObj->Mana * iWizardSkillTime / 1000;
-			}
-			else
-			{
-				iReplacementMana = (WORD)lpTargetObj->Mana * 2 / 100;
-			}
-
-			if ( iReplacementMana < lpTargetObj->Mana )
-			{
-				lpTargetObj->Mana -= iReplacementMana;
-
-				int decattackdamage = 0; //200
-
-				if(iWizardSkillDefense > 0)
-				{
-					decattackdamage = AttackDamage * iWizardSkillDefense / 100;
-				}
-
+				lpTargetObj->Mana -= replacemana;
+				int decattackdamage = AttackDamage * lpTargetObj->m_WizardSkillDefense / 100;
 				AttackDamage -= decattackdamage;
 				ManaChange = TRUE;
+
 			}
 		}
 
@@ -1086,38 +1048,23 @@ if (criticaldamage == 0 && iActionType == 0)
 				{
 					AttackDamage = AttackDamage * 50 / 100;
 				}
-			}
-		}
 
-//#if(_GSCS==1)
-		if ( g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-		{
-			if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
-			{
-				if ( lpObj->MapNumber == MAP_INDEX_CASTLESIEGE && lpTargetObj->MapNumber == MAP_INDEX_CASTLESIEGE )
+				if ( IT_MAP_RANGE(lpObj->MapNumber ) && IT_MAP_RANGE(lpTargetObj->MapNumber) )
 				{
-					if( lpObj->m_btCsJoinSide == lpTargetObj->m_btCsJoinSide)
-					{
-						AttackDamage = AttackDamage * 20 / 100;
-					}
-					else if(g_ShieldSystemOn == FALSE)
-					{
-						AttackDamage = AttackDamage * 40 / 100;
-					}
+					AttackDamage = AttackDamage * 50 / 100;
 				}
 			}
 		}
-//#endif
 
 		if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_MONSTER )
 		{
 			if ( lpTargetObj->Class == 283 )
 			{
-				if(gObjCheckUsedBuffEffect(lpObj, AT_POTION_OF_BLESS) != 0 || gObjCheckUsedBuffEffect(lpObj, AT_POTION_OF_SOUL) != 0)
+				if ( lpObj->m_iPotionBlessTime > 0 || lpObj->m_iPotionSoulTime > 0 )
 				{
 					AttackDamage += (AttackDamage * 20) / 100;
 				}
-				else
+				else 
 				{
 					if ( lpObj->m_iAccumulatedDamage > 100 )
 					{
@@ -1135,12 +1082,12 @@ if (criticaldamage == 0 && iActionType == 0)
 
 			if ( lpTargetObj->Class == 277 )
 			{
-				if(gObjCheckUsedBuffEffect(lpObj, AT_POTION_OF_BLESS) != 0 || gObjCheckUsedBuffEffect(lpObj, AT_POTION_OF_SOUL) != 0)
+				if ( lpObj->m_iPotionBlessTime > 0 || lpObj->m_iPotionSoulTime > 0 )
 				{
 					AttackDamage += (AttackDamage * 20) / 100;
 				}
-				else
-				{					
+				else 
+				{
 					if ( lpObj->m_iAccumulatedDamage > 100 )
 					{
 						gObjWeaponDurDownInCastle(lpObj, lpTargetObj, 1);
@@ -1205,7 +1152,7 @@ if (criticaldamage == 0 && iActionType == 0)
 	{
 		if ( lpObj->Type == OBJ_USER && lpTargetObj->Type == OBJ_USER )
 		{
-			if ( gObjDuelCheck(lpObj, lpTargetObj) )
+			if ( g_DuelManager.gObjDuelCheck(lpObj, lpTargetObj) )
 			{
 				selfdefense = 0;
 			}
@@ -1213,26 +1160,18 @@ if (criticaldamage == 0 && iActionType == 0)
 			{
 				selfdefense = 0;
 			}
+			else if ( IT_MAP_RANGE(lpObj->MapNumber) || IT_MAP_RANGE(lpTargetObj->MapNumber) )
+			{
+				selfdefense = 0;
+			}
 			else
 			{
 				selfdefense = 1;
 			}
+
 			if ( gObjGetRelationShip(lpObj, lpTargetObj) == 2 )
 			{
 				selfdefense = FALSE;
-			}
-//#if(_GSCS==1)
-			if ( g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-			{
-				if( lpObj->m_btCsJoinSide > 0 )
-				{
-					selfdefense = FALSE;
-				}
-			}
-//#endif
-			else if ( IT_MAP_RANGE(lpObj->MapNumber) || IT_MAP_RANGE(lpTargetObj->MapNumber) ) //season 2.5 add-on
-			{
-				selfdefense = 0;
 			}
 		}
 		else if ( lpTargetObj->Type == OBJ_MONSTER && lpObj->Type == OBJ_USER )
@@ -1245,51 +1184,32 @@ if (criticaldamage == 0 && iActionType == 0)
 
 		if ( lpTargetObj->Type == OBJ_USER )
 		{
-			gObjArmorRandomDurDown(lpTargetObj, lpObj);
+			gObjArmorRandomDurDown(lpTargetObj, lpObj, true);
 		}
 
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_ICE_ARROW) == 1)
+		if ( lpTargetObj->m_SkillHarden )
 		{
-			gObjRemoveBuffEffect(lpTargetObj, AT_ICE_ARROW);
-			GCMagicCancelSend(lpTargetObj, 51);
-		}
-	}
+			lpTargetObj->m_SkillHarden--;
 
-	if(lpObj->PartyNumber >= 0) //Season 2.5 add-on
-	{
-		if(lpCallObj->PartyNumber >= 0)
-		{
-			if(lpObj->PartyNumber == lpCallObj->PartyNumber)
+			if ( lpTargetObj->m_SkillHarden <= 0 )
 			{
-				selfdefense = FALSE;
+				lpTargetObj->m_SkillHardenTime = 0;
+				lpTargetObj->m_SkillHarden = 0;
+				lpTargetObj->m_ViewSkillState &= -33;
+				GCMagicCancelSend(lpTargetObj, 51);
 			}
 		}
-
 	}
 
 	if ( selfdefense == TRUE )
 	{
 		if ( !gObjTargetGuildWarCheck(lpObj, lpCallObj) )
 		{
-			if(lpCallObj->PartyNumber >= 0) //Season 2.5 add-on
-			{
-				//season3 removed party for LOL
-				int number = 0;
-				int partynum = lpCallObj->PartyNumber;
-				
-				if( (gParty.GetPKPartyPenalty(partynum)) < 5)
-				{
-					gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
-				}	
-			}
-			else
-			{
-				gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
-			}
+			gObjCheckSelfDefense(lpObj, lpCallObj->m_Index);
 		}
 	}
 
-	if ( AttackDamage >= 5 )
+	if ( AttackDamage >= 5 )	// To make strong hit
 	{
 		if ( lpTargetObj->Type == OBJ_MONSTER )
 		{
@@ -1336,9 +1256,20 @@ if (criticaldamage == 0 && iActionType == 0)
 			gObjAddMsgSendDelay(lpTargetObj, 10, lpObj->m_Index, 10, AttackDamage);
 		}
 
-		AttackDamage -= iTotalShieldDamage;
+		/*
+		//if ( g_ShieldSystemOn == TRUE )	// #error Remove the //
+		//{
+			AttackDamage -= iTotalShieldDamage;
+		//}
+		*/
+		if ( g_ShieldSystemOn == TRUE )	// FIX
+		{
+			AttackDamage -= iTotalShieldDamage;
+			if(AttackDamage < 1)
+				AttackDamage = 1;
+		}
 
-		gObjLifeCheck(lpTargetObj, lpObj, AttackDamage, 0, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
+		gObjLifeCheck(lpTargetObj, lpObj, AttackDamage, DAMAGE_TYPE_REG, MSBFlag, MsgDamage, skill, iTotalShieldDamage);
 	}
 	else
 	{
@@ -1366,46 +1297,70 @@ if (criticaldamage == 0 && iActionType == 0)
 
 	return TRUE;
 }
-// -------------------------------------------------------------------------------
 
-//0053f160	-> 100%
-int CDarkSpirit::GetAttackDamage(LPOBJ lpObj, int targetDefense, BOOL bIsOnDuel, int crititcaldamage)
+
+
+
+
+int  CDarkSpirit::GetAttackDamage(LPOBJ lpObj, int targetDefense, BOOL bIsOnDuel, int crititcaldamage)
 {
-	if( g_ShieldSystemOn == true )
+	if ( g_ShieldSystemOn == TRUE )
 	{
-		if( bIsOnDuel == true )
+		if ( bIsOnDuel == TRUE )
 		{
-			bIsOnDuel = false;
+			bIsOnDuel = FALSE;
 		}
 	}
-	// ----
+
 	int ad;
 	int sub = this->m_AttackDamageMax - this->m_AttackDamageMin;
 	int AttackDamage;
-	// ----
-	if( crititcaldamage )
+
+	if(ReadConfig.S6E2 == 0)
 	{
-		AttackDamage = this->m_AttackDamageMin + sub;
-	}
-	else
+		if ( crititcaldamage )
+		{
+			AttackDamage = this->m_AttackDamageMin + sub;
+		}
+		else
+		{
+			if((sub + 1) > 0)
+				AttackDamage = this->m_AttackDamageMin + (rand()%(sub+1));
+			else
+				AttackDamage = this->m_AttackDamageMin;
+		}
+	}else
 	{
-		AttackDamage = this->m_AttackDamageMin + (rand()%(sub+1));
+		if ( crititcaldamage == 3)
+		{
+			AttackDamage = this->m_AttackDamageMin + sub;
+		}else if ( crititcaldamage == 2)
+		{
+			AttackDamage = this->m_AttackDamageMin + sub;
+			AttackDamage += sub * 20 / 100;
+		}else
+		{
+			if((sub + 1) > 0)
+				AttackDamage = this->m_AttackDamageMin + (rand()%(sub+1));
+			else
+				AttackDamage = this->m_AttackDamageMin;
+		}
 	}
-	// ----
-	if( (lpObj->pInventory[0].m_Type >= ITEMGET(2,8) && lpObj->pInventory[0].m_Type <= ITEMGET(2,12) ) ||
-		lpObj->pInventory[0].m_Type == ITEMGET(2,13) || 
-		lpObj->pInventory[0].m_Type == ITEMGET(2,14) || 
-		lpObj->pInventory[0].m_Type == ITEMGET(2,15) ||
-		lpObj->pInventory[0].m_Type == ITEMGET(2,17) ||
-		lpObj->pInventory[0].m_Type == ITEMGET(2,18) )
+
+	if ( ( lpObj->pInventory[0].m_Type >= ITEMGET(2,8) && lpObj->pInventory[0].m_Type <= ITEMGET(2,12) ) ||
+		   lpObj->pInventory[0].m_Type == ITEMGET(2,13) ||
+		   lpObj->pInventory[0].m_Type == ITEMGET(2,14) ||
+		   lpObj->pInventory[0].m_Type == ITEMGET(2,15) )
 	{
-		int addpetdamage = lpObj->pInventory[0].m_Magic / 2;
-		addpetdamage	-= addpetdamage * lpObj->pInventory[0].m_CurrentDurabilityState;
-		addpetdamage	= AttackDamage * addpetdamage / 100;
-		AttackDamage	+= addpetdamage;
+		int damage = lpObj->pInventory[0].m_Magic / 2;
+		damage -= damage * lpObj->pInventory[0].m_CurrentDurabilityState;
+		damage = AttackDamage * damage / 100;
+		AttackDamage += damage;
+		AttackDamage += lpObj->MasterCharacterInfo->IncScepterAdds1;
 	}
-	// ----
-	if( bIsOnDuel )
+	AttackDamage += lpObj->MasterCharacterInfo->IncDarkSpirit1;
+
+	if ( bIsOnDuel )
 	{
 		ad = AttackDamage * 60 / 100 - targetDefense;
 	}
@@ -1413,336 +1368,318 @@ int CDarkSpirit::GetAttackDamage(LPOBJ lpObj, int targetDefense, BOOL bIsOnDuel,
 	{
 		ad = AttackDamage - targetDefense;
 	}
-	// ----
-	if( lpObj->m_MPSkillOpt.MpsDarkSpiritStr1 > 0.0f )
-	{
-		AttackDamage += int(lpObj->m_MPSkillOpt.MpsDarkSpiritStr1);
-	}
-	// ----
-	if( lpObj->m_MPSkillOpt.MpsUseScepterPetStr > 0.0f )
-	{
-		AttackDamage += int(lpObj->m_MPSkillOpt.MpsUseScepterPetStr);
-	}
-	// ----
-	ad += ad * gIncreaseDarkSpiritAttackDamagePercent / 100;
-	// ----
+
 	return ad;
 }
-// -------------------------------------------------------------------------------
 
-//0053f3d0	-> 100%
-BOOL CDarkSpirit::MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill, int skillSuccess, BOOL & bAllMiss)
+
+
+
+
+BOOL CDarkSpirit::MissCheck(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, BOOL& bAllMiss)
 {
-	int SuccessAttackRate			= 0;
-	int TargetSuccessfulBlocking	= lpTargetObj->m_SuccessfulBlocking;
-	int MsgDamage					= 0;
-	// ----
-	SuccessAttackRate				+= lpObj->m_MPSkillOpt.MpsAttackSuccessRate;
-	// ----
-	if( this->m_SuccessAttackRate < TargetSuccessfulBlocking )
-	{
-		bAllMiss = true;
-	}
-	// ----
-	if( IT_MAP_RANGE(lpTargetObj->MapNumber) != false )
-	{
-		if( g_IllusionTempleEvent.GetIllusionTempleState(lpTargetObj->MapNumber) == 2 )
-		{
-			if( lpTargetObj->Type == OBJ_USER )
-			{
-				if( g_IllusionTempleEvent.CheckSkillProdection(lpTargetObj->m_iIllusionTempleIndex, lpTargetObj->MapNumber) != false )
-				{
-					GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-					return false;
-				}
-			}
-			// ----
-			if( lpObj->PartyNumber == lpTargetObj->PartyNumber )
-			{
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-				return false;
-			}
-		}
-	}
-	// ----
-	if( bAllMiss != false )
-	{
-		if( (rand()%100) >= 5 )
-		{
-			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
-			return false;
-		}
-	}
-	else if( this->m_SuccessAttackRate )
-	{
-		if( (rand()%this->m_SuccessAttackRate) < TargetSuccessfulBlocking)
-		{
-			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
-			return false;
-		}
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
+	//int SuccessAttackRate = 0;
+	int TargetSuccessfulBlocking = lpTargetObj->m_SuccessfulBlocking;
+	int MsgDamage = MSG_DAMAGE_MISS;
 
-//0053f600	-> 100%
+	if ( lpTargetObj->m_SkillIT_Time > 0 )
+	{
+		if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
+		{
+			bAllMiss = TRUE;
+
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
+			return FALSE;
+		}
+	}
+
+	if ( lpTargetObj->Type == OBJ_USER )	// Miss for Uses
+	{
+		if(lpTargetObj->m_SkillDefSuccessRateIncTime > 0)
+		{
+			TargetSuccessfulBlocking += lpTargetObj->m_SkillDefSuccessRateIncNum;
+		}
+	}
+
+	if ( this->m_SuccessAttackRate < TargetSuccessfulBlocking )
+	{
+		bAllMiss = TRUE;
+	}
+
+	if ( bAllMiss != FALSE )
+	{
+		if ( (rand()%100) >= 5 )
+		{
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
+			return FALSE;
+		}
+	}
+	else if ( this->m_SuccessAttackRate )
+	{
+		if(this->m_SuccessAttackRate > 0)
+		{
+			if ( (rand()%this->m_SuccessAttackRate) < TargetSuccessfulBlocking)
+			{
+				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
+				return FALSE;
+			}
+		}else
+		{
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MsgDamage, 0);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+
+
 BOOL CDarkSpirit::MissCheckPvP(LPOBJ lpObj, LPOBJ lpTargetObj, int skill,  int skillSuccess, BOOL& bAllMiss)
 {
-	float iAttackRate		= 0;
-	float iDefenseRate		= 0;
-	int iAttackSuccessRate	= 0;
-	// ----
-	if( IT_MAP_RANGE(lpTargetObj->MapNumber) != false )
+	float iAttackRate = 0;
+	float iDefenseRate = 0;
+	int iAttackSuccessRate = 0;
+
+	if ( lpTargetObj->m_SkillIT_Time > 0 )
 	{
-		if( g_IllusionTempleEvent.GetIllusionTempleState(lpTargetObj->MapNumber) == 2 )
+		if ( lpTargetObj->m_SkillIT_Number == IL_ORDER_OF_PROTECT )
 		{
-			if( lpTargetObj->Type == OBJ_USER )
-			{
-				if( g_IllusionTempleEvent.CheckSkillProdection(lpTargetObj->m_iIllusionTempleIndex, lpTargetObj->MapNumber) != false )
-				{
-					GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-					return false;
-				}	
-			}
-			if( lpObj->PartyNumber == lpTargetObj->PartyNumber )
-			{
-				GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-				return false;
-			}
+			bAllMiss = TRUE;
+
+			GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+			return FALSE;
 		}
 	}
-	// ----
-	int iBaseLevel = lpObj->Level + lpObj->m_nMasterLevel;
-	// ----
-	if( lpObj->Class == CLASS_KNIGHT )
+
+	if ( lpObj->Class == CLASS_KNIGHT )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 45) / 10;
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 45) / 10;	// #formula
 	}
 	else if ( lpObj->Class == CLASS_DARKLORD )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 4 );
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
 	}
-	else if( lpObj->Class == CLASS_ELF )
+	else if ( lpObj->Class == CLASS_RAGEFIGHTER )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 6 ) / 10;
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
 	}
-	else if( lpObj->Class == CLASS_MAGUMSA )
+	else if ( lpObj->Class == CLASS_ELF )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 35 ) / 10;
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 6 ) / 10;	// #formula
 	}
-	else if( lpObj->Class == CLASS_WIZARD )
+	else if ( lpObj->Class == CLASS_MAGICGLADIATOR )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 4 );
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 35 ) / 10;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_SUMMONER )
+	else if ( lpObj->Class == CLASS_WIZARD )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 35 ) / 10;
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
 	}
-#ifdef MONK
-	else if( lpTargetObj->Class == CLASS_MONK )
+	else if ( lpObj->Class == CLASS_SUMMONER )
 	{
-		iAttackRate = iBaseLevel * 3 + ( lpObj->Dexterity * 48 ) / 10;
+		iAttackRate = lpObj->Level * 3 + ( lpObj->Dexterity * 4 );	// #formula
 	}
-#endif
-	int iTargetBaseLevel = lpTargetObj->Level + lpTargetObj->m_nMasterLevel;
-	// ----
-	if( lpTargetObj->Class == CLASS_KNIGHT )
+
+	if ( lpTargetObj->Class == CLASS_KNIGHT )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 2;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 2;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_DARKLORD )
+	else if ( lpTargetObj->Class == CLASS_DARKLORD )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 2;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 2;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_ELF )
+	else if ( lpTargetObj->Class == CLASS_ELF )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 10;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 10;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_MAGUMSA )
+	else if ( lpTargetObj->Class == CLASS_RAGEFIGHTER )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 4;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 8;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_WIZARD )
+	else if ( lpTargetObj->Class == CLASS_MAGICGLADIATOR )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 4;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-	else if( lpTargetObj->Class == CLASS_SUMMONER )
+	else if ( lpTargetObj->Class == CLASS_WIZARD )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 2;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-#ifdef MONK
-	else if( lpTargetObj->Class == CLASS_MONK )
+	else if ( lpTargetObj->Class == CLASS_SUMMONER )
 	{
-		iDefenseRate = iTargetBaseLevel * 2 + lpTargetObj->Dexterity / 5;
+		iDefenseRate = lpTargetObj->Level * 2 + lpTargetObj->Dexterity / 4;	// #formula
 	}
-#endif
-	// ----
-	if( iAttackRate <= 0.0f || iDefenseRate <= 0.0f || lpObj->Level <= 0 || lpTargetObj->Level <= 0 )
-	{
-		return false;
-	}
-	// ----
-	iAttackRate		+= lpObj->m_ItemOptionExFor380.OpAddAttackSuccessRatePVP;
-	iDefenseRate	+= lpTargetObj->m_ItemOptionExFor380.OpAddDefenseSuccessRatePvP;
-	// ----
-	iAttackRate		+= lpObj->m_JewelOfHarmonyEffect.HJOpAddAttackSuccessRatePVP;
-	iDefenseRate	+= lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddDefenseSuccessRatePvP;
-	// ----
-	iAttackRate		+= lpObj->m_MPSkillOpt.MpsPVPAttackDmgRate;
-	iDefenseRate	+= lpTargetObj->m_MPSkillOpt.MpsPVPBlockingRate;
-	// ----
-	float iExpressionA	= ( iAttackRate * 10000.0f ) / ( iAttackRate + iDefenseRate );
-	float iExpressionB	= ( iBaseLevel * 10000 ) / ( iBaseLevel + iTargetBaseLevel );
-	iExpressionA		/= 10000.0f;
-	iExpressionB		/= 10000.0f;
-	// ----
+
+	if ( iAttackRate <= 0.0f || iDefenseRate <= 0.0f || lpObj->Level <= 0 || (DWORD)lpTargetObj <= 0 )	// #error lpTargetObj
+		return FALSE;
+
+	iAttackRate += lpObj->m_ItemOptionExFor380.OpAddAttackSuccessRatePVP;
+	iDefenseRate += lpTargetObj->m_ItemOptionExFor380.OpAddDefenseSuccessRatePvP;
+
+	iAttackRate += lpObj->m_JewelOfHarmonyEffect.HJOpAddAttackSuccessRatePVP;
+	iDefenseRate += lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddDefenseSuccessRatePvP;
+
+	float iExpressionA = ( iAttackRate * 10000.0f ) / ( iAttackRate + iDefenseRate );	// #formula
+	float iExpressionB = ( lpObj->Level * 10000 ) / ( lpObj->Level + lpTargetObj->Level );	// #formula
+
+	iExpressionA /= 10000.0f;
+	iExpressionB /= 10000.0f;
+
 	iAttackSuccessRate = 100.0f * iExpressionA * g_fSuccessAttackRateOption * iExpressionB;
-	// ----
-	if( (iTargetBaseLevel - iBaseLevel) >= 100 )
+
+	if ( (lpTargetObj->Level - lpObj->Level) >= 100 )
 	{
 		iAttackSuccessRate -= 5;
 	}
-	else if( (iTargetBaseLevel - iBaseLevel) >= 200 )
+	else if ( (lpTargetObj->Level - lpObj->Level) >= 200 )
 	{
 		iAttackSuccessRate -= 10;
 	}
-	else if( (iTargetBaseLevel - iBaseLevel) >= 300 )
+	else if ( (lpTargetObj->Level - lpObj->Level) >= 300 )
 	{
 		iAttackSuccessRate -= 15;
 	}
-	// ----
-	DWORD dwRate = rand() % 100;
-	// ----
-	if( dwRate > iAttackSuccessRate )
-	{
-		GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, 0, 0);
-		return false;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
 
-//0053fd50	-> 100%
+	DWORD dwRate = rand() % 100;
+
+	if ( dwRate > iAttackSuccessRate )
+	{
+		GCDamageSend(lpObj->m_Index, lpTargetObj->m_Index, 0, 0, MSG_DAMAGE_MISS, 0);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+	
+
+
 void CDarkSpirit::ChangeCommand(int command, int targetindex)
 {
 	CDarkSpirit::ePetItem_Mode setmode = PetItem_Mode_Normal;
-	// ----
-	if( command == PetItem_Mode_Normal )
+
+	if ( command == PetItem_Mode_Normal )
 	{
 		setmode = PetItem_Mode_Normal;
 	}
-	else if( command == PetItem_Mode_Attack_Random )
+	else if ( command == PetItem_Mode_Attack_Random )
 	{
 		setmode = PetItem_Mode_Attack_Random;
 	}
-	else if( command == PetItem_Mode_Attack_WithMaster )
+	else if ( command == PetItem_Mode_Attack_WithMaster )
 	{
 		setmode = PetItem_Mode_Attack_WithMaster;
 	}
-	else if( command == PetItem_Mode_Attack_Target )
+	else if ( command == PetItem_Mode_Attack_Target )
 	{
 		setmode = PetItem_Mode_Attack_Target;
 	}
-	// ----
+
 	this->SetMode(setmode, targetindex);
 }
-// -------------------------------------------------------------------------------
 
-//0053fdd0	-> 100%
-void CDarkSpirit::SendLevelmsg(int aIndex, int nPos, int PetType, int InvenType)
+
+void __cdecl CDarkSpirit::SendLevelmsg(int aIndex, int nPos, int PetType, int InvenType)
 {
 	PMSG_SEND_PET_ITEMINFO pMsg;
-	// ----
+
 	pMsg.h.set((LPBYTE)&pMsg, 0xA9, sizeof(pMsg));
-	pMsg.PetType	= PetType;
-	pMsg.InvenType	= 0xFE;
-	pMsg.nPos		= nPos;
-	pMsg.Level		= gObj[aIndex].pInventory[nPos].m_PetItem_Level;
-	pMsg.Exp		= gObj[aIndex].pInventory[nPos].m_PetItem_Exp;
-	pMsg.Life		= gObj[aIndex].pInventory[nPos].m_Durability;
-	// ----
+	pMsg.PetType = PetType;
+	pMsg.InvenType = 0xFE;
+	pMsg.nPos = nPos;
+	pMsg.Level = gObj[aIndex].pInventory[nPos].m_PetItem_Level;
+	pMsg.Exp = gObj[aIndex].pInventory[nPos].m_PetItem_Exp;
+
 	DataSend(aIndex, (LPBYTE)&pMsg, pMsg.h.size);
 }
-// -------------------------------------------------------------------------------
 
-//0053fed0	-> 100%
+
+void __cdecl CDarkSpirit::SendExpmsg(int aIndex, int nPos, int PetType, int InvenType)
+{
+	PMSG_SEND_PET_ITEMINFO pMsg;
+
+	pMsg.h.set((LPBYTE)&pMsg, 0xA9, sizeof(pMsg));
+	pMsg.PetType = PetType;
+	pMsg.InvenType = InvenType;
+	pMsg.nPos = nPos;
+	pMsg.Level = gObj[aIndex].pInventory[nPos].m_PetItem_Level;
+	pMsg.Exp = gObj[aIndex].pInventory[nPos].m_PetItem_Exp;
+
+	DataSend(aIndex, (LPBYTE)&pMsg, pMsg.h.size);
+}
+
+
+
 int CDarkSpirit::GetShieldDamage(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage)
 {
-	int iShieldDamage = 0;
-	// ----
-	if( g_ShieldSystemOn == false )
-	{
+	//int iShieldDamage = 0;
+
+	if ( g_ShieldSystemOn == FALSE )
 		return 0;
-	}
-	// ----
-	if( iAttackDamage <= 0 )
-	{
+
+	if ( iAttackDamage <= 0 )
 		return 0;
-	}
-	// ----
-	int iReduceLife				= 0;
-	int iReduceShield			= 0;
-	int iReduceLifeForEffect	= 0; 
-	bool bReduceShieldGage		= 0;
-	int iDamageDevideToSDRate	= g_iDamageDevideToSDRate;
-	iDamageDevideToSDRate		-= lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate;
-	iDamageDevideToSDRate		+= lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate;
-	// ----
-	if( iDamageDevideToSDRate < 0 )
-	{
+
+	int iReduceLife = 0;
+	int iReduceShield = 0;
+	int iReduceLifeForEffect = 0; 
+	bool bReduceShieldGage = 0;
+	int iDamageDevideToSDRate = g_iDamageDevideToSDRate;
+	iDamageDevideToSDRate -= lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate;
+	iDamageDevideToSDRate += lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate;
+
+	if ( iDamageDevideToSDRate < 0 )
 		iDamageDevideToSDRate = 0;
-	}
-	// ----
-	if( iDamageDevideToSDRate > 100 )
-	{
+
+	if ( iDamageDevideToSDRate > 100 )
 		iDamageDevideToSDRate = 100;
-	}
-	// ----
-	if( lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate > 0 )
+
+	if ( lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate > 0 )
 	{
 		int iRand = rand()%100;
-		// ----
-		if( iRand < lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate )
+
+		if ( iRand < lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate )
 		{
 			iDamageDevideToSDRate = 0;
 		}
 	}
-	// ----
-	if( lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate 
-		|| lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate 
-		|| lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate )
+
+	if ( lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate ||
+		 lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate ||
+		 lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate )
 	{
-		LogAddTD("[JewelOfHarmony][PvP System] Attacker:[%s][%s]-SD Decrease[%d] SD Ignore[%d] Defender:[%s][%s] SD Increase Option[%d] - SD Rate[%d]",
+		/*LogAddTD("[JewelOfHarmony][PvP System] Attacker:[%s][%s]-SD Decrease[%d] SD Ignore[%d] Defender:[%s][%s] SD Increase Option[%d] - SD Rate[%d]",
 			lpObj->AccountID, lpObj->Name,
-			lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate, lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate, lpTargetObj->AccountID, lpTargetObj->Name, lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate, iDamageDevideToSDRate);
+			lpObj->m_JewelOfHarmonyEffect.HJOpDecreaseSDRate,
+			lpObj->m_JewelOfHarmonyEffect.HJOpAddIgnoreSDRate,
+			lpTargetObj->AccountID, lpTargetObj->Name,
+			lpTargetObj->m_JewelOfHarmonyEffect.HJOpAddSDRate,
+			iDamageDevideToSDRate);*/
 	}
-	// ----
-	iReduceShield	= iAttackDamage * iDamageDevideToSDRate / 100;
-	iReduceLife		= iAttackDamage - iReduceShield;
-	// ----
-	if( (lpTargetObj->iShield-iReduceShield) < 0 )
+
+	iReduceShield = iAttackDamage * iDamageDevideToSDRate / 100;
+	iReduceLife = iAttackDamage - iReduceShield;
+
+	if ( (lpTargetObj->iShield-iReduceShield) <0 )
 	{
-		iReduceLife		+= iReduceShield  - lpTargetObj->iShield;
-		iReduceShield	= lpTargetObj->iShield;
-		// ----
-		if( lpTargetObj->iShield > 0 )
+		iReduceLife += iReduceShield  - lpTargetObj->iShield;
+		iReduceShield = lpTargetObj->iShield;
+
+		if ( lpTargetObj->iShield > 0 )
 		{
 			bReduceShieldGage = true;
 		}
 	}
-	// ----
+
 	iReduceLifeForEffect = ( lpTargetObj->MaxLife + lpTargetObj->AddLife ) * 20.0f / 100.0f;
-	// ----
-	if( bReduceShieldGage == true && iReduceLife > iReduceLifeForEffect )
+
+	if ( bReduceShieldGage == true && iReduceLife > iReduceLifeForEffect )
 	{
-		if( !CC_MAP_RANGE(lpTargetObj->MapNumber) )
+		if ( !CC_MAP_RANGE(lpTargetObj->MapNumber) )
 		{
 			GCSendEffectInfo(lpTargetObj->m_Index, 17);
 		}
 	}
-	// ----
+
 	return iReduceShield;
 }
-// -------------------------------------------------------------------------------

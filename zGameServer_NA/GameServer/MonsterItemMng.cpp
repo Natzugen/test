@@ -1,334 +1,591 @@
-//-> Decompiled by DarkSim | 09.07.2013 | 1.01.00 GS-N
-// -------------------------------------------------------------------------------
-
 #include "stdafx.h"
 #include "MonsterItemMng.h"
 #include "MonsterAttr.h"
 #include "GameMain.h"
 #include "LogProc.h"
 #include "CashShop.h"
-#include "LuckyItem.h"
+#include "gObjMonster.h"
 #include "..\include\ReadScript.h"
-#include "LargeRand.h"
-// -------------------------------------------------------------------------------
+#include "DSProtocol.h"
+#include "CrywolfSync.h"
+#include "Crywolf.h"
+
+// GS-N 0.99.60T 0x00419F60
+//	GS-N	1.00.18	JPN	0x00420EF0	-	Completed
+
+#include "LogToFile.h"
+CLogToFile SCF_DROP_LOG("SCF_DROP_LOG", ".\\SCF_DROP_LOG", 1);
 
 CMonsterItemMng g_MonsterItemMng;
-// -------------------------------------------------------------------------------
 
-//0042ed00	-> 100% (Identical)
+
 CMonsterItemMng::CMonsterItemMng()
 {
 	return;
 }
-// -------------------------------------------------------------------------------
 
-//0042ee30	-> 100% (Identical)
+
 CMonsterItemMng::~CMonsterItemMng()
 {
 	this->Clear();
 }
-// -------------------------------------------------------------------------------
 
-//0042ee60	-> 100% (Identical)
+BOOL CMonsterItemMng::SendDropConfigItem(LPOBJ lpObj, LPOBJ lpMonObj)
+{
+	//srand((unsigned)time(NULL));
+	int OriginalDropRate = rand()%10000;
+	OriginalDropRate -= 1;
+
+	if(OriginalDropRate >= 0)
+	{
+		//Loading Initial array with values
+		int ItemDropList[MaxItemDropScript];
+		int ItemFoundCounter = 0;
+		int FinalItemPosition = 0;
+
+		//Random used variables
+		//srand((unsigned)time(NULL));
+		int DifferenceDropRate = rand()%10000;		//DaRKav Fix (reduce range of items)
+		if (DifferenceDropRate + OriginalDropRate > 10000)
+			DifferenceDropRate = 10000;
+		else
+			DifferenceDropRate = DifferenceDropRate + OriginalDropRate;
+
+		//Getting all items with the drop rate bigger or equals to the RAND drop rate
+		if ( this->ItemHighestDropRate >= OriginalDropRate )
+		{
+			for(int i=0;i<this->ItemDropRateCount;i++)
+			{
+				if(((this->DropRateConfig[i].DropMap == -1) || 
+					(this->DropRateConfig[i].DropMap == lpObj->MapNumber )) && 
+				   ((lpMonObj->Class == this->DropRateConfig[i].MobId) || 
+				    ((lpMonObj->Level >=this->DropRateConfig[i].Minlvl) && 
+					(lpMonObj->Level <=this->DropRateConfig[i].Maxlvl))))
+				{
+					if (lpObj->PartyNumber >= 0 && DropRateConfig[i].PartyRate > 0)
+					{
+						if (lpObj->Vip > 0)
+						{
+							if (DropRateConfig[i].VipRate >= 0)
+							{
+								if( (DropRateConfig[i].VipRate+DropRateConfig[i].PartyRate) >= OriginalDropRate &&
+									(DropRateConfig[i].VipRate+DropRateConfig[i].PartyRate) <= DifferenceDropRate) 
+								{	
+									ItemDropList[ItemFoundCounter]=i;
+									ItemFoundCounter += 1;
+								}
+							} else {
+								if( (DropRateConfig[i].Rate+DropRateConfig[i].PartyRate) >= OriginalDropRate &&
+									(DropRateConfig[i].Rate+DropRateConfig[i].PartyRate) <= DifferenceDropRate)
+								{	
+									ItemDropList[ItemFoundCounter]=i;
+									ItemFoundCounter += 1;
+								}
+							}
+						} else {
+							if((DropRateConfig[i].Rate >= OriginalDropRate)&&(DropRateConfig[i].Rate <= (DifferenceDropRate))) 
+							{	
+								ItemDropList[ItemFoundCounter]=i;
+								ItemFoundCounter += 1;
+							}
+						}
+					} else {
+						if (lpObj->Vip > 0)
+						{
+							if (DropRateConfig[i].VipRate >= 0)
+							{
+								if( DropRateConfig[i].VipRate >= OriginalDropRate &&
+									DropRateConfig[i].VipRate <= DifferenceDropRate) 
+								{	
+									ItemDropList[ItemFoundCounter]=i;
+									ItemFoundCounter += 1;
+								}
+							} else {
+								if( DropRateConfig[i].Rate >= OriginalDropRate &&
+									DropRateConfig[i].Rate <= DifferenceDropRate)
+								{	
+									ItemDropList[ItemFoundCounter]=i;
+									ItemFoundCounter += 1;
+								}
+							}
+						} else {
+							if((DropRateConfig[i].Rate >= OriginalDropRate)&&(DropRateConfig[i].Rate <= (DifferenceDropRate))) 
+							{	
+								ItemDropList[ItemFoundCounter]=i;
+								ItemFoundCounter += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		if (ItemFoundCounter > 0)
+		{
+			if (ItemFoundCounter>1)
+			{
+				//srand((unsigned)time(NULL));
+				FinalItemPosition = rand()%ItemFoundCounter; //Generating a random item from array
+			} else {
+				FinalItemPosition = 0;
+			}
+
+			int result = ItemDropList[FinalItemPosition];
+			int type = this->DropRateConfig[result].Type *512 + this->DropRateConfig[result].Index;
+
+			if ( g_CrywolfSync.GetOccupationState() == CRYWOLF_OCCUPATION_FAILED && g_iCrywolfApplyMvpPenalty )
+			{
+				// Jewels
+				if (type == ITEMGET(12,15) ||	//Jewel of Chaos
+					type == ITEMGET(14,13) ||	//Jewel of Bless
+					type == ITEMGET(14,14) ||	//Jewel of Soul
+					type == ITEMGET(14,16) ||	//Jewel of Life
+					type == ITEMGET(14,22) ||	//Jewel of Creation
+					type == ITEMGET(14,31) ||	//Jewel of Guardian
+					type == ITEMGET(14,42) ||	//Jewel of Harmony
+					type == ITEMGET(14,53) ||	//Charm Of Luck
+					type == ITEMGET(14,96) ||	//Chaos machine rate 
+#if (CRYSTAL_EDITION==1)
+					type == ITEMGET(14,200) ||	//Custom Jewel
+					type == ITEMGET(14,201) ||	//Custom Jewel
+					type == ITEMGET(14,202) ||	//Custom Jewel
+					type == ITEMGET(14,203) ||	//Custom Jewel
+					type == ITEMGET(14,204) ||	//Custom Jewel
+					type == ITEMGET(14,205) ||	//Custom Jewel
+					type == ITEMGET(14,206) ||	//Custom Jewel
+#endif
+					type == ITEMGET(12,30)  ||	//Jewel of Bless Compresse
+					type == ITEMGET(12,31)  ||	//Jewel of Soul Compresse
+					type == ITEMGET(12,136) ||	//Jewel of Life Bundle
+					type == ITEMGET(12,137) ||	//Jewel of Creation Bundle
+					type == ITEMGET(12,138) ||	//Jewel of Guardian Bundle
+					type == ITEMGET(12,139) ||	//Gemstone Bundle
+					type == ITEMGET(12,140) ||	//Jewel of Harmony Bundle
+					type == ITEMGET(12,141)		//Jewel of Chaos Bundle
+
+					)
+				{
+					//srand((unsigned)time(NULL));
+					if ( (rand()%100) > g_CrywolfSync.GetGemDropPenaltiyRate() )
+					{
+						return 0;
+					}
+				}
+			}
+
+			//int item_type = ItemGetNumberMake(this->DropRateConfig[result].Type,this->DropRateConfig[result].Index);
+			//Exc Options
+			BYTE ExcOptNum = BoxExcOptions(this->DropRateConfig[result].ExcOptNum);
+
+			//z28 option
+			BYTE z28Opt = this->DropRateConfig[result].Opt * 100;
+			if (this->DropRateConfig[result].Opt > 0)
+			{
+				//srand((unsigned)time(NULL));
+				z28Opt = (rand()%this->DropRateConfig[result].Opt) + 1;
+				z28Opt = z28Opt / 100;
+			}
+
+			if (this->DropRateConfig[result].NoTrade == 1)
+			{
+				MapC[lpMonObj->MapNumber].MonsterItemDrop(type, this->DropRateConfig[result].Level, this->DropRateConfig[result].Duration, 
+					lpMonObj->X, lpMonObj->Y, 
+					this->DropRateConfig[result].Skill, this->DropRateConfig[result].Luck, z28Opt, ExcOptNum, 0,
+					lpObj->m_Index, 
+					0xFFFFFFF0, 0,0,0,0,0,0);
+			} else {
+				ItemSerialCreateSend(lpMonObj->m_Index, lpMonObj->MapNumber, lpMonObj->X, lpMonObj->Y, type, this->DropRateConfig[result].Level, this->DropRateConfig[result].Duration,
+					this->DropRateConfig[result].Skill, this->DropRateConfig[result].Luck, z28Opt, lpObj->m_Index, ExcOptNum, 0);
+			}
+
+			if(ReadConfig.DropLog == TRUE)
+			{
+				SCF_DROP_LOG.Output("[Drop System][%s][%s] Kill:%d[%d,%d,%d] Found:%d, Pos:[%d/%d], R:%d VR:%d PR:%d OR:%d DR:%d Item:[%s][%d][%d][%d][%d => %d] Exc:[%d => %d]", 
+					lpObj->AccountID,lpObj->Name,
+					lpMonObj->Class,lpMonObj->MapNumber,lpMonObj->X,lpMonObj->Y,
+					ItemFoundCounter, FinalItemPosition, result, 
+					DropRateConfig[result].Rate,
+					DropRateConfig[result].VipRate,
+					DropRateConfig[result].PartyRate,
+					OriginalDropRate,DifferenceDropRate,
+					ItemAttribute[type].Name,
+					this->DropRateConfig[result].Level,
+					this->DropRateConfig[result].Skill, 
+					this->DropRateConfig[result].Luck, 
+					this->DropRateConfig[result].Opt, z28Opt,
+					this->DropRateConfig[result].ExcOptNum,
+					ExcOptNum
+				);
+			}
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void CMonsterItemMng::ItemDropLoadScript(char * FilePath)
+{
+	this->ItemDropRateCount = 0;
+	this->ItemHighestDropRate = 0;
+
+	int i = 0;
+
+	if(ReadConfig.gObjMonsterItemDropConfigScriptEnabled == 1)
+	{
+		int Token;
+
+		SMDFile = fopen(FilePath, "r");
+
+		if ( SMDFile == NULL )
+		{
+			MsgBox("ItemDrop data load error %s", FilePath);
+			return;
+		}
+
+		while ( true )
+		{
+			int iType = GetToken();
+			iType = TokenNumber;
+
+			if ( iType == 0 )
+			{
+				while(true)
+				{
+					if( (i+1) >= MaxItemDropScript)
+						break; 
+
+					Token = GetToken();
+					if ( strcmp("end", TokenString) == 0 )
+					{
+						break;
+					}else
+					{
+						this->DropRateConfig[i].Type		= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Index		= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Level		= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Opt			= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Luck		= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].Skill		= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Duration	= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].ExcOptNum	= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].Rate		= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].VipRate		= TokenNumber;
+#if (DSGN_DROP_PARTYEXTRA == 1)
+						Token = GetToken();	
+						this->DropRateConfig[i].PartyRate	= TokenNumber;
+#else
+						this->DropRateConfig[i].PartyRate	= 0;
+#endif						
+						Token = GetToken();	
+						this->DropRateConfig[i].NoTrade		= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].MobId		= TokenNumber;
+						Token = GetToken();	
+						this->DropRateConfig[i].Minlvl		= TokenNumber;
+						Token = GetToken();
+						this->DropRateConfig[i].Maxlvl		= TokenNumber;	
+						Token = GetToken();
+						this->DropRateConfig[i].DropMap		= TokenNumber;
+
+						if (this->ItemHighestDropRate < this->DropRateConfig[i].Rate)
+						{
+							this->ItemHighestDropRate = this->DropRateConfig[i].Rate;
+						}
+
+						if (this->ItemHighestDropRate < this->DropRateConfig[i].VipRate)
+						{
+							this->ItemHighestDropRate = this->DropRateConfig[i].VipRate;
+						}
+
+						i++;
+					}
+				}
+			}
+			break;
+		}
+			
+		this->ItemDropRateCount = i;
+		fclose(SMDFile);
+		LogAddTD("[ItemDropLoadScript][Items: %d] - %s file is Loaded",i,FilePath);
+
+		this->ShuffleDropScript(3);
+	}
+}
+
+void CMonsterItemMng::ShuffleDropScript(BYTE runs)
+{
+	if ( this->ItemDropRateCount > 0 )
+	{
+		srand(time(0)); 
+		int i = this->ItemDropRateCount;
+
+		for (int rnd=0; rnd < runs; rnd++)
+		{
+			//--- Shuffle elements by randomly exchanging each with one other.
+			for (int j=0; j < (i-1); j++) 
+			{
+				int r = j + (rand() % (i-1)); // Random remaining position.
+
+				BYTE Type = this->DropRateConfig[i].Type;
+				BYTE Index = this->DropRateConfig[i].Index;
+				BYTE Level = this->DropRateConfig[i].Level;
+				BYTE Opt = this->DropRateConfig[i].Opt;
+				BYTE Luck = this->DropRateConfig[i].Luck;
+				BYTE Skill = this->DropRateConfig[i].Skill;
+				BYTE Duration = this->DropRateConfig[i].Duration;
+				BYTE ExcOptNum = this->DropRateConfig[i].ExcOptNum;
+				WORD Rate = this->DropRateConfig[i].Rate;
+				WORD VipRate = this->DropRateConfig[i].VipRate;
+				BYTE NoTrade = this->DropRateConfig[i].NoTrade;
+				short MobId = this->DropRateConfig[i].MobId;
+				BYTE Minlvl = this->DropRateConfig[i].Minlvl;
+				BYTE Maxlvl = this->DropRateConfig[i].Maxlvl;
+				short DropMap = this->DropRateConfig[i].DropMap;
+
+				this->DropRateConfig[i].Type = this->DropRateConfig[r].Type;
+				this->DropRateConfig[i].Index = this->DropRateConfig[r].Index;
+				this->DropRateConfig[i].Level = this->DropRateConfig[r].Level;
+				this->DropRateConfig[i].Opt = this->DropRateConfig[r].Opt;
+				this->DropRateConfig[i].Luck = this->DropRateConfig[r].Luck;
+				this->DropRateConfig[i].Skill = this->DropRateConfig[r].Skill;
+				this->DropRateConfig[i].Duration = this->DropRateConfig[r].Duration;
+				this->DropRateConfig[i].ExcOptNum = this->DropRateConfig[r].ExcOptNum;
+				this->DropRateConfig[i].Rate = this->DropRateConfig[r].Rate;
+				this->DropRateConfig[i].VipRate = this->DropRateConfig[r].VipRate;
+				this->DropRateConfig[i].NoTrade = this->DropRateConfig[r].NoTrade;
+				this->DropRateConfig[i].MobId = this->DropRateConfig[r].MobId;
+				this->DropRateConfig[i].Minlvl = this->DropRateConfig[r].Minlvl;
+				this->DropRateConfig[i].Maxlvl = this->DropRateConfig[r].Maxlvl;
+				this->DropRateConfig[i].DropMap = this->DropRateConfig[r].DropMap;
+
+				this->DropRateConfig[r].Type = Type;
+				this->DropRateConfig[r].Index = Index;
+				this->DropRateConfig[r].Level = Level;
+				this->DropRateConfig[r].Opt = Opt;
+				this->DropRateConfig[r].Luck = Luck;
+				this->DropRateConfig[r].Skill = Skill;
+				this->DropRateConfig[r].Duration = Duration;
+				this->DropRateConfig[r].ExcOptNum = ExcOptNum;
+				this->DropRateConfig[r].Rate = Rate;
+				this->DropRateConfig[r].VipRate = VipRate;
+				this->DropRateConfig[r].NoTrade = NoTrade;
+				this->DropRateConfig[r].MobId = MobId;
+				this->DropRateConfig[r].Minlvl = Minlvl;
+				this->DropRateConfig[r].Maxlvl = Maxlvl;
+				this->DropRateConfig[r].DropMap = DropMap;
+			}
+		}
+
+		LogAddTD("[ItemDropLoadScript] Item Shuffle completed, Items:%d, Runs: %d",
+			this->ItemDropRateCount, runs);
+	}
+}
+
 void CMonsterItemMng::Init()
 {
 	memset(this->m_iMonsterInvenItemCount, 0, sizeof(this->m_iMonsterInvenItemCount));
-	memset(this->m_iMonsterInvenExItemCount, 0, sizeof(this->m_iMonsterInvenItemCount));
-	// ----
-	for( int i = 0; i < MAX_MONSTER_LEVEL; i++ )
+
+	for ( int i=0 ; i< MAX_LEVEL_MONSTER ; i++ )
 	{
-		if( this->m_MonsterInvenItems[i] != NULL )	//wz mistake, fixed
-		{
-			delete[] this->m_MonsterInvenItems[i];
-		}
-		// ----
-		this->m_MonsterInvenItems[i] = new CItem[MAX_MONSTER_ITEM];
-		// ----
-		if( this->m_MonsterInvenExItems[i] != NULL )	//wz mistake, fixed
-		{
-			delete[] this->m_MonsterInvenExItems[i];
-		}
-		// ----
-		this->m_MonsterInvenExItems[i] = new CItem[MAX_MONSTER_EXITEM];	
+		this->m_MonsterInvenItems[i] = new CItem[MAX_ITEM_IN_MONSTER];
 	}
-	// ----
+
 	LPMONSTER_ATTRIBUTE lpm;
-	// ----
-	for( int i = 0; i < MAX_MONSTER_TYPE; i++ )
+
+	for (int i = 0; i< MAX_MONSTER_TYPE ; i++ )
 	{
 		lpm = gMAttr.GetAttr(i);
-		// ----
-		if( lpm != NULL )
+
+		if ( lpm != NULL )
 		{
 			strcpy( this->MonsterName, lpm->m_Name);
-			// ----
-			if( lpm->m_Level != 0 )
+
+			if ( lpm->m_Level != 0 )
 			{
-				this->gObjGiveItemSearchEx(lpm->m_Level, lpm->m_MaxItemLevel);
+				this->gObjGiveItemSearch(lpm->m_Level, lpm->m_MaxItemLevel);
 			}
 		}
 	}
-	// ----
-	this->LoadMonsterItemDropRate();
-	this->MakeJewelItem();
 }
-// -------------------------------------------------------------------------------
 
-//0042f090	-> 100% (Identical)
+
 void CMonsterItemMng::Clear()
 {
 	memset(this->m_iMonsterInvenItemCount, 0, sizeof(this->m_iMonsterInvenItemCount));
-	// ---
-	for( int i = 0; i < MAX_MONSTER_LEVEL; i++ )
+
+	for ( int i =0 ; i< MAX_LEVEL_MONSTER ; i++ )
 	{
 		delete this->m_MonsterInvenItems[i];
 	}
-	// ----
-	memset(this->m_iMonsterInvenExItemCount, 0, sizeof(this->m_iMonsterInvenItemCount));
-	// ----
-	for( int cnt = 0; cnt < MAX_MONSTER_LEVEL; cnt++ )
-	{
-		delete this->m_MonsterInvenExItems[cnt];
-	}
-	// ----
-	if( this->m_MonsterJewelItem1 != NULL )
-	{
-		delete this->m_MonsterJewelItem1;
-		this->m_MonsterJewelItem1 = NULL;
-	}
-	// ----
-	if( this->m_MonsterJewelItem2 != NULL )
-	{
-		delete this->m_MonsterJewelItem2;
-		this->m_MonsterJewelItem2 = NULL;
-	}
-	// ----
-	if( this->m_MonsterJewelItem3 != NULL )
-	{
-		delete this->m_MonsterJewelItem3;
-		this->m_MonsterJewelItem3 = NULL;
-	}
-	// ----
-	if( this->m_MonsterJewelItem4 != NULL )
-	{
-		delete this->m_MonsterJewelItem4;
-		this->m_MonsterJewelItem4 = NULL;
-	}
-	// ----
-	if( this->m_MonsterJewelItem5 != NULL )
-	{
-		delete this->m_MonsterJewelItem5;
-		this->m_MonsterJewelItem5 = NULL;
-	}
 }
-// -------------------------------------------------------------------------------
 
-//0042f2a0	-> 100% (Identical)
-BYTE CMonsterItemMng::InsertItem(int monsterlevel, int type, int index, int itemlevel, int op1, int op2, int op3)
+BYTE CMonsterItemMng::InsertItem(int monsterlevel, int type, int index, int itemlevel, int op1, int op2 ,int op3 )
 {
-	if( monsterlevel > MAX_MONSTER_LEVEL || monsterlevel < 0 )
+	if ( monsterlevel > MAX_LEVEL_MONSTER || monsterlevel < 0 )
 	{
 		return -1;
 	}
-	// ----
+
 	int itemcount = this->m_iMonsterInvenItemCount[monsterlevel];
-	// ----
-	if( itemcount >= MAX_MONSTER_ITEM )
+
+	if ( itemcount >= MAX_ITEM_IN_MONSTER )
 	{
 		return -1;
 	}
-	// ----
-	CItem * item	= &this->m_MonsterInvenItems[monsterlevel][itemcount];
-	int item_type	= (type * MAX_SUBTYPE_ITEMS) + index;
-	item->m_Level	= itemlevel;
-	// ----
-	item->Convert(item_type, op1, op2, op3, 0, 0, 0, 0, 0xFF, 0, CURRENT_DB_VERSION);
-	// ----
-	if( type == 13 && index == 10 )
+
+	CItem * item = &this->m_MonsterInvenItems[monsterlevel][itemcount];
+	int item_type = (type * MAX_SUBTYPE_ITEMS) + index;
+	item->m_Level = itemlevel;
+	item->Convert(item_type, op1, op2, op3, 0, 0,0, CURRENT_DB_VERSION);
+
+	if ( type == 13 && index == 10 )
 	{
-		item->m_Durability = rand() % 100 + 100.0f;
+		int rd = rand() % 100;
+		item->m_Durability = rd + 100.0f;
 	}
 	else
 	{
 		item->m_Durability = item->m_BaseDurability;
 	}
-	// ----
-	itemcount++;
+
+	itemcount ++;
 	this->m_iMonsterInvenItemCount[monsterlevel] = itemcount;
-	// ----
 	return 0;
 }
-// -------------------------------------------------------------------------------
 
-//0042f3e0	-> 100% (Identical)
+
 CItem * CMonsterItemMng::GetItem(int monsterlevel)
 {
-	if( monsterlevel > MAX_MONSTER_LEVEL || monsterlevel < 0 )
+	if ( monsterlevel > MAX_LEVEL_MONSTER || monsterlevel < 0 )
 	{
-		return 0;
+		return NULL;
 	}
-	// ----
+
 	int itemcount = this->m_iMonsterInvenItemCount[monsterlevel];
-	// ----
-	if( itemcount <= 0 )
+
+	if ( itemcount <= 0 )
 	{
-		return 0;
+		return NULL;
 	}
-	// ----
+
 	int itemindex = rand() % itemcount;
-	// ----
 	return &this->m_MonsterInvenItems[monsterlevel][itemindex];
 }
-// -------------------------------------------------------------------------------
 
-//0042f460	-> 100% (Identical)
 void CMonsterItemMng::gObjGiveItemSearch(int monsterlevel, int maxlevel)
 {
 	int result;
 	int incount = 0;
-	int type, index;
-	int BallTable[22];
-	// ----
-	if( monsterlevel > MAX_MONSTER_LEVEL-1 )
+	int type;
+	int index;
+
+	if ( monsterlevel > MAX_LEVEL_MONSTER-1 )
 	{
-		LogAdd("error-L3 : Monster Level Overflow~ %s %d", __FILE__, __LINE__ );	//Line: 8
+		LogAdd("error-L3 : Monster Level Overflow %s %d", __FILE__, __LINE__ );
 		return;
 	}
-	// ----
-	BallTable[0]	= 7;
-	BallTable[1]	= 8;
-	BallTable[2]	= 9;
-	BallTable[3]	= 10;
-	BallTable[4]	= 11;
-	BallTable[5]	= 12;
-	BallTable[6]	= 13;
-	BallTable[7]	= 14;
-	BallTable[8]	= 16;
-	BallTable[9]	= 17;
-	BallTable[10]	= 18;
-	BallTable[11]	= 19;
-	BallTable[12]	= 21;
-	BallTable[13]	= 22;
-	BallTable[14]	= 23;
-	BallTable[15]	= 24;
-	BallTable[16]	= 35;
-	BallTable[17]	= 44;
-    BallTable[18]	= 45;
-    BallTable[19]	= 46;
-    BallTable[20]	= 47;
-    BallTable[21]	= 48;
-	// ----
-	while(true)
+
+	int BallTable[17];
+
+	BallTable[0] = 7;
+	BallTable[1] = 8;
+	BallTable[2] = 9;
+	BallTable[3] = 10;
+	BallTable[4] = 11;
+	BallTable[5] = 12;
+	BallTable[6] = 13;
+	BallTable[7] = 14;
+	BallTable[8] = 16;
+	BallTable[9] = 17;
+	BallTable[10] = 18;
+	BallTable[11] = 19;
+	BallTable[12] = 21;
+	BallTable[13] = 22;
+	BallTable[14] = 23;
+	BallTable[15] = 24;
+	BallTable[16] = 35;
+
+	while ( true )
 	{
-		if( (rand() % 20) ==  0 )
+		if ( (rand() % 20) ==  0 ) 
 		{
-			if( (rand() % 2) != 0 )
+			if ( (rand() % 2)	!= 0 )
 			{
-				type	= MAX_TYPE_ITEMS-1;
-				index	= rand() % (g_MaxItemIndexOfEachItemType[type] + 1);
+				type = MAX_TYPE_ITEMS-1;
+				index = rand() % (g_MaxItemIndexOfEachItemType[type]+1);
 			}
 			else
 			{
-				type	= 12;
-				index	= BallTable[rand() % 22];
+				type = 12;
+				index = BallTable[rand() % 17];
 			}
 		}
 		else
 		{
-			type				= rand() % MAX_TYPE_ITEMS;
-			int iMaxItemIndex	= g_MaxItemIndexOfEachItemType[type]+1;
-			index				= rand() % iMaxItemIndex;
-			// ----
-			if( type == 15 || (type == 12 && index != 15 ) )
+			type = rand() % MAX_TYPE_ITEMS;
+			int iMaxItemIndex = g_MaxItemIndexOfEachItemType[type]+1;
+			index = rand() % iMaxItemIndex;
+
+			if ( type == 15 || (type == 12 && index != 15 ) )
 			{
 				continue;
 			}
 		}
-		// ----
-		if( type == 13 && index == 3 )
+
+		if ( type == 13 && index == 3 )
 		{
 			continue;
 		}
-		// ----
-		if(		(type == 13 && index == 32)
-			||	(type == 13 && index == 33)
-			||	(type == 13 && index == 34)
-			||	(type == 13 && index == 35)
-			||	(type == 13 && index == 36)
-			||	(type == 13 && index == 37) )
+
+		if ( (type == 13 && index == 32)
+          || (type == 13 && index == 33)
+          || (type == 13 && index == 34)
+          || (type == 13 && index == 35)
+          || (type == 13 && index == 36)
+          || (type == 13 && index == 37) )
 		{
 			continue;
 		}
-		// ----
-		if(		(type == 14 && index == 35)
-			||	(type == 14 && index == 36)
-			||	(type == 14 && index == 37)
-			||	(type == 14 && index == 38)
-			||	(type == 14 && index == 39)
-			||	(type == 14 && index == 40) )
+
+        if ( (type == 14 && index == 35)
+          || (type == 14 && index == 36)
+          || (type == 14 && index == 37)
+          || (type == 14 && index == 38)
+          || (type == 14 && index == 39)
+          || (type == 14 && index == 40) )
 		{
 			continue;
 		}
-		// ----
-        if( IsCashItem(ITEMGET(type, index)) == true )
+
+        if ( IsCashItem(ITEMGET(type, index)) == TRUE )
 		{
 			continue;
 		}
-        // ----
-		if( IsPremiumItem(ITEMGET(type, index)) == true )
+        
+		if ( (type == 13 && index < 8) || 
+			( (type == 14) && (index == 9 || index == 10 ||	index == 13 || index == 14 || index ==16 || index == 17 || index == 18 || index == 22 ) ) ||
+			(type == 12 && index == 15) || 
+			(type == 13 && index == 14) || 
+			(type == 14 && index == 31 ) )
 		{
-			continue;
-		}
-		// ----
-		if( g_LuckyItemManager.IsLuckyItemTicket(ITEMGET(type, index)) == true )
-		{
-			continue;
-		}
-		// ----
-		if( g_LuckyItemManager.IsLuckyItemEquipment(ITEMGET(type, index)) == true )
-		{
-			continue;
-		}
-		// ----
-		if(		(type == 14 && index == 162)
-			||	(type == 14 && index == 163)
-			||	(type == 14 && index == 164)
-			||	(type == 14 && index == 165)
-			||	(type == 14 && index == 166) )
-		{
-			continue;
-		}
-		// ----
-		if(		(type == 14 && index == 45)
-			||	(type == 14 && index == 46)
-			||	(type == 14 && index == 47)
-			||	(type == 14 && index == 48)
-			||	(type == 14 && index == 49)
-			||	(type == 14 && index == 50) )
-		{
-			continue;
-		}
-		// ----
-		if( type == 13 && index == 41 )
-		{
-			continue;
-		}
-		// ----
-		if(		(type == 13 && index < 8) 
-			||	(type == 14 && (index == 9 || index == 10 || index == 17 || index == 18)) 
-			||	(type == 13 && index == 14) 
-			||	(type == 14 && index == 31) )
-		{
-			int perc			= rand() % 11;
-			BOOL bCheckDevil	= false;
-			// ----
-			if( type == 12 && index == 15 )
+			int perc = rand() % 11;
+			
+			if ( type == 12 && index == 15 )
 			{
-				if( monsterlevel >= 13 && monsterlevel <= 66 )
+				if ( monsterlevel >= 13 && monsterlevel <= 66 )
 				{
 					perc = rand() % 7 ;
-					// ----
-					if( perc < 3 )
+					
+					if ( perc < 3 )
 					{
 						perc = 0;
 					}
@@ -338,103 +595,16 @@ void CMonsterItemMng::gObjGiveItemSearch(int monsterlevel, int maxlevel)
 					perc = 1;
 				}
 			}
-			// ----
-			if( type == 14 && index == 17 )
+
+			if ( perc == 0 )
 			{
-				if( gEyesOfDevilSquareDropRate <= 0 )
+				if ( zzzItemLevel(type, index, monsterlevel ) == TRUE )
 				{
-					perc		= 1;
-					bCheckDevil = false;
-				}
-				else
-				{
-					perc		= rand() % gEyesOfDevilSquareDropRate;
-					bCheckDevil = true;
-				}
-				// ----
-				if( gDevilSquareEvent == 0 )
-				{
-					perc = 1;
-				}
-			}
-			// ----
-			if( type == 14 && index == 18 )
-			{
-				if( gKeyOfDevilSquareDropRate <= 0 )
-				{
-					perc		= 1;
-					bCheckDevil = false;
-				}
-				else
-				{
-					perc		= rand() % gKeyOfDevilSquareDropRate;
-					bCheckDevil = true;
-				}
-				// ----
-				if( gDevilSquareEvent == 0 )
-				{
-					perc = 1;
-				}
-			}
-			// ----
-			if( perc == 0 )
-			{
-				if( bCheckDevil == true )
-				{
-					int devilitemlevel = 0;
-					// ----
-					if( (rand() % 5) != 0 )
-					{
-						if( monsterlevel < 3 )
-						{
-							devilitemlevel = 0;
-						}
-						else if( monsterlevel < 36 ) 
-						{
-							devilitemlevel = 1;
-						}
-						else if( monsterlevel < 47 )
-						{
-							devilitemlevel = 2;
-						}
-						else if( monsterlevel < 60 )
-						{
-							devilitemlevel = 3;
-						}
-						else if( monsterlevel < 70 )
-						{
-							devilitemlevel = 4;
-						}
-						else if( monsterlevel < 80 )
-						{
-							devilitemlevel = 5;
-						}
-						else 
-						{
-							devilitemlevel = 6;
-						}
-						// ----
-						if( devilitemlevel != 0 )
-						{
-							if( this->InsertItem(monsterlevel, type, index, devilitemlevel, 0, 0, 0) != 0xFF )
-							{
-								incount++;
-								// ----
-								if( incount > MAX_MONSTER_ITEM - 1 )
-								{
-									return;
-								}
-							}
-						}
-					}
-				}
-				else if( zzzItemLevel(type, index, monsterlevel) == true )
-				{
-					if( this->InsertItem(monsterlevel, type, index, 0, 0, 0, 0) != (BYTE)-1 )
+					if ( this->InsertItem(monsterlevel, type, index, 0, 0, 0, 0) != (BYTE)-1 )
 					{
 						incount++;
-						// ----
-						if( incount > MAX_MONSTER_ITEM - 1 )
+
+						if ( incount > MAX_ITEM_IN_MONSTER -1 )
 						{
 							return;
 						}
@@ -445,53 +615,54 @@ void CMonsterItemMng::gObjGiveItemSearch(int monsterlevel, int maxlevel)
 		else
 		{
 			result = GetLevelItem(type, index, monsterlevel);
-			// ----
-			if( result >= 0 )
+
+			if ( result >= 0 )
 			{
-				if( (type == 13 && index == 10) || (type == 12 && index == 11 ) )
+				if ( (type == 13 && index == 10) || (type == 12 && index == 11 ) )
 				{
-					if( this->InsertItem(monsterlevel, type, index, result, 0, 0, 0) != 0xFF )
+					if ( this->InsertItem(monsterlevel, type, index, result, 0,0,0) != 0xFF )
 					{
 						incount++;
-						// ----
-						if( incount > MAX_MONSTER_ITEM - 1 )
+
+						if ( incount > MAX_ITEM_IN_MONSTER -1 )
 						{
 							return;
 						}
 					}
 				}
-				else if( result <= maxlevel )
+				else if ( result <= maxlevel )
 				{
-					if( type == 12 )
+					if ( type == 12 )
 					{
-						if( index != 11 )
+						if ( index != 11 )
 						{
 							result = 0;
 						}
 					}
-					// ----
-					if( type == 12 && index == 11 )
+
+					if ( type == 12 && index == 11 )
 					{
-						// --
+
 					}
 					else
 					{
-						if( result > maxlevel )
+						if ( result > maxlevel )
 						{
 							result = maxlevel;
 						}
 					}
-					// ----
-					if( (type == 4 && index == 7) || (type == 4 && index == 15) )
+
+					if ( (type == 4 && index == 7) || (type == 4 && index == 15) )
 					{
 						result = 0;
 					}
-					// ----
-					if( this->InsertItem(monsterlevel, type, index,result, 0, 0, 0) != (BYTE)-1 )
+				
+
+					if ( this->InsertItem(monsterlevel, type, index,result, 0,0,0) != (BYTE)-1 )
 					{
 						incount++;
-						// ----
-						if( incount > MAX_MONSTER_ITEM - 1 )
+
+						if ( incount > MAX_ITEM_IN_MONSTER-1 )
 						{
 							return;
 						}
@@ -499,613 +670,11 @@ void CMonsterItemMng::gObjGiveItemSearch(int monsterlevel, int maxlevel)
 				}
 			}
 		}
-		// ----
-		if( this->m_iMonsterInvenItemCount[monsterlevel] >= MAX_MONSTER_ITEM )
+		
+		if ( this->m_iMonsterInvenItemCount[monsterlevel] >= MAX_ITEM_IN_MONSTER )
 		{
 			return;
 		}
+		
 	}
 }
-// -------------------------------------------------------------------------------
-
-//0042fd30	-> 100% (Identical)
-void CMonsterItemMng::LoadMonsterItemDropRate()
-{
-	char * script_file		= gDirPath.GetNewPath("Monster\\MonsterItemDropRate.dat");
-	this->m_bScriptLoaded	= false;
-	SMDFile					= fopen(script_file, "r");
-	// ----
-	if( !SMDFile )
-	{
-		MsgBox("File Open Error : MonsterItemDropRate.dat");
-		LogAdd(lMsg.Get(453), script_file);
-		return;
-	}
-	// ----
-	SMDToken Token;
-	int nDropRatePerItemCnt = 0;
-	int nRateCnt			= 0;
-	int nLevel				= 0;
-	// ----
-	while(true)
-	{
-		Token = GetToken();
-		// ----
-		if( Token == NAME && !strcmp("end", &TokenString[0]) )
-		{
-			break;
-		}
-		// ----
-		int MonsterLevel									= TokenNumber;
-		this->RateData[MonsterLevel].m_MonsterLevel			= MonsterLevel;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_MagicBookRate		= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_JewelOfBlessRate		= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_JewelOfSoulRate		= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_JewelOfLifeRate		= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_JewelOfCreationRate	= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_JewelOfChaosRate		= TokenNumber * 10000000.0f;
-		// ----
-		Token = GetToken();
-		this->RateData[MonsterLevel].m_NormalItemRate		= TokenNumber * 10000000.0f;
-		// ----
-		int nSum = this->RateData[MonsterLevel].m_MagicBookRate
-			+ this->RateData[MonsterLevel].m_JewelOfBlessRate
-			+ this->RateData[MonsterLevel].m_JewelOfSoulRate
-			+ this->RateData[MonsterLevel].m_JewelOfLifeRate
-			+ this->RateData[MonsterLevel].m_JewelOfChaosRate
-			+ this->RateData[MonsterLevel].m_JewelOfCreationRate
-			+ this->RateData[MonsterLevel].m_NormalItemRate;
-		// ----
-		this->RateData[MonsterLevel].m_TotalDropRate = nSum;
-		// ----
-		nLevel++;
-		// ----
-		if( nLevel >= MAX_MONSTER_LEVEL )
-		{
-			break;
-		}
-	}
-	// ----
-	fclose(SMDFile);
-	LogAdd(lMsg.Get(454), script_file);
-	this->m_bScriptLoaded = true;
-}
-// -------------------------------------------------------------------------------
-
-//00430530	-> 100% (Identical)
-void CMonsterItemMng::MakeJewelItem()
-{
-	int item_type;
-	// ----
-	this->m_MonsterJewelItem1 = new CItem;
-	this->m_MonsterJewelItem2 = new CItem;
-	this->m_MonsterJewelItem3 = new CItem;
-	this->m_MonsterJewelItem4 = new CItem;
-	this->m_MonsterJewelItem5 = new CItem;
-	// ----
-	item_type = ITEMGET(14, 13);
-	this->m_MonsterJewelItem1->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-	this->m_MonsterJewelItem1->m_Level = 0;
-	this->m_MonsterJewelItem1->m_Durability = this->m_MonsterJewelItem1->m_BaseDurability;
-	// ----
-	item_type = ITEMGET(14, 14);
-	this->m_MonsterJewelItem2->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-	this->m_MonsterJewelItem2->m_Level = 0;
-	this->m_MonsterJewelItem2->m_Durability = this->m_MonsterJewelItem2->m_BaseDurability;
-	// ----
-	item_type = ITEMGET(12, 15);
-	this->m_MonsterJewelItem3->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-	this->m_MonsterJewelItem3->m_Level = 0;
-	this->m_MonsterJewelItem3->m_Durability = this->m_MonsterJewelItem3->m_BaseDurability;
-	// ----
-	item_type = ITEMGET(14, 16);
-	this->m_MonsterJewelItem4->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-	this->m_MonsterJewelItem4->m_Level = 0;
-	this->m_MonsterJewelItem4->m_Durability = this->m_MonsterJewelItem4->m_BaseDurability;
-	// ----
-	item_type = ITEMGET(14, 22);
-	this->m_MonsterJewelItem5->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-	this->m_MonsterJewelItem5->m_Level = 0;
-	this->m_MonsterJewelItem5->m_Durability = this->m_MonsterJewelItem5->m_BaseDurability;
-}
-// -------------------------------------------------------------------------------
-
-//00430960	-> 100% (Identical)
-void CMonsterItemMng::gObjGiveItemSearchEx(int monsterlevel, int maxlevel)
-{
-	this->NormalGiveItemSearch(monsterlevel, maxlevel);
-	this->CMonsterItemMng::MagicBookGiveItemSearch(monsterlevel, maxlevel);
-}
-// -------------------------------------------------------------------------------
-
-//004309b0	-> 100% (Identical)
-void CMonsterItemMng::MagicBookGiveItemSearch(int monsterlevel, int maxlevel)
-{
-	int result	= 0;
-	int incount = 0;
-	int type, index;
-	int BallTable[22];
-	// ----
-	if( monsterlevel > MAX_MONSTER_LEVEL - 1 )
-	{
-		LogAdd("error-L3 : Monster Level Overflow~ %s %d", __FILE__, __LINE__);	//Line: 8
-		return;
-	}
-	// ----
-	BallTable[0]	= 7;
-	BallTable[1]	= 8;
-	BallTable[2]	= 9;
-	BallTable[3]	= 10;
-	BallTable[4]	= 11;
-	BallTable[5]	= 12;
-	BallTable[6]	= 13;
-	BallTable[7]	= 14;
-	BallTable[8]	= 16;
-	BallTable[9]	= 17;
-	BallTable[10]	= 18;
-	BallTable[11]	= 19;
-	BallTable[12]	= 21;
-	BallTable[13]	= 22;
-	BallTable[14]	= 23;
-	BallTable[15]	= 24;
-	BallTable[16]	= 35;
-	BallTable[17]	= 44;
-	BallTable[18]	= 45;
-	BallTable[19]	= 46;
-	BallTable[20]	= 47;
-	BallTable[21]	= 48;
-	// ----
-	while(true)
-	{
-		if( rand() % 2 )
-		{
-			type	= MAX_TYPE_ITEMS - 1;
-			index	= GetLargeRand() % (g_MaxItemIndexOfEachItemType[type] + 1);
-		}
-		else
-		{
-			type	= 12;
-			index	= BallTable[GetLargeRand() % 22];
-		}
-		// ----
-		if( type == 12 && index == 11 )
-		{
-			CItem * item		= &this->m_MonsterInvenExItems[monsterlevel][incount];
-			result				= GetLevelItem(type, index, monsterlevel);
-			// ----
-			if( result >= 0 )
-			{
-				int item_type		= ITEMGET(type, index);
-				item->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-				item->m_Level		= result;
-				item->m_Durability	= item->m_BaseDurability;
-				// ----
-				incount++;
-				// ----
-				if( incount > MAX_MONSTER_EXITEM - 1 )
-				{
-					break;
-				}
-			}
-			continue;
-		}
-		else
-		{
-			result = GetLevelItem(type, index, monsterlevel);
-			// ----
-			if( result != 0 )
-			{
-				continue;
-			}
-			// ----
-			CItem * item	= &this->m_MonsterInvenExItems[monsterlevel][incount];
-			int item_type	= ITEMGET(type, index);
-			// ----
-			item->Convert(item_type, 0, 0, 0, 0, 0, 0, 0, -1, 0, 3);
-			item->m_Level		= 0;
-			item->m_Durability	= item->m_BaseDurability;
-			// ----
-			incount++;
-			// ----
-			if( incount > MAX_MONSTER_EXITEM - 1 )
-			{
-				break;
-			}
-		}
-	}
-	// ----
-	this->m_iMonsterInvenExItemCount[monsterlevel] = incount;
-}
-// -------------------------------------------------------------------------------
-
-//00430d00	-> 100% (Identical)
-void CMonsterItemMng::NormalGiveItemSearch(int monsterlevel, int maxlevel)
-{
-	int result;
-	int incount = 0;
-	int type, index;
-	// ----
-	if( monsterlevel > 
-		MAX_MONSTER_LEVEL - 1 )
-	{
-		LogAdd("error-L3 : Monster Level Overflow~ %s %d", __FILE__, __LINE__);	//Line: 8
-		return;
-	}
-	// ----
-	while(true)
-	{
-		type				= rand() % MAX_TYPE_ITEMS;
-		int iMaxItemIndex	= g_MaxItemIndexOfEachItemType[type] + 1;
-		index				= rand() % iMaxItemIndex;
-		// ----
-		if( type == 15 || type == 12 )
-		{
-			continue;
-		}
-		// ----
-		if( !this->CheckMonsterDropItem(type, index) )
-		{
-			continue;
-		}
-		// ----
-		if(		(type == 13 && index < 8) 
-			||	(type == 14 && (index == 9 || index == 10 || index == 17 || index == 18)) 
-			||	(type == 13 && index == 14) 
-			||	(type == 14 && index == 31) )
-		{
-			int perc			= rand() % 8;
-			BOOL bCheckDevil	= false;
-			// ----
-			if( type == 12 && index == 15 )
-			{
-				if( monsterlevel >= 13 && monsterlevel <= 66 )
-				{
-					perc = rand() % 7 ;
-					// ----
-					if( perc < 3 )
-					{
-						perc = 0;
-					}
-				}
-				else
-				{
-					perc = 1;
-				}
-			}
-			// ----
-			if( type == 14 && index == 17 )
-			{
-				if( gEyesOfDevilSquareDropRate <= 0 )
-				{
-					perc		= 1;
-					bCheckDevil = false;
-				}
-				else
-				{
-					perc		= rand() % gEyesOfDevilSquareDropRate;
-					bCheckDevil = true;
-				}
-				// ----
-				if( gDevilSquareEvent == 0 )
-				{
-					perc = 1;
-				}
-			}
-			// ----
-			if( type == 14 && index == 18 )
-			{
-				if( gKeyOfDevilSquareDropRate <= 0 )
-				{
-					perc		= 1;
-					bCheckDevil = false;
-				}
-				else
-				{
-					perc		= rand() % gKeyOfDevilSquareDropRate;
-					bCheckDevil = true;
-				}
-				// ----
-				if( gDevilSquareEvent == 0 )
-				{
-					perc = 1;
-				}
-			}
-			// ----
-			if( perc == 0 )
-			{
-				if( bCheckDevil == true )
-				{
-					int devilitemlevel = 0;
-					// ----
-					if( (rand() % 5) != 0 )
-					{
-						if( monsterlevel < 3 )
-						{
-							devilitemlevel = 0;
-						}
-						else if( monsterlevel < 36 ) 
-						{
-							devilitemlevel = 1;
-						}
-						else if( monsterlevel < 47 )
-						{
-							devilitemlevel = 2;
-						}
-						else if( monsterlevel < 60 )
-						{
-							devilitemlevel = 3;
-						}
-						else if( monsterlevel < 70 )
-						{
-							devilitemlevel = 4;
-						}
-						else if( monsterlevel < 80 )
-						{
-							devilitemlevel = 5;
-						}
-						else 
-						{
-							devilitemlevel = 6;
-						}
-						// ----
-						if( devilitemlevel != 0 )
-						{
-							if( this->InsertItem(monsterlevel, type, index, devilitemlevel, 0, 0, 0) != 0xFF )
-							{
-								incount++;
-								// ----
-								if( incount > MAX_MONSTER_ITEM - 1 )
-								{
-									return;
-								}
-							}
-						}
-					}
-				}
-				else if( zzzItemLevel(type, index, monsterlevel) == true )
-				{
-					if( this->InsertItem(monsterlevel, type, index, 0, 0, 0, 0) != (BYTE)-1 )
-					{
-						incount++;
-						// ----
-						if( incount > MAX_MONSTER_ITEM - 1 )
-						{
-							return;
-						}
-					}
-				}
-			}
-		}
-		else
-		{
-			result = GetLevelItem(type, index, monsterlevel);
-			// ----
-			if( result >= 0 )
-			{
-				if( result <= maxlevel )
-				{
-					if( type == 12 )
-					{
-						if( index != 11 )
-						{
-							result = 0;
-						}
-					}
-					// ----
-					if( type == 12 && index == 11 )
-					{
-						// --
-					}
-					else
-					{
-						if( result > maxlevel )
-						{
-							result = maxlevel;
-						}
-					}
-					// ----
-					if( (type == 4 && index == 7) || (type == 4 && index == 15) )
-					{
-						result = 0;
-					}
-					// ----
-					if( this->InsertItem(monsterlevel, type, index,result, 0, 0, 0) != (BYTE)-1 )
-					{
-						incount++;
-						// ----
-						if( incount > MAX_MONSTER_ITEM - 1 )
-						{
-							return;
-						}
-					}
-				}
-			}
-		}
-		// ----
-		if( this->m_iMonsterInvenItemCount[monsterlevel] >= MAX_MONSTER_ITEM )
-		{
-			break;
-		}
-	}
-}
-// -------------------------------------------------------------------------------
-
-//004311f0	-> 100% (Identical)
-int	CMonsterItemMng::CheckMonsterDropItem(int type, int index)
-{
-	if(		(type == 14 && index == 13)
-		||	(type == 14 && index == 14)
-		||	(type == 14 && index == 16)
-		||	(type == 14 && index == 22)
-		||	(type == 12 && index == 15) )
-	{
-		return false;
-	}
-	// ----
-	if( type == 13 && index == 3 )
-	{
-		return false;
-	}
-	// ----
-	if(		(type == 13 && index == 32)
-		||	(type == 13 && index == 33)
-		||	(type == 13 && index == 34)
-		||	(type == 13 && index == 35)
-		||	(type == 13 && index == 36) 
-		||	(type == 13 && index == 37) )
-	{
-		return false;
-	}
-	// ----
-	if(		(type == 14 && index == 35)
-		||	(type == 14 && index == 36)
-		||	(type == 14 && index == 37)
-		||	(type == 14 && index == 38)
-		||	(type == 14 && index == 39) 
-		||	(type == 14 && index == 40) )
-	{
-		return false;
-	}
-	// ----
-	if( IsCashItem(ITEMGET(type, index)) == true )
-	{
-		return false;
-	}
-	// ----
-	if( IsPremiumItem(ITEMGET(type, index)) == true )
-	{
-		return false;
-	}
-	// ----
-	if( g_LuckyItemManager.IsLuckyItemTicket(ITEMGET(type, index)) == true )
-	{
-		return false;
-	}
-	// ----
-	if( g_LuckyItemManager.IsLuckyItemEquipment(ITEMGET(type, index)) == true )
-	{
-		return false;
-	}
-	// ----
-	if(		(type == 14 && index == 45)
-		||	(type == 14 && index == 46)
-		||	(type == 14 && index == 47)
-		||	(type == 14 && index == 48)
-		||	(type == 14 && index == 49) 
-		||	(type == 14 && index == 50) )
-	{
-		return false;
-	}
-	// ----
-	if( type == 13 && index == 41 )
-	{
-		return false;
-	}
-	// ----
-	if(		(type == 14 && index == 162)
-		||	(type == 14 && index == 163)
-		||	(type == 14 && index == 164)
-		||	(type == 14 && index == 165)
-		||	(type == 14 && index == 166) )
-	{
-		return false;
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//004314c0	-> 100% (Identical)
-CItem * CMonsterItemMng::GetItemEx(int monsterlevel)
-{
-	if( m_bScriptLoaded == false )
-	{
-		return 0;
-	}
-	// ----
-	if( monsterlevel > MAX_MONSTER_LEVEL || monsterlevel < 0 )
-	{
-		return 0;
-	}
-	// ----
-	int sum			= 0;
-	int nRandValue	= GetLargeRand() % 10000000;
-	sum				+= this->RateData[monsterlevel].m_MagicBookRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		int itemcount = this->m_iMonsterInvenExItemCount[monsterlevel];
-		// ----
-		if( itemcount <= 0 )
-		{
-			return 0;
-		}
-		else
-		{
-			int itemindex = GetLargeRand() % itemcount;
-			return &this->m_MonsterInvenExItems[monsterlevel][itemindex];
-		}
-	}
-	// ----
-	sum	+= this->RateData[monsterlevel].m_JewelOfBlessRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		return this->m_MonsterJewelItem1;
-	}
-	// ----
-	sum	+= this->RateData[monsterlevel].m_JewelOfSoulRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		return this->m_MonsterJewelItem2;
-	}
-	// ----
-	sum	+= this->RateData[monsterlevel].m_JewelOfLifeRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		return this->m_MonsterJewelItem3;
-	}
-	// ----
-	sum	+= this->RateData[monsterlevel].m_JewelOfCreationRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		return this->m_MonsterJewelItem4;
-	}
-	// ----
-	sum	+= this->RateData[monsterlevel].m_JewelOfChaosRate;
-	// ----
-	if( nRandValue < sum )
-	{
-		return this->m_MonsterJewelItem5;
-	}
-	// ----
-	int itemcount = this->m_iMonsterInvenItemCount[monsterlevel];
-	// ----
-	if( itemcount <= 0 )
-	{
-		return 0;
-	}
-	else
-	{
-		int itemindex = GetLargeRand() % itemcount;
-		return &this->m_MonsterInvenItems[monsterlevel][itemindex];
-	}
-	// ----
-	return 0;
-}
-// -------------------------------------------------------------------------------

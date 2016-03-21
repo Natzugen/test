@@ -1,12 +1,11 @@
 // TMonsterSkillUnit.cpp: implementation of the TMonsterSkillUnit class.
-//	GS-N	1.00.77	JPN	-	Completed
-//	GS-CS	1.00.90	JPN	-	Completed
-// problebms:
-//char * TMonsterSkillElement::GetElementName() - cant fix position
+//	GS-N	1.00.18	JPN	0x00559910	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
 #include "TMonsterSkillUnit.h"
+
+
 #include "..\include\ReadScript.h"
 #include "LogProc.h"
 
@@ -60,8 +59,8 @@ BOOL TMonsterSkillUnit::LoadData(LPSTR lpszFileName)
 
 	try
 	{
-		SMDToken Token;	
-		SMDFile = fopen(lpszFileName, "r");	//ok
+		SMDToken Token;
+		SMDFile = fopen(lpszFileName, "r");
 
 		if ( SMDFile == NULL )
 		{
@@ -132,7 +131,7 @@ BOOL TMonsterSkillUnit::LoadData(LPSTR lpszFileName)
 
 					char szMsg[200] = {0};
 
-					wsprintf(szMsg, "¡ÚNum:%d,Name:%s,TType:%d,SType:%d,SValue:%d,Delay:%d, E0:%d,E1:%d,E2:%d,E3:%d,E4:%d\n",
+					wsprintf(szMsg, "Num:%d,Name:%s,TType:%d,SType:%d,SValue:%d,Delay:%d, E0:%d,E1:%d,E2:%d,E3:%d,E4:%d\n",
 						iUnitNumber, szUnitName, iUnitTargetType, iUnitScopeType, iUnitScopeValue, iDelay,
 						iElementsSlot[0], iElementsSlot[1], iElementsSlot[2], iElementsSlot[3], iElementsSlot[4]);
 
@@ -159,8 +158,8 @@ BOOL TMonsterSkillUnit::LoadData(LPSTR lpszFileName)
 								iElementCount++;
 								TMonsterSkillUnit::s_MonsterSkillUnitArray[iUnitNumber].m_lpElementsSlot[i] = pMonsterSkillElement;
 
-								//LogAddC(4, "[Monster Skill Unit] - Found SkillElement (%d)(%s)",
-								//	iElement, pMonsterSkillElement->GetElementName());
+								LogAddC(4, "[Monster Skill Unit] - Found SkillElement (%d)(%s)",
+									iElement, pMonsterSkillElement->GetElementName());
 							}
 							else
 							{
@@ -187,7 +186,6 @@ BOOL TMonsterSkillUnit::LoadData(LPSTR lpszFileName)
 
 	return FALSE;
 }
-//005E3DE8  |.  E8 01E9E1FF   |CALL 004026EE
 
 
 
@@ -224,10 +222,9 @@ TMonsterSkillUnit * TMonsterSkillUnit::FindSkillUnit(int iUnitNumber)
 	return FALSE;
 }
 
+
 void TMonsterSkillUnit::RunSkill(int iIndex, int iTargetIndex)
 {
-	char szElementsName[5][20] = {0};
-
 	for ( int i=0;i<this->m_iElementsCount;i++)
 	{
 		if ( this->m_lpElementsSlot[i] == NULL )
@@ -238,10 +235,4 @@ void TMonsterSkillUnit::RunSkill(int iIndex, int iTargetIndex)
 
 		this->m_lpElementsSlot[i]->ForceSkillElement(iIndex, iTargetIndex);
 	}
-}
-
-
-char * TMonsterSkillElement::GetElementName()//I cant fix position bcoz its appear between files
-{
-	return this->m_szElementName;
 }

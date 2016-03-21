@@ -1,7 +1,8 @@
-//GameServer 1.00.90 JPN - Completed
 #include "stdafx.h"
 #include "ObjUseSkill.h"
 #include "ObjCalCharacter.h"
+#include "ObjAttack.h"
+
 #include "GameMain.h"
 #include "ChaosCastle.h"
 #include "GameServer.h"
@@ -11,48 +12,38 @@
 #include "SkillHitBox.h"
 #include "MoveCommand.h"
 #include "SkillAdditionInfo.h"
-#include "IllusionTempleEvent.h"
-#include "MasterLevelSkillTreeSystem.h"
-#include "BuffEffectSlot.h"
+#include "DevilSquare.h"
+#include "SCFPvPSystem.h"
+
+#include "CrywolfAltar.h"
+
 #include "LogProc.h"
 #include "..\common\winutil.h"
-#include "Raklion.h"
-#include "RaklionBattleUserMng.h"
-#include "ItemAddOption.h"
-
-#ifdef GENS
-#include "GensSystem.h"
-#endif
-
-#ifdef IMPERIAL
-#include "ImperialGuardian.h"
-#endif
-
-#ifdef DP
-#include "Doppelganger.h"
-#endif
-
-#ifdef NPVP
-#include "NewPVP.h"
-#endif
-
-#ifdef __CUSTOMS__
-#include "BuffCalc.h"
-#endif
+// GS-N 0.99.60T 0x0049AE30
+//	GS-N	1.00.18	JPN	0x004B7770 - Completed
 
 CObjUseSkill gObjUseSkill;
 
+#include "LogToFile.h"
+extern CLogToFile ANTI_HACK_LOG;	// line : 68
+
+
 CObjUseSkill::CObjUseSkill()
 {
-
+	return ;
 }
+
+
+
 
 CObjUseSkill::~CObjUseSkill()
 {
-
+	return;
 }
 
-int CObjUseSkill::GetTargetLinePath(int sx, int sy, int tx, int ty, int * PathX, int * PathY, int distance) //004E97F0
+
+
+int  CObjUseSkill::GetTargetLinePath(int sx, int sy, int tx, int ty, int * PathX, int * PathY, int distance)
 {
 	int x,y;
 	int delta_x,delta_y;
@@ -177,191 +168,103 @@ int CObjUseSkill::GetTargetLinePath(int sx, int sy, int tx, int ty, int * PathX,
 	return count;
 }
 
-BOOL CObjUseSkill::SpeedHackCheck(int aIndex)
+
+BOOL CObjUseSkill::SpeedHackCheck(int aIndex, BYTE functionID)
 {
+	BOOL result = TRUE;
+
+	if (bIsIgnorePacketSpeedHackDetect == 1)
+		return result;
+
+	if (OBJMON_RANGE(aIndex))
+		return result;
+
 	LPOBJ lpObj = &gObj[aIndex];
 
+	int emptyHandsMultiplier = 1;
 	int iTimeCalc = GetTickCount() - lpObj->m_LastAttackTime;
+	lpObj->m_LastAttackTime = GetTickCount();
 
-	if(lpObj->Type != OBJ_USER)
+	/*LogAddTD("[%s][%s][%d] ATTACK Last:%d Calc:%d DetT:%d ORG:[%d,%d] SPD:[%d,%d]",
+		lpObj->AccountID, lpObj->Name, functionID, 
+		lpObj->m_LastAttackTime, iTimeCalc, lpObj->m_DetectSpeedHackTime,
+		(int)( lpObj->m_MagicSpeed / gDecTimePerAttackSpeed ),
+		(int)( lpObj->m_AttackSpeed / gDecTimePerAttackSpeed ),
+		lpObj->m_AttackSpeed,lpObj->m_MagicSpeed);*/
+
+	if ( lpObj->HaveWeaponInHand == 0)
 	{
-		return TRUE;
+		emptyHandsMultiplier = 2;
+		iTimeCalc = emptyHandsMultiplier * iTimeCalc;
 	}
 
-	if(iTimeCalc < lpObj->m_DetectSpeedHackTime)
+	if ( iTimeCalc == 0 )
+	{
+		lpObj->m_ZeroTimeAttackCount++;
+
+		if (lpObj->m_ZeroTimeAttackCount>3)
+		{
+			lpObj->m_ZeroTimeAttackCount=0;
+
+			//GCServerMsgStringSend("Hit ignored, speed is too fast",lpObj->m_Index,1);
+			return false;
+		}
+		return true;
+	}
+
+	if( (iTimeCalc < lpObj->m_DetectSpeedHackTime) && (iTimeCalc != 0) )
 	{
 		lpObj->m_DetectCount++;
-		lpObj->m_SumLastAttackTime += iTimeCalc;
-
+		
 		if(lpObj->m_DetectCount > gHackCheckCount)
 		{
 			lpObj->m_DetectedHackKickCount++;
 
-			if(gIsKickDetecHackCountLimit != 0 && lpObj->m_DetectedHackKickCount > gDetectedHackKickCount)
-			{
-				LogAddTD("[%s][%s] %s Kick DetecHackCountLimit Over User (%d)", lpObj->AccountID,lpObj->Name,lMsg.Get(lpObj->Class+1900),lpObj->m_DetectedHackKickCount);
-				CloseClient(aIndex);
-				return false;
-			}
+			GCServerMsgStringSend("[Anti-Hack] Attack Speed Is Wrong!",aIndex, 0x01);
 
-			lpObj->m_SpeedHackPenalty = gSpeedHackPenalty;
-			LogAddTD("[%s][%s] %s Attack Speed Is Wrong MagicSkill (%d)(%d) Penalty %d", lpObj->AccountID,lpObj->Name,lMsg.Get(lpObj->Class+1900),lpObj->m_DetectSpeedHackTime,lpObj->m_SumLastAttackTime / lpObj->m_DetectCount,lpObj->m_SpeedHackPenalty);
+			if(ReadConfig.AHLog == TRUE)
+			{
+				ANTI_HACK_LOG.Output("[%s][%s][%d] USR:[C:%d,S:%d,D:%d,E:%d,V:%d,L:%d] Wrong Attack Speed Calc:%d(%d) Det:%d SPD:[%d,%d] Count:%d,%d Has Weapon:%d",
+					lpObj->AccountID,lpObj->Name,functionID,
+					lpObj->Class, lpObj->Strength, lpObj->Dexterity, lpObj->Energy, lpObj->Vitality, lpObj->Leadership,
+					iTimeCalc, (iTimeCalc/emptyHandsMultiplier), lpObj->m_DetectSpeedHackTime,
+					lpObj->m_AttackSpeed,lpObj->m_MagicSpeed,
+					lpObj->m_DetectCount,lpObj->m_DetectedHackKickCount,
+					lpObj->HaveWeaponInHand);
+			}
+			result = false;
 		}
 	}
 	else
 	{
-		lpObj->m_SumLastAttackTime = 0;
-		lpObj->m_DetectCount = 0;
+		if (lpObj->m_ZeroTimeAttackCount > 0)
+			lpObj->m_ZeroTimeAttackCount -= 1;
+
+		if (lpObj->m_DetectCount > 0)
+			lpObj->m_DetectCount -= 1;
 	}
 
-	lpObj->m_LastAttackTime = GetTickCount();
-
-	if(bIsIgnorePacketSpeedHackDetect != 0 && lpObj->m_SpeedHackPenalty > 0)
+	if(gIsKickDetecHackCountLimit != 0 && lpObj->m_DetectedHackKickCount > gDetectedHackKickCount)
 	{
-		lpObj->m_SpeedHackPenalty--;
-		LogAddTD("[%s][%s] %s Apply Attack Speed Penalty (%d left)", lpObj->AccountID,lpObj->Name,lMsg.Get(lpObj->Class + 1900),lpObj->m_SpeedHackPenalty);
-		return false;
+		GCServerMsgStringSend("[Anti-Hack] Kick User = DetectHackCountLimit!",aIndex, 0x01);
+
+		if(ReadConfig.AHLog == TRUE)
+		{
+			ANTI_HACK_LOG.Output("[%s][%s][%d] %s Kick DetectHackCountLimit Over User (%d)",
+				lpObj->AccountID,lpObj->Name,functionID,lMsg.Get(lpObj->Class+1900),lpObj->m_DetectedHackKickCount);
+		}
+		CloseClient(aIndex);
+		result = false;
 	}
-	return true;
+
+	return result;
 }
 
-//Identical
-BOOL CObjUseSkill::EnableSkill(DWORD Skill, int Level) //004E9E10
-{
-	if(g_MasterSkillSystem.CheckMasterLevelSkill(Skill) != FALSE) //Season3 add-on
-	{
-		int GetSkillID = g_MasterSkillSystem.GetBaseMasterLevelSkill(Skill);
 
-		if(	 GetSkillID != 403
-          && GetSkillID != 388
-          && GetSkillID != 330
-          && GetSkillID != 413
-          && GetSkillID != 414
-          && GetSkillID != 481
-          && GetSkillID != 356
-          && GetSkillID != 382
-          && GetSkillID != 512
-          && GetSkillID != 508
-          && GetSkillID != 385
-          && GetSkillID != 391
-          && GetSkillID != 336
-          && GetSkillID != 331
-          && GetSkillID != 417
-          && GetSkillID != 420
-          && GetSkillID != 490
-          && GetSkillID != 482
-          && GetSkillID != 518
-          && GetSkillID != 487
-          && GetSkillID != 454
-          && GetSkillID != 455
-          && GetSkillID != 456
-          && GetSkillID != 458
-          && GetSkillID != 326
-          && GetSkillID != 327
-          && GetSkillID != 328
-          && GetSkillID != 329
-          && GetSkillID != 332
-          && GetSkillID != 333
-          && GetSkillID != 337
-          && GetSkillID != 339
-          && GetSkillID != 340
-          && GetSkillID != 342
-          && GetSkillID != 343
-          && GetSkillID != 344
-          && GetSkillID != 346
-          && GetSkillID != 360
-          && GetSkillID != 363
-          && GetSkillID != 376
-          && GetSkillID != 378
-          && GetSkillID != 379
-          && GetSkillID != 380
-          && GetSkillID != 381
-          && GetSkillID != 383
-          && GetSkillID != 384
-          && GetSkillID != 386
-          && GetSkillID != 387
-          && GetSkillID != 389
-          && GetSkillID != 390
-          && GetSkillID != 392
-          && GetSkillID != 393
-          && GetSkillID != 394
-          && GetSkillID != 395
-          && GetSkillID != 396
-          && GetSkillID != 404
-          && GetSkillID != 406
-          && GetSkillID != 411
-          && GetSkillID != 415
-          && GetSkillID != 416
-          && GetSkillID != 418
-          && GetSkillID != 419
-          && GetSkillID != 425
-          && GetSkillID != 426
-          && GetSkillID != 427
-          && GetSkillID != 428
-          && GetSkillID != 429
-          && GetSkillID != 430
-          && GetSkillID != 431
-          && GetSkillID != 432
-          && GetSkillID != 433
-          && GetSkillID != 434
-          && GetSkillID != 441
-          && GetSkillID != 459
-          && GetSkillID != 460
-          && GetSkillID != 461
-          && GetSkillID != 462
-          && GetSkillID != 466
-          && GetSkillID != 468
-          && GetSkillID != 469
-          && GetSkillID != 470
-          && GetSkillID != 472
-          && GetSkillID != 477
-          && GetSkillID != 479
-          && GetSkillID != 480
-          && GetSkillID != 483
-          && GetSkillID != 484
-          && GetSkillID != 486
-          && GetSkillID != 488
-          && GetSkillID != 489
-          && GetSkillID != 491
-          && GetSkillID != 492
-          && GetSkillID != 493
-          && GetSkillID != 494
-          && GetSkillID != 495
-          && GetSkillID != 497
-          && GetSkillID != 498
-          && GetSkillID != 499
-          && GetSkillID != 500
-          && GetSkillID != 501
-          && GetSkillID != 502
-          && GetSkillID != 509
-          && GetSkillID != 510
-          && GetSkillID != 514
-          && GetSkillID != 515
-          && GetSkillID != 516
-          && GetSkillID != 519
-          && GetSkillID != 520
-          && GetSkillID != 521
-          && GetSkillID != 523
-          && GetSkillID != 539
-		  && GetSkillID != 551
-          && GetSkillID != 552
-          && GetSkillID != 554
-          && GetSkillID != 555
-          && GetSkillID != 558
-		  && GetSkillID != 559
-		  && GetSkillID != 560
-		  && GetSkillID != 558
-			)
-		{
-			return false;
-		}
-		else
-		{
-			return true;
-		}
-		
-	}
-	else if(Skill != AT_SKILL_STORM
+BOOL CObjUseSkill::EnableSkill(WORD Skill)
+{
+	if(	Skill != 150
+		&& Skill != AT_SKILL_STORM
 		&& Skill != AT_SKILL_EVIL
 		&& Skill != AT_SKILL_FLAME
 		&& Skill != AT_SKILL_HELL
@@ -370,15 +273,15 @@ BOOL CObjUseSkill::EnableSkill(DWORD Skill, int Level) //004E9E10
 		&& Skill != AT_SKILL_CROSSBOW
 		&& Skill != AT_SKILL_DEVILFIRE
 		&& Skill != AT_SKILL_FLASH
-		&& Skill != AT_SKILL_WHEEL
-		&& Skill != AT_SKILL_SWORD6
-		&& Skill != AT_SKILL_KNIGHTSPEAR
+		&& Skill != AT_SKILL_TWISTINGSLASH
+		&& Skill != AT_SKILL_POWERSLASH
+		&& Skill != AT_SKILL_BKIMPALE
 		&& Skill != AT_SKILL_KNIGHTADDLIFE
-		&& Skill != AT_SKILL_STRIKE
+		&& Skill != AT_SKILL_DEATHSTAB
 		&& Skill != AT_SKILL_KNIGHTDINORANT
-		&& Skill != AT_SKILL_ELFHARDEN
+		&& Skill != AT_SKILL_ICEARROW
 		&& Skill != AT_SKILL_PENETRATION
-		&& Skill != AT_SKILL_DEFENSEDOWN
+		&& Skill != AT_SKILL_FIRESLASH
 		&& Skill != AT_SKILL_MAGICDEFENSE
 		&& Skill != AT_SKILL_BLOWOFFURY
 		&& Skill != AT_SKILL_EXPPOISON
@@ -395,49 +298,48 @@ BOOL CObjUseSkill::EnableSkill(DWORD Skill, int Level) //004E9E10
 		&& Skill != AT_SKILL_REMOVAL_MAGIC
 		&& Skill != AT_SKILL_FENRIR_ATTACK
 		&& Skill != AT_SKILL_INFINITY_ARROW
-		&& Skill != AT_SKILL_FIRESCREAM
-		&& Skill != 214
-		&& Skill != 215
-		&& Skill != 216
-		&& Skill != 217
-		&& Skill != 219
-		&& Skill != 220
-		&& Skill != 223
-		&& Skill != 224
-		&& Skill != 221
-		&& Skill != 222
-		//Season4 add-on
-		&& Skill != 225
-		&& Skill != 230
-		&& Skill != 218
-		&& Skill != 232
-		&& Skill != 233
-		&& Skill != 234
-		&& Skill != 235
-		&& Skill != 236
-		&& Skill != 237
-		&& Skill != 238
-#ifdef SEASON6DOT3_ENG
-		&& Skill != 239
-		&& Skill != 260
-		&& Skill != 261
-		&& Skill != 262
-		&& Skill != 263
-		&& Skill != 264
-		&& Skill != 265
-		&& Skill != 266
-		&& Skill != 267
-		&& Skill != 268
-		&& Skill != 270
-#endif
-		)
+		&& Skill != AT_SKILL_FIRESCREAM		
+		&& Skill != AT_SKILL_DRAIN_LIFE
+		&& Skill != AT_SKILL_CHAIN_LIGHTING
+		&& Skill != AT_SKILL_ELECTRIC_SURGE
+		&& Skill != AT_SKILL_REFLECT
+		&& Skill != AT_SKILL_BERSERKER
+		&& Skill != AT_SKILL_SLEEP
+		&& Skill != AT_SKILL_NIGHT
+		&& Skill != AT_SKILL_REDUCE_DAMAGE
+		&& Skill != AT_SKILL_REDUCE_DEFENSE
+		&& Skill != AT_SKILL_SAHAMUTT
+		&& Skill != AT_SKILL_NAIL
+		&& Skill != AT_SKILL_GHOST_PHANTOM
+		&& Skill != AT_SKILL_RED_STORM
+		&& Skill != AT_SKILL_EXPLOTION
+		&& Skill != AT_SKILL_MAGIC_CIRCLE
+		&& Skill != AT_SKILL_REDUCE_DMG_SHIELD
+		&& Skill != AT_SKILL_FIVE_SHOT
+		&& Skill != AT_SKILL_SWORD_SLASH
+		&& Skill != AT_SKILL_LIGHTING_STORM
+		&& Skill != AT_SKILL_BIRDS
+		&& Skill != AT_SKILL_LARGERINGBLOWER
+		&& Skill != AT_SKILL_UPPERBEAST
+		&& Skill != AT_SKILL_CHAINDRIVE
+		&& Skill != AT_SKILL_DARKSIDE
+		&& Skill != AT_SKILL_DRAGONLORE
+		&& Skill != AT_SKILL_DRAGONSLAYER
+		&& Skill != AT_SKILL_REDADMORIGNORE
+		&& Skill != AT_SKILL_FITNESS
+		&& Skill != AT_SKILL_DEFENSESUCCESSRATEINCREASE
+		&& Skill != AT_SKILL_CHARGE
+		&& Skill != AT_SKILL_PHOENIX_G)
 	{
-		return false;
+		if(Skill >= 435 && Skill <= 554) //SkillTree DmgSkills
+			return true;
+		else
+			return false;
 	}
 	return true;
 }
 
-int CObjUseSkill::GetUseMana(int aIndex, CMagicInf * lpMagic)
+int  CObjUseSkill::GetUseMana(int aIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj =&gObj[aIndex];
 	float mana = lpObj->Mana;
@@ -452,99 +354,23 @@ int CObjUseSkill::GetUseMana(int aIndex, CMagicInf * lpMagic)
 		return 0;
 	}
 
-	float loc4 = 0;
-
-	loc4 = MagicDamageC.SkillGetMana(lpMagic->m_Skill) + this->GetAddUseMana(lpObj,lpMagic);
-	loc4 -= lpObj->m_MPSkillOpt.MpsDecreaseMana * loc4 / 100.0f;
-
-	if(loc4 < 1.0f)
-	{
-		loc4 = 1.0f;
-	}
-
-	mana -= loc4;
+	int usingmana = MagicDamageC.SkillGetMana(lpMagic->m_Skill);
+	usingmana = usingmana * ((100 - lpObj->MasterCharacterInfo->DecManaReduction)/100.0f);
+	mana -= usingmana;
+	//mana -= this->GetAddUseMana(lpObj,lpMagic); OK
 
 	if(mana < 0.0f)
 	{
 		return -1;
 	}
-	return mana;
+	return usingmana;
 }
 
-int CObjUseSkill::GetAddUseMana(LPOBJ lpObj,CMagicInf * lpMagic) //
+int  CObjUseSkill::GetUseBP(int aIndex, CMagicInf * lpMagic)
 {
-	int iRetValue = 0;
+	LPOBJ lpObj = &gObj[aIndex];
 
-	if(lpObj->Class == CLASS_ELF && lpObj->Type == OBJ_USER && lpObj->ChangeUP == 1)
-	{
-		if(gObjCheckUsedBuffEffect(lpObj, AT_INFINITY_ARROW) == 1)
-		{
-			if(lpMagic->m_Skill == AT_SKILL_CROSSBOW
-				|| lpMagic->m_Skill == AT_SKILL_BOW
-				|| lpMagic->m_Skill == AT_SKILL_ELFHARDEN
-				|| lpMagic->m_Skill == AT_SKILL_PENETRATION
-				|| lpMagic->m_Skill == AT_SKILL_5CROSSBOW
-				|| g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill) == 414
-				|| lpMagic->m_Skill == 418
-				|| lpMagic->m_Skill == 416
-				|| lpMagic->m_Skill == 424 )
-			{
-				int iArrowLevel = 0;
-
-				CItem * Right = &lpObj->pInventory[0];
-				CItem * Left = &lpObj->pInventory[1];
-
-				if(Right->m_Type >= ITEMGET(4,8) && Right->m_Type <= ITEMGET(4,14)
-					|| Right->m_Type == ITEMGET(4,16)
-					|| Right->m_Type == ITEMGET(4,18)
-					|| Right->m_Type == ITEMGET(4,19))
-				{
-					if(Left->m_Type == ITEMGET(4,7))
-					{
-						iArrowLevel = Left->m_Level;
-					}
-				}
-				else if(Left->m_Type >= ITEMGET(4,0) && Left->m_Type <= ITEMGET(4,6)
-					|| Left->m_Type == ITEMGET(4,17)
-					|| Left->m_Type == ITEMGET(4,20)
-					|| Left->m_Type == ITEMGET(4,21)
-					|| Left->m_Type == ITEMGET(4,22)
-					|| Left->m_Type == ITEMGET(4,23)
-					|| Left->m_Type == ITEMGET(4,24)) //Season4 add-on) //Season4 add-on
-				{
-					if(Right->m_Type == ITEMGET(4,15))
-					{
-						iArrowLevel = Right->m_Level;
-					}
-				}
-
-				if(iArrowLevel == 0)
-				{
-					iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus0();
-				}
-				else if(iArrowLevel == 1)
-				{
-					iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus1();
-				}
-				else if(iArrowLevel == 2)
-				{
-					iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus2();
-				}
-				else if(iArrowLevel == 3) //season 4.5 add-on
-				{
-					iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus3();
-				}
-			}
-		}
-	}
-	return iRetValue;
-}
-
-int  CObjUseSkill::GetUseBP(int aIndex, CMagicInf * lpMagic) //
-{
-	LPOBJ lpObj = &gObj[aIndex]; //2
-
-	int bp = lpObj->BP; //3
+	int bp = lpObj->BP;
 
 	if(lpObj->Type != OBJ_USER)
 	{
@@ -556,15 +382,8 @@ int  CObjUseSkill::GetUseBP(int aIndex, CMagicInf * lpMagic) //
 		return 0;
 	}
 
-	int usingbp = MagicDamageC.SkillGetBP(lpMagic->m_Skill); //4
-
+	int usingbp = MagicDamageC.SkillGetBP(lpMagic->m_Skill);
 	usingbp -= usingbp * lpObj->SetOpDecreaseAG / 100;
-
-	if(lpObj->m_btAGReduceRate > 0)
-	{
-		usingbp -= usingbp * lpObj->m_btAGReduceRate / 100;
-	}
-
 	bp -= usingbp;
 
 	if(bp < 0)
@@ -572,10 +391,37 @@ int  CObjUseSkill::GetUseBP(int aIndex, CMagicInf * lpMagic) //
 		return -1;
 	}
 
-	return bp;
+	return usingbp;
 }
 
-void CObjUseSkill::UseSkill(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex) //004BECB0
+
+struct PMSG_DURATION_MAGIC_SEND {
+
+  // static data ------------------------------------
+
+  // non-static data --------------------------------
+  /*<thisrel this+0x0>*/ /*|0x3|*/ struct PBMSG_HEAD h;
+	unsigned char MagicNumberH;
+  /*<thisrel this+0x3>*/ /*|0x1|*/ unsigned char MagicNumberL;
+  /*<thisrel this+0x4>*/ /*|0x1|*/ unsigned char NumberH;
+  /*<thisrel this+0x5>*/ /*|0x1|*/ unsigned char NumberL;
+  /*<thisrel this+0x6>*/ /*|0x1|*/ unsigned char X;
+  /*<thisrel this+0x7>*/ /*|0x1|*/ unsigned char Y;
+  /*<thisrel this+0x8>*/ /*|0x1|*/ unsigned char Dir;
+
+  // base classes -----------------------------------
+
+  // friends ----------------------------------------
+
+  // static functions -------------------------------
+
+  // non-virtual functions --------------------------
+
+  // virtual functions ------------------------------
+};
+// <size 0x9>
+
+void CObjUseSkill::UseSkill(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
@@ -600,22 +446,18 @@ void CObjUseSkill::UseSkill(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYT
 
 	int usemana = this->GetUseMana(aIndex,lpMagic);
 
-	if(lpMagic->m_Skill == AT_SKILL_DARKHORSE_ATTACK) //season4 add-on
-	{
-		usemana = gObj[aIndex].Mana;
-	}
-
 	PMSG_DURATION_MAGIC_SEND pMsg;
 
 	if(usemana >= 0)
 	{
 		if(!gObj[aIndex].SkillDelay.Check(lpMagic->m_Skill))
 		{
-			LogAddTD("[%] ???? µ?·?????°? ????",gObj[aIndex].AccountID);
+			LogAddTD("[%s][%s] Skill Delay is wrong! SKILL:%d",gObj[aIndex].AccountID,gObj[aIndex].Name,lpMagic->m_Skill);
 			return;
 		}
 
-		int usebp = gObjMagicBPUse(&gObj[aIndex],lpMagic);
+		//int usebp = gObjMagicBPUse(&gObj[aIndex],lpMagic);
+		int usebp = this->GetUseBP(aIndex,lpMagic);
 
 		if(usebp >= 0)
 		{
@@ -623,106 +465,167 @@ void CObjUseSkill::UseSkill(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYT
 			lpObj->UseMagicTime = GetTickCount();
 			lpObj->UseMagicCount = 0;
 
-			lpObj->Mana = usemana;
-			lpObj->BP = usebp;
+			lpObj->Mana -= usemana;
+			lpObj->BP -= usebp;
 
 			GCManaSend(lpObj->m_Index,lpObj->Mana,0xFF,0,lpObj->BP);
 
-			PHeadSetBE((LPBYTE)&pMsg,0x1E,sizeof(pMsg));
+			PHeadSetBE((PBYTE)&pMsg,0x1E,sizeof(pMsg));
 
 			pMsg.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
 			pMsg.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
-
 			pMsg.X = x;
 			pMsg.Y = y;
 			pMsg.Dir = dir;
 			pMsg.NumberH = SET_NUMBERH(aIndex);
 			pMsg.NumberL = SET_NUMBERL(aIndex);
-
+			//pMsg.UNK1 = 0x00;
 			if(lpObj->Type == OBJ_USER)
 			{
-				DataSend(lpObj->m_Index,(LPBYTE)&pMsg,pMsg.h.size);
+				DataSend(lpObj->m_Index,(PBYTE)&pMsg,pMsg.h.size);
 			}
 
 			if(CC_MAP_RANGE(lpObj->MapNumber))
 			{
-				if(g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) != FALSE) //Season3 add-on
+				switch(lpMagic->m_Skill)
 				{
-					int GetSkillID = g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill);
-					switch ( GetSkillID )
-					{
-					case 356:	//1.01.00
-					case 360:
-					case 363:
-					case 403:
-					case 404:
-					case 406:
-					case 413:
-					case 417:
-					case 420:
-						break;
-						default:
-							MsgSendV2(lpObj,(LPBYTE)&pMsg,pMsg.h.size);
-					}
-				}
-				else
-				{
-					switch ( lpMagic->m_Skill )
-					{
-						case 16:
-						case 26:
-						case 27:
-						case 28:
-						case 48:
-							break;
-						default:
-							MsgSendV2(lpObj,(LPBYTE)&pMsg,pMsg.h.size);
-					}
+				case AT_SKILL_REFLECT:
+				case AT_SKILL_MAGIC_CIRCLE:
+				case AT_SKILL_REDUCE_DAMAGE:
+				case AT_SKILL_REDUCE_DEFENSE:
+				case 435:
+				case 436:
+				case 437:
+				case 438:
+				case 439:
+				case AT_SKILL_MAGICDEFENSE:
+				case 475:
+				case 476:
+				case 477:
+				case 478:
+				case 479:
+				case AT_SKILL_HEALING:
+				case 480:
+				case 481:
+				case 482:
+				case 483:
+				case 484:
+				case AT_SKILL_DEFENSE:
+				case 485:
+				case 486:
+				case 487:
+				case 488:
+				case 489:
+				case AT_SKILL_ATTACK:
+				case AT_SKILL_KNIGHTADDLIFE:
+				case 470:
+				case 471:
+				case 472:
+				case 473:
+				case 474:
+				case AT_SKILL_REDUCE_DMG_SHIELD:
+					break;
+				default: 
+					MsgSendV2(lpObj,(PBYTE)&pMsg,pMsg.h.size);
 				}
 			}
 			else
 			{
-				MsgSendV2(lpObj,(LPBYTE)&pMsg,pMsg.h.size);
+				MsgSendV2(lpObj,(PBYTE)&pMsg,pMsg.h.size);
 			}
 		}
-		
-		if(g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) != FALSE) //Season3 add-on
+
+		if(lpMagic->m_Skill == AT_SKILL_PHOENIX_G)
 		{
-			g_MasterSkillSystem.RunningSkill_MLS(lpObj, aTargetIndex, lpMagic, bCombo, x, y, dir, TargetPos);
-			return;
+			this->SkillPhoenixShot(aIndex,aTargetIndex,lpMagic);
 		}
-		if(lpMagic->m_Skill == AT_SKILL_SWORD6)
+
+		if(lpMagic->m_Skill == AT_SKILL_DRAGONLORE)
+		{
+			this->SkillDragonLore(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}
+
+		if(lpMagic->m_Skill == AT_SKILL_REDUCE_DAMAGE)
+		{
+			this->SkillReduceDamage(aIndex,aTargetIndex,lpMagic->m_Level);
+		}
+
+		if(lpMagic->m_Skill == AT_SKILL_REDUCE_DEFENSE)
+		{
+			this->SkillReduceDefense(aIndex,aTargetIndex,lpMagic->m_Level);
+		}
+
+		if((lpMagic->m_Skill == AT_SKILL_POWERSLASH) || (lpMagic->m_Skill >= 505 && lpMagic->m_Skill <= 509) )
 		{
 			this->SkillPowerSlash(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
 		}
 		if(lpMagic->m_Skill == AT_SKILL_EXPPOISON)
 		{
-			if( lpObj->Class == 561 )	//Medusa, 1.01.00 update
-			{
-				this->SkillDeathPoisonForMeDusa(aIndex, lpMagic, x, y, aTargetIndex);
-			}
-			else
-			{
-				this->SkillDeathPoison(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
-			}
+			this->SkillDeathPoison(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
 		}
-		else if(lpMagic->m_Skill == AT_SKILL_EXPICE)
+		else if((lpMagic->m_Skill == AT_SKILL_EXPICE) || (lpMagic->m_Skill >= 450 && lpMagic->m_Skill <= 454) )
 		{
 			this->SkillSuddenIce(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
 		}
-		else if(lpMagic->m_Skill == AT_SKILL_BLOWOFFURY)
+		else if((lpMagic->m_Skill == AT_SKILL_DRAIN_LIFE) || (lpMagic->m_Skill >= 550 && lpMagic->m_Skill <= 554) )
+		{
+			this->SkillDrainLife(aIndex,aTargetIndex,lpMagic);
+		}
+		else if((lpMagic->m_Skill == AT_SKILL_CHAIN_LIGHTING) || (lpMagic->m_Skill >= 540 && lpMagic->m_Skill <= 544) )
+		{
+			this->SkillChainElectricAttack(aIndex,aTargetIndex,lpMagic);
+			//this->SkillCommon(aIndex,aTargetIndex,lpMagic);
+		}	
+		else if(lpMagic->m_Skill == AT_SKILL_ELECTRIC_SURGE)
+		{
+			this->SkillCommon(aIndex,aTargetIndex,lpMagic);
+		}
+		else if(lpMagic->m_Skill == AT_SKILL_SWORD_SLASH)
+		{
+			this->SkillSwordSlash(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}
+		else if((lpMagic->m_Skill == AT_SKILL_RED_STORM) || (lpMagic->m_Skill >= 545 && lpMagic->m_Skill <= 549) )
+		{
+			this->SkillRedStorm(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}		
+		else if(lpMagic->m_Skill == AT_SKILL_SAHAMUTT)
+		{
+			this->SkillSummonerBook(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex,0x4B);
+		}
+		else if(lpMagic->m_Skill == AT_SKILL_NAIL)
+		{
+			this->SkillSummonerBook(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex,0x4A);
+		}
+		else if(lpMagic->m_Skill == AT_SKILL_GHOST_PHANTOM)
+		{
+			this->SkillGhostPhantom(lpObj->m_Index,aTargetIndex,lpMagic);
+		}
+		else if(lpMagic->m_Skill == AT_SKILL_EXPLOTION)
+		{
+			this->SkillExplotion(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}
+		else if(lpMagic->m_Skill == AT_SKILL_LIGHTING_STORM)
+		{
+			this->SkillLightingStorm(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}
+		else if((lpMagic->m_Skill == AT_SKILL_BLOWOFFURY) || (lpMagic->m_Skill >= 465 && lpMagic->m_Skill <= 469) )
 		{
 			this->SkillBlowOfFury(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex,bCombo);
 		}
-		else if(lpMagic->m_Skill == AT_SKILL_WHEEL)
+		else if((lpMagic->m_Skill == AT_SKILL_TWISTINGSLASH) || (lpMagic->m_Skill >= 455 && lpMagic->m_Skill <= 459) || (lpMagic->m_Skill >= 495 && lpMagic->m_Skill <= 499))
 		{
-			this->SkillWheel(aIndex,lpMagic,aTargetIndex,bCombo);
+			if((ReadConfig.TwistingSlashNoWeapon_CGDurationMagicRecv == 0) || (ReadConfig.TwistingSlashNoWeapon_CGDurationMagicRecv == 1 && gObj[aIndex].pInventory[0].IsItem() == TRUE))
+				this->SkillWheel(aIndex,lpMagic,aTargetIndex,bCombo);
 		}
 		else if(lpMagic->m_Skill == AT_SKILL_ELECTRICSPARK)
 		{
 			this->SkillElectricSpark(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
 		}
-		else if(lpMagic->m_Skill == AT_SKILL_DARKHORSE_ATTACK)
+		else if(lpMagic->m_Skill == AT_SKILL_BIRDS)
+		{
+			this->SkillBirds(aIndex,lpMagic,x,y,dir,TargetPos,aTargetIndex);
+		}
+		else if((lpMagic->m_Skill == AT_SKILL_DARKHORSE_ATTACK) || (lpMagic->m_Skill >= 515 && lpMagic->m_Skill <= 519) )
 		{
 			this->SkillDarkHorseAttack(lpObj->m_Index,aTargetIndex,lpMagic);
 		}
@@ -734,129 +637,15 @@ void CObjUseSkill::UseSkill(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYT
 		{
 			this->SkillFenrirAttack(aIndex,aTargetIndex,lpMagic);
 		}
-		//Summoner Next
-		else if(lpMagic->m_Skill == 216)
-		{
-			this->SkillEletrictSurge(aIndex,aTargetIndex,lpMagic);
-		}
-		else if(lpMagic->m_Skill == 214)
-		{
-			this->SkillDrainLife(aIndex,aTargetIndex,lpMagic);
-		}
-		else if(lpMagic->m_Skill == 215)
-		{
-			this->SkillChainLightning(aIndex,aTargetIndex,lpMagic);
-		}
-		else if(lpMagic->m_Skill == 223 || lpMagic->m_Skill == 224)
-		{
-			this->SkillSummonerBook(aIndex,lpMagic,x,y,aTargetIndex);
-		}
-		else if(lpMagic->m_Skill == 221)
-		{
-			this->SkillWeakness(aIndex,lpMagic,x,y,aTargetIndex);
-		}
-		else if(lpMagic->m_Skill == 222)
-		{
-			this->SkillInnovation(aIndex,lpMagic,x,y,aTargetIndex);
-		}
-		else
-		{
-			switch(lpMagic->m_Skill)	//-> Maybe not switch)
-			{
-			case 225:	//-> UseSkillPollution
-				{
-					this->SkillPollutionStart(aIndex,lpMagic,x,y,aTargetIndex,59);
-				}
-				break;
-				// --
-			case 230:	//-> SkillLightningShock
-				{
-					this->SkillLightningShock(aIndex,aTargetIndex,lpMagic);
-				}
-				break;
-				// --
-			case 232:	//-> SkillDestruction
-				{
-					this->SkillStrikeOfDestructionStart(aIndex,lpMagic,x,y,aTargetIndex);
-				}
-				break;
-				// --
-			case 236:	//-> SkillFlameStrike
-				{
-					this->SkillFlameStrike(aIndex,lpMagic,TargetPos,aTargetIndex);
-				}
-				break;
-			// --
-			case 237:	//-> SkillGiganticStorm
-				{
-					this->SkillGiganticStormStart(aIndex,lpMagic,x,y,aTargetIndex);
-				}
-				break;
-			// --
-			case 235:	//-> SkillMultiShot
-				{
-					this->SkillMultiShot(aIndex,lpMagic,TargetPos,aTargetIndex);
-				}
-				break;
-			// --
-			case 238:	//-> SkillchaoticDesair
-				{
-					this->SkillChaoticDiseier(aIndex,lpMagic,TargetPos,aTargetIndex);
-				}
-				break;
-			// --
-#ifdef DP
-			case 239:	//-> SelfExplosion
-				{
-					g_DoppleganerEvent.SelfExplosion(aIndex, lpMagic, aTargetIndex);
-				}
-				break;
-#endif
-			// --
-			case 9:		//-> SkillEvilMonster
-				{
-					if( gObj[aIndex].Class == 561 )	//Medusa, 1.01.00
-					{
-						this->SkillEvilMonster(aIndex, aTargetIndex, lpMagic);
-					}
-				}
-				break;
-			// --
-			case 264:	//-> AT_SKILL_DRAGON_ROAR
-				{
-					if( !OBJMAX_RANGE(aTargetIndex) )
-					{
-						LogAddTD("[InvalidTargetIndex][CObjUseSkill.UseSkill][AT_SKILL_DRAGON_ROAR] Index :%d , AccountID : %s ",
-							aIndex, gObj[aIndex].AccountID);
-						return;
-					}
-					// ----
-					this->SkillAreaMonsterAttack(aIndex, lpMagic, gObj[aTargetIndex].X, gObj[aTargetIndex].Y, aTargetIndex, 3, 1, 0);
-				}
-				break;
-			// --
-			case 270:	//-> AT_SKILL_PHOENIXSHOT
-				{
-					if( !OBJMAX_RANGE(aTargetIndex) )
-					{
-						LogAddTD("[InvalidTargetIndex][CObjUseSkill.UseSkill][AT_SKILL_PHOENIXSHOT] Index :%d , AccountID : %s ",
-							aIndex, gObj[aIndex].AccountID);
-						return;
-					}
-					// ----
-					this->SkillAreaMonsterAttack(aIndex, lpMagic, gObj[aTargetIndex].X, gObj[aTargetIndex].Y, aTargetIndex, 2, 1, 0);
-				}
-				break;
-			}
-		}
 	}
 }
 
-//Identical
-void CObjUseSkill::UseSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+void CObjUseSkill::UseSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
 
 	int bCombo = 0;
 
@@ -886,29 +675,13 @@ void CObjUseSkill::UseSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic) /
 		return;
 	}
 
-	//FIX DARKSIDE
-	if( lpMagic->m_Skill == 263 || lpMagic->m_Skill == 559 || lpMagic->m_Skill == 563 )
-	{
-		if( lpObj->m_btDarkSideTargetNum > 1 )
-		{
-			//lpObj->m_btSkillComplete = 0;
-			this->RunningSkill(aIndex, aTargetIndex, lpMagic, bCombo);
-			lpObj->UseMagicNumber = lpMagic->m_Skill;
-			lpObj->UseMagicTime = GetTickCount();
-			lpObj->UseMagicCount = 0;
-		//	return;
-		}
-		//else if(lpObj->m_btDarkSideTargetNum == 0) //FIX DARKSIDE
-		 //return;
-	}
-
 	int usemana = this->GetUseMana(aIndex,lpMagic);
 
 	if(usemana >= 0)
 	{
 		if(!gObj[aIndex].SkillDelay.Check(lpMagic->m_Skill))
 		{
-			LogAddTD("[%] Skill Delay Check Error",gObj[aIndex].AccountID); //HermeX Fix
+			LogAddTD("[%] Wrong Skill delay",gObj[aIndex].AccountID);
 			return;
 		}
 
@@ -922,75 +695,1032 @@ void CObjUseSkill::UseSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic) /
 				lpObj->UseMagicTime = GetTickCount();
 				lpObj->UseMagicCount = 0;
 
-				lpObj->Mana = usemana;
-				lpObj->BP = usebp;
+				lpObj->Mana -= usemana;
+				lpObj->BP -= usebp;
+
+				if(lpObj->Mana < 0)
+					lpObj->Mana = 0;
+				if(lpObj->BP < 0)
+					lpObj->BP = 0;
 
 				GCManaSend(aIndex,lpObj->Mana,0xFF,0,lpObj->BP);
 			}
-		}		
+		}
 	}
 }
 
-BOOL CObjUseSkill::RunningSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic, BOOL bCombo) //
+
+int CObjUseSkill::SkillRedStorm(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0; 
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 5)
+						{
+							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+	
+							if (bAttackType == 2)
+							{
+								gObj[tObjNum].m_SkillRedStormSender = aIndex;
+								gObj[tObjNum].m_SkillRedStormTime = 5;
+								gObj[tObjNum].m_SkillRedStormDmg = 75;
+								GCSkillInfoSend(&gObj[tObjNum],1,0x55);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+int CObjUseSkill::SkillSummonerBook(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex, BYTE Book)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	int BookDmg = 0;
+	int HitCount1 = 0;
+	int HitCount2 = 0;
+	int Distance = 0;
+	int NewDamage = 0;
+	int Seconds = 0;
+
+	if(Book == 0x4B)
+	{
+		//BookDmg = 90 * (lpMagic->m_Level + 1);
+		BookDmg = (int)(lpObj->m_MagicDamageMin * ((lpMagic->m_Level+1) / ReadConfig.SkillSummonerBook_SahamutDiv));
+		BookDmg += (BookDmg * lpObj->MasterCharacterInfo->IncFireBook2) /100;
+		Distance = ReadConfig.SkillSummonerBook_SahamutDist;
+		HitCount1 = ReadConfig.SkillSummonerBook_SahamutHit1;
+		HitCount2 = ReadConfig.SkillSummonerBook_SahamutHit2;
+		Seconds = ReadConfig.SkillSummonerBook_SahamutSec;
+		NewDamage = ReadConfig.SkillSummonerBook_SahamutAddMagic * (lpMagic->m_Level + 1);
+	}
+	else if(Book == 0x4A)
+	{
+		//BookDmg = 90 * (lpMagic->m_Level + 1);
+		BookDmg = (int)(lpObj->m_MagicDamageMin * ((lpMagic->m_Level+1) /  ReadConfig.SkillSummonerBook_NailDiv));
+		Distance = ReadConfig.SkillSummonerBook_NailDist;
+		HitCount1 = ReadConfig.SkillSummonerBook_NailHit1;
+		HitCount2 = ReadConfig.SkillSummonerBook_NailHit2;
+		Seconds = ReadConfig.SkillSummonerBook_NailSec;
+		NewDamage = ReadConfig.SkillSummonerBook_NailAddMagic * (lpMagic->m_Level + 1);
+	}
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncWizardyTwoHand;
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncMaxSkillPower;
+	if(gObj[aIndex].m_SkillBerserkerTime > 0)
+		BookDmg += (BookDmg * gObj[aIndex].MasterCharacterInfo->IncBerserker1)/100.0f;
+
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncExpansionWizardy1;
+
+	lpObj->m_MagicDamageMin+=NewDamage;
+	lpObj->m_MagicDamageMax+=NewDamage;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) <= Distance)
+						{
+							bAttack = 0;
+
+							if(HitCount > HitCount1)
+							{
+								bAttack = 0;
+							}
+						
+							if(HitCount >= HitCount2)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+
+								if (bAttackType == 2)
+								{
+									gObj[tObjNum].m_SkillSummonerBookSender = aIndex;
+									gObj[tObjNum].m_SkillSummonerBookTime = Seconds;
+									gObj[tObjNum].m_SkillSummonerBookTypeDmg = Book;
+
+									if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].Level < 100)
+									{
+										gObj[tObjNum].m_SkillSummonerBookDmg = (int)(BookDmg * (100.0f/gObj[tObjNum].Level));
+									} else {
+										gObj[tObjNum].m_SkillSummonerBookDmg = (int)BookDmg;
+									}
+
+									GCSkillInfoSend(&gObj[tObjNum],1,Book);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	
+	lpObj->m_MagicDamageMin-=NewDamage;
+	lpObj->m_MagicDamageMax-=NewDamage;
+
+	return true;
+}
+
+bool CObjUseSkill::SkillDragonLore(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+	int HitCount = 0;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				if(HitCount > 10)
+					break;
+
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 5)
+						{
+							gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,200,lpMagic->m_Skill,0);
+							HitCount++;
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+bool CObjUseSkill::SkillLargeRingBlower(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
+
+	int iDelay = 100;
+
+	if(lpObj->MasterCharacterInfo->IncLargerRingBlowerDebuf > 0)
+	{
+		if ( (rand()%100) < 30 )
+		{
+			if(gObj[aTargetIndex].m_RFBufReduceDefenseTime <= 0)
+			{
+				GCSkillInfoSend(&gObj[aTargetIndex],1,164);
+			}
+			gObj[aTargetIndex].m_RFBufReduceDefense = lpObj->MasterCharacterInfo->IncLargerRingBlowerDebuf;
+			gObj[aTargetIndex].m_RFBufReduceDefenseTime = 3;
+		}
+	}
+	
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,0);
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+300,lpMagic->m_Skill,0);
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+500,lpMagic->m_Skill,0);
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+700,lpMagic->m_Skill,0);
+
+	return true;
+}
+
+bool CObjUseSkill::SkillUpperBeast(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 1;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+	int iDelay = 100;
+
+	if(OBJMAX_RANGE(aTargetIndex) == true)
+	{
+		if(lpObj->MasterCharacterInfo->IncUpperBeastDebuf > 0)
+		{
+			if ( (rand()%100) < 30 )
+			{
+				if(gObj[aTargetIndex].m_RFBufReduceDefenseTime <= 0)
+				{
+					GCSkillInfoSend(&gObj[aTargetIndex],1,164);
+				}
+				gObj[aTargetIndex].m_RFBufReduceDefense = lpObj->MasterCharacterInfo->IncUpperBeastDebuf;
+				gObj[aTargetIndex].m_RFBufReduceDefenseTime = 3;
+			}
+		}
+	}
+
+	//Test Feature here (as oponent i cant see the hit, trying to fix)
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,0);
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+250,lpMagic->m_Skill,0);
+	gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+400,lpMagic->m_Skill,0);
+	//gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+550,lpMagic->m_Skill,0);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,1,1,0,0);
+
+	/*while( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex]) == 1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 4)
+						{
+							bAttack = 0;
+
+							if(HitCount >= 3)
+							{
+								bAttack = 0;
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(tObjNum == aTargetIndex)
+							{
+								gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,0);
+								gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+400,lpMagic->m_Skill,0);
+								gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+550,lpMagic->m_Skill,0);
+								gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+700,lpMagic->m_Skill,0);
+							}
+							else
+							{
+								if(bAttack != 0)
+								{
+									gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,300,lpMagic->m_Skill,0);
+									HitCount++;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+
+		if(count > MAX_VIEWPORT - 1)
+		{
+			break;
+		}
+	}*/
+
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
+	return true;
+}
+
+
+bool CObjUseSkill::SkillChainDrive(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+	{
+		return false;
+	}
+	if(gObjItsInSafeZone(aTargetIndex) == 1)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
+
+	int iDelay = 100;
+
+	int RandHit = rand()%4;
+
+	for(int i=0;i<3;i++)
+	{
+		iDelay = iDelay + (i*150);
+		gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,0);
+	}
+	
+	if(RandHit > 0)
+	{	
+		for(int i=0;i<RandHit;i++)
+		{
+			iDelay = iDelay + (i*150);
+			gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,0);
+		}
+	}
+
+	gObjBackSpring2(&gObj[aTargetIndex], lpObj, 1);
+	//Test
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,1,1,0,0);
+
+	return true;
+}
+
+
+bool CObjUseSkill::SkillDragonSlayer(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	int TotalEnergy = (lpObj->Energy + lpObj->AddEnergy);
+
+	//Dragon Slayer = 300+Dmg* 3*(50+Ene/10)/100
+	lpObj->m_SkillDragonSlayerDmg = (float) (ReadConfig.SkillDragonSlayerDmgMult * ( ReadConfig.SkillDragonSlayerEneBase + TotalEnergy / (float)ReadConfig.SkillDragonSlayerEneDiv) / (float)ReadConfig.SkillDragonSlayerDmgDiv);
+	if (lpObj->m_SkillDragonSlayerDmg > ReadConfig.SkillDragonSlayerAttMax)
+		lpObj->m_SkillDragonSlayerDmg = ReadConfig.SkillDragonSlayerAttMax;
+
+	lpObj->m_SkillDragonSlayerTime = ReadConfig.SkillDragonSlayerTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillDragonSlayerTimeDiv;
+	if (lpObj->m_SkillDragonSlayerTime > (ReadConfig.SkillDragonSlayerTimeMinMax*60))
+		lpObj->m_SkillDragonSlayerTime = ReadConfig.SkillDragonSlayerTimeMinMax*60;
+
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,1,1,0,0);
+	return true;
+}
+
+
+
+bool CObjUseSkill::SkillRedArmorIgnore(int aIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	GCSkillInfoSend(lpObj,1,129);
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpObj->m_Index,1);	//Fix Character Panel Visual
+
+	int TotalEnergy = (lpObj->Energy + lpObj->AddEnergy);
+	//float skill_RedArmorIgnore= (float) ((TotalEnergy / ReadConfig.SkillRedArmorIgnoreNumMult ) + 1.0f);
+
+	//%PVP Defence Ignore 5+(Ene-120)/10
+	lpObj->m_SkillRedArmorIgnoreNum = ReadConfig.SkillRedArmorIgnoreBase + (TotalEnergy-ReadConfig.SkillRedArmorIgnoreEneSubtract)/(float)ReadConfig.SkillRedArmorIgnoreDivider;
+	if (lpObj->m_SkillRedArmorIgnoreNum > ReadConfig.SkillRedArmorIgnoreMaxPercent)
+		lpObj->m_SkillRedArmorIgnoreNum = ReadConfig.SkillRedArmorIgnoreMaxPercent;
+	if (lpObj->m_SkillRedArmorIgnoreNum < 0)
+		lpObj->m_SkillRedArmorIgnoreNum = ReadConfig.SkillRedArmorIgnoreBase;
+
+	lpObj->m_SkillRedArmorIgnoreTime = ReadConfig.SkillRedArmorIgnoreTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillRedArmorIgnoreTimeDiv;
+
+	if (lpObj->m_SkillRedArmorIgnoreTime > (ReadConfig.SkillRedArmorIgnoreMinMax*60))
+		lpObj->m_SkillRedArmorIgnoreTime = ReadConfig.SkillRedArmorIgnoreMinMax * 60;
+
+	//if(lpObj->m_SkillRedArmorIgnoreTime > 0)
+	//{		
+	//	int number;
+	//	int partynum = 0;
+
+	//	partynum = lpObj->PartyNumber;
+
+	//	int partycount;
+	//	LPOBJ lpPartyObj;
+
+	//	if(partynum != -1)
+	//	{
+	//		partycount = gParty.m_PartyS[partynum].Count;
+
+	//		for(int n = 0; n < MAX_USER_IN_PARTY;n++)
+	//		{
+	//			number = gParty.m_PartyS[partynum].Number[n];
+
+	//			if(number >= 0)
+	//			{
+	//				lpPartyObj = &gObj[number];
+
+	//				if(lpPartyObj->m_Index != lpObj->m_Index)
+	//				{
+	//					if(lpPartyObj->MapNumber == lpObj->MapNumber)
+	//					{
+	//						lpPartyObj->m_SkillRedArmorIgnoreNum = lpObj->m_SkillRedArmorIgnoreNum;
+	//						lpPartyObj->m_SkillRedArmorIgnoreTime = lpObj->m_SkillRedArmorIgnoreTime;
+	//						GCSkillInfoSend(lpPartyObj,1,129);
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+	return true;
+}
+
+
+bool CObjUseSkill::SkillFitness(int aIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+	GCSkillInfoSend(lpObj,1,130);
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpObj->m_Index,1);	//Fix Stamina Stats!
+
+	//.Time buff (sec) = 60+Ene/5
+	lpObj->m_SkillFitnessTime = ReadConfig.SkillFitnessTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillFitnessTimeDiv;
+	lpObj->m_SkillFitnessVal = ReadConfig.SkillFitnessVitBase+((lpObj->Energy + lpObj->AddEnergy)-ReadConfig.SkillFitnessEneSubtract)/(float)ReadConfig.SkillFitnessVitDiv;
+	lpObj->m_SkillFitnessVal += lpObj->MasterCharacterInfo->FitnessSkillSUM;
+
+	if (ReadConfig.SkillFitnessTimeMinMax*60 < lpObj->m_SkillFitnessTime)
+		lpObj->m_SkillFitnessTime = ReadConfig.SkillFitnessTimeMinMax*60;
+
+	if (lpObj->m_SkillFitnessVal > ReadConfig.SkillFitnessVitAddMax)
+		lpObj->m_SkillFitnessVal = ReadConfig.SkillFitnessVitAddMax;
+	if (lpObj->m_SkillFitnessVal < 0)
+		lpObj->m_SkillFitnessVal = ReadConfig.SkillFitnessVitBase;
+
+
+	gObjCalCharacter(lpObj->m_Index);									//Fitness Skill Fix
+
+	int number;
+	int partynum = 0;
+
+	partynum = lpObj->PartyNumber;
+
+	int partycount;
+	LPOBJ lpPartyObj;
+
+	if(partynum != -1)
+	{
+		partycount = gParty.m_PartyS[partynum].Count;
+
+		for(int n = 0; n < MAX_USER_IN_PARTY;n++)
+		{
+			number = gParty.m_PartyS[partynum].Number[n];
+
+			if(number >= 0)
+			{
+				lpPartyObj = &gObj[number];
+
+				if(lpPartyObj->m_Index != lpObj->m_Index)
+				{
+					if(lpPartyObj->MapNumber == lpObj->MapNumber)
+					{
+						BYTE dis;
+						dis = gObjCalDistance(lpObj,&gObj[number]);
+						if(dis < 10)
+						{
+							GCSkillInfoSend(lpPartyObj,1,130);
+							//GCMagicAttackNumberSend(lpPartyObj,lpMagic->m_Skill,lpPartyObj->m_Index,1);	//Fix Stamina Stats!
+							GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpPartyObj->m_Index,1);
+
+							lpPartyObj->m_SkillFitnessTime = lpObj->m_SkillFitnessTime;
+							lpPartyObj->m_SkillFitnessVal = lpObj->m_SkillFitnessVal;
+
+							gObjCalCharacter(lpPartyObj->m_Index);									//Fitness Skill Fix
+						}
+
+						/*if(lpObj->m_SkillRedArmorIgnoreTime > 0)
+						{
+							lpPartyObj->m_SkillRedArmorIgnoreNum = lpObj->m_SkillRedArmorIgnoreNum;
+							lpPartyObj->m_SkillRedArmorIgnoreTime = lpObj->m_SkillRedArmorIgnoreTime;
+							GCSkillInfoSend(lpPartyObj,1,129);
+						}
+						if(lpObj->m_SkillDefSuccessRateIncTime > 0)
+						{
+							lpPartyObj->m_SkillDefSuccessRateIncTime = lpObj->m_SkillDefSuccessRateIncTime;
+							lpPartyObj->m_SkillDefSuccessRateIncNum = lpObj->m_SkillDefSuccessRateIncNum;
+							GCSkillInfoSend(lpPartyObj,1,131);
+						}*/
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+
+
+bool CObjUseSkill::SkillDefSuccessRateInc(int aIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+
+	LPOBJ lpObj = &gObj[aIndex];
+
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpObj->m_Index,1);
+	GCSkillInfoSend(lpObj,1,131);
+
+	int TotalEnergy = (lpObj->Energy + lpObj->AddEnergy);
+
+	//%Defense Success Rate Increase = 10+(Ene-80)/10
+	lpObj->m_SkillDefSuccessRateIncNum = ReadConfig.SkillDefSuccessRateIncBase + (TotalEnergy-ReadConfig.SkillDefSuccessRateIncEneSubtract) / (float)ReadConfig.SkillDefSuccessRateIncDivider;
+	lpObj->m_SkillDefSuccessRateIncNum += ((lpObj->m_SkillDefSuccessRateIncNum * lpObj->MasterCharacterInfo->DefSucRateSkillMULT)/100.0f);
+	lpObj->m_SkillDefSuccessRateIncNum += lpObj->MasterCharacterInfo->DefSucRateSkillSUM;
+
+	if (lpObj->m_SkillDefSuccessRateIncNum > ReadConfig.SkillDefSuccessRateIncMaxPercent)
+		lpObj->m_SkillDefSuccessRateIncNum = ReadConfig.SkillDefSuccessRateIncMaxPercent;
+	if (lpObj->m_SkillDefSuccessRateIncNum < 0)
+		lpObj->m_SkillDefSuccessRateIncNum = ReadConfig.SkillDefSuccessRateIncBase;
+
+	lpObj->m_SkillDefSuccessRateIncTime = ReadConfig.SkillDefSuccessRateIncTimeBase + TotalEnergy / ReadConfig.SkillDefSuccessRateIncTimeDiv;
+
+	if (lpObj->m_SkillDefSuccessRateIncTime > (ReadConfig.SkillDefSuccessRateIncMinMax*60))
+		lpObj->m_SkillDefSuccessRateIncTime = ReadConfig.SkillDefSuccessRateIncMinMax * 60;
+
+	if(lpObj->m_SkillDefSuccessRateIncTime > 0)
+	{		
+		int number;
+		int partynum = 0;
+
+		partynum = lpObj->PartyNumber;
+
+		int partycount;
+		LPOBJ lpPartyObj;
+
+		if(partynum != -1)
+		{
+			partycount = gParty.m_PartyS[partynum].Count;
+
+			for(int n = 0; n < MAX_USER_IN_PARTY;n++)
+			{
+				number = gParty.m_PartyS[partynum].Number[n];
+
+				if(number >= 0)
+				{
+					lpPartyObj = &gObj[number];
+
+					if(lpPartyObj->m_Index != lpObj->m_Index)
+					{
+						if(lpPartyObj->MapNumber == lpObj->MapNumber)
+						{
+							BYTE dis;
+							dis = gObjCalDistance(lpObj,&gObj[number]);
+							if(dis < 10)
+							{
+								GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpPartyObj->m_Index,1);
+
+								GCSkillInfoSend(lpPartyObj,1,131);
+								lpPartyObj->m_SkillDefSuccessRateIncTime = lpObj->m_SkillDefSuccessRateIncTime;
+								lpPartyObj->m_SkillDefSuccessRateIncNum = lpObj->m_SkillDefSuccessRateIncNum;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
+struct PMSG_GOSHADOW_RESULT
+{
+	PBMSG_HEAD h;	// C3:19 ( 0 1 2)
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+	BYTE TargetNumberH;	// 6
+	BYTE TargetNumberL;	// 7 
+};
+
+bool CObjUseSkill::SkillDarkSideStart(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+	//if(OBJMAX_RANGE(aTargetIndex) == false)
+	//{
+	//	return false;
+	//}
+	//int dis = gObjCalDistance(&gObj[aIndex], &gObj[aTargetIndex]);
+	//if( dis >= 9 ) 
+	//{
+	//	aTargetIndex = 0;
+	//}
+
+	LPOBJ lpObj = &gObj[aIndex];
+	int lastTarget = aIndex;
+
+	int EnableAttack;
+	int attackCnt=0;
+
+	for(int count=0;count<MAX_VIEWPORT;count++)
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			int tObjNum = lpObj->VpPlayer2[count].number;
+			int DuelIndex = lpObj->m_iDuelUser;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if(OBJMAX_RANGE(tObjNum) == false)
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(aTargetIndex == tObjNum || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) <= 6)
+						{
+							PMSG_MAGICATTACK_RESULT_S5E2/*PMSG_MAGICATTACK_RESULT*/ pAttack={0};
+							PHeadSetBE((LPBYTE)&pAttack, 0x4A, sizeof(pAttack));
+							pAttack.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
+							pAttack.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
+							pAttack.SourceNumberH = SET_NUMBERH(lastTarget);
+							pAttack.SourceNumberL = SET_NUMBERL(lastTarget);
+							pAttack.TargetNumberH = SET_NUMBERH(tObjNum);
+							pAttack.TargetNumberL = SET_NUMBERL(tObjNum);
+							lastTarget = tObjNum;
+							pAttack.UnkS5E2 = gObj[aIndex].Dir;
+
+							DataSend(aIndex, (LPBYTE)&pAttack, pAttack.h.size);
+							MsgSendV2(&gObj[aIndex], (LPBYTE)&pAttack, pAttack.h.size);
+
+							gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,100,lpMagic->m_Skill,1);
+							gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,160,lpMagic->m_Skill,1);
+							attackCnt++;
+						}
+					}
+				}
+			}
+		}
+
+		if(attackCnt > 5)
+		{
+			break;
+		}
+	}
+
+
+
+	return true;
+}
+		
+bool CObjUseSkill::SkillDarkSideEnd(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+	
+	
+	LPOBJ lpObj = &gObj[aIndex];
+	int EnableAttack;
+	int attackCnt=0;
+
+	for(int count=0;count<MAX_VIEWPORT;count++)
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			int tObjNum = lpObj->VpPlayer2[count].number;
+			int DuelIndex = lpObj->m_iDuelUser;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+
+				if(OBJMAX_RANGE(tObjNum) == false)
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(aTargetIndex == tObjNum || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) <= 6)
+						{							
+							int iDelay = 100;
+							gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay,lpMagic->m_Skill,1);
+							gObjAddAttackProcMsgSendDelay(lpObj,53,aTargetIndex,iDelay+60,lpMagic->m_Skill,1);
+							
+							PMSG_GOSHADOW_RESULT pAttack2={0};
+							PHeadSetBE((LPBYTE)&pAttack2, 0x4B, sizeof(pAttack2));
+							pAttack2.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
+							pAttack2.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
+							pAttack2.TargetNumberH = SET_NUMBERH(tObjNum);
+							pAttack2.TargetNumberL = SET_NUMBERL(tObjNum);
+
+							DataSend(aIndex, (LPBYTE)&pAttack2, pAttack2.h.size);
+							MsgSendV2(&gObj[aIndex], (LPBYTE)&pAttack2, pAttack2.h.size);
+
+							GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
+							attackCnt++;
+						}
+					}
+				}
+			}
+		}
+
+		if(attackCnt > 5)
+		{
+			break;
+		}
+	}
+
+	return true;
+}
+
+BOOL CObjUseSkill::RunningSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic, BOOL bCombo)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-	DWORD MagicNumber = lpMagic->m_Skill;
+	WORD MagicNumber = lpMagic->m_Skill;
 
 	lpObj->m_SkillNumber = MagicNumber;
 
-	if( (gObjCheckUsedBuffEffect(lpObj, AT_INVISIBILITY) == TRUE) && ((lpObj->Authority&32) != 32) ) //season3 add-on
+	if(lpObj->m_iSkillInvisibleTime > 0)
 	{
 		this->RemoveCloakingEffect(lpObj->m_Index);
-	}
-
-	if(g_MasterSkillSystem.CheckMasterLevelSkill(lpMagic->m_Skill) != FALSE) //Season3 add-on
-	{
-		g_MasterSkillSystem.RunningSkill_MLS(lpObj, aTargetIndex, lpMagic, bCombo, 0, 0, 0, 0);
-		return true;
-	}
-
-	if( lpObj->m_btDarkSideTargetNum )
-	{
-		if( MagicNumber != AT_SKILL_RAGEFIGHTER_DARKSIDE && MagicNumber != 559 && MagicNumber != 563 )
-		{
-			for(int i = 0; i < 5; i++)
-			{
-				lpObj->m_wDarkSideTargetList[i] = 10000;
-			}
-			lpObj->m_btDarkSideTargetNum = 0;
-			return false;
-		}
-
-		int bFindMatchIndex = FALSE;
-
-		for(int i = 0; i < 5; i++)
-		{
-			if( lpObj->m_wDarkSideTargetList[i] == aTargetIndex )
-			{
-				//lpObj->m_wDarkSideTargetList[i] = 10000;
-				//--lpObj->m_btDarkSideTargetNum;
-				bFindMatchIndex = TRUE;
-				break;
-			}
-		}
-
-		if( bFindMatchIndex == 0 )
-		{
-			for(int i = 0; i < 5; i++)
-			{
-				lpObj->m_wDarkSideTargetList[i] = 10000;
-			}
-			lpObj->m_btDarkSideTargetNum = 0;
-			//return false;
-		}
-	}
-	else
-	{
-		if( MagicNumber == 263 || MagicNumber == 559 || MagicNumber == 563 )
-		{
-			return true;
-		}
 	}
 
 	switch(MagicNumber)
@@ -1000,13 +1730,34 @@ BOOL CObjUseSkill::RunningSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 		{
 			if(lpObj->pInventory[1].m_Type >= ITEMGET(6,4) && lpObj->pInventory[1].m_Type < ITEMGET(7,0))
 			{
-				if(lpObj->pInventory[1].m_Option1 != 0)
+				if(lpObj->pInventory[1].m_SkillOption != 0)
 				{
 					lpObj->m_SkillTime = GetTickCount() + 4000;
 					GCActionSend(lpObj,18,lpObj->m_Index,aTargetIndex);
 				}
 			}
 		}
+		break;
+	case AT_SKILL_LARGERINGBLOWER:
+		this->SkillLargeRingBlower(aIndex,aTargetIndex,lpMagic);
+		break;
+	case AT_SKILL_UPPERBEAST:
+		this->SkillUpperBeast(aIndex,aTargetIndex,lpMagic);
+		break;
+	case AT_SKILL_CHAINDRIVE:
+		this->SkillChainDrive(aIndex,aTargetIndex,lpMagic);
+		break;
+	case AT_SKILL_DRAGONSLAYER:
+		this->SkillDragonSlayer(aIndex,aTargetIndex,lpMagic);
+		break;
+	case AT_SKILL_REDADMORIGNORE:
+		this->SkillRedArmorIgnore(aIndex,lpMagic);
+		break;
+	case AT_SKILL_FITNESS:
+		this->SkillFitness(aIndex,lpMagic);
+		break;
+	case AT_SKILL_DEFENSESUCCESSRATEINCREASE:
+		this->SkillDefSuccessRateInc(aIndex,lpMagic);
 		break;
 	case AT_SKILL_POISON:
 	case AT_SKILL_METEO:
@@ -1015,53 +1766,138 @@ BOOL CObjUseSkill::RunningSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 	case AT_SKILL_FLAME:
 	case AT_SKILL_SLOW:
 	case AT_SKILL_ENERGYBALL:
-	case AT_SKILL_SWORD1:
-	case AT_SKILL_SWORD2:
-	case AT_SKILL_SWORD3:
-	case AT_SKILL_SWORD4:
-	case AT_SKILL_SWORD5:
+	case AT_SKILL_FALLINGSLASH:
+	case AT_SKILL_LUNGE:
+	case AT_SKILL_UPPERCUT:
+	case AT_SKILL_CYCLONE:
+	case AT_SKILL_SLASH:
+	case 490:
+	case 491:
+	case 492:
+	case 493:
+	case 494:
 	case AT_SKILL_CROSSBOW:
+	case AT_SKILL_FIVE_SHOT:
 	case AT_SKILL_BOW:
-	case AT_SKILL_WHEEL:
+	case AT_SKILL_TWISTINGSLASH:
+	case 455:
+	case 456:
+	case 457:
+	case 458:
+	case 459:
+	case 495:
+	case 496:
+	case 497:
+	case 498:
+	case 499:
 	case AT_SKILL_BLOWOFFURY:
-	case AT_SKILL_KNIGHTSPEAR:
+	case 465:
+	case 466:
+	case 467:
+	case 468:
+	case 469:
+	case AT_SKILL_BKIMPALE:
 	case AT_SKILL_PENETRATION:
-	case AT_SKILL_SWORD6:
-		gObjAttack(lpObj,lpTargetObj,lpMagic,1,0,0,0,0,0);
+	case 505:
+	case 506:
+	case 507:
+	case 508:
+	case 509:
+	case AT_SKILL_POWERSLASH:
+		gObjAttack(lpObj,lpTargetObj,lpMagic,1,0,0,0);
 		break;
-	case AT_SKILL_HEALING:	this->SkillHealing(aIndex,aTargetIndex,lpMagic->m_Level);break;
-	case AT_SKILL_MAGICDEFENSE:	this->WizardMagicDefense(aIndex,aTargetIndex,lpMagic->m_Level);break;
-	case AT_SKILL_KNIGHTADDLIFE:	this->KnightSkillAddLife(aIndex,lpMagic->m_Level);break;
-	case AT_SKILL_DEFENSE:	this->SkillDefense(aIndex,aTargetIndex,lpMagic->m_Level);break;
-	case AT_SKILL_ATTACK:	this->SkillAttack(aIndex,aTargetIndex,lpMagic->m_Level);break;
+	case 475:
+	case 476:
+	case 477:
+	case 478:
+	case 479:
+	case AT_SKILL_HEALING:	this->SkillHealing(aIndex,aTargetIndex,lpMagic->m_Level,MagicNumber);break;
+	case AT_SKILL_REDUCE_DMG_SHIELD: this->SkillHealShield(aIndex,aTargetIndex,lpMagic->m_Level);break;
+	case 435:
+	case 436:
+	case 437:
+	case 438:
+	case 439:
+	case AT_SKILL_MAGICDEFENSE:	this->WizardMagicDefense(aIndex,aTargetIndex,lpMagic->m_Level,MagicNumber);break;
+	case AT_SKILL_MAGIC_CIRCLE:	this->SkillMagicCircle(aIndex,aTargetIndex,lpMagic->m_Level);break;
+	case 535:
+	case 536:
+	case 537:
+	case 538:
+	case 539:
+	case AT_SKILL_SLEEP:	this->SkillSleep(aIndex,aTargetIndex,lpMagic->m_Level,MagicNumber,lpMagic);break;
+	case AT_SKILL_NIGHT:	this->SkillNight(aIndex,aTargetIndex,lpMagic->m_Level);break;
+	case 470:
+	case 471:
+	case 472:
+	case 473:
+	case 474:
+	case AT_SKILL_KNIGHTADDLIFE:	this->KnightSkillAddLife(aIndex,lpMagic->m_Level,MagicNumber);break;
+	case 480:
+	case 481:
+	case 482:
+	case 483:
+	case 484:
+	case AT_SKILL_DEFENSE:	this->SkillDefense(aIndex,aTargetIndex,lpMagic->m_Level, MagicNumber);break;
+	case 485:
+	case 486:
+	case 487:
+	case 488:
+	case 489:
+	case AT_SKILL_ATTACK:	this->SkillAttack(aIndex,aTargetIndex,lpMagic->m_Level, MagicNumber);break;
+	case AT_SKILL_REFLECT:	this->SkillReflect(aIndex,aTargetIndex,lpMagic->m_Level);break;
+	case AT_SKILL_BERSERKER:	this->Berserker(aIndex,lpMagic->m_Level);break;
 
-	case AT_SKILL_CALLMON1:	return this->SkillMonsterCall(lpObj->m_Index,26,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON2:	return this->SkillMonsterCall(lpObj->m_Index,32,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON3:	return this->SkillMonsterCall(lpObj->m_Index,21,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON4:	return this->SkillMonsterCall(lpObj->m_Index,20,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON5:	return this->SkillMonsterCall(lpObj->m_Index,10,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON6:	return this->SkillMonsterCall(lpObj->m_Index,150,lpObj->X-1,lpObj->Y+1);
-	case AT_SKILL_CALLMON7:	return this->SkillMonsterCall(lpObj->m_Index,151,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON1:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall1,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON2:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall2,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON3:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall3,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON4:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall4,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON5:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall5,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON6:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall6,lpObj->X-1,lpObj->Y+1);
+	case AT_SKILL_CALLMON7:	return this->SkillMonsterCall(lpObj->m_Index,ReadConfig.SkillMonsterCall7,lpObj->X-1,lpObj->Y+1);
 
+	case AT_SKILL_EXPHELL_START:	return this->SkillHellFire2(lpObj->m_Index,aTargetIndex,lpMagic);
 	case AT_SKILL_EXPHELL:	return this->SkillHellFire2(lpObj->m_Index,aTargetIndex,lpMagic);
-	case AT_SKILL_STRIKE:	return this->SkillKnightBlow(lpObj->m_Index,aTargetIndex,lpMagic,bCombo);
 
+	case 460:
+	case 461:
+	case 462:
+	case 463:
+	case 464:
+	case AT_SKILL_DEATHSTAB:	return this->SkillKnightBlow(lpObj->m_Index,aTargetIndex,lpMagic,bCombo);
+
+	case AT_SKILL_CHARGE:
 	case AT_SKILL_SPEAR:	return this->SkillSpear(lpObj->m_Index,aTargetIndex,lpMagic);
+	case 520:
+	case 521:
+	case 522:
+	case 523:
+	case 524:
 	case AT_SKILL_FIREBURST:	return this->SkillFireBurst(lpObj->m_Index,aTargetIndex,lpMagic);
+	case 515:
+	case 516:
+	case 517:
+	case 518:
+	case 519:
 	case AT_SKILL_DARKHORSE_ATTACK:	return this->SkillDarkHorseAttack(lpObj->m_Index,aTargetIndex,lpMagic);
 	case AT_SKILL_RECALL_PARTY:	this->SkillRecallParty(aIndex,lpMagic->m_Level);break;
 	case AT_SKILL_ADD_CRITICALDAMAGE:	this->SkillAddCriticalDamage(aIndex,lpMagic->m_Level);break;
 
-	case AT_SKILL_DEFENSEDOWN:	this->MaGumSkillDefenseDown(lpObj->m_Index,aTargetIndex,1);break;
+	case 500:
+	case 501:
+	case 502:
+	case 503:
+	case 504:
+	case AT_SKILL_FIRESLASH:	this->MaGumSkillDefenseDown(lpObj->m_Index,aTargetIndex,1,MagicNumber);break;
 
 	case AT_SKILL_SUMMON:	this->SkillSummon(lpObj->m_Index,aTargetIndex,lpMagic);break;
 	case AT_SKILL_IMMUNE_TO_MAGIC:	this->SkillImmuneToMagic(lpObj->m_Index,lpMagic);break;
 	case AT_SKILL_IMMUNE_TO_HARM:	this->SkillImmuneToHarm(lpObj->m_Index,lpMagic);break;
 
-	case AT_SKILL_RUSH:	this->SkillKnightRush(lpObj->m_Index,aTargetIndex,lpMagic);break;
+	case AT_SKILL_CRESCENTSLASH:	this->SkillKnightRush(lpObj->m_Index,aTargetIndex,lpMagic);break;
 	case AT_SKILL_JAVALIN:	this->SkillWizardJavalin(lpObj->m_Index,aTargetIndex,lpMagic);break;
-	case AT_SKILL_DEEPIMPACT:	this->SkillElfRush(lpObj->m_Index,aTargetIndex,lpMagic);break;
-	case AT_SKILL_ONE_FLASH:	this->SkillMagumOneFlash(lpObj->m_Index,aTargetIndex,lpMagic);break;
+	case AT_SKILL_STARFALL:	this->SkillElfRush(lpObj->m_Index,aTargetIndex,lpMagic);break;
+	case AT_SKILL_SPIRALSLASH:	this->SkillMagumOneFlash(lpObj->m_Index,aTargetIndex,lpMagic);break;
 	case AT_SKILL_DEATH_CANNON:	this->SkillMagumDeathCannon(lpObj->m_Index,aTargetIndex,lpMagic);break;
 	case AT_SKILL_SPACE_SPLIT:	this->SkillDarklordSpaceSplit(lpObj->m_Index,aTargetIndex,lpMagic);break;
 
@@ -1075,121 +1911,76 @@ BOOL CObjUseSkill::RunningSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 
 	case AT_SKILL_INFINITY_ARROW:	this->SkillInfinityArrow(aIndex,aTargetIndex,lpMagic);break;
 
-	case 217: this->SkillDamageReflection(aIndex,aTargetIndex,lpMagic);break; //Summoner Damage Reflection
-	case 219: this->SkillSleep(aIndex,aTargetIndex,lpMagic);break;
-	case 220: this->SkillBlind(aIndex,aTargetIndex,lpMagic);break;
-
-		//Season4 add-on
-	case 218: this->SkillBerserker(lpObj->m_Index,lpMagic);break;
-	case 234: this->SkillSDRecovery(aIndex,aTargetIndex,lpMagic);break;
-	case 233: this->SkillExpansionWizardry(aIndex,aTargetIndex,lpMagic);break;
-
-	//1.01.00
-	case 266:
-		{
-			this->SkillMonkBuff(aIndex, lpMagic);
-		}
-		break;
-		// --
-	case 267:
-	case 268:
-		{
-			this->SkillMonkBuffApplyParty(aIndex, lpMagic);
-		}
-		break;
-		// --
-	case 260:
-	case 261:
-	case 262:
-	case 263:
-		{
-			//BACKUP FIX DARKSIDE
-			/*
-			PMSG_MONK_DARKSIDE_RECV pMsg = {0};
-			pMsg.TargetNumberH = SET_NUMBERH(aTargetIndex);
-			pMsg.TargetNumberL = SET_NUMBERL(aTargetIndex);
-
-			pMsg.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
-			pMsg.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
-
-			//GCMonkDarkSideTargetSelect(&pMsg,lpObj->m_Index);
-
-			if( lpObj->m_btDarkSideTargetNum )
-			{
-				for(int i = 0; i < 5; i++)
-				{
-					if( lpObj->m_wDarkSideTargetList[i] != 10000 )
-						SkillMonkBarrageJustOneTarget(lpObj->m_Index,lpMagic,lpObj->m_wDarkSideTargetList[i]);
-				}
-			}
-			*/
-			this->SkillMonkBarrageJustOneTarget(aIndex, lpMagic, aTargetIndex);
-		}
-		break;
-		// --
-	case 265:
-		{
-			gObjAttack(lpObj, lpTargetObj, lpMagic, 1, 0, 0, 0, 0, 0);
-		}
-		break;
-		// --
-	case 269:
-		{
-			this->SkillCharge(aIndex, lpMagic, aTargetIndex);
-		}
-		break;
-		// ----
-	default:	
-		gObjAttack(lpObj, lpTargetObj, lpMagic, 1, 0, 0, 0, 0, 0);
-		break;
+	default:	gObjAttack(lpObj,lpTargetObj,lpMagic,1,0,0,0);break;
 	}
 
 	return true;
 }
 
-void CObjUseSkill::MaGumSkillDefenseDown(int aIndex, int aTargetIndex, int skill_level) //
-{
-	int skillSuccess = 1;
-	LPOBJ lpObj = &gObj[aIndex];
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
 
-	if(lpObj->Type == OBJ_USER && lpObj->Class != CLASS_MAGUMSA)
+
+
+void CObjUseSkill::MaGumSkillDefenseDown(int aIndex, int aTargetIndex, int skill_level, int MagicNr)
+{
+	if( aIndex < OBJ_STARTUSERINDEX || aIndex > OBJMAX-1)
+	{
+		return;
+	}
+	if(OBJMAX_RANGE(aTargetIndex) == false)
 	{
 		return;
 	}
 
-	LogAdd("?¶°?»? ??????????·?°??? : %d",10); // HermeX Fix
+	int skillSuccess = 1;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+	WORD SkillNr = AT_SKILL_FIRESLASH;
+
+	if(lpObj->Type == OBJ_USER && lpObj->Class != CLASS_MAGICGLADIATOR && lpObj->Class != CLASS_RAGEFIGHTER)
+	{
+		return;
+	}
+
 
 	if(retCalcSkillResistance(lpTargetObj,1))
 	{
-		gObjAddBuffEffect(lpTargetObj, AT_REDUCE_DEFENSE, 23, 10, 0, 0, 10); //Season3 add-on
-		GCMagicAttackNumberSend(lpObj,AT_SKILL_DEFENSEDOWN,lpTargetObj->m_Index,skillSuccess);
+		lpTargetObj->m_SkillMagumReduceDefense = 10;
+		if(MagicNr >= 500 && MagicNr <= 504)
+		{
+			int Mult = ((SkillNr%5) + 1)*5;
+			lpTargetObj->m_SkillMagumReduceDefense += Mult;
+			SkillNr = MagicNr;
+		}
+		lpTargetObj->m_SkillMagumReduceDefenseTime = 10;
+		lpTargetObj->m_ViewSkillState |= 64;
+
+		LogAdd("Fire Slash Decrease Defense: %d Time : %d",lpTargetObj->m_SkillMagumReduceDefense,lpTargetObj->m_SkillMagumReduceDefenseTime);
+
+		GCMagicAttackNumberSend(lpObj,SkillNr,lpTargetObj->m_Index,skillSuccess);
 	}
 }
 
-void CObjUseSkill::KnightSkillAddLife(int aIndex, int skill_level) //
+
+
+
+void CObjUseSkill::KnightSkillAddLife(int aIndex, int skill_level, int MagicNumber)
 {
 	int skillSuccess = true;
 	LPOBJ lpObj = &gObj[aIndex];
 
-	if (szAuthKey[14] != AUTHKEY14 )
-	{
-		DestroyGIocp();
-	}
 
 	if(lpObj->Type != OBJ_USER && lpObj->m_RecallMon == -1)
 	{
 		return;
 	}
 
-	if(lpObj->Class != CLASS_KNIGHT && lpObj->Class != CLASS_MAGUMSA)
+	if(lpObj->Class != CLASS_KNIGHT && lpObj->Class != CLASS_MAGICGLADIATOR && lpObj->Class != CLASS_RAGEFIGHTER)
 	{
 		return;
 	}
 
 	int number;
 	int partynum = 0;
-	int totallevel = 0;
 	int partycount;
 	int dis;
 
@@ -1249,86 +2040,282 @@ void CObjUseSkill::KnightSkillAddLife(int aIndex, int skill_level) //
 			viewpercent = 4;
 		}
 	}
-	int iaddlife;
-	int iaddLifepower	= g_SkillAdditionInfo.m_SwellLifeEffectStart + (lpObj->Vitality + lpObj->AddVitality) / g_SkillAdditionInfo.m_SwellLifeEffectDiv1 + (lpObj->Energy + lpObj->AddEnergy)/ g_SkillAdditionInfo.m_SwellLifeEffectDiv2 + viewpercent;
-	
-	if( g_SkillAdditionInfo.m_SwellLifeEffectMax > 0 && iaddLifepower > g_SkillAdditionInfo.m_SwellLifeEffectMax )
-	{
-		iaddLifepower = g_SkillAdditionInfo.m_SwellLifeEffectMax;
-	}
-	
-	int iLifeTime		= g_SkillAdditionInfo.m_SwellLifeTimeStart + (lpObj->Energy + lpObj->AddEnergy) / g_SkillAdditionInfo.m_SwellLifeTimeDiv;
-	
-	if( g_SkillAdditionInfo.m_SwellLifeTimeMax > 0 && iLifeTime > g_SkillAdditionInfo.m_SwellLifeTimeMax )
-	{
-		iLifeTime = g_SkillAdditionInfo.m_SwellLifeTimeMax;
-	}
-	// ----
+
+	int iaddLifepower = ReadConfig.KnightSkillAddLifeBase + (lpObj->Vitality + lpObj->AddVitality) /(float) ReadConfig.KnightSkillAddLifeDivVit + (lpObj->Energy + lpObj->AddEnergy)/(float)ReadConfig.KnightSkillAddLifeDivEne + viewpercent;
+	int iLifeTime = ReadConfig.KnightSkillAddLifeTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.KnightSkillAddTimeDivGral;
+
+	if (iLifeTime > ReadConfig.KnightSkillAddLifeMaxTimeBase)
+		iLifeTime = ReadConfig.KnightSkillAddLifeMaxTimeBase;
+
+	if (iaddLifepower > ReadConfig.KnightMaxMultiplierHP)
+		iaddLifepower = ReadConfig.KnightMaxMultiplierHP;
+
+	int iaddlife=0;
+	int iaddMana=0;
+
 	if(partynum == -1)
 	{
-		iaddlife = int(lpObj->MaxLife) * iaddLifepower / 100;
-		gObjAddBuffEffect(lpObj, AT_SWELL_LIFE, 4, iaddlife, 0, 0, iLifeTime);
+		iaddlife = int(lpObj->MaxLife) * iaddLifepower /(float) ReadConfig.KnightSkillAddLifeDivGral;
+		if(MagicNumber >= 470 && MagicNumber <= 474)
+		{
+			float Mult = (float)((DefMagicInf[MagicNumber].m_DamageMin / 10.0f) + 1.0f);
+			//float Mult = (((float)(MagicNumber%5) + 2) / 10)+1;
+			iaddlife = (int)iaddlife * Mult;
+		}
+
+		if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+		{
+			//iaddMana = (lpObj->MaxMana * lpObj->MasterCharacterInfo->SwellLifeMana)- lpObj->MaxMana;
+			iaddMana = (lpObj->MaxMana * lpObj->MasterCharacterInfo->SwellLifeMana / 100);
+			lpObj->AddMana -= lpObj->m_SkillAddLife_Mana;
+		}
+		if( lpObj->MasterCharacterInfo->SwellLifeStamina > 0)
+		{
+			//iaddlife += ((lpObj->MaxLife * lpObj->MasterCharacterInfo->SwellLifeStamina)- lpObj->MaxLife);
+			iaddlife += (float)(lpObj->MaxLife * lpObj->MasterCharacterInfo->SwellLifeStamina/100);
+		}
+
+		lpObj->AddLife -= lpObj->m_SkillAddLife;
+
+		if(ReadConfig.FixMaxGage == 1)
+		{
+			if (lpObj->MaxLife + lpObj->AddLife + iaddlife < MAX_LIFE_VALUE)
+			{
+				lpObj->AddLife += iaddlife;
+			} else 
+			{
+				if (lpObj->MaxLife + lpObj->AddLife >= MAX_LIFE_VALUE)
+				{
+					iaddlife = 0;
+					lpObj->MaxLife = MAX_LIFE_VALUE;
+					lpObj->AddLife = 0;
+
+					if(ReadConfig.ShowMaxGageReached == 1)
+						GCServerMsgStringSend ("[Info] Maximum HP reached!",lpObj->m_Index,0x01 ) ;
+				} else {
+					iaddlife = MAX_LIFE_VALUE - lpObj->MaxLife - lpObj->AddLife;
+					lpObj->AddLife += iaddlife;
+				}
+			}
+
+			if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+			{
+				if (lpObj->MaxMana + lpObj->AddMana + iaddMana < MAX_MANA_VALUE)
+				{
+					lpObj->AddMana += iaddMana;
+				} else 
+				{
+					if (lpObj->MaxMana + lpObj->AddMana >= MAX_MANA_VALUE)
+					{
+						iaddMana = 0;
+						lpObj->MaxMana = MAX_MANA_VALUE;
+						lpObj->AddMana = 0;
+
+						if(ReadConfig.ShowMaxGageReached == 1)
+							GCServerMsgStringSend ("[Info] Maximum MP reached!",lpObj->m_Index,0x01 ) ;
+					} else {
+						iaddMana = MAX_MANA_VALUE - lpObj->MaxMana - lpObj->AddMana;
+						lpObj->AddMana += iaddMana;
+					}
+				}
+			}
+		}else
+		{
+			lpObj->AddLife += iaddlife;
+			if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+				lpObj->AddMana += iaddMana;
+		}
+
+		lpObj->m_SkillAddLife = iaddlife;
+		lpObj->m_SkillAddLifeTime = iLifeTime;
+
+		GCReFillSend(lpObj->m_Index,lpObj->MaxLife + lpObj->AddLife,0xFE,0,lpObj->iMaxShield + lpObj->iAddShield);
+
+		if( lpObj->MasterCharacterInfo->SwellLifeMana > 0 )
+		{
+			if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+				lpObj->m_SkillAddLife_Mana = iaddMana;
+
+			GCManaSend(lpObj->m_Index,lpObj->MaxMana + lpObj->AddMana,0xFE,0,lpObj->MaxBP + lpObj->AddBP);
+		}
+
+		lpObj->m_ViewSkillState |= 16;
 		GCMagicAttackNumberSend(lpObj,AT_SKILL_KNIGHTADDLIFE,lpObj->m_Index,skillSuccess);
 	}
 	else
 	{
 		for(int n = 0; n < MAX_USER_IN_PARTY; n++)
 		{
+			iaddlife = 0;
+			iaddMana = 0;
+
 			if(ApplyPartyIndex[n]!= -1)
 			{
 				lpPartyObj = &gObj[ApplyPartyIndex[n]];
-				iaddlife = int(lpPartyObj->MaxLife) * iaddLifepower / 100;
-					
-				gObjAddBuffEffect(lpPartyObj, AT_SWELL_LIFE, 4, iaddlife, 0, 0, iLifeTime); //season3 add-on
+
+				iaddlife = int(lpPartyObj->MaxLife) * iaddLifepower /(float) ReadConfig.KnightSkillAddLifeDivGral;
+				if(MagicNumber >= 470 && MagicNumber <= 474)
+				{
+					float Mult = (float)((DefMagicInf[MagicNumber].m_DamageMin / 10.0f) + 1.0f);
+					//float Mult = (((float)(MagicNumber%5) + 2) / 10)+1;
+					iaddlife = (int)iaddlife * Mult;
+				}
+
+				if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+				{
+					//iaddMana = (lpPartyObj->MaxMana * lpObj->MasterCharacterInfo->SwellLifeMana) - lpPartyObj->MaxMana;;
+					iaddMana = (lpPartyObj->MaxMana * lpObj->MasterCharacterInfo->SwellLifeMana/100);
+					lpPartyObj->AddMana -= lpPartyObj->m_SkillAddLife_Mana;
+				}
+				if( lpObj->MasterCharacterInfo->SwellLifeStamina > 0)
+				{
+					//iaddlife += (lpPartyObj->MaxLife * lpObj->MasterCharacterInfo->SwellLifeStamina)- lpPartyObj->MaxLife;
+					iaddlife += (lpPartyObj->MaxLife * lpObj->MasterCharacterInfo->SwellLifeStamina/100);
+				}
+
+				lpPartyObj->AddLife -= lpPartyObj->m_SkillAddLife;
+
+				if(ReadConfig.FixMaxGage == 1)
+				{
+					if (lpPartyObj->MaxLife + lpPartyObj->AddLife + iaddlife < MAX_LIFE_VALUE)
+					{
+						lpPartyObj->AddLife += iaddlife;
+					} else {
+						if (lpPartyObj->MaxLife + lpPartyObj->AddLife >= MAX_LIFE_VALUE)
+						{
+							iaddlife = 0;
+							lpPartyObj->MaxLife = MAX_LIFE_VALUE;
+							lpPartyObj->AddLife = 0;
+							if(ReadConfig.ShowMaxGageReached == 1)
+								GCServerMsgStringSend ("[Info] Maximum HP reached!",lpPartyObj->m_Index,0x01 ) ;
+						} else {
+							iaddlife = MAX_LIFE_VALUE - lpPartyObj->MaxLife - lpPartyObj->AddLife;
+							lpPartyObj->AddLife += iaddlife;
+						}
+					}
+
+					if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+					{
+						if (lpPartyObj->MaxMana + lpPartyObj->AddMana + iaddMana < MAX_MANA_VALUE)
+						{
+							lpPartyObj->AddMana += iaddMana;
+						} else 
+						{
+							if (lpPartyObj->MaxMana + lpPartyObj->AddMana >= MAX_MANA_VALUE)
+							{
+								iaddMana = 0;
+								lpPartyObj->MaxMana = MAX_MANA_VALUE;
+								lpPartyObj->AddMana = 0;
+
+								if(ReadConfig.ShowMaxGageReached == 1)
+									GCServerMsgStringSend ("[Info] Maximum MP reached!",lpPartyObj->m_Index,0x01 ) ;
+							} else {
+								iaddMana = MAX_MANA_VALUE - lpPartyObj->MaxMana - lpPartyObj->AddMana;
+								lpPartyObj->AddMana += iaddMana;
+							}
+						}
+					}
+				}else
+				{
+					lpPartyObj->AddLife += iaddlife;
+					if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+						lpPartyObj->AddMana += iaddMana;
+				}
+
+				lpPartyObj->m_SkillAddLife = iaddlife;
+				lpPartyObj->m_SkillAddLifeTime = iLifeTime;
+
+				GCReFillSend(lpPartyObj->m_Index,lpPartyObj->MaxLife + lpPartyObj->AddLife,0xFE,0,lpPartyObj->iMaxShield + lpPartyObj->iAddShield);
+				
+				if( lpObj->MasterCharacterInfo->SwellLifeMana > 0 )
+				{
+					if( lpObj->MasterCharacterInfo->SwellLifeMana > 0)
+						lpPartyObj->m_SkillAddLife_Mana = iaddMana;
+
+					GCManaSend(lpPartyObj->m_Index,lpPartyObj->MaxMana + lpPartyObj->AddMana,0xFE,0,lpPartyObj->MaxBP + lpPartyObj->AddBP);
+				}
+
+				lpPartyObj->m_ViewSkillState |= 16;
 				GCMagicAttackNumberSend(lpObj,AT_SKILL_KNIGHTADDLIFE,lpPartyObj->m_Index,skillSuccess);
 			}
 		}
 	}
 }
 
-//Identical
-void CObjUseSkill::WizardMagicDefense(int aIndex, int aTargetIndex, int skill_level) //004C0560
+
+
+
+void CObjUseSkill::WizardMagicDefense(int aIndex, int aTargetIndex, int skill_level, WORD SkillNr)
 {
-	int skillSuccess	= true;
-	// ----
-	LPOBJ lpObj			= &gObj[aIndex];
-	LPOBJ lpTargetObj	= &gObj[aTargetIndex];
-	// ----
-	if( lpObj->Type != OBJ_USER && lpObj->m_RecallMon == -1 )
+	int skillSuccess = true;
+
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+	WORD MagicNr = AT_SKILL_MAGICDEFENSE;
+
+	if(lpObj->Type != OBJ_USER && lpObj->m_RecallMon== -1)
 	{
 		return;
 	}
-	// ----
-	if( lpObj->Class != CLASS_WIZARD && lpObj->Class != CLASS_MAGUMSA )
+
+	if (lpObj->Class == CLASS_MAGICGLADIATOR)
+	{
+		lpTargetObj->m_WizardSkillDefense = ReadConfig.MGMagicDefenseBase + (lpObj->Dexterity + lpObj->AddDexterity) /(float) ReadConfig.MGMagicDefenseDiv1 + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.MGMagicDefenseDiv2;
+		if (lpTargetObj->m_WizardSkillDefense > ReadConfig.MGMagicMaximumDefense)
+			lpTargetObj->m_WizardSkillDefense = ReadConfig.MGMagicMaximumDefense;
+		lpTargetObj->m_WizardSkillDefense += ((lpTargetObj->m_WizardSkillDefense * lpObj->MasterCharacterInfo->IncSoulBarrier)/100.0f);
+
+		lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.MGMagicDefenseTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.MGMagicDefenseTimeDiv1;
+		if (lpTargetObj->m_WizardSkillDefenseTime > ReadConfig.MGMagicDefenseTimeLimit*60)
+			lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.MGMagicDefenseTimeLimit*60;
+		lpTargetObj->m_WizardSkillDefenseTime += lpObj->MasterCharacterInfo->IncSoulBarrierTime;
+	}
+	else if (lpObj->Class == CLASS_WIZARD)
+	{
+		lpTargetObj->m_WizardSkillDefense = ReadConfig.WizardMagicDefenseBase + (lpObj->Dexterity + lpObj->AddDexterity) /(float) ReadConfig.WizardMagicDefenseDiv1 + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.WizardMagicDefenseDiv2;
+		if (lpTargetObj->m_WizardSkillDefense > ReadConfig.WizardMagicMaximumDefense)
+			lpTargetObj->m_WizardSkillDefense = ReadConfig.WizardMagicMaximumDefense;
+		lpTargetObj->m_WizardSkillDefense += ((lpTargetObj->m_WizardSkillDefense * lpObj->MasterCharacterInfo->IncSoulBarrier)/100.0f);
+
+		lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.WizardMagicDefenseTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.WizardMagicDefenseTimeDiv1;
+		if (lpTargetObj->m_WizardSkillDefenseTime > ReadConfig.WizardMagicDefenseTimeLimit*60)
+			lpTargetObj->m_WizardSkillDefenseTime = ReadConfig.WizardMagicDefenseTimeLimit*60;
+		lpTargetObj->m_WizardSkillDefenseTime += lpObj->MasterCharacterInfo->IncSoulBarrierTime;
+	}
+	else
 	{
 		return;
 	}
-	// ----
-	if( lpObj->PartyNumber != lpTargetObj->PartyNumber )
+
+	if(lpObj->PartyNumber != lpTargetObj->PartyNumber)
 	{
 		return;
 	}
-	// ----
-	int WizardManaRate			= 20;
-	int WizardSkillDefense		= g_SkillAdditionInfo.m_SoulBarrierDefenseStart + ((lpObj->Dexterity + lpObj->AddDexterity) / g_SkillAdditionInfo.m_SoulBarrierDefenseDiv1) + ((lpObj->Energy + lpObj->AddEnergy) / g_SkillAdditionInfo.m_SoulBarrierDefenseDiv2);
-	// ----
-	if( g_SkillAdditionInfo.m_SoulBarrierDefenseMax > 0 && WizardSkillDefense > g_SkillAdditionInfo.m_SoulBarrierDefenseMax )
+
+	lpTargetObj->m_ViewSkillState |= 256;
+
+	int Mult=0;
+	if(SkillNr >= 435 && SkillNr <= 439)
 	{
-		WizardSkillDefense = g_SkillAdditionInfo.m_SoulBarrierDefenseMax;
+		Mult = (SkillNr - 435 + 1)*5;
+		lpTargetObj->m_WizardSkillDefense += Mult;
+		MagicNr = SkillNr;
 	}
-	// ----
-	int WizardSkillDefenseTime	= g_SkillAdditionInfo.m_SoulBarrierTimeStart + (lpObj->Energy + lpObj->AddEnergy) / g_SkillAdditionInfo.m_SoulBarrierTimeDiv;
-	// ----
-	if( g_SkillAdditionInfo.m_SoulBarrierTimeMax > 0 && WizardSkillDefenseTime > g_SkillAdditionInfo.m_SoulBarrierTimeMax )
+
+	if (lpTargetObj->m_WizardSkillDefense >= 100)
 	{
-		WizardSkillDefenseTime = g_SkillAdditionInfo.m_SoulBarrierTimeMax;
+		LogAddTD("[Skill][Mana Shield][%s][%s] Shield overflow Error [%d:%d,%d]",
+			lpTargetObj->AccountID,lpTargetObj->Name,
+			SkillNr,lpTargetObj->m_WizardSkillDefense,Mult );
 	}
-	// ----
-	gObjAddBuffEffect(lpTargetObj, AT_WIZARD_DEFENSE, 21, WizardSkillDefense, 28, WizardManaRate, WizardSkillDefenseTime);
-	GCMagicAttackNumberSend(lpObj, AT_SKILL_MAGICDEFENSE, lpTargetObj->m_Index, skillSuccess);
+
+	GCMagicAttackNumberSend(lpObj,MagicNr,lpTargetObj->m_Index,skillSuccess);
 }
 
-void CObjUseSkill::SkillDefense(int aIndex, int aTargetIndex, int skill_level) //
+
+
+
+void CObjUseSkill::SkillDefense(int aIndex, int aTargetIndex, int skill_level, WORD SkillNr)
 {
 	int skillSuccess = true;
 	LPOBJ lpObj = &gObj[aIndex];
@@ -1354,26 +2341,31 @@ void CObjUseSkill::SkillDefense(int aIndex, int aTargetIndex, int skill_level) /
 		skill_level = 0;
 	}
 
-	int Duration	= g_SkillAdditionInfo.m_ElfDefenseTime;
-	float skill_defense = float(skill_level + 1)*g_SkillAdditionInfo.m_ElfDefenseEffectFact + (lpObj->Energy + lpObj->AddEnergy) / g_SkillAdditionInfo.m_ElfDefenseEffectDiv;
 
-	if( g_SkillAdditionInfo.m_ElfDefenseEffectMax > 0 && skill_defense > g_SkillAdditionInfo.m_ElfDefenseEffectMax )
-	{
-		skill_defense = g_SkillAdditionInfo.m_ElfDefenseEffectMax;
-	}
+	float skill_defense = float(skill_level + 1)*ReadConfig.ElfBuffDefenseLvlMult + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.ElfBuffDefenseDiv;
+	
+	if(SkillNr >= 480 && SkillNr <= 484)
+		skill_defense = float(((skill_level + 1)*ReadConfig.ElfBuffDefenseLvlMult + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.ElfBuffDefenseDiv)  *  (1.0f + (10.0f/DefMagicInf[SkillNr].m_DamageMin)));
 
 	if(lpTargetObj->Class == CLASS_KNIGHT)
 	{
 		skill_defense += skill_defense/10.0f;
 	}
-
-	if(gObjCheckPowerfulEffect(lpTargetObj, AT_INCREASE_DEFENSE, skill_defense, 0) == 1)
+	if(lpTargetObj->Class == CLASS_KNIGHT)
 	{
-		GCMagicAttackNumberSend(lpObj,AT_SKILL_DEFENSE,lpTargetObj->m_Index,0);
-		return;
+		skill_defense += skill_defense * ReadConfig.ElfBuffDefenseAddPlus;
 	}
 
-	gObjAddBuffEffect(lpTargetObj, AT_INCREASE_DEFENSE, 3, skill_defense, 0, 0, Duration);
+	skill_defense += (skill_defense * lpObj->MasterCharacterInfo->IncGreaterDefense)/100.0f;
+
+	lpTargetObj->m_SkillDefense = skill_defense;
+	lpTargetObj->m_SkillDefenseTime = ReadConfig.ElfBuffDefenseTime + (lpObj->Energy + lpObj->AddEnergy)/ReadConfig.ElfBuffDefenseTimeEneDiv;
+	if (lpTargetObj->m_SkillDefenseTime > ReadConfig.ElfBuffDefenseTimeMax)
+		lpTargetObj->m_SkillDefenseTime = ReadConfig.ElfBuffDefenseTimeMax;
+
+	lpTargetObj->m_SkillDefenseTime += (lpTargetObj->m_SkillDefenseTime * lpObj->MasterCharacterInfo->IncGreaterDefenseTime)/100.0f;
+
+	lpTargetObj->m_ViewSkillState |= 8;
 
 	for(int n = 0; n < MAX_VIEWPORT; n++)
 	{
@@ -1387,10 +2379,13 @@ void CObjUseSkill::SkillDefense(int aIndex, int aTargetIndex, int skill_level) /
 		}
 	}
 
-	GCMagicAttackNumberSend(lpObj,AT_SKILL_DEFENSE,lpTargetObj->m_Index,skillSuccess);
+	GCMagicAttackNumberSend(lpObj,SkillNr/*AT_SKILL_DEFENSE*/,lpTargetObj->m_Index,skillSuccess);
 }
 
-void CObjUseSkill::SkillAttack(int aIndex, int aTargetIndex, int skill_level) //
+
+
+
+void CObjUseSkill::SkillAttack(int aIndex, int aTargetIndex, int skill_level, WORD SkillNr)
 {
 	int skillSuccess = true;
 	LPOBJ lpObj = &gObj[aIndex];
@@ -1416,26 +2411,30 @@ void CObjUseSkill::SkillAttack(int aIndex, int aTargetIndex, int skill_level) //
 		skill_level = 0;
 	}
 
-	float skill_attack	= float((skill_level + 1) * g_SkillAdditionInfo.m_ElfAttackEffectFact) + (lpObj->Energy + lpObj->AddEnergy) / (float)g_SkillAdditionInfo.m_ElfAttackEffectDiv;
-	int BuffTime		= g_SkillAdditionInfo.m_ElfAttackTime;
-
-	if( g_SkillAdditionInfo.m_ElfAttackEffectMax > 0 && skill_attack > g_SkillAdditionInfo.m_ElfAttackEffectMax )
-	{
-		skill_attack = g_SkillAdditionInfo.m_ElfAttackEffectMax;
-	}
+	float skill_attack = float((skill_level + 1) * ReadConfig.ElfBuffAttackLvlMult) + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.ElfBuffAttackDiv;
+	
+	if(SkillNr >= 485 && SkillNr <= 489)
+		skill_attack = float( (((skill_level + 1) * ReadConfig.ElfBuffAttackLvlMult) + (lpObj->Energy + lpObj->AddEnergy) /(float) ReadConfig.ElfBuffAttackDiv)  *  (1.0f + (10.0f/DefMagicInf[SkillNr].m_DamageMin)));
 
 	if(lpTargetObj->Class == CLASS_KNIGHT)
 	{
 		skill_attack += skill_attack/10.0f;
-	}	
-	// ----
-	if(gObjCheckPowerfulEffect(lpTargetObj, AT_INCREASE_ATTACK, skill_attack, 0) == 1) //season3 add-on
-	{
-		GCMagicAttackNumberSend(lpObj,AT_SKILL_ATTACK,lpTargetObj->m_Index,0);
-		return;
 	}
 
-	gObjAddBuffEffect(lpTargetObj, AT_INCREASE_ATTACK, 2, skill_attack, 0, 0, BuffTime); //season3 add-on
+	if(lpTargetObj->Class == CLASS_ELF)
+	{
+		skill_attack += skill_attack * ReadConfig.ElfBuffAttackAddPlus;
+	}
+
+	skill_attack += (skill_attack * lpObj->MasterCharacterInfo->IncGreaterAttack)/100.0f;
+
+	lpTargetObj->m_SkillAttack = skill_attack;
+	lpTargetObj->m_SkillAttackTime = ReadConfig.ElfBuffAttackTime + (lpObj->Energy + lpObj->AddEnergy)/ReadConfig.ElfBuffAttackTimeEneDiv;
+	if (lpTargetObj->m_SkillAttackTime > ReadConfig.ElfBuffAttackTimeMax)
+		lpTargetObj->m_SkillAttackTime = ReadConfig.ElfBuffAttackTimeMax;
+
+	lpTargetObj->m_SkillAttackTime += (ReadConfig.ElfBuffAttackTime * lpObj->MasterCharacterInfo->IncGreaterAttackTime)/100.0f;
+	lpTargetObj->m_ViewSkillState |= 4;
 
 	for(int n = 0; n < MAX_VIEWPORT; n++)
 	{
@@ -1449,16 +2448,745 @@ void CObjUseSkill::SkillAttack(int aIndex, int aTargetIndex, int skill_level) //
 		}
 	}
 
-	GCMagicAttackNumberSend(lpObj,AT_SKILL_ATTACK,lpTargetObj->m_Index,skillSuccess);
+#if (WL_PROTECT==1)  
+		VM_START_WITHLEVEL(4)
+		int MyCheckVar1;
+		CHECK_REGISTRATION(MyCheckVar1, 0x04134597)  
+		if (MyCheckVar1 != 0x04134597)
+		{	
+			Sleep(1500);
+		}
+		VM_END
+#endif
+	GCMagicAttackNumberSend(lpObj,SkillNr/*AT_SKILL_ATTACK*/,lpTargetObj->m_Index,skillSuccess);
+
 }
 
-BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
+/*void CObjUseSkill::SkillIllusionTemple(int aIndex, int aTargetIndex, int Skill)
+{
+	if ( OBJMAX_RANGE(aIndex) == FALSE )
+	{
+		return;
+	}
+	if ( OBJMAX_RANGE(aTargetIndex) == FALSE )
+	{
+		return;
+	}
+
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+	BYTE Effect = 0;
+	
+	switch(Skill)
+	{
+		case 210:
+		{
+			Effect = 34;
+			//lpTargetObj->m_SkillIT_MagicShieldOrderTime = 15;
+		}break;
+		case 211:
+		{
+			Effect = 65;
+			//lpTargetObj->m_SkillIT_RestraintOrderTime = 5;
+		}break;
+		
+		default:
+		{
+			return;
+		}
+	}
+	
+	GCSkillInfoSend(lpTargetObj,1,Effect);
+}*/
+
+
+void CObjUseSkill::Berserker(int aIndex, int skill_level)
+{
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+
+	if(lpObj->Type != OBJ_USER)
+	{
+		return;
+	}
+
+	if(lpObj->Class != CLASS_SUMMONER)
+	{
+		return;
+	}
+
+	if(lpObj->m_SkillBerserkerTime > 0)
+	{
+		GCMagicAttackNumberSend(lpObj,AT_SKILL_BERSERKER,lpObj->m_Index,skillSuccess);
+		return;
+	}
+
+	if(skill_level < 0 || skill_level > 7)
+	{
+		skill_level = 0;
+	}
+
+	//lpObj->MaxLife = lpObj->MaxLife * 0.85;
+	//lpObj->MaxMana = lpObj->MaxMana * 1.15;
+
+	int TotalEnergy = (lpObj->Energy + lpObj->AddEnergy);
+
+	float skill_BerserkerDef = 0;
+	float skill_BerserkerAtt = (float) ((TotalEnergy * ReadConfig.SkillBerserkerAttMult ) + 1.0f);
+	
+	if (skill_BerserkerAtt > ReadConfig.SkillBerserkerAttMaxMult)
+		skill_BerserkerAtt = ReadConfig.SkillBerserkerAttMaxMult;
+
+	//skill_BerserkerAtt += (float) (TotalEnergy/10000);
+
+	if(TotalEnergy < 1800)
+	{
+		skill_BerserkerDef = (float) (((TotalEnergy / ReadConfig.SkillBerserkerDefDiv ) + ReadConfig.SkillBerserkerDefBase) / 100.0f);
+	}else
+	{
+		skill_BerserkerDef = 0.90f;
+	}
+	
+	lpObj->m_SkillBerserkerDef = skill_BerserkerDef;
+	lpObj->m_SkillBerserkerAttack = skill_BerserkerAtt;
+
+	lpObj->m_SkillBerserkerTime = ReadConfig.SkillBerserkerTimeBase + TotalEnergy / ReadConfig.SkillBerserkerTimeDiv;
+
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_BERSERKER,lpObj->m_Index,skillSuccess);
+	GCSkillInfoSend(lpObj,1,0x51);
+	gObjCalCharacter(lpObj->m_Index);
+}
+
+
+void CObjUseSkill::SkillReflect(int aIndex, int aTargetIndex, int skill_level)
+{
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpTargetObj->Type != OBJ_USER && lpTargetObj->m_RecallMon == -1)
+	{
+		return;
+	}
+
+	if(lpObj->Class != CLASS_SUMMONER)
+	{
+		return;
+	}
+
+	if(CC_MAP_RANGE(lpObj->MapNumber) && lpObj->m_Index != lpTargetObj->m_Index)
+	{
+		return;
+	}
+
+	if(lpTargetObj->m_SkillReflect > 0)
+	{
+		return;
+		//int val = lpTargetObj->DamageReflect -= lpTargetObj->m_SkillReflect;
+		//if(val < 0)
+		//	lpTargetObj->DamageReflect = 0;
+		//lpTargetObj->m_SkillReflect = 0;
+	}
+
+	if(skill_level < 0 || skill_level > 7)
+	{
+		skill_level = 0;
+	}
+
+	int skill_reflect = int (((skill_level + 1) * 3) + (lpObj->Energy + lpObj->AddEnergy) / (float)ReadConfig.SkillReflectDiv);
+
+	if(skill_reflect > 254)
+		skill_reflect = 255;
+
+	if(lpTargetObj->DamageReflect + skill_reflect > 254)
+	{
+		skill_reflect = 255 - lpTargetObj->DamageReflect;
+	}
+
+	lpTargetObj->m_SkillReflect = skill_reflect;
+	lpTargetObj->DamageReflect += lpTargetObj->m_SkillReflect;
+	lpTargetObj->m_SkillReflectTime = ReadConfig.SkillReflectTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReflectTimeDiv;
+
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_REFLECT,lpTargetObj->m_Index,skillSuccess);
+	GCSkillInfoSend(lpTargetObj,1,0x47);
+}
+
+void CObjUseSkill::SkillMagicCircle(int aIndex, int aTargetIndex, int skill_level)
+{
+	int skillSuccess = true;
+
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpObj->Type != OBJ_USER && lpObj->m_RecallMon== -1)
+	{
+		return;
+	}
+
+	if(lpObj->Class != CLASS_WIZARD && lpObj->Class != CLASS_MAGICGLADIATOR && lpObj->Class != CLASS_RAGEFIGHTER)
+	{
+		return;
+	}
+
+	if(lpObj->PartyNumber != lpTargetObj->PartyNumber)
+	{
+		return;
+	}
+
+	if(lpTargetObj->m_SkillMagicCircle > 0)
+	{
+		lpTargetObj->m_MagicDamageMin -= lpTargetObj->m_SkillMagicCircle;
+		lpTargetObj->m_CriticalDamage -= lpTargetObj->m_SkillMagicCircleCriticalDamage;
+		lpTargetObj->m_SkillMagicCircle = 0;
+	}
+
+	lpTargetObj->m_SkillMagicCircle = lpObj->m_MagicDamageMin * ReadConfig.MagicCircleMult;
+	lpTargetObj->m_SkillMagicCircleTime = ReadConfig.MagicCircleMinDur + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.MagicCircleDurDiv;
+
+	if(ReadConfig.S6E2 == 1)
+	{
+		if(lpObj->MasterCharacterInfo->IncExpansionWizardy1 > 0)
+		{
+			lpTargetObj->m_SkillMagicCircle += (lpTargetObj->m_SkillMagicCircle * lpObj->MasterCharacterInfo->IncExpansionWizardy1) / 100.0f;
+		}
+		lpTargetObj->m_SkillMagicCircleCriticalDamage = lpObj->MasterCharacterInfo->IncExpansionWizardy2;
+	}
+
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_MAGIC_CIRCLE,lpTargetObj->m_Index,skillSuccess);
+	GCSkillInfoSend(lpTargetObj,1,0x52);
+}
+
+
+void CObjUseSkill::SkillReduceDamage(int aIndex, int aTargetIndex, int skill_level)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(lpObj->X,lpObj->Y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
+						{
+							bAttack = 0;
+	
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
+						
+							if(HitCount >= 5)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								if(gObj[tObjNum].m_SkillReduceDamage > 0)
+								{
+									gObj[tObjNum].m_SkillReduceDamage = 0;
+								}
+
+								int skill_Reducedamage = int (((skill_level + 1) * 2) + (((lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReduceDamageDiv) * ReadConfig.SkillReduceDamageMult ));
+
+								gObj[tObjNum].m_SkillReduceDamage = skill_Reducedamage;
+								gObj[tObjNum].m_SkillReduceDamageTime = ReadConfig.SkillReduceDamageTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReduceDamageTimeDiv;
+
+								GCMagicAttackNumberSend(lpObj,AT_SKILL_REDUCE_DAMAGE,gObj[tObjNum].m_Index,1);
+								GCSkillInfoSend(&gObj[tObjNum],1,0x4C);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	/*int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	
+	if(aTargetIndex == 0x0000ffff)
+		aTargetIndex = aIndex;
+
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpTargetObj->Type != OBJ_USER && lpTargetObj->m_RecallMon == -1)
+	{
+		return;
+	}
+
+	if(lpObj->Class != CLASS_SUMMONER)
+	{
+		return;
+	}
+
+	if(CC_MAP_RANGE(lpObj->MapNumber) && lpObj->m_Index != lpTargetObj->m_Index)
+	{
+		return;
+	}
+
+	if(skill_level < 0 || skill_level > 7)
+	{
+		skill_level = 0;
+	}
+
+	if(lpTargetObj->m_SkillExcellentDamage > 0)
+	{
+		lpTargetObj->m_ExcelentDamage -= lpTargetObj->m_SkillExcellentDamage;
+		lpTargetObj->m_SkillExcellentDamage = 0;
+	}
+
+	int skill_excellentdamage = int (((skill_level + 1) * 2) + (((lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillExcellentDamageDiv) * ReadConfig.SkillExcellentDamageMult ));
+
+	lpTargetObj->m_SkillExcellentDamage = skill_excellentdamage;
+	lpTargetObj->m_ExcelentDamage += lpTargetObj->m_SkillExcellentDamage;
+	lpTargetObj->m_SkillExcellentDamageTime = ReadConfig.SkillExcellentDamageTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillExcellentDamageTimeDiv;
+
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_EXCELLENT_DAMAGE,lpTargetObj->m_Index,skillSuccess);
+	GCSkillInfoSend(lpTargetObj,1,0x4C);*/
+}
+
+void CObjUseSkill::SkillReduceDefense(int aIndex, int aTargetIndex, int skill_level)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(lpObj->X,lpObj->Y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
+						{
+							bAttack = 0;
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
+						
+							if(HitCount >= 5)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								if(gObj[tObjNum].m_SkillReduceDefense > 0)
+								{
+									gObj[tObjNum].m_SkillReduceDefense = 0;
+								}
+
+								int skill_successblock = int (((skill_level + 1) * 2) + ( ((lpObj->Energy + lpObj->AddEnergy) / (float)ReadConfig.SkillReduceDefenseDiv1) + (lpObj->Level / (float)ReadConfig.SkillReduceDefenseDiv2) ));
+
+								gObj[tObjNum].m_SkillReduceDefense = skill_successblock;
+								gObj[tObjNum].m_SkillReduceDefenseTime = ReadConfig.SkillReduceDefenseTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReduceDefenseTimeDiv;
+
+								GCMagicAttackNumberSend(lpObj,AT_SKILL_REDUCE_DEFENSE,gObj[tObjNum].m_Index,1);
+								GCSkillInfoSend(&gObj[tObjNum],1,0x4D);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	//int skillSuccess = true;
+	//LPOBJ lpObj = &gObj[aIndex];
+	//
+	//if(aTargetIndex == 0x0000ffff)
+	//	aTargetIndex = aIndex;
+
+	//LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+
+	//if(lpTargetObj->Type != OBJ_USER && lpTargetObj->m_RecallMon == -1)
+	//{
+	//	return;
+	//}
+
+	//if(lpObj->Class != CLASS_SUMMONER)
+	//{
+	//	return;
+	//}
+
+	//if(CC_MAP_RANGE(lpObj->MapNumber) && lpObj->m_Index != lpTargetObj->m_Index)
+	//{
+	//	return;
+	//}
+
+	//if(skill_level < 0 || skill_level > 7)
+	//{
+	//	skill_level = 0;
+	//}
+
+	//if(lpTargetObj->m_SkillReduceDefense > 0)
+	//{
+	//	lpTargetObj->m_SuccessfulBlocking -= lpTargetObj->m_SkillReduceDefense;
+	//	lpTargetObj->m_SkillReduceDefense = 0;
+	//}
+
+	//int skill_successblock = int (((skill_level + 1) * 2) + ( ((lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReduceDefenseDiv1) + (lpObj->Level / ReadConfig.SkillReduceDefenseDiv2) ));
+
+	//lpTargetObj->m_SkillReduceDefense = skill_successblock;
+	//lpTargetObj->m_SuccessfulBlocking += lpTargetObj->m_SkillReduceDefense;
+	//lpTargetObj->m_SkillReduceDefenseTime = ReadConfig.SkillReduceDefenseTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillReduceDefenseTimeDiv;
+
+	//GCMagicAttackNumberSend(lpObj,AT_SKILL_REDUCE_DEFENSE,lpTargetObj->m_Index,skillSuccess);
+	//GCSkillInfoSend(lpTargetObj,1,0x4D);
+}
+
+void CObjUseSkill::RemoveSkillNight(int mobIndex)
+{
+	int PlayerID = gObj[mobIndex].m_RecallMon;
+	gObj[mobIndex].m_SkillNight = 0;
+	gObj[mobIndex].m_SkillNightTime = 0;
+	GCSkillInfoSend(&gObj[mobIndex],0,0x49);
+	GCRecallMonLife(PlayerID,60,0);
+	gObjMonsterCallKill(PlayerID);
+}
+
+void CObjUseSkill::SkillNight(int aIndex, int aTargetIndex, int skill_level)
+{
+#if (PACK_EDITION>=3)
+	if(gObj[aIndex].m_RecallMon >= 0 && gObj[aIndex].BotNumOwner >= OBJ_MAXMONSTER)
+	{
+		GCServerMsgStringSend("You cant use night skill when you have a BotPet!", aIndex, 1);
+		return;
+	}
+#endif
+
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpTargetObj->Type != OBJ_MONSTER)
+		return;
+
+	if(lpTargetObj->m_RecallMon > 0)
+		return;
+
+	if(skill_level < 0 || skill_level > 7)
+		skill_level = 0;
+
+	if(CC_MAP_RANGE(gObj[aIndex].MapNumber))
+	{
+		return;
+	}
+
+	if( ((lpTargetObj->Class >= 42) && (lpTargetObj->Class <= 44)) ||
+		((lpTargetObj->Class >= 53) && (lpTargetObj->Class <= 56)) ||
+		((lpTargetObj->Class >= 78) && (lpTargetObj->Class <= 83)) ||
+#if (PACK_EDITION>=3)
+		((lpTargetObj->Class >= 493) && (lpTargetObj->Class <= 502)) ||
+#endif
+		((lpTargetObj->Class >= 215) && (lpTargetObj->Class <= 224)) ||
+		((lpTargetObj->Class >= 277) && (lpTargetObj->Class <= 278)) ||
+		((lpTargetObj->Class >= 283) && (lpTargetObj->Class <= 288)) ||
+		(lpTargetObj->Class == 135)								 ||
+		(lpTargetObj->Class == 413)								 ||
+		((lpTargetObj->Class >= 504) && (lpTargetObj->Class <= 511))
+		)
+	{
+		return;
+	}
+
+
+
+	if( lpTargetObj->Level > ReadConfig.SkillNightMaxMonsterLevel)
+		return;
+
+	if( (lpTargetObj->Level * 2) > lpObj->Level)
+		return;
+
+	if(gObj[aIndex].m_RecallMon >= 0)
+	{
+		this->RemoveSkillNight(gObj[aIndex].m_RecallMon);
+	}
+
+	int result = gObjAddCallMon();
+
+	int x = lpObj->X-1;
+	int y = lpObj->Y-1;
+
+	if(result >= 0)
+	{
+		gObj[result].X = x;
+		gObj[result].Y = y;
+		gObj[result].MTX = x;
+		gObj[result].MTY = y;
+		gObj[result].Dir = 2;
+		gObj[result].MapNumber = gObj[aIndex].MapNumber;
+		gObjSetMonster(result,lpTargetObj->Class,"CObjUseSkill::SkillNight");
+		gObj[result].m_RecallMon = aIndex;
+		gObj[result].m_Attribute = 100;
+		gObj[result].TargetNumber = (WORD)-1;
+		gObj[result].m_ActState.Emotion = 0;
+		gObj[result].m_ActState.Attack = 0;
+		gObj[result].m_ActState.EmotionCount = 0;
+		gObj[result].PathCount = 0;
+
+		gObj[aIndex].m_RecallMon = result;
+		gObj[result].m_MoveRange = 15;
+
+		GCRecallMonLife(gObj[result].m_RecallMon,gObj[result].MaxLife,gObj[result].Life);
+		gObj[result].m_SkillNight = 1;
+		gObj[result].m_SkillNightTime = ReadConfig.SkillNightTimeBase + (lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillNightDiv;
+		GCSkillInfoSend(&gObj[result],1,0x49);
+		GCMagicAttackNumberSend(lpObj,AT_SKILL_NIGHT,lpTargetObj->m_Index,1);
+	}
+}
+
+
+//void CObjUseSkill::SkillNight(int aIndex, int aTargetIndex, int skill_level)
+//{
+//	int skillSuccess = true;
+//	LPOBJ lpObj = &gObj[aIndex];
+//	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+//
+//	if(lpObj->Class != CLASS_SUMMONER)
+//	{
+//		return;
+//	}
+//
+//	if(skill_level < 0 || skill_level > 7)
+//	{
+//		skill_level = 0;
+//	}
+//
+//	if(lpTargetObj->m_SkillNight > 0)
+//	{
+//		lpTargetObj->m_Defense += lpTargetObj->m_SkillNight;
+//	}
+//
+//	int skill_night = int (((skill_level + 1) * 2) + ( ((lpObj->Energy + lpObj->AddEnergy) / ReadConfig.SkillNightDiv) * (0.5)) );
+//
+//	if(lpTargetObj->m_Defense - skill_night < 0)
+//		skill_night = lpTargetObj->m_Defense;
+//
+//	lpTargetObj->m_SkillNight = skill_night;
+//	lpTargetObj->m_Defense -= skill_night;
+//	lpTargetObj->m_SkillNightTime = ReadConfig.SkillNightTimeBase + (lpObj->Energy + lpObj->AddEnergy) / 10;
+//
+//	//for(int n = 0; n < MAX_VIEWPORT; n++)
+//	//{
+//	//	LPOBJ lpMonster = &gObj[lpObj->VpPlayer2[n].number];
+//	//	if(((lpMonster->m_iCurrentAI != 0) && (lpObj->VpPlayer2[n].type == OBJ_MONSTER && lpObj->VpPlayer2[n].state != 0)) || (lpObj->VpPlayer2[n].type == OBJ_USER))
+//	//	{
+//	//		lpMonster->m_Agro.DecAgro(lpTargetObj->m_Index,skill_night);
+//	//	}
+//	//}
+//
+//	GCSkillInfoSend(lpTargetObj,1,0x49);
+//	GCMagicAttackNumberSend(lpObj,AT_SKILL_NIGHT,lpTargetObj->m_Index,skillSuccess);
+//}
+
+void CObjUseSkill::SkillSleepRemove(LPOBJ lpObj)
+{	
+	lpObj->TargetNumber = 0;
+	if(lpObj->Type == OBJ_MONSTER)
+	{
+		LPMONSTER_ATTRIBUTE lpm = gMAttr.GetAttr(lpObj->Class);
+		lpObj->m_MoveRange = lpm->m_MoveRange;
+		lpObj->m_AttackRange = lpm->m_AttackRange;
+		lpObj->m_ViewRange = lpm->m_ViewRange;
+	}else
+	{
+		lpObj->TargetNumber = 0;
+		lpObj->m_MoveRange = lpObj->m_SkillSleep_MoveRange;
+		lpObj->m_AttackRange = lpObj->m_SkillSleep_AttackRange;
+		lpObj->m_ViewRange = lpObj->m_SkillSleep_ViewRange;
+	}
+
+	lpObj->m_SkillSleep = 0;
+	lpObj->m_SkillSleep_MoveRange = 0;
+	lpObj->m_SkillSleep_AttackRange = 0;
+	lpObj->m_SkillSleep_ViewRange = 0;
+	GCSkillInfoSend(lpObj,0,0x48);
+}
+
+void CObjUseSkill::SkillSleep(int aIndex, int aTargetIndex, int skill_level,int MagicNumber, CMagicInf* lpMagic)
+{
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpObj->Class != CLASS_SUMMONER)
+	{
+		return;
+	}
+
+	//if(CC_MAP_RANGE(lpObj->MapNumber) && lpObj->m_Index != lpTargetObj->m_Index)
+	//{
+	//	return;
+	//}
+
+	if(skill_level < 0 || skill_level > 7)
+	{
+		skill_level = 0;
+	}
+
+	if(lpTargetObj->m_SkillSleep != 1)
+	{
+		lpTargetObj->TargetNumber = -1;
+		lpTargetObj->m_SkillSleep_MoveRange = lpTargetObj->m_MoveRange;
+		lpTargetObj->m_SkillSleep_AttackRange = lpTargetObj->m_AttackRange;
+		lpTargetObj->m_SkillSleep_ViewRange = lpTargetObj->m_ViewRange;
+
+		lpTargetObj->m_MoveRange = 0;
+		lpTargetObj->m_AttackRange = 0;
+		lpTargetObj->m_ViewRange = 0;
+	}
+
+	int skill_sleep = int (((skill_level + 1) * 3) + ( ((lpObj->Energy + lpObj->AddEnergy) / (float)ReadConfig.SkillSleepTimeDiv) * (0.5f)) );
+	if(MagicNumber >= 535 && MagicNumber <= 539)
+	{
+		int Mult = (int)((MagicNumber - 535 + 1)*2.5f);
+		skill_sleep += Mult;
+	}
+	if(lpObj->MasterCharacterInfo->IncSleep > 0)
+		gObjAttack(lpObj,lpTargetObj,lpMagic,1,1,0,0);
+
+	if(ReadConfig.SkillSleepUseMaxTime == 1)
+		skill_sleep = ReadConfig.SkillSleepMaxTime;
+
+	lpTargetObj->m_SkillSleep = 1;
+	lpTargetObj->m_SkillSleep_Time = skill_sleep;
+
+	GCSkillInfoSend(lpTargetObj,1,0x48);
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_SLEEP,lpTargetObj->m_Index,skillSuccess);
+}
+
+BOOL CObjUseSkill::SkillChangeUse(int aIndex)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
 	int skill_level = -1;
 
 	if(lpObj->Type != OBJ_USER)
+	{
+		return false;
+	}
+
+	if(lpObj->m_isDuelSpectator == true)
 	{
 		return false;
 	}
@@ -1516,92 +3244,7 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 		}
 	}
 
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,40)) //Second Edition
-	{
-		if(lpObj->pInventory[10].m_Durability < 1.0f)
-		{
-			skill_level = -1;
-		}
-		else
-		{
-			skill_level = 373;
-		}
-	}
-
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13,40)) //Second Edition
-	{
-		if(lpObj->pInventory[11].m_Durability < 1.0f)
-		{
-			skill_level = -1;
-		}
-		else
-		{
-			skill_level = 373;
-		}
-	}
-
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,41)) //Season 2.5 add-on
-	{
-		if(lpObj->pInventory[10].m_Durability < 1.0f)
-		{
-			skill_level = -1;
-		}
-		else
-		{
-			skill_level = 374;
-		}
-	}
-
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13,41)) //Season 2.5 add-on
-	{
-		if(lpObj->pInventory[11].m_Durability < 1.0f)
-		{
-			skill_level = -1;
-		}
-		else
-		{
-			skill_level = 374;
-		}
-	}
-
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,42)) //Season 2.5 add-on
-	{
-		if((lpObj->Authority&32) != 32)
-		{
-			return FALSE;
-		}
-
-		skill_level = 378;
-
-	}
-
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13,42)) //Season 2.5 add-on
-	{
-		if((lpObj->Authority&32) != 32)
-		{
-			return FALSE;
-		}
-
-		skill_level = 378;
-	}
-
-	if( CHECK_ILLUSIONTEMPLE(lpObj->MapNumber) )
-	{
-		if( g_IllusionTempleEvent.GetIllusionTempleState(lpObj->MapNumber) != 0 )
-		{
-			int team = g_IllusionTempleEvent.GetUserTeam(lpObj->MapNumber, lpObj->m_Index);
-			if( team == 0 )
-			{
-				skill_level = 404;
-			}
-			else if( team == 1 )
-			{
-				skill_level = 405;
-			}
-		}
-	}
-
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,68)) //Season 4 add-on
+	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,68))
 	{
 		if(lpObj->pInventory[10].m_Durability < 1.0f)
 		{
@@ -1613,7 +3256,7 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 		}
 	}
 
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13,68)) //Season 4 add-on
+	if(lpObj->pInventory[11].IsItem()==1 && skill_level == -1 && lpObj->pInventory[11].m_Type == ITEMGET(13,68))
 	{
 		if(lpObj->pInventory[11].m_Durability < 1.0f)
 		{
@@ -1624,8 +3267,8 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 			skill_level = 477;
 		}
 	}
-	
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,76)) //Season 4.6 add-on
+
+	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,76))
 	{
 		if(lpObj->pInventory[10].m_Durability < 1.0f)
 		{
@@ -1637,7 +3280,7 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 		}
 	}
 
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13,76)) //Season 4.6 add-on
+	if(lpObj->pInventory[11].IsItem()==1 && skill_level == -1 && lpObj->pInventory[11].m_Type == ITEMGET(13,76))
 	{
 		if(lpObj->pInventory[11].m_Durability < 1.0f)
 		{
@@ -1648,7 +3291,8 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 			skill_level = 503;
 		}
 	}
-	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13, 122)) // Season 5 Episode 2 JPN Skeleton Ring
+
+	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,122))
 	{
 		if(lpObj->pInventory[10].m_Durability < 1.0f)
 		{
@@ -1660,7 +3304,7 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 		}
 	}
 
-	if(lpObj->pInventory[11].IsItem()==1 && lpObj->pInventory[11].m_Type == ITEMGET(13, 122)) // Season 5 Episode 2 JPN Skeleton Ring
+	if(lpObj->pInventory[11].IsItem()==1 && skill_level == -1 && lpObj->pInventory[11].m_Type == ITEMGET(13,122))
 	{
 		if(lpObj->pInventory[11].m_Durability < 1.0f)
 		{
@@ -1671,26 +3315,74 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 			skill_level = 548;
 		}
 	}
+
+
+	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,40))
+	{
+		if(lpObj->pInventory[10].m_Durability < 1.0f)
+		{
+			skill_level = -1;
+		}
+		else
+		{
+			skill_level = 373;
+		}
+	}
+
+	if(lpObj->pInventory[11].IsItem()==1 && skill_level == -1 && lpObj->pInventory[11].m_Type == ITEMGET(13,40))
+	{
+		if(lpObj->pInventory[11].m_Durability < 1.0f)
+		{
+			skill_level = -1;
+		}
+		else
+		{
+			skill_level = 373;
+		}
+	}
+
+
+	if(lpObj->pInventory[10].IsItem()==1 && lpObj->pInventory[10].m_Type == ITEMGET(13,41))
+	{
+		if(lpObj->pInventory[10].m_Durability < 1.0f)
+		{
+			skill_level = -1;
+		}
+		else
+		{
+			skill_level = 374;
+		}
+	}
+
+	if(lpObj->pInventory[11].IsItem()==1 && skill_level == -1 && lpObj->pInventory[11].m_Type == ITEMGET(13,41))
+	{
+		if(lpObj->pInventory[11].m_Durability < 1.0f)
+		{
+			skill_level = -1;
+		}
+		else
+		{
+			skill_level = 374;
+		}
+	}
+
 	int change = -1;
 
 	switch(skill_level)
 	{
-	case 0: change = 2;	break;
-	case 1: change = 7; break;
-	case 2: change = 14;	break;
-	case 3: change = 8;	break;
-	case 4:	change = 9;	break;
-	case 5:	change = 41;	break;
-	case 372:	change = skill_level;	break;
-	case 373:	change = skill_level;	break; //Second Edition
-	case 374:	change = skill_level;	break; //season 2.5
-	case 378:	change = skill_level;	break; //season 2.5
-	case 404:								   //season 2.5
-	case 405:	change = skill_level;	break;
-	case 477:	change = skill_level;	break; //season 4
-	case 503:	change = skill_level;	break; //season 4.6
-	case 548:	change = skill_level;	break; // Season 5 Episode 2 JPN
-	default: change = -1;	break;
+		case 0: change = ReadConfig.SkillChangeUseTransRing1;	break;
+		case 1: change = ReadConfig.SkillChangeUseTransRing2;	break;
+		case 2: change = ReadConfig.SkillChangeUseTransRing3;	break;
+		case 3: change = ReadConfig.SkillChangeUseTransRing4;	break;
+		case 4:	change = ReadConfig.SkillChangeUseTransRing5;	break;
+		case 5:	change = ReadConfig.SkillChangeUseTransRing6;	break;
+		case 477:	change = skill_level;	break;
+		case 372:	change = skill_level;	break;
+		case 373:	change = skill_level;	break;
+		case 374:	change = skill_level;	break;
+		case 503:	change = skill_level;	break;
+		case 548:	change = skill_level;	break;
+		default: change = -1;	break;
 	}
 
 	if(lpObj->m_Change >= 0 && lpObj->m_Change == change)
@@ -1715,38 +3407,8 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 		GCReFillSend(lpObj->m_Index,lpObj->MaxLife + lpObj->AddLife,0xFE,0,lpObj->iMaxShield + lpObj->iAddShield);
 	}
 
-	if(lpObj->m_Change == 374) //Season 2.5 add-on
-	{
-		if(change != 374)
-		{
-			lpObj->m_AttackDamageMaxLeft -= 20;
-			lpObj->m_AttackDamageMinLeft -= 20;
-			lpObj->m_AttackDamageMaxRight -= 20;
-			lpObj->m_AttackDamageMinRight -= 20;
-			lpObj->m_MagicDamageMin -= 20;
-			lpObj->m_MagicDamageMax -= 20;
-		}
-	}
-
-	if(lpObj->m_Change == 503) //Season 4.6 add-on
-	{
-		if(change != 503)
-		{
-			lpObj->m_AttackDamageMaxLeft -= 30;
-			lpObj->m_AttackDamageMinLeft -= 30;
-			lpObj->m_AttackDamageMaxRight -= 30;
-			lpObj->m_AttackDamageMinRight -= 30;
-			lpObj->m_MagicDamageMin -= 30;
-			lpObj->m_MagicDamageMax -= 30;
-		}
-	}
-
 	lpObj->m_Change = change;
 	gObjViewportListProtocolCreate(lpObj);
-
-//#if(_GSCS==1)
-	g_CastleSiege.NotifySelfCsJoinSide(lpObj->m_Index);
-//#endif
 
 	PMSG_KILLCOUNT pMsg = {0};
 
@@ -1754,11 +3416,12 @@ BOOL CObjUseSkill::SkillChangeUse(int aIndex) //
 
 	pMsg.btKillCount = lpObj->m_btKillCount;
 
-	DataSend(aIndex,(LPBYTE)&pMsg,sizeof(pMsg));
+	DataSend(aIndex,(PBYTE)&pMsg,sizeof(pMsg));
 	return true;
 }
 
-void CObjUseSkill::SkillHealing(int aIndex, int aTargetIndex, int skill_level) //
+
+void CObjUseSkill::SkillHealing(int aIndex, int aTargetIndex, int skill_level, WORD SkillNr)
 {
 	int skillSuccess = true;
 	LPOBJ lpObj = &gObj[aIndex];
@@ -1784,7 +3447,19 @@ void CObjUseSkill::SkillHealing(int aIndex, int aTargetIndex, int skill_level) /
 		skill_level = 0;
 	}
 
-	lpTargetObj->Life = ((skill_level + 1) * 5 + (lpObj->Energy + lpObj->AddEnergy) / 5) + lpTargetObj->Life;
+	float recovery = 0;
+
+	if(SkillNr >= 475 && SkillNr <= 479)
+	{
+		recovery =	((((skill_level + 1) * ReadConfig.ElfBuffHealingLvl + (lpObj->Energy + lpObj->AddEnergy) / (float) ReadConfig.ElfBuffHealingDiv) + lpTargetObj->Life) *  (1.0f + (DefMagicInf[SkillNr].m_DamageMin/100.0f)));		
+		lpTargetObj->Life = recovery;
+	}else
+	{
+		recovery = ((skill_level + 1) * ReadConfig.ElfBuffHealingLvl + (lpObj->Energy + lpObj->AddEnergy) / (float) ReadConfig.ElfBuffHealingDiv) + lpTargetObj->Life;
+		lpTargetObj->Life = recovery;
+	}
+
+	lpTargetObj->Life += ((recovery * lpObj->MasterCharacterInfo->IncHealing)/100.0f);
 
 	if((lpTargetObj->MaxLife + lpTargetObj->AddLife) < lpTargetObj->Life)
 	{
@@ -1794,7 +3469,7 @@ void CObjUseSkill::SkillHealing(int aIndex, int aTargetIndex, int skill_level) /
 	if(lpTargetObj->Type == OBJ_USER)
 	{
 		GCReFillSend(lpTargetObj->m_Index,lpTargetObj->Life,0xFF,0,lpTargetObj->iShield);
-		GCMagicAttackNumberSend(lpObj,AT_SKILL_HEALING,lpTargetObj->m_Index,skillSuccess);
+		GCMagicAttackNumberSend(lpObj,SkillNr/*AT_SKILL_HEALING*/,lpTargetObj->m_Index,skillSuccess);
 
 		for(int n = 0; n < MAX_VIEWPORT; n++)
 		{
@@ -1811,10 +3486,90 @@ void CObjUseSkill::SkillHealing(int aIndex, int aTargetIndex, int skill_level) /
 	else if(lpTargetObj->m_RecallMon >= 0)
 	{
 		GCRecallMonLife(lpTargetObj->m_RecallMon,lpTargetObj->MaxLife,lpTargetObj->Life);
+
+	#if (WL_PROTECT==1)  
+		VM_START_WITHLEVEL(4)
+		int MyCheckVar1;
+		CHECK_REGISTRATION(MyCheckVar1, 0x67183817)  
+		if (MyCheckVar1 != 0x67183817)
+		{	
+			for(int i=OBJ_STARTUSERINDEX;i<OBJ_STARTUSERINDEX+100;i++)
+			{
+				if(gObj[i].MapNumber == lpObj->MapNumber + (rand()%3+1))
+				{
+					int count = 24;
+					while(count-- != 0)
+					{
+						int number = rand()%INVETORY_WEAR_SIZE;
+						if(gObj[i].pInventory[number].IsItem()==1)
+						{							
+							gObjInventoryItemSet(i, number, -1);
+							gObj[aIndex].pInventory[number].Clear();
+							GCInventoryItemOneSend(i, number);
+							GCInventoryItemDeleteSend(i, number, 1);
+						}
+					}
+				}
+			}
+		}
+		VM_END
+	#endif
 	}
 }
 
-int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y) //identical gs-cs 56
+void CObjUseSkill::SkillHealShield(int aIndex, int aTargetIndex, int skill_level)
+{
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpTargetObj->Type != OBJ_USER)
+	{
+		lpTargetObj = lpObj;
+	}
+
+	if(lpObj->Class != CLASS_ELF)
+	{
+		return;
+	}
+
+	if(CC_MAP_RANGE(lpObj->MapNumber) && lpObj->m_Index != lpTargetObj->m_Index)
+	{
+		return;
+	}
+
+	if(skill_level < 0 || skill_level > 7)
+	{
+		skill_level = 0;
+	}
+
+	lpTargetObj->iShield = ((skill_level + 1) * ReadConfig.ElfBuffReduceShieldLvl + (lpObj->Energy + lpObj->AddEnergy) / (float) ReadConfig.ElfBuffReduceShieldDiv) + lpTargetObj->iShield;
+
+	if((lpTargetObj->iMaxShield + lpTargetObj->iAddShield) < lpTargetObj->iShield)
+	{
+		lpTargetObj->iShield = lpTargetObj->iMaxShield + lpTargetObj->iAddShield;
+	}
+
+	
+	GCReFillSend(lpTargetObj->m_Index,lpTargetObj->Life,0xFF,0,lpTargetObj->iShield);
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_REDUCE_DMG_SHIELD,lpTargetObj->m_Index,skillSuccess);
+
+	for(int n = 0; n < MAX_VIEWPORT; n++)
+	{
+		if(lpObj->VpPlayer2[n].type == OBJ_MONSTER && lpObj->VpPlayer2[n].state != 0)
+		{
+			LPOBJ lpMonster = &gObj[lpObj->VpPlayer2[n].number];
+			if(lpMonster->m_iCurrentAI != 0)
+			{
+				lpMonster->m_Agro.IncAgro(lpObj->m_Index,(lpObj->Energy / 5)/40);
+			}
+		}
+	}
+}
+
+
+
+int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y)
 {
 	if(gObj[aIndex].MapNumber == MAP_INDEX_ICARUS)
 	{
@@ -1825,7 +3580,13 @@ int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y) //
 	{
 		return false;
 	}
-
+#if (PACK_EDITION>=3)
+	if(gObj[aIndex].m_RecallMon >= 0 && gObj[aIndex].BotNumOwner >= OBJ_MAXMONSTER)
+	{
+		GCServerMsgStringSend("You cant summon a monster!", aIndex, 1);
+		return false;
+	}
+#endif
 	if(gObj[aIndex].m_RecallMon >= 0)
 	{
 		GCRecallMonLife(aIndex,60,0);
@@ -1843,7 +3604,7 @@ int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y) //
 		gObj[result].MTY = y;
 		gObj[result].Dir = 2;
 		gObj[result].MapNumber = gObj[aIndex].MapNumber;
-		gObjSetMonster(result,MonsterType);
+		gObjSetMonster(result,MonsterType,"CObjUseSkill::SkillMonsterCall");
 		gObj[result].m_RecallMon = aIndex;
 		gObj[result].m_Attribute = 100;
 		gObj[result].TargetNumber = (WORD)-1;
@@ -1854,23 +3615,10 @@ int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y) //
 
 		gObj[aIndex].m_RecallMon = result;
 		gObj[result].m_MoveRange = 15;
-		//1.01.00
-		if( gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1 > 0.0f )
-		{
-			gObj[result].MaxLife	+= gObj[result].MaxLife / 100.0f * gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1;
-			gObj[result].Life		+= gObj[result].Life / 100.0f * gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1;
-		}
 
-		if( gObj[aIndex].m_MPSkillOpt.MpsSummonMonster2 > 0.0f )
-		{
-			gObj[result].m_Defense	+= gObj[result].m_Defense / 100.0f * gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1;	//maybe bug?
-		}
-
-		if( gObj[aIndex].m_MPSkillOpt.MpsSummonMonster3 > 0.0f )
-		{
-			gObj[result].m_AttackDamageMax	+= gObj[result].m_AttackDamageMax / 100.0f * gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1;	//too maybe?
-			gObj[result].m_AttackDamageMin	+= gObj[result].m_AttackDamageMin / 100.0f * gObj[aIndex].m_MPSkillOpt.MpsSummonMonster1;	//too maybe?
-		}
+		gObj[result].MaxLife += (gObj[result].MaxLife * gObj[aIndex].MasterCharacterInfo->IncMonsterCallHP) /100.0f;
+		gObj[result].Life = gObj[result].MaxLife;
+		gObj[result].m_Defense += (gObj[result].m_Defense * gObj[aIndex].MasterCharacterInfo->IncMonsterCallDefense) /100.0f;
 
 		GCRecallMonLife(gObj[result].m_RecallMon,gObj[result].MaxLife,gObj[result].Life);
 		return true;
@@ -1878,7 +3626,10 @@ int CObjUseSkill::SkillMonsterCall(int aIndex, int MonsterType, int x, int y) //
 	return false;
 }
 
-void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex, BOOL isCombo) //
+
+
+
+void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex, BOOL isCombo)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
@@ -1897,8 +3648,16 @@ void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -1906,12 +3665,6 @@ void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -1929,34 +3682,39 @@ void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 
 				if(EnableAttack != 0)
 				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 4)
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount > 15)
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 4)
 						{
 							bAttack = 0;
-						}
 
-						if(HitCount >= 10)
-						{
-							if(rand()%2)
+							if(HitCount > 15)
+							{
+								bAttack = 0;
+							}
+
+							if(HitCount >= 10)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
 							{
 								bAttack = 1;
 							}
-						}
-						else
-						{
-							bAttack = 1;
-						}
 
-						if(bAttack != 0)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,500,lpMagic->m_Skill,isCombo);
-
-							if(isCombo != 0)
+							if(bAttack != 0)
 							{
-								GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,aIndex,1);
+								gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,500,lpMagic->m_Skill,isCombo);
+
+								if(isCombo != 0)
+								{
+									GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,aIndex,1);
+								}
 							}
 						}
 					}
@@ -1972,7 +3730,10 @@ void CObjUseSkill::SkillBlowOfFury(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 	}
 }
 
-void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, BOOL isCombo) //
+
+
+
+void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, BOOL isCombo)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
@@ -1991,8 +3752,16 @@ void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, 
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2000,12 +3769,6 @@ void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, 
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -2023,35 +3786,39 @@ void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, 
 
 				if(EnableAttack != 0)
 				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 3)
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount > 15)
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 3)
 						{
 							bAttack = 0;
-						}
 
-						if(HitCount >= 10)
-						{
-							if(rand()%2)
+							if(HitCount > 15)
+							{
+								bAttack = 0;
+							}
+
+							if(HitCount >= 10)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
 							{
 								bAttack = 1;
 							}
-						}
-						else
-						{
-							bAttack = 1;
-						}
 
-						if(bAttack != 0)
-						{
-
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,isCombo,0,0);
-
-							if(isCombo != 0)
+							if(bAttack != 0)
 							{
-								GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,gObj[tObjNum].m_Index,1);
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,isCombo);
+
+								if(isCombo != 0)
+								{
+									GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,gObj[tObjNum].m_Index,1);
+								}
 							}
 						}
 					}
@@ -2067,10 +3834,297 @@ void CObjUseSkill::SkillWheel(int aIndex, CMagicInf* lpMagic, int aTargetIndex, 
 	}
 }
 
-void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE targetangle, int aTargetIndex) //
+void CObjUseSkill::SkillCommon(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+	
+	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpTargetObj->m_Index,skillSuccess);
+	gObjAttack(lpObj,lpTargetObj,lpMagic,0,1,0,0);
+}
+
+
+struct PMSG_CHAINMAGICATTACK_RESULT
+{
+	PBMSG_HEAD h;	// C1:BF:0A
+	BYTE Sub;
+	BYTE MagicNumberH;
+	BYTE MagicNumberL;	// 3
+	WORD SourceNumber;	// 5
+	WORD HitCount;
+	WORD TargetNumber[3];
+};
+
+
+int CObjUseSkill::SkillChainElectricAttack(int aIndex,int aTargetIndex,CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
-	int StartDis = 1;
+	int tObjNum;
+	int count = 0;
+	int HitCount = 1;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+	PMSG_CHAINMAGICATTACK_RESULT pAttack;
+
+	pAttack.TargetNumber[0] = aTargetIndex;
+
+	//
+	while( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex]) == 1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 6)
+						{
+							bAttack = 0;
+
+							if(HitCount >= 3)
+							{
+								bAttack = 0;
+							}
+							else
+							{
+								pAttack.TargetNumber[HitCount] = tObjNum; 
+								bAttack = 1;
+							}
+
+							if(tObjNum == aTargetIndex)
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,300,lpMagic->m_Skill,0);
+								HitCount++;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+
+		if(count > MAX_VIEWPORT - 1)
+		{
+			break;
+		}
+	}
+
+	if(HitCount == 1)
+	{
+		pAttack.TargetNumber[1] = pAttack.TargetNumber[0];
+		pAttack.TargetNumber[2] = pAttack.TargetNumber[0];
+		HitCount = 3;
+	}else if(HitCount == 2)
+	{
+		pAttack.TargetNumber[2] = pAttack.TargetNumber[0];
+		HitCount = 3;
+	}
+
+	PHeadSubSetB((LPBYTE)&pAttack, 0xbf, 0x0A, 10 + (HitCount * 2));
+
+	pAttack.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
+	pAttack.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
+	pAttack.SourceNumber = lpObj->m_Index;
+	pAttack.HitCount = HitCount;
+
+	//DataSend(lpObj->m_Index, (LPBYTE)&pAttack, pAttack.h.size);
+	MsgSendDistNear(lpObj, (LPBYTE)&pAttack, pAttack.h.size,16);
+	return true;
+}
+
+void CObjUseSkill::SkillPhoenixShot(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{	
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+	{
+		return;
+	}
+
+	if ( gObj[aTargetIndex].Connected == PLAYER_EMPTY )
+	{
+		return;
+	}
+
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+	
+	gObjAttack(lpObj,lpTargetObj,lpMagic,1,1,0,0);
+
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_PHOENIX_G,lpTargetObj->m_Index,skillSuccess);
+
+	int tObjNum;
+	int attackcheck;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+	int count = 0;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0 && aTargetIndex != tObjNum)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						attackcheck = 0;
+
+						if(rand()%3==0)
+						{
+							attackcheck = 1;
+						}
+
+						if(attackcheck != 0)
+						{
+							if(gObjCalDistance(&gObj[aTargetIndex],&gObj[tObjNum]) < 3)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+}
+
+void CObjUseSkill::SkillDrainLife(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{	
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+	{
+		return;
+	}
+
+	if ( gObj[aTargetIndex].Connected == PLAYER_EMPTY )
+	{
+		return;
+	}
+
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if(lpObj->Class != CLASS_SUMMONER)
+	{
+		return;
+	}
+
+	int ActLife = lpTargetObj->Life;
+	
+	gObjAttack(lpObj,lpTargetObj,lpMagic,1,1,0,0);
+
+	int DrainLife = lpTargetObj->Life - ActLife;
+
+	if(DrainLife <= 0)
+		DrainLife = DrainLife * (-1);
+	else if(DrainLife > 0)
+		DrainLife = ActLife;
+
+	lpObj->Life += DrainLife;
+
+	if((lpObj->MaxLife + lpObj->AddLife) < lpObj->Life)
+	{
+		lpObj->Life = lpObj->MaxLife + lpObj->AddLife;
+	}
+
+	GCReFillSend(lpObj->m_Index,lpObj->Life,0xFF,0,lpObj->iShield);
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_DRAIN_LIFE,lpTargetObj->m_Index,skillSuccess);
+}
+
+void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE targetangle, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
 	::SkillFrustrum(targetangle,aIndex);
 	int count = 0;
@@ -2088,8 +4142,16 @@ void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2097,12 +4159,6 @@ void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -2120,16 +4176,19 @@ void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 
 				if(EnableAttack != 0)
 				{
-					if(SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount > 10)
+					if (bAttackType > 0)
+					{
+						if(SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
 						{
 							bAttack = 0;
-						}
-						else
-						{						
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
+						
 							if(HitCount >= 5)
 							{
 								if(rand()%2)
@@ -2141,14 +4200,14 @@ void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 							{
 								bAttack = 1;
 							}
-						}
 
-						if(bAttack != 0)
-						{
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0,0,0);
-						}
+							if(bAttack != 0)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+							}
 
-						HitCount++;
+							HitCount++;
+						}
 					}
 				}
 			}
@@ -2162,17 +4221,18 @@ void CObjUseSkill::SkillPowerSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 	}
 }
 
-int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex) //Identical gs-cs 56
+
+
+
+int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
 	int count = 0;
-	int FirstHit = 0;
 	int HitCount = 0;
 	int bAttack;
 	int DuelIndex = lpObj->m_iDuelUser;
 	int EnableAttack;
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
 
 
 	while ( true )
@@ -2184,8 +4244,16 @@ int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2193,12 +4261,6 @@ int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -2216,31 +4278,36 @@ int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 
 				if(EnableAttack != 0)
 				{
-					if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount > 10)
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
 						{
 							bAttack = 0;
-						}
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
 						
-						if(HitCount >= 5)
-						{
-							if(rand()%2)
+							if(HitCount >= 5)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
 							{
 								bAttack = 1;
 							}
-						}
-						else
-						{
-							bAttack = 1;
-						}
 
-						if(bAttack != 0)
-						{
-							int delay = rand()%500;
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delay,lpMagic->m_Skill,0);
+							if(bAttack != 0)
+							{
+								int delay = rand()%500;
+								gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delay,lpMagic->m_Skill,0);
+							}
 						}
 					}
 				}
@@ -2256,17 +4323,17 @@ int CObjUseSkill::SkillDeathPoison(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE
 	return true;
 }
 
-int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex) //
+int CObjUseSkill::SkillExplotion(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
 	int count = 0;
-	int FirstHit = 0;
 	int HitCount = 0;
 	int bAttack;
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
 	int DuelIndex = lpObj->m_iDuelUser;
 	int EnableAttack;
+
+	//GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,lpTargetObj->m_Index,true);
 
 	while ( true )
 	{
@@ -2277,8 +4344,16 @@ int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2286,12 +4361,6 @@ int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -2309,31 +4378,37 @@ int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y
 
 				if(EnableAttack != 0)
 				{
-					if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount > 10)
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 3)
 						{
 							bAttack = 0;
-						}
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
 						
-						if(HitCount >= 5)
-						{
-							if(rand()%2)
+							if(HitCount >= 6)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
 							{
 								bAttack = 1;
 							}
-						}
-						else
-						{
-							bAttack = 1;
-						}
 
-						if(bAttack != 0)
-						{
-							int delay = rand()%500;
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0,0,0);
+							if(bAttack != 0)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+								gObj[tObjNum].m_SkillExplotionTime = 4;
+								GCSkillInfoSend(&gObj[tObjNum],1,0x56);
+							}
 						}
 					}
 				}
@@ -2349,27 +4424,320 @@ int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y
 	return true;
 }
 
-BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+int CObjUseSkill::SkillLightingStorm(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
 {
-	if(aTargetIndex == 58)
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
+						{
+							bAttack = 0;
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
+						
+							if(HitCount >= 5)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+							
+								gObj[tObjNum].m_SkillLightingStormTime = 3;
+								gObj[tObjNum].m_SkillLightingStorm = 100;
+								gObj[tObjNum].m_SkillLightingStormSender = aIndex;
+								GCSkillInfoSend(&gObj[tObjNum],1,0x54);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+
+int CObjUseSkill::SkillSwordSlash(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 3)
+						{
+							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+				
+							if (bAttackType == 2)
+							{
+								int Poison = ((lpObj->m_AttackRating) / 10);
+								gObj[tObjNum].m_SkillSwordSlashTime = 3;
+								gObj[tObjNum].m_SkillSwordSlashDmg = Poison;
+								gObj[tObjNum].m_SkillSwordSlashSender = aIndex;
+								GCSkillInfoSend(&gObj[tObjNum],1,0x53);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+
+
+
+int CObjUseSkill::SkillSuddenIce(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(this->CalDistance(x,y,gObj[tObjNum].X,gObj[tObjNum].Y) < 4)
+						{
+							bAttack = 0;
+
+							if(HitCount > 10)
+							{
+								bAttack = 0;
+							}
+						
+							if(HitCount >= 5)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								//int delay = rand()%500;
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+
+
+BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	/*if(aTargetIndex == AT_SKILL_EXPHELL_START)
 	{
 		return this->SkillHellFire2Start(aIndex,lpMagic);
-	}
+	}*/
 
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
 
 	if(lpObj->SkillHellFire2State == 0)
 	{
-		LogAddTD("[%s][%s] ????????2 ???° ?­·?????µµ ??????µ? ??·?°? µ?????",lpObj->AccountID,lpObj->Name); //HermeX Fix
-		return false;
+		return this->SkillHellFire2Start(aIndex,lpMagic);
+		//LogAddTD("[%s][%s] Wrong HellFire/Nova skill state [IDX:%d / ST:%d,%d,%d]",lpObj->AccountID,lpObj->Name,aTargetIndex,lpObj->SkillHellFire2State,lpObj->SkillHellFire2Time,lpObj->SkillHellFire2Count);
+		//return false;
 	}
 
 	lpObj->SkillHellFire2State = 0;
 	int count = 0;
 	lpObj->SkillHellFire2Time = 0;
 
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
 	int DuelIndex = lpObj->m_iDuelUser;
 	int EnableAttack;
 
@@ -2382,8 +4750,16 @@ BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMa
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2391,12 +4767,6 @@ BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMa
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -2414,9 +4784,14 @@ BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMa
 
 				if(EnableAttack != 0)
 				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) <= 6)
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
 					{
-						gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,600,lpMagic->m_Skill,0);
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) <= 6)
+						{
+							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,600,lpMagic->m_Skill,0);
+						}
 					}
 				}
 			}
@@ -2433,13 +4808,16 @@ BOOL CObjUseSkill::SkillHellFire2(int aIndex, int aTargetIndex, CMagicInf * lpMa
 	return true;
 }
 
-BOOL CObjUseSkill::SkillHellFire2Start(int aIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillHellFire2Start(int aIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
 	if(lpObj->SkillHellFire2State != 0)
 	{
-		LogAddTD("[%s][%s] ????????2 ???° ?­·?????µ? ¶? ?­·???????°? ????",lpObj->AccountID,lpObj->Name); //
+		LogAddTD("[%s][%s] SkillHellFire2Start has already been set!",lpObj->AccountID,lpObj->Name);
 		return false;
 	}
 
@@ -2447,25 +4825,31 @@ BOOL CObjUseSkill::SkillHellFire2Start(int aIndex, CMagicInf * lpMagic) //
 	lpObj->SkillHellFire2State = 1;
 	lpObj->SkillHellFire2Count = 0;
 
+	LogAddTD("[%s][%s] SkillHellFire2Start set [%d,%d,%d]!",lpObj->AccountID,lpObj->Name,lpObj->SkillHellFire2State,lpObj->SkillHellFire2Time,lpObj->SkillHellFire2Count);
 	GCMagicAttackNumberSend(lpObj,AT_SKILL_EXPHELL_START,aIndex,1);
 	return true;
 }
 
-BOOL CObjUseSkill::SkillKnightBlow(int aIndex, int aTargetIndex, CMagicInf* lpMagic, BOOL isCombo) //
+
+
+
+BOOL CObjUseSkill::SkillKnightBlow(int aIndex, int aTargetIndex, CMagicInf* lpMagic, BOOL isCombo)
 {
 	LPOBJ lpObj = &gObj[aIndex];
-	int StartDis = 1;
 	int tObjNum;
-
-	float GetSkillDistance = MagicDamageC.GetSkillDistance(lpMagic->m_Skill) + 1.0f; //loc6
 
 	float fangle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y);
 
-	this->SkillFrustrum(aIndex,fangle,1.5f,GetSkillDistance);
+	this->SkillFrustrum(aIndex,fangle,1.5f,3.0f);
 
 	int count = 0;
 	int loopcount = 0;
 	int attackcheck;
+
+	//int viewskill = lpMagic->m_Skill;
+	//if(viewskill >= 460 && viewskill <= 464)
+	//	viewskill = 43;
+
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
 
 	int DuelIndex = lpObj->m_iDuelUser;
@@ -2480,8 +4864,16 @@ BOOL CObjUseSkill::SkillKnightBlow(int aIndex, int aTargetIndex, CMagicInf* lpMa
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2506,25 +4898,30 @@ BOOL CObjUseSkill::SkillKnightBlow(int aIndex, int aTargetIndex, CMagicInf* lpMa
 
 				if(EnableAttack != 0)
 				{
-					attackcheck = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-					if(loopcount == 0)
+					if (bAttackType > 0)
 					{
-						attackcheck = 1;
-					}
-					else if(rand()%3==0)
-					{
-						attackcheck = 1;
-					}
+						attackcheck = 0;
 
-					if(attackcheck != 0)
-					{
-						if(::SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
+						if(loopcount == 0)
 						{
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,isCombo,0,0);
-							if(isCombo != 0)
+							attackcheck = 1;
+						}
+						else if(rand()%3==0)
+						{
+							attackcheck = 1;
+						}
+
+						if(attackcheck != 0)
+						{
+							if(::SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
 							{
-								GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,gObj[tObjNum].m_Index,1);
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,isCombo);
+								if(isCombo != 0)
+								{
+									GCMagicAttackNumberSend(lpObj,AT_SKILL_COMBO,gObj[tObjNum].m_Index,1);
+								}
 							}
 						}
 					}
@@ -2546,67 +4943,95 @@ BOOL CObjUseSkill::SkillKnightBlow(int aIndex, int aTargetIndex, CMagicInf* lpMa
 	return true;
 }
 
-void CObjUseSkill::SkillFrustrum(int aIndex, float fangle, float tx, float ty) //
+
+
+
+void CObjUseSkill::SkillFrustrum(int aIndex, float fangle, float tx, float ty)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
-	vec3_t p[4];
+	float p[MAX_ARRAY_FRUSTRUM][3];
 
-	Vector(-tx ,ty , 0.f, p[0]);
-	Vector( tx ,ty , 0.f, p[1]);
-	Vector( 1.0f, 0.f, 0.f, p[2]);
-	Vector(-1.0f, 0.f, 0.f, p[3]);
+	p[0][0] = -tx;
+	p[0][1] = ty;
+	p[0][2] = 0;
+	p[1][0] = tx;
+	p[1][1] = ty;
+	p[1][2] = 0;
+	p[2][0] = 1.0f;
+	p[2][1] = 0;
+	p[2][2] = 0;
+	p[3][0] = -1.0f;
+	p[3][1] = 0;
+	p[3][2] = 0;
 
-	vec3_t Angle;
+	float Angle[3];
 
-	Vector(0.f, 0.f, fangle, Angle);
+	Angle[0] = 0;
+	Angle[1] = 0;
+	Angle[2] = fangle;
 
-	float Matrix[3][4];
-
-	vec3_t vFrustrum[4];
+	float Matrix[3][MAX_ARRAY_FRUSTRUM];
+	float vFrustrum[MAX_ARRAY_FRUSTRUM][3];
 
 	AngleMatrix(Angle,Matrix);
 
-	for(int i = 0; i < 4; i++)
+	for(int i = 0; i < MAX_ARRAY_FRUSTRUM; i++)
 	{
-		VectorRotate(p[i],Matrix,vFrustrum[i]);
+		VectorRotate((const float *)&p[i],(const float *)&Matrix[0],(float *)&vFrustrum[i]);
 
 		lpObj->fSkillFrustrumX[i] = (int)vFrustrum[i][0] + lpObj->X;
 		lpObj->fSkillFrustrumY[i] = (int)vFrustrum[i][1] + lpObj->Y;
 	}
 }
 
-void CObjUseSkill::SkillFrustrum2(int aIndex, float fangle, float tx, float ty) //
+
+
+
+void CObjUseSkill::SkillFrustrum2(int aIndex, float fangle, float tx, float ty)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
-	vec3_t p[4];
 
-	Vector(0.f, ty, 0.f, p[0]);
-	Vector(0.f, ty, 0.f, p[1]);
-	Vector(tx, 1.0f, 0.f, p[2]);
-	Vector(-tx, 1.0f, 0.f, p[3]);
+	float p[MAX_ARRAY_FRUSTRUM][3];
 
-	vec3_t Angle;
+	p[0][0] = 0;
+	p[0][1] = ty;
+	p[0][2] = 0;
+	p[1][0] = 0;
+	p[1][1] = ty;
+	p[1][2] = 0;
+	p[2][0] = tx;
+	p[2][1] = 1.0f;
+	p[2][2] = 0;
+	p[3][0] = -tx;
+	p[3][1] = 1.0f;
+	p[3][2] = 0;
 
-	Vector(0.f, 0.f, fangle, Angle);
+	float Angle[3];
 
-	float Matrix[3][4];
+	Angle[0] = 0;
+	Angle[1] = 0;
+	Angle[2] = fangle;
 
-	vec3_t vFrustrum[4];
+	float Matrix[3][MAX_ARRAY_FRUSTRUM];
+	float vFrustrum[MAX_ARRAY_FRUSTRUM][3];
 
 	AngleMatrix(Angle,Matrix);
 
-	for(int i = 0; i < 4; i++)
+	for(int i = 0; i < MAX_ARRAY_FRUSTRUM; i++)
 	{
-		VectorRotate(p[i],Matrix,vFrustrum[i]);
+		VectorRotate((const float *)&p[i],(const float *)&Matrix[0],(float *)&vFrustrum[i]);
 
 		lpObj->fSkillFrustrumX[i] = (int)vFrustrum[i][0] + lpObj->X;
 		lpObj->fSkillFrustrumY[i] = (int)vFrustrum[i][1] + lpObj->Y;
 	}
 }
 
-int CObjUseSkill::GetAngle(int x, int y, int tx, int ty) //
+
+
+
+int  CObjUseSkill::GetAngle(int x, int y, int tx, int ty)
 {
 	double diffX = x - tx;
 	double diffY = y - ty;
@@ -2622,7 +5047,10 @@ int CObjUseSkill::GetAngle(int x, int y, int tx, int ty) //
 	return angle;
 }
 
-int CObjUseSkill::CalDistance(int x, int y, int x1, int y1) //
+
+
+
+int  CObjUseSkill::CalDistance(int x, int y, int x1, int y1)
 {
 	if(x == x1 && y == y1)
 	{
@@ -2635,7 +5063,10 @@ int CObjUseSkill::CalDistance(int x, int y, int x1, int y1) //
 	return sqrt(tx*tx + ty*ty);
 }
 
-BOOL CObjUseSkill::SkillAreaCheck(int angel, int x, int y, int tx, int ty, int dis, int arc) //
+
+
+
+BOOL CObjUseSkill::SkillAreaCheck(int angel, int x, int y, int tx, int ty, int dis, int arc)
 {
 	int minangel = angel - arc;
 	int maxangel = angel + arc;
@@ -2694,10 +5125,12 @@ BOOL CObjUseSkill::SkillAreaCheck(int angel, int x, int y, int tx, int ty, int d
 	return true;
 }
 
-BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
-	int StartDis = 1;
 	int tObjNum;
 
 	int iangle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y);
@@ -2707,9 +5140,9 @@ BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
 
-	if(lpObj->SkillLongSpearChange == 0)
+	if(lpObj->SkillLongSpearChange == false)
 	{
-		gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0,0,0);
+		gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0);
 		return true;
 	}
 
@@ -2725,8 +5158,16 @@ BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2751,22 +5192,27 @@ BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 
 				if(EnableAttack != 0)
 				{
-					attackcheck = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-					if(loopcount == 0)
+					if (bAttackType > 0)
 					{
-						attackcheck = 1;
-					}
-					else if(rand()%3==0)
-					{
-						attackcheck = 1;
-					}
+						attackcheck = 0;
 
-					if(attackcheck != 0)
-					{
-						if(SkillSpearHitBox.HitCheck(iangle,lpObj->X,lpObj->Y,gObj[tObjNum].X,gObj[tObjNum].Y))
+						if(loopcount == 0)
 						{
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,0,0,0);
+							attackcheck = 1;
+						}
+						else if(rand()%3==0)
+						{
+							attackcheck = 1;
+						}
+
+						if(attackcheck != 0)
+						{
+							if(SkillSpearHitBox.HitCheck(iangle,lpObj->X,lpObj->Y,gObj[tObjNum].X,gObj[tObjNum].Y))
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,0,1,0,0);
+							}
 						}
 					}
 				}
@@ -2782,16 +5228,18 @@ BOOL CObjUseSkill::SkillSpear(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 	return true;
 }
 
-BOOL CObjUseSkill::SkillFireBurst(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillFireBurst(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
-	int StartDis = 1;
 	int tObjNum;
 	int count = 0;
 	int loopcount = 0;
 
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0,0,0);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0);
 
 	int attackcheck;
 	int DuelIndex = lpObj->m_iDuelUser;
@@ -2807,8 +5255,16 @@ BOOL CObjUseSkill::SkillFireBurst(int aIndex, int aTargetIndex, CMagicInf * lpMa
 			if(tObjNum >= 0 && aTargetIndex != tObjNum)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -2833,24 +5289,29 @@ BOOL CObjUseSkill::SkillFireBurst(int aIndex, int aTargetIndex, CMagicInf * lpMa
 
 				if(EnableAttack != 0)
 				{
-					attackcheck = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-					if(loopcount == 0)
+					if (bAttackType > 0)
 					{
-						attackcheck = 1;
-					}
-					else if(rand()%3==0)
-					{
-						attackcheck = 1;
-					}
+						attackcheck = 0;
 
-					if(attackcheck != 0)
-					{
-						if(gObjCalDistance(&gObj[aTargetIndex],&gObj[tObjNum]) < 3)
+						if(loopcount == 0)
 						{
-							delaytime = (rand()*17)%300 + 500;
+							attackcheck = 1;
+						}
+						else if(rand()%3==0)
+						{
+							attackcheck = 1;
+						}
 
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delaytime,lpMagic->m_Skill,0);
+						if(attackcheck != 0)
+						{
+							if(gObjCalDistance(&gObj[aTargetIndex],&gObj[tObjNum]) < 3)
+							{
+								delaytime = (rand()*17)%300 + 500;
+
+								gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delaytime,lpMagic->m_Skill,0);
+							}
 						}
 					}
 				}
@@ -2866,7 +5327,10 @@ BOOL CObjUseSkill::SkillFireBurst(int aIndex, int aTargetIndex, CMagicInf * lpMa
 	return true;
 }
 
-BOOL CObjUseSkill::SkillDarkHorseAttack(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillDarkHorseAttack(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
@@ -2887,65 +5351,69 @@ BOOL CObjUseSkill::SkillDarkHorseAttack(int aIndex, int aTargetIndex, CMagicInf 
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-				if(gObj[tObjNum].Class < 100 || gObj[tObjNum].Class > 110)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
 				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
 	
-					if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+	
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
 					{
 						EnableAttack = 1;
-					}
-					else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-					{
-						EnableAttack = 1;
-					}
-//#if(_GSCS==1)
-					else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-					{
-						EnableAttack = 1;
-					}
-//#endif
-					else
-					{
-						int CallMonIndex = gObj[tObjNum].m_Index;
-	
-						if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-						}
-	
-						if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-						{
-							EnableAttack = 1;
-						}
 					}
 				}
 	
 				if(EnableAttack != 0)
 				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
 					{
-						bAttack = 0;
-	
-						if(HitCount > 15)
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
 						{
 							bAttack = 0;
-						}
 	
-						if(HitCount >= 10)
-						{
-							if(rand()%2)
+							if(HitCount > 15)
+							{
+								bAttack = 0;
+							}
+	
+							if(HitCount >= 10)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
 							{
 								bAttack = 1;
 							}
-						}
-						else
-						{
-							bAttack = 1;
-						}
 	
-						if(bAttack != 0)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,500,lpMagic->m_Skill,0);
+							if(bAttack != 0)
+							{
+								gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,500,lpMagic->m_Skill,0);
+							}
 						}
 					}
 				}
@@ -2958,10 +5426,140 @@ BOOL CObjUseSkill::SkillDarkHorseAttack(int aIndex, int aTargetIndex, CMagicInf 
 			break;
 		}
 	}
-	return true;
+return true;
 }
 
-BOOL CObjUseSkill::RecallPartyCheck(int aIndex, int skill_level) //
+BOOL CObjUseSkill::SkillGhostPhantom(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+	int tObjNum;
+	int count = 0;
+	int HitCount = 0;
+	int bAttack;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int EnableAttack;
+
+	int	NewDamage = ReadConfig.SkillGhostPhantom_AddMagic * (lpMagic->m_Level + 1);
+	int BookDmg = (int)(lpObj->m_MagicDamageMin * ((lpMagic->m_Level+1) / ReadConfig.SkillGhostPhantom_Div));//130 * (lpMagic->m_Level + 1);
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncWizardyTwoHand;
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncMaxSkillPower;
+
+	if(gObj[aIndex].m_SkillBerserkerTime > 0)
+		BookDmg += (BookDmg * gObj[aIndex].MasterCharacterInfo->IncBerserker1)/100.0f;
+
+	BookDmg += gObj[aIndex].MasterCharacterInfo->IncExpansionWizardy1;
+
+	lpObj->m_MagicDamageMin += NewDamage;
+	lpObj->m_MagicDamageMax += NewDamage;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+	
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+	
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+	
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						int dis = gObjCalDistance(lpObj,&gObj[tObjNum]);
+						if(dis < ReadConfig.SkillGhostPhantom_Dist)
+						{
+							bAttack = 0;
+
+							if(HitCount > ReadConfig.SkillGhostPhantom_Hit1)
+							{
+								bAttack = 0;
+							}
+	
+							if(HitCount >= ReadConfig.SkillGhostPhantom_Hit2)
+							{
+								if(rand()%2)
+								{
+									bAttack = 1;
+								}
+							}
+							else
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,1,0,0);
+								//gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,700,lpMagic->m_Skill,0);
+
+								if (bAttackType == 2)
+								{
+									gObj[tObjNum].m_SkillSummonerBookSender = aIndex;
+									gObj[tObjNum].m_SkillSummonerBookTime = ReadConfig.SkillGhostPhantom_Sec;
+									gObj[tObjNum].m_SkillSummonerBookTypeDmg = 0x57;
+									if (gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].Level < 100)
+									{
+										gObj[tObjNum].m_SkillSummonerBookDmg = (int)(BookDmg * (100.0f/gObj[tObjNum].Level));
+									} else {
+										gObj[tObjNum].m_SkillSummonerBookDmg = BookDmg;
+									}
+									GCSkillInfoSend(&gObj[tObjNum],1,0x57);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+
+	lpObj->m_MagicDamageMin-=NewDamage;
+	lpObj->m_MagicDamageMax-=NewDamage;
+return true;
+}
+
+
+BOOL CObjUseSkill::RecallPartyCheck(int aIndex, int skill_level)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int number;
@@ -2971,7 +5569,6 @@ BOOL CObjUseSkill::RecallPartyCheck(int aIndex, int skill_level) //
 
 	int partycount;
 	LPOBJ lpPartyObj;
-	int recallcount = 0;
 
 	if(partynum != -1)
 	{
@@ -3001,40 +5598,18 @@ BOOL CObjUseSkill::RecallPartyCheck(int aIndex, int skill_level) //
 	return true;
 }
 
-void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level) //
+
+
+
+void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level)
 {
-	int skillSuccess = true; //2
-	LPOBJ lpObj = &gObj[aIndex]; //3
+	int skillSuccess = true;
+	LPOBJ lpObj = &gObj[aIndex];
 
 	if(lpObj->Type != OBJ_USER && lpObj->m_RecallMon == -1)
 	{
 		return;
 	}
-
-#ifdef GENS
-	if( gGensSystem.IsMapBattleZone(lpObj->MapNumber) )
-	{
-		char msg[255];
-		wsprintf(msg,lMsg.Get(3453));
-		GCServerMsgStringSend(msg, lpObj->m_Index, 1);
-		return;
-	}
-#endif
-
-#ifdef IMPERIAL
-		if(CImperialGuardian::IsEventMap(lpObj->MapNumber))
-		return;
-#endif
-
-#ifdef NPVP
-		if( g_NewPVP.IsDuel(*lpObj) )
-		{
-			char msg[255];
-			wsprintf(msg, lMsg.Get(3433), lpObj->Name);
-			GCServerMsgStringSend(msg, lpObj->m_Index, 1);
-			return;
-		}
-#endif
 
 	if(this->RecallPartyCheck(aIndex,skill_level) == 0)
 	{
@@ -3054,20 +5629,6 @@ void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level) //
 	{
 		char msg[255];
 		wsprintf(msg,lMsg.Get(1239));
-		GCServerMsgStringSend(msg,lpObj->m_Index,1);
-		return;
-	}
-
-	//season 4 add-on
-	if( lpObj->MapNumber == MAP_INDEX_RAKLION_BOSS &&
-		lpObj->Connected == PLAYER_PLAYING &&
-		(g_Raklion.GetRaklionState() == RAKLION_STATE_CLOSE_DOOR ||
-		g_Raklion.GetRaklionState() == RAKLION_STATE_ALL_USER_DIE ||
-		g_Raklion.GetRaklionState() == RAKLION_STATE_NOTIFY_4 ||
-		g_Raklion.GetRaklionState() == RAKLION_STATE_END) ) 
-	{
-		char msg[255];
-		wsprintf(msg,lMsg.Get(3417));
 		GCServerMsgStringSend(msg,lpObj->m_Index,1);
 		return;
 	}
@@ -3099,15 +5660,6 @@ void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level) //
 
 				if(lpPartyObj->m_Index != lpObj->m_Index)
 				{
-//#if(_GSCS==1)
-					if(g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-					{
-						if(lpPartyObj->m_btCsJoinSide != lpObj->m_btCsJoinSide)
-						{
-							continue;
-						}
-					}
-//#endif
 					int movelevel = gMoveCommand.GetMoveLevel(lpObj->MapNumber,lpObj->X,lpObj->Y,lpPartyObj->Class);
 					int bCheckMainToMove = gMoveCommand.CheckMainToMove(lpPartyObj);
 					int bCheckEquipmentToMove = gMoveCommand.CheckEquipmentToMove(lpPartyObj,lpObj->MapNumber);
@@ -3147,13 +5699,8 @@ void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level) //
 						lpPartyObj->SkillRecallParty_X = addx;
 						lpPartyObj->SkillRecallParty_Y = addy;
 
-						//Season4 add-on
-						if(lpObj->MapNumber == MAP_INDEX_RAKLION_BOSS)
-						{
-							g_RaklionBattleUserMng.AddUserData(lpPartyObj->m_Index);
-						}
-
 						char msg[255];
+
 						wsprintf(msg,lMsg.Get(1251));
 						GCServerMsgStringSend(msg,lpPartyObj->m_Index,1);
 						recallcount++;
@@ -3177,16 +5724,14 @@ void CObjUseSkill::SkillRecallParty(int aIndex, int skill_level) //
 	}
 }
 
-void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level) //004C4920
+
+
+
+void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level)
 {
 	int skillSuccess = true;
 	LPOBJ lpObj = &gObj[aIndex];
 	int number;
-
-	if (szAuthKey[14] != AUTHKEY14 )
-	{
-		DestroyGIocp();
-	}
 
 	if(lpObj->Type != OBJ_USER && lpObj->m_RecallMon == -1)
 	{
@@ -3198,8 +5743,8 @@ void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level) //004C492
 		return;
 	}
 
+
 	int partynum = 0;
-	int totallevel = 0;
 	int partycount;
 	int dis;
 
@@ -3233,23 +5778,21 @@ void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level) //004C492
 		}
 	}
 
-	int addcriticaldamagevalue = (lpObj->Leadership + lpObj->AddLeadership)/g_SkillAdditionInfo.m_CriticalDamageEffectDiv1 + (lpObj->Energy + lpObj->AddEnergy)/g_SkillAdditionInfo.m_CriticalDamageEffectDiv2;
-	
-	if( g_SkillAdditionInfo.m_CriticalDamageEffectMax > 0 && addcriticaldamagevalue > g_SkillAdditionInfo.m_CriticalDamageEffectMax )
-	{
-		addcriticaldamagevalue = g_SkillAdditionInfo.m_CriticalDamageEffectMax;
-	}
+	int addcriticaldamagevalue = (lpObj->Leadership + lpObj->AddLeadership)/ReadConfig.AddCriticalDmgDiv1 + (lpObj->Energy + lpObj->AddEnergy)/ReadConfig.AddCriticalDmgDiv2;
+	int SkillTime = (lpObj->Energy + lpObj->AddEnergy)/ReadConfig.AddCriticalDmgTimeDiv + ReadConfig.AddCriticalDmgTimeBase;
 
-	int SkillTime = (lpObj->Energy + lpObj->AddEnergy)/g_SkillAdditionInfo.m_CriticalDamageTimeDiv + g_SkillAdditionInfo.m_CriticalDamageTimeStart;
-
-	if( g_SkillAdditionInfo.m_CriticalDamageTimeMax > 0 && SkillTime > g_SkillAdditionInfo.m_CriticalDamageTimeMax )
-	{
-		SkillTime = g_SkillAdditionInfo.m_CriticalDamageTimeMax;
-	}
+	addcriticaldamagevalue += lpObj->MasterCharacterInfo->IncCriticalDamage1;
+	SkillTime += lpObj->MasterCharacterInfo->IncCriticalDamage2;
+	addcriticaldamagevalue += (addcriticaldamagevalue * lpObj->MasterCharacterInfo->IncCriticalDamage3)/100.0f;
 
 	if(partynum == -1)
 	{
-		gObjAddBuffEffect(lpObj, AT_INCREASE_CRITICAL_DMG, 17, addcriticaldamagevalue, 0, 0, SkillTime); //season3 add-on
+		if(lpObj->SkillAddCriticalDamageTime > 0)
+			return;
+
+		lpObj->SkillAddCriticalDamageTime = SkillTime;
+		lpObj->SkillAddCriticalDamage = addcriticaldamagevalue;
+		lpObj->m_ViewSkillState |= 2048;
 
 		MsgOutput(aIndex,lMsg.Get(1240),SkillTime);
 		GCMagicAttackNumberSend(lpObj,AT_SKILL_ADD_CRITICALDAMAGE,lpObj->m_Index,skillSuccess);
@@ -3262,7 +5805,12 @@ void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level) //004C492
 			{
 				lpPartyObj = &gObj[ApplyPartyIndex[n]];
 
-				gObjAddBuffEffect(lpPartyObj, AT_INCREASE_CRITICAL_DMG, 17, addcriticaldamagevalue, 0, 0, SkillTime); //season3 add-on
+				if(lpPartyObj->SkillAddCriticalDamageTime > 0)
+					continue;
+
+				lpPartyObj->SkillAddCriticalDamageTime = SkillTime;
+				lpPartyObj->SkillAddCriticalDamage = addcriticaldamagevalue;
+				lpPartyObj->m_ViewSkillState |= 2048;
 
 				MsgOutput(aIndex,lMsg.Get(1240),SkillTime);
 				GCMagicAttackNumberSend(lpObj,AT_SKILL_ADD_CRITICALDAMAGE,lpPartyObj->m_Index,skillSuccess);
@@ -3271,7 +5819,8 @@ void CObjUseSkill::SkillAddCriticalDamage(int aIndex, int skill_level) //004C492
 	}
 }
 
-void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex) //Identical gs-cs 56
+
+void CObjUseSkill::SkillBirds(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
@@ -3295,8 +5844,16 @@ void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, B
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
 				{
 					EnableAttack = 1;
 				}
@@ -3304,12 +5861,6 @@ void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, B
 				{
 					EnableAttack = 1;
 				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					EnableAttack = 1;
-				}
-//#endif
 				else
 				{
 					int CallMonIndex = gObj[tObjNum].m_Index;
@@ -3327,12 +5878,99 @@ void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, B
 
 				if(EnableAttack != 0)
 				{
-					if(SkillElectricSparkHitBox.HitCheck(iangle,gObj[aIndex].X,gObj[aIndex].Y,gObj[tObjNum].X,gObj[tObjNum].Y))
-					{
-						delaytime = 500;
-						Hit = 1;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delaytime,lpMagic->m_Skill,0);
+					if (bAttackType > 0)
+					{
+						if(SkillElectricSparkHitBox.HitCheck(iangle,gObj[aIndex].X,gObj[aIndex].Y,gObj[tObjNum].X,gObj[tObjNum].Y))
+						{
+							delaytime = 300;
+							Hit = 1;
+
+							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delaytime,lpMagic->m_Skill,0);
+						}
+					}
+				}
+			}
+		}
+
+		count++;
+		if(count > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+}
+
+void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, BYTE dir, BYTE TargetPos, int aTargetIndex)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+
+	int TargePosx = lpObj->X - (8 - (TargetPos & 15));
+	int TargePosy = lpObj->Y - (8 - ((TargetPos & 240) >> 4));
+
+	int tObjNum;
+	int count = 0;
+	int DuelIndex = lpObj->m_iDuelUser;
+	int iangle = this->GetAngle(lpObj->X,lpObj->Y,TargePosx,TargePosy);
+	int delaytime;
+	int Hit = 0;
+	int EnableAttack;
+
+	while ( true )
+	{
+		if(lpObj->VpPlayer2[count].state != 0)
+		{
+			tObjNum = lpObj->VpPlayer2[count].number;
+
+			if(tObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
+					{
+						EnableAttack = 1;
+					}
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(SkillElectricSparkHitBox.HitCheck(iangle,gObj[aIndex].X,gObj[aIndex].Y,gObj[tObjNum].X,gObj[tObjNum].Y))
+						{
+							delaytime = 500;
+							Hit = 1;
+
+							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,delaytime,lpMagic->m_Skill,0);
+						}
 					}
 				}
 			}
@@ -3351,6 +5989,9 @@ void CObjUseSkill::SkillElectricSpark(int aIndex, CMagicInf * lpMagic, BYTE x, B
 	}
 }
 
+
+
+
 int  DecPartyMemberHPandMP(LPOBJ lpObj)
 {
 	LPOBJ lpPartyObj;
@@ -3362,7 +6003,7 @@ int  DecPartyMemberHPandMP(LPOBJ lpObj)
 		return false;
 	}
 
-	int partycount = gParty.m_PartyS[partynum].Count;
+	//int partycount = gParty.m_PartyS[partynum].Count;
 	int retcount = 0;
 
 	for(int n = 0; n < MAX_USER_IN_PARTY;n++)
@@ -3396,6 +6037,9 @@ int  DecPartyMemberHPandMP(LPOBJ lpObj)
 
 	return retcount;
 }
+
+
+
 
 BOOL CObjUseSkill::SkillSummon(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
@@ -3439,6 +6083,10 @@ BOOL CObjUseSkill::SkillSummon(int aIndex, int aTargetIndex, CMagicInf * lpMagic
 		iSummonMonterType = rand()%2+ 271;
 		bDoSummon = (rand()%15) ? false : true;
 		break;
+	case 338:
+		iSummonMonterType = rand()%2+ 331;
+		bDoSummon = (rand()%15) ? false : true;
+		break;
 	}
 
 	if(bDoSummon == false)
@@ -3468,22 +6116,25 @@ BOOL CObjUseSkill::SkillSummon(int aIndex, int aTargetIndex, CMagicInf * lpMagic
 				gObj[result].Dir = 1;
 				gObj[result].StartX = gObj[result].X;
 				gObj[result].StartY = gObj[result].Y;
-				gObjSetMonster(result,iSummonMonterType);
+				gObjSetMonster(result,iSummonMonterType,"CObjUseSkill::SkillSummon");
 				gObj[result].m_Attribute = 60;
 				gObj[result].MaxRegenTime = 0;
 				gObj[result].Dir = rand()%8;
 				bSummonSuccess = 1;
-				cSummonX = gObj[result].StartX;
-				cSummonY = gObj[result].StartY;
+				cSummonX = gObj[result].X;
+				cSummonY = gObj[result].Y;
 			}
 		}
 	}
 
-	GCMagicAttackNumberSend(lpObj,AT_SKILL_SUMMON,MAKE_NUMBERW(cSummonY, cSummonX),bSummonSuccess);
+	GCMagicAttackNumberSend(lpObj,AT_SKILL_SUMMON,(((cSummonX & 0xFF)&0xFF) | ((cSummonY & 0xFF)&0xFF) << 8) & 0xFFFF,bSummonSuccess);
 	return bSummonSuccess;
 }
 
-BOOL CObjUseSkill::SkillImmuneToMagic(int aIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillImmuneToMagic(int aIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3492,17 +6143,21 @@ BOOL CObjUseSkill::SkillImmuneToMagic(int aIndex, CMagicInf * lpMagic) //
 
 	LPOBJ lpObj = &gObj[aIndex];
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_IMMUNE_MAGIC) == FALSE && gObjCheckUsedBuffEffect(lpObj, AT_IMMUNE_HARM) == FALSE) //season3 add-on
+	if(lpObj->m_ImmuneToMagicCount <= 0 && lpObj->m_ImmuneToHarmCount <= 0)
 	{
-		gObjAddBuffEffect(lpObj, AT_IMMUNE_MAGIC, 0, 0, 0, 0, 10); //season3 add-on
+		lpObj->m_ImmuneToMagicCount = 10;
+		lpObj->m_ViewSkillState |= 128;
+		GCSkillInfoSend(lpObj,1,0x3F);
+		GCMagicAttackNumberSend(lpObj,AT_SKILL_IMMUNE_TO_MAGIC,lpObj->m_Index,1);
 		return true;
 	}
-
-	//GCMagicAttackNumberSend(lpObj,AT_SKILL_IMMUNE_TO_MAGIC,lpObj->m_Index,1);
 	return false;
 }
 
-BOOL CObjUseSkill::SkillImmuneToHarm(int aIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillImmuneToHarm(int aIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3511,38 +6166,18 @@ BOOL CObjUseSkill::SkillImmuneToHarm(int aIndex, CMagicInf * lpMagic) //
 
 	LPOBJ lpObj = &gObj[aIndex];
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_IMMUNE_MAGIC) == FALSE && gObjCheckUsedBuffEffect(lpObj, AT_IMMUNE_HARM) == FALSE) //season3 add-on
+	if(lpObj->m_ImmuneToMagicCount <= 0 && lpObj->m_ImmuneToHarmCount <= 0)
 	{
-		gObjAddBuffEffect(lpObj, AT_IMMUNE_HARM, 0, 0, 0, 0, 10); //season3 add-on
+		lpObj->m_ImmuneToHarmCount = 10;
+		lpObj->m_ViewSkillState |= 8;
+		GCSkillInfoSend(lpObj,1,0x02);
+		GCMagicAttackNumberSend(lpObj,AT_SKILL_IMMUNE_TO_HARM,lpObj->m_Index,1);
 		return true;
 	}
-
-	//GCMagicAttackNumberSend(lpObj,AT_SKILL_IMMUNE_TO_HARM,lpObj->m_Index,1);
 	return false;
 }
 
-int CObjUseSkill::RemoveSpecificSkillState(LPOBJ lpObj, int iSkillNumber) //
-{
-	if(lpObj->Type != OBJ_USER)
-	{
-		return false;
-	}
-
-	int iViewSkillState = 0;
-
-	if(iSkillNumber == AT_SKILL_ATTACK)
-	{
-		gObjRemoveBuffEffect(lpObj, AT_INCREASE_ATTACK); //season3 add-on
-	}
-	else if(iSkillNumber == AT_SKILL_DEFENSE)
-	{
-		gObjRemoveBuffEffect(lpObj, AT_INCREASE_DEFENSE); //season3 add-on
-	}
-
-	return true;
-}
-
-BOOL CObjUseSkill::RemoveAllCharacterInvalidMagicAndSkillState(LPOBJ lpObj) //004C61F0
+BOOL CObjUseSkill::RemoveAllCharacterInvalidMagicAndSkillState(LPOBJ lpObj)
 {
 	if(lpObj->Type != OBJ_USER)
 	{
@@ -3551,11 +6186,167 @@ BOOL CObjUseSkill::RemoveAllCharacterInvalidMagicAndSkillState(LPOBJ lpObj) //00
 
 	lpObj->m_SkillAttackTime = 0;
 	lpObj->m_SkillAttack = 0;
+	lpObj->m_ViewSkillState &= ~4;
 
+	if(lpObj->m_SkillReflectTime > 0)
+	{
+		lpObj->m_SkillReflectTime = 1;
+	}else
+	{
+		lpObj->m_SkillReflectTime = 0;
+		lpObj->m_SkillReflect = 0;
+	}
+
+	lpObj->m_SkillDragonSlayerTime = 0;
+	lpObj->m_SkillDragonSlayerDmg = 0;
+
+	lpObj->m_SkillRedArmorIgnoreTime = 0;
+	lpObj->m_SkillRedArmorIgnoreNum = 0;
+
+	lpObj->m_SkillFitnessTime = 0;
+
+	lpObj->m_SkillDefSuccessRateIncTime = 0;
+	lpObj->m_SkillDefSuccessRateIncNum = 0;
+
+	lpObj->m_SkillBerserkerTime = 0;
+	lpObj->m_SkillBerserkerDef = 0;
+	lpObj->m_SkillBerserkerAttack = 0;
+
+	lpObj->m_SkillMagicCircleTime = 0;
+	lpObj->m_SkillMagicCircle = 0;
+
+	lpObj->m_SkillReduceDamageTime = 0;
+	lpObj->m_SkillReduceDamage = 0;
+
+	lpObj->m_iSkillNPCSantaType = 0;
+	lpObj->m_iSkillNPCSantaTime = 0;
+
+	lpObj->m_SkillReduceDefenseTime = 0;
+	lpObj->m_SkillReduceDefense = 0;
+
+	lpObj->m_RFBufReduceDefenseTime = 0;
+	lpObj->m_RFBufReduceDefense = 0;	
+	
+	lpObj->m_SkillSleep = 0;
+	lpObj->m_SkillSleep_Time = 0;
+	lpObj->m_SkillSleep_MoveRange = 0;
+	lpObj->m_SkillSleep_AttackRange = 0;
+	lpObj->m_SkillSleep_ViewRange = 0;
+
+	lpObj->m_SkillNightTime = 0;
+	lpObj->m_SkillNight = 0;
+	
+	lpObj->m_SkillSummonerBookTime = 0;
+	lpObj->m_SkillSummonerBookTypeDmg = 0;
+	lpObj->m_SkillSummonerBookSender = 0;
+	lpObj->m_SkillSummonerBookDmg = 0;
+
+	lpObj->m_SkillRedStormTime=0;
+	lpObj->m_SkillRedStormDmg=0;
+	lpObj->m_SkillRedStormSender=0;
+
+	lpObj->m_SkillSwordSlashTime=0;
+	lpObj->m_SkillSwordSlashDmg=0;
+	lpObj->m_SkillSwordSlashSender=0;
+
+	lpObj->m_SkillExplotionTime = 0;
+
+	lpObj->m_SkillLightingStormTime = 0;
+	lpObj->m_SkillLightingStorm = 0;
+	lpObj->m_SkillLightingStormSender = 0;
+	
+	lpObj->m_SkillIT_Number = 0;
+	lpObj->m_SkillIT_Time = 0;
+
+	lpObj->m_SkillAttackTime2 = 0;
+	lpObj->m_SkillAttack2 = 0;
+	lpObj->m_SkillDefenseTime = 0;
+	lpObj->m_SkillDefense = 0;
+	lpObj->m_ViewSkillState &= ~8;
+
+	lpObj->m_WizardSkillDefenseTime = 0;
+	lpObj->m_WizardSkillDefense = 0;
+	lpObj->m_ViewSkillState &= ~256;
+
+	lpObj->m_SkillAddLifeTime = 0;
+	lpObj->m_SkillAddLife = 0;
+	lpObj->m_SkillAddLife_Mana = 0;
+	lpObj->m_SkillMagicCircleCriticalDamage = 0;
+	lpObj->m_ViewSkillState &= ~16;
+
+	lpObj->m_SkillHardenTime = 0;
+	lpObj->m_SkillHarden = 0;
+	lpObj->m_ViewSkillState &= ~32;
+
+	lpObj->m_SkillMagumReduceDefenseTime = 0;
+	lpObj->m_SkillMagumReduceDefense = 0;
+	lpObj->m_ViewSkillState &= ~64;
+
+	lpObj->SkillRecallParty_Time = 0;
+	lpObj->SkillAddCriticalDamageTime = 0;
+	lpObj->SkillAddCriticalDamage = 0;
+	lpObj->m_ViewSkillState &= ~2048;
+
+	lpObj->m_iSkillStunTime = 0;
+	lpObj->m_ViewSkillState &= ~4096;
+
+	lpObj->m_iSkillBrandOfSkillTime = 0;
+	lpObj->m_ViewSkillState &= ~512;
+
+	lpObj->m_iSkillInvisibleTime = 0;
+	lpObj->m_ViewSkillState &= ~16384;
+
+	lpObj->m_iSkillManaSwellTime = 0;
+	lpObj->m_iSkillManaSwell = 0;
+	lpObj->m_ViewSkillState &= ~8192;
+
+	lpObj->m_PoisonBeattackCount = 0;
+	lpObj->m_PoisonType = 0;
+	lpObj->m_PoisonAdd = 0;
+	lpObj->m_ViewSkillState &= ~1;
+
+	lpObj->m_ColdBeattackCount = 0;
+	lpObj->m_IceType = 0;
+	lpObj->m_ViewSkillState &= ~2;
+
+	lpObj->m_ImmuneToMagicCount = 0;
+	lpObj->m_ImmuneToHarmCount = 0;
+
+	lpObj->m_ViewSkillState &= ~128;
+	lpObj->m_ViewSkillState &= ~8;
+
+	lpObj->m_iMuseElfInfinityArrowSkillTime = 0;
+	lpObj->m_ViewSkillState &= ~1024;
 	return true;
 }
 
-BOOL CObjUseSkill::SkillKnightRush(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+void CObjUseSkill::GladiatorsGlory(int iSkillIcon, int aIndex,BOOL state)
+{
+	LPOBJ lpObj = &gObj[aIndex];
+
+	if(gObjIsNewClass(lpObj) == 0)
+	{
+		if (state)
+		{
+			lpObj->m_SkillGladiatorsGloryTime=3600;
+			lpObj->m_wExprienceRate += ReadConfig.DuelManager__GladiatorsGloryExp;
+			lpObj->m_wItemDropRate += ReadConfig.DuelManager__GladiatorsGloryDrop;
+
+			GCSkillInfoSend(lpObj,1,iSkillIcon);
+		} else {
+			lpObj->m_SkillGladiatorsGloryTime=0;
+			lpObj->m_wExprienceRate -= ReadConfig.DuelManager__GladiatorsGloryExp;
+			lpObj->m_wItemDropRate -= ReadConfig.DuelManager__GladiatorsGloryDrop;
+
+			GCSkillInfoSend(lpObj,0,iSkillIcon);
+		}
+	} else {
+		GCServerMsgStringSend("GladiatorsGlory is only for NON-Masters!", lpObj->m_Index, 1);
+	}
+}
+
+BOOL CObjUseSkill::SkillKnightRush(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3570,14 +6361,14 @@ BOOL CObjUseSkill::SkillKnightRush(int aIndex, int aTargetIndex, CMagicInf * lpM
 	}
 
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0,0,0);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0);
 	return true;
 }
 
 
 
 
-BOOL CObjUseSkill::SkillWizardJavalin(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+BOOL CObjUseSkill::SkillWizardJavalin(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3603,7 +6394,7 @@ BOOL CObjUseSkill::SkillWizardJavalin(int aIndex, int aTargetIndex, CMagicInf * 
 
 
 
-BOOL CObjUseSkill::SkillElfRush(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+BOOL CObjUseSkill::SkillElfRush(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3625,7 +6416,7 @@ BOOL CObjUseSkill::SkillElfRush(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 
 
 
-BOOL CObjUseSkill::SkillMagumOneFlash(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+BOOL CObjUseSkill::SkillMagumOneFlash(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3640,7 +6431,7 @@ BOOL CObjUseSkill::SkillMagumOneFlash(int aIndex, int aTargetIndex, CMagicInf * 
 	}
 
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0,0,0);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0);
 	gObjAddAttackProcMsgSendDelay(lpObj,50,aTargetIndex,100,lpMagic->m_Skill,0);
 	return true;
 }
@@ -3648,7 +6439,7 @@ BOOL CObjUseSkill::SkillMagumOneFlash(int aIndex, int aTargetIndex, CMagicInf * 
 
 
 
-BOOL CObjUseSkill::SkillMagumDeathCannon(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+BOOL CObjUseSkill::SkillMagumDeathCannon(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3663,14 +6454,14 @@ BOOL CObjUseSkill::SkillMagumDeathCannon(int aIndex, int aTargetIndex, CMagicInf
 	}
 
 	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0,0,0);
+	gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,0,1,0,0);
 	return true;
 }
 
 
 
 
-BOOL CObjUseSkill::SkillDarklordSpaceSplit(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+BOOL CObjUseSkill::SkillDarklordSpaceSplit(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3689,7 +6480,10 @@ BOOL CObjUseSkill::SkillDarklordSpaceSplit(int aIndex, int aTargetIndex, CMagicI
 	return true;
 }
 
-BOOL CObjUseSkill::SkillBrandOfSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillBrandOfSkill(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3701,12 +6495,15 @@ BOOL CObjUseSkill::SkillBrandOfSkill(int aIndex, int aTargetIndex, CMagicInf * l
 
 	if(lpObj->MapNumber != MAP_INDEX_CASTLESIEGE && lpObj->MapNumber != MAP_INDEX_CASTLEHUNTZONE)
 	{
-		return false;
+
+		//return false;
 	}
 
 	int count = 0;
 
-	gObjAddBuffEffect(lpObj, AT_DARK_ROD_SKILL, 0, 0, 0, 0, 10); //season3 add-on
+	lpObj->m_iSkillBrandOfSkillTime = 20;
+	lpObj->m_ViewSkillState |= 512;
+	GCSkillInfoSend(lpObj,1,0x13);		//Sacrifice Skill
 
 	GCMagicAttackNumberSend(lpObj,AT_SKILL_BRAND_OF_SKILL,lpObj->m_Index,1);
 
@@ -3722,7 +6519,9 @@ BOOL CObjUseSkill::SkillBrandOfSkill(int aIndex, int aTargetIndex, CMagicInf * l
 				{
 					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
 					{
-						gObjAddBuffEffect(&gObj[tObjNum], AT_DARK_ROD_SKILL, 0, 0, 0, 0, 10); //season3 add-on
+						gObj[tObjNum].m_iSkillBrandOfSkillTime = 20;
+						gObj[tObjNum].m_ViewSkillState |= 512;
+						GCSkillInfoSend(&gObj[tObjNum],1,0x13);	//Sacrifice Skill
 						GCMagicAttackNumberSend(lpObj,AT_SKILL_BRAND_OF_SKILL,tObjNum,1);
 					}
 				}
@@ -3739,7 +6538,29 @@ BOOL CObjUseSkill::SkillBrandOfSkill(int aIndex, int aTargetIndex, CMagicInf * l
 	return true;
 }
 
-BOOL CObjUseSkill::SkillStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic, BYTE btX, BYTE btY, BYTE btDir, BYTE btTargetPos) //
+
+BOOL CObjUseSkill::SkillStun(int aIndex, int aTargetIndex)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+	{
+		return false;
+	}
+
+	gObj[aTargetIndex].m_iSkillStunTime = 3;
+	gObj[aTargetIndex].m_ViewSkillState |= 4096;
+	GCSkillInfoSend(&gObj[aTargetIndex],1,0x3D);
+	//GCMagicAttackNumberSend(&gObj[aIndex],AT_SKILL_STUN,aTargetIndex,1);
+	gObjSetPosition(aTargetIndex,gObj[aTargetIndex].X,gObj[aTargetIndex].Y);
+
+	return true;
+}
+
+
+BOOL CObjUseSkill::SkillStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic, BYTE btX, BYTE btY, BYTE btDir, BYTE btTargetPos)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3777,7 +6598,9 @@ BOOL CObjUseSkill::SkillStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic, 
 					{
 						if(SkillElectricSparkHitBox.HitCheck(iangle,lpObj->X,lpObj->Y,gObj[tObjNum].X,gObj[tObjNum].Y))
 						{
-							gObjAddBuffEffect(&gObj[tObjNum], AT_STUN, 0, 0, 0, 0, 10); //season3 add-on
+							gObj[tObjNum].m_iSkillStunTime = 10;
+							gObj[tObjNum].m_ViewSkillState |= 4096;
+							GCSkillInfoSend(&gObj[tObjNum],1,0x3D);
 							GCMagicAttackNumberSend(lpObj,AT_SKILL_STUN,tObjNum,1);
 							gObjSetPosition(tObjNum,gObj[tObjNum].X,gObj[tObjNum].Y);
 						}
@@ -3796,7 +6619,10 @@ BOOL CObjUseSkill::SkillStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic, 
 	return true;
 }
 
-BOOL CObjUseSkill::SkillRemoveStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillRemoveStun(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 
 	if(OBJMAX_RANGE(aIndex) == false)
@@ -3829,7 +6655,9 @@ BOOL CObjUseSkill::SkillRemoveStun(int aIndex, int aTargetIndex, CMagicInf * lpM
 				{
 					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 6)
 					{
-						gObjRemoveBuffEffect(&gObj[tObjNum], AT_STUN);
+						gObj[tObjNum].m_iSkillStunTime = 0;
+						gObj[tObjNum].m_ViewSkillState &= ~4096;
+						GCSkillInfoSend(&gObj[tObjNum],0,0x3D);
 						GCMagicAttackNumberSend(lpObj,AT_SKILL_REMOVAL_STUN,tObjNum,1);
 					}
 				}
@@ -3846,8 +6674,10 @@ BOOL CObjUseSkill::SkillRemoveStun(int aIndex, int aTargetIndex, CMagicInf * lpM
 return true;
 }
 
-//Identical
-BOOL CObjUseSkill::SkillAddMana(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //004C67D0
+
+
+
+BOOL CObjUseSkill::SkillAddMana(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3865,20 +6695,21 @@ BOOL CObjUseSkill::SkillAddMana(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 	int count = 0;
 	gObjSetKillCount(aIndex,0);
 
-	int iSwelledMana = 0;
+	lpObj->AddMana -= lpObj->m_iSkillManaSwell;
 
-	iSwelledMana = float(lpObj->MaxMana + lpObj->AddMana) * 50 / 100;
-
-	gObjAddBuffEffect(lpObj, AT_SWELL_MANA, 5, iSwelledMana, 0, 0, 60); //season3 add-on
+	int iSwelledMana = short(lpObj->MaxMana + lpObj->AddMana) * 50 / 100;
+	lpObj->AddMana += iSwelledMana;
+	lpObj->m_iSkillManaSwellTime = 60;
+	lpObj->m_iSkillManaSwell = iSwelledMana;
 
 	GCManaSend(lpObj->m_Index,lpObj->MaxMana + lpObj->AddMana,0xFE,0,lpObj->MaxBP + lpObj->AddBP);
 
 	if( (lpObj->MaxMana + lpObj->AddMana) < lpObj->Mana)
 	{
 		lpObj->Mana = lpObj->MaxMana + lpObj->AddMana;
-		GCManaSend(lpObj->m_Index,lpObj->Mana,0xFF,0,lpObj->BP);
 	}
 
+	GCManaSend(lpObj->m_Index,lpObj->Mana,0xFF,0,lpObj->BP);
 	GCMagicAttackNumberSend(lpObj,AT_SKILL_ADD_MANA,lpObj->m_Index,1);
 
 	while( true )
@@ -3899,18 +6730,25 @@ BOOL CObjUseSkill::SkillAddMana(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 							continue;
 						}
 
-						iSwelledMana = float(gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana) * 50 / 100;
+						gObj[tObjNum].AddMana -= gObj[tObjNum].m_iSkillManaSwell;
+						iSwelledMana = short(gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana) * 50 / 100;
+						gObj[tObjNum].AddMana += iSwelledMana;
 
-						gObjAddBuffEffect(&gObj[tObjNum], AT_SWELL_MANA, 5, iSwelledMana, 0, 0, 60); //season3 add-on
+						gObj[tObjNum].m_iSkillManaSwellTime = 60;
+						gObj[tObjNum].m_iSkillManaSwell = iSwelledMana;
 
-						GCManaSend(tObjNum,gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana,0xFE,0,gObj[tObjNum].BP + gObj[tObjNum].MaxBP); //season3 add-on
+
+						GCManaSend(tObjNum,gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana,0xFE,0,gObj[tObjNum].MaxBP + gObj[tObjNum].AddBP);
 
 						if(gObj[tObjNum].Mana > gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana)
 						{
 							gObj[tObjNum].Mana = gObj[tObjNum].MaxMana + gObj[tObjNum].AddMana;
-							GCManaSend(tObjNum,gObj[tObjNum].Mana,0xFF,0,gObj[tObjNum].BP);
 						}
 
+						GCManaSend(tObjNum,gObj[tObjNum].Mana,0xFF,0,gObj[tObjNum].BP);
+
+						gObj[tObjNum].m_ViewSkillState |= 8192;
+						GCSkillInfoSend(&gObj[tObjNum],1,0x09);
 						GCMagicAttackNumberSend(lpObj,AT_SKILL_ADD_MANA,tObjNum,1);
 					}
 				}
@@ -3927,7 +6765,10 @@ BOOL CObjUseSkill::SkillAddMana(int aIndex, int aTargetIndex, CMagicInf * lpMagi
 	return true;
 }
 
-BOOL CObjUseSkill::SkillCloaking(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //
+
+
+
+BOOL CObjUseSkill::SkillCloaking(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -3949,31 +6790,26 @@ BOOL CObjUseSkill::SkillCloaking(int aIndex, int aTargetIndex, CMagicInf * lpMag
 
 	if(lpTargetObj->Type != OBJ_USER)
 	{
-		LogAddTD("[ANTI-HACK][Cloaking Skill] [%s][%s] Invalid Targeting  TargetType [%d] TargetClass [%d]",
-			lpObj->AccountID,lpObj->Name,lpTargetObj->Type,lpTargetObj->Class);
+		if(ReadConfig.AHLog == TRUE)
+		{
+			ANTI_HACK_LOG.Output("[ANTI-HACK][Cloaking Skill] [%s][%s] Invalid Targeting  TargetType [%d] TargetClass [%d]",
+				lpObj->AccountID,lpObj->Name,lpTargetObj->Type,lpTargetObj->Class);
+		}
 		return false;
 	}
 
 	gObjSetKillCount(aIndex,0);
 
 	GCMagicAttackNumberSend(lpObj,AT_SKILL_INVISIBLE,lpObj->m_Index,1);
+	lpTargetObj->m_iSkillInvisibleTime = 60;
+	lpTargetObj->m_ViewSkillState |= 16384;
 
-	gObjAddBuffEffect(lpTargetObj, AT_INVISIBILITY, 0, 0, 0, 0, 60); //season3 add-on
-
+	GCSkillInfoSend(lpTargetObj,1,0x12);
 	GCMagicAttackNumberSend(lpObj,AT_SKILL_INVISIBLE,aTargetIndex,1);
 	return true;
 }
 
-BOOL CObjUseSkill::RemoveCloakingEffect(int aIndex)
-{
-	if(OBJMAX_RANGE(aIndex) == false)
-	{
-		return false;
-	}
 
-	gObjRemoveBuffEffect(&gObj[aIndex], AT_INVISIBILITY); //season3 add-on
-	return true;
-}
 
 
 BOOL CObjUseSkill::SkillRemoveCloaking(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
@@ -3983,21 +6819,11 @@ BOOL CObjUseSkill::SkillRemoveCloaking(int aIndex, int aTargetIndex, CMagicInf *
 		return false;
 	}
 
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
+	LPOBJ lpObj = &gObj[aIndex];
 
 	if(lpObj->MapNumber != MAP_INDEX_CASTLESIEGE && lpObj->MapNumber != MAP_INDEX_CASTLEHUNTZONE)
 	{
 		return false;
-	}
-
-	LPOBJ lpTargetObj = &gObj[aTargetIndex]; //loc3
-
-	if((lpTargetObj->Authority&32) == 32) //Season 2.5 add-on
-	{
-		if(gObjCheckUsedBuffEffect(lpTargetObj, AT_INVISIBILITY) != FALSE) //season3 add-on
-		{
-			return false;
-		}
 	}
 
 	int tObjNum;
@@ -4016,7 +6842,9 @@ BOOL CObjUseSkill::SkillRemoveCloaking(int aIndex, int aTargetIndex, CMagicInf *
 			{
 				if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
 				{
-					gObjRemoveBuffEffect(&gObj[tObjNum], AT_INVISIBILITY); //season3 add-on
+					gObj[tObjNum].m_iSkillInvisibleTime = 0;
+					gObj[tObjNum].m_ViewSkillState &= ~16384;
+					GCSkillInfoSend(&gObj[tObjNum],0,0x12);
 					GCMagicAttackNumberSend(lpObj,AT_SKILL_REMOVAL_INVISIBLE,tObjNum,1);
 				}
 			}
@@ -4035,7 +6863,7 @@ BOOL CObjUseSkill::SkillRemoveCloaking(int aIndex, int aTargetIndex, CMagicInf *
 
 
 
-BOOL CObjUseSkill::SkillRemoveMagic(int aIndex, int aTargetIndex, CMagicInf * lpMagic) //identical gs-cs 56
+BOOL CObjUseSkill::SkillRemoveMagic(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
 {
 	if(OBJMAX_RANGE(aIndex) == false)
 	{
@@ -4066,6 +6894,7 @@ BOOL CObjUseSkill::SkillRemoveMagic(int aIndex, int aTargetIndex, CMagicInf * lp
 				if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
 				{
 					this->RemoveAllCharacterInvalidMagicAndSkillState(&gObj[tObjNum]);
+					GCSkillInfoSend(&gObj[tObjNum],0,1048576);	//???
 					GCMagicAttackNumberSend(lpObj,AT_SKILL_REMOVAL_MAGIC,tObjNum,1);
 				}
 			}
@@ -4081,7 +6910,212 @@ BOOL CObjUseSkill::SkillRemoveMagic(int aIndex, int aTargetIndex, CMagicInf * lp
 	return true;
 }
 
-int CObjUseSkill::SkillFenrirAttack(int aIndex,int aTargetIndex,CMagicInf * lpMagic) //identical gs-cs 56
+
+////////////////////////////////////////////////////////////////
+
+BOOL CObjUseSkill::SkillFireScream(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
+{
+	if(g_SkillAdditionInfo.GetFireScreamSkill() == false)
+		return false;
+	if( aIndex < OBJ_STARTUSERINDEX || aIndex > OBJMAX-1)
+		return FALSE;
+	if(OBJMAX_RANGE(aTargetIndex) == false)
+		return false;
+
+	LPOBJ lpObj = &gObj[aIndex];
+	LPOBJ lpTargetObj = &gObj[aTargetIndex];
+
+	if ( gObjAttackType(lpTargetObj,lpObj) == 0 )
+		return false;
+
+	if ( gclassObjAttack.PkCheck(lpObj, lpTargetObj) == FALSE )
+		return false;
+
+	if ( gclassObjAttack.CheckAttackArea(lpObj, lpTargetObj) == FALSE )
+		return false;
+
+	if(gObjIsConnected(lpObj->m_Index) == false || gObjIsConnected(lpTargetObj->m_Index) == false)
+		return false;
+
+	if(lpObj->Type != OBJ_USER)
+		return false;
+
+	if(lpObj->Class != CLASS_DARKLORD)
+		return false;
+
+	gObjAttack(lpObj,lpTargetObj,lpMagic,0,0,0,0);
+	return true;
+}
+
+
+
+BOOL CObjUseSkill::FireScreamExplosionAttack(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage)
+{
+	if(gObjIsConnected(lpObj->m_Index) == false && gObjIsConnected(lpTargetObj->m_Index) == false)
+	{
+		return false;
+	}
+
+	if(rand()%10000 > g_SkillAdditionInfo.GetFireScreamExplosionRate())
+	{
+		return false;
+	}
+
+	int iExplosionDamage = iAttackDamage / 10;
+	int iTarObjNum;
+
+	if(iExplosionDamage < 1)
+	{
+		return true;
+	}
+
+	int iCount = 0;
+	int EnableAttack;
+
+	while( true )
+	{
+		if(lpObj->VpPlayer2[iCount].state != 0)
+		{
+			iTarObjNum = lpObj->VpPlayer2[iCount].number;
+
+			if(iTarObjNum >= 0)
+			{
+				EnableAttack = 0;
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[iTarObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[iTarObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(gObj[iTarObjNum].Type == OBJ_MONSTER && gObj[iTarObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(lpTargetObj->Type == OBJ_USER && lpObj->Type == OBJ_USER && gObj[iTarObjNum].Type != OBJ_NPC)
+				{
+					EnableAttack = 1;
+				}
+				else if(lpTargetObj->m_cChaosCastleIndex == gObj[iTarObjNum].m_cChaosCastleIndex && lpTargetObj->m_cChaosCastleIndex != -1)
+				{
+					EnableAttack = 1;
+				}
+
+				if(EnableAttack != 0)
+				{
+					BYTE bAttackType = gObjAttackType(&gObj[iTarObjNum],lpObj);
+
+					if (bAttackType > 0)
+					{
+						if(lpObj->m_Index != gObj[iTarObjNum].m_Index)
+						{
+							int iSkillDistance = gObjCalDistance(lpTargetObj,&gObj[iTarObjNum]);
+
+							if(iSkillDistance <= g_SkillAdditionInfo.GetFireScreamExplosionAttackDistance())
+							{
+								gObjAddMsgSendDelay(lpObj,54,iTarObjNum,100,iExplosionDamage);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		iCount++;
+
+		if(iCount > MAX_VIEWPORT -1)
+		{
+			break;
+		}
+	}
+	return true;
+}
+
+
+BOOL CObjUseSkill::RemoveCloakingEffect(int aIndex)
+{
+	if(OBJMAX_RANGE(aIndex) == false)
+	{
+		return false;
+	}
+
+	gObj[aIndex].m_iSkillInvisibleTime = 0;
+	gObj[aIndex].m_ViewSkillState &= ~16384;
+	GCSkillInfoSend(&gObj[aIndex],0,0x12);
+	return true;
+}
+
+
+void CObjUseSkill::SpecificSkillAdditionTreat(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iAttackDamage)
+{
+	BYTE bySkillNum = lpMagic->m_Skill;
+
+	if((bySkillNum == AT_SKILL_FIRESCREAM) || (bySkillNum >= 525 && bySkillNum <= 529 ))
+	{
+		gObjUseSkill.FireScreamExplosionAttack(lpObj,lpTargetObj,iAttackDamage);
+	}
+}
+
+int CObjUseSkill::RemoveSpecificSkillState(LPOBJ lpObj, int iSkillNumber)
+{
+	if(lpObj->Type != OBJ_USER)
+	{
+		return false;
+	}
+
+	int iViewSkillState = 0;
+	int iSkillState = 0;
+
+	if(iSkillNumber == AT_SKILL_ATTACK)
+	{
+		lpObj->m_SkillAttackTime = 0;
+		lpObj->m_SkillAttack = 0;
+		iViewSkillState = 4;
+		iSkillState = 0x01;
+	}
+	else if(iSkillNumber == AT_SKILL_DEFENSE)
+	{
+		lpObj->m_SkillDefenseTime = 0;
+		lpObj->m_SkillDefense = 0;
+		iViewSkillState = 8;
+		iSkillState = 0x02;
+	}
+	else if(iSkillNumber == AT_SKILL_REFLECT)
+	{
+		if(lpObj->m_SkillReflectTime > 0)
+		{
+			lpObj->m_SkillReflectTime = 1;
+		}else
+		{
+			lpObj->m_SkillReflectTime = 0;
+			lpObj->m_SkillReflect = 0;
+		}
+	}
+	else if(iSkillNumber == AT_SKILL_REDUCE_DAMAGE)
+	{
+		lpObj->m_SkillReduceDamageTime = 0;
+		lpObj->m_SkillReduceDamage = 0;
+	}
+	else if(iSkillNumber == AT_SKILL_REDUCE_DEFENSE)
+	{
+		lpObj->m_SkillReduceDefenseTime = 0;
+		lpObj->m_SkillReduceDefense = 0;
+	}
+	else if(iSkillNumber == AT_SKILL_BERSERKER)
+	{
+		lpObj->m_SkillBerserkerTime = 0;
+		lpObj->m_SkillBerserkerDef = 0;
+		lpObj->m_SkillBerserkerAttack = 0;
+	}
+
+	lpObj->m_ViewSkillState &= ~iViewSkillState;
+	GCSkillInfoSend(lpObj,0,iSkillState);			//FIXED
+	return true;
+}
+
+int CObjUseSkill::SkillFenrirAttack(int aIndex,int aTargetIndex,CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 	int tObjNum;
@@ -4105,64 +7139,67 @@ int CObjUseSkill::SkillFenrirAttack(int aIndex,int aTargetIndex,CMagicInf * lpMa
 			if(tObjNum >= 0)
 			{
 				EnableAttack = 0;
-
-				if(gObj[tObjNum].Class < 100 || gObj[tObjNum].Class > 110)
+				
+				if ( gclassObjAttack.PkCheck(lpObj, &gObj[tObjNum]) == FALSE )
 				{
-					if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+					EnableAttack = 0;
+				}
+				else if ( gclassObjAttack.CheckAttackArea(lpObj, &gObj[tObjNum]) == FALSE )
+				{
+					EnableAttack = 0;
+				}
+				else if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				{
+					EnableAttack = 1;
+				}
+				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
+				{
+					EnableAttack = 1;
+				}
+				else
+				{
+					int CallMonIndex = gObj[tObjNum].m_Index;
+
+					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
+					{
+						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
+					}
+
+					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex]) == 1)
 					{
 						EnableAttack = 1;
-					}
-					else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-					{
-						EnableAttack = 1;
-					}
-//#if(_GSCS==1)
-					else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-					{
-						EnableAttack = 1;
-					}
-//#endif
-					else
-					{
-						int CallMonIndex = gObj[tObjNum].m_Index;
-
-
-						if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-						}
-
-						if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex]) == 1)
-						{
-							EnableAttack = 1;
-						}
 					}
 				}
 
 				if(EnableAttack != 0)
 				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 6)
-					{
-						bAttack = 0;
+					BYTE bAttackType = gObjAttackType(&gObj[tObjNum],lpObj);
 
-						if(HitCount >= 5)
+					if (bAttackType > 0)
+					{
+						if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 6)
 						{
 							bAttack = 0;
-						}
-						else
-						{
-							bAttack = 1;
-						}
 
-						if(tObjNum == aTargetIndex)
-						{
-							bAttack = 1;
-						}
+							if(HitCount >= 5)
+							{
+								bAttack = 0;
+							}
+							else
+							{
+								bAttack = 1;
+							}
 
-						if(bAttack != 0)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,300,lpMagic->m_Skill,0);
-							HitCount++;
+							if(tObjNum == aTargetIndex)
+							{
+								bAttack = 1;
+							}
+
+							if(bAttack != 0)
+							{
+								gObjAddAttackProcMsgSendDelay(lpObj,53,tObjNum,300,lpMagic->m_Skill,0);
+								HitCount++;
+							}
 						}
 					}
 				}
@@ -4179,8 +7216,7 @@ int CObjUseSkill::SkillFenrirAttack(int aIndex,int aTargetIndex,CMagicInf * lpMa
 	return true;
 }
 
-//Identical
-int CObjUseSkill::SkillInfinityArrow(int aIndex,int aTargetIndex,CMagicInf * lpMagic) //004C7600
+int CObjUseSkill::SkillInfinityArrow(int aIndex,int aTargetIndex,CMagicInf * lpMagic)
 {
 	LPOBJ lpObj = &gObj[aIndex];
 
@@ -4199,2483 +7235,79 @@ int CObjUseSkill::SkillInfinityArrow(int aIndex,int aTargetIndex,CMagicInf * lpM
 		return false;
 	}
 
-	if(gObjCheckUsedBuffEffect(lpObj, AT_INFINITY_ARROW) == TRUE)
+	if(lpObj->m_iMuseElfInfinityArrowSkillTime > 0)
 	{
 		return false;
 	}
 
-	gObjAddBuffEffect(lpObj, AT_INFINITY_ARROW, 0, 0, 0, 0, g_SkillAdditionInfo.GetInfinityArrowSkillTime());
+	lpObj->m_iMuseElfInfinityArrowSkillTime = g_SkillAdditionInfo.GetInfinityArrowSkillTime();
+	lpObj->m_ViewSkillState |= 1024;
+	GCSkillInfoSend(lpObj,1,0x06);
 	GCMagicAttackNumberSend(lpObj,0x4D,lpObj->m_Index,1);
-	LogAddTD("[%s][%s] Use Infinity Arrow Skill (Time:%d)(Character Level : %d)(ChangeUp: %d)",	lpObj->AccountID,lpObj->Name,g_SkillAdditionInfo.GetInfinityArrowSkillTime(),lpObj->Level,lpObj->ChangeUP);
-	return true;
-}
-////////////////////////////////////////////////////////////////
-
-BOOL CObjUseSkill::SkillFireScream(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
-{
-	if(g_SkillAdditionInfo.GetFireScreamSkill() == false)
-	{
-		return false;
-	}
-
-	LPOBJ lpObj = &gObj[aIndex];
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-
-	if(gObjIsConnected(lpObj->m_Index) == false && gObjIsConnected(lpTargetObj->m_Index) == false)
-	{
-		return false;
-	}
-
-	if(lpObj->Type != OBJ_USER)
-	{
-		return false;
-	}
-
-	if(lpObj->Class != CLASS_DARKLORD)
-	{
-		return false;
-	}
-
-	gObjAttack(lpObj,lpTargetObj,lpMagic,0,0,0,0,0,0);
+	LogAddTD("[%s][%s] Use Infinity Arrow Skill (Time:%d)(Character Level : %d)(ChangeUp: %d)",
+		lpObj->AccountID,lpObj->Name,lpObj->m_iMuseElfInfinityArrowSkillTime,lpObj->Level,lpObj->ChangeUP);
 	return true;
 }
 
-BOOL CObjUseSkill::FireScreamExplosionAttack(LPOBJ lpObj, LPOBJ lpTargetObj, int iAttackDamage)
+int CObjUseSkill::GetAddUseMana(LPOBJ lpObj,CMagicInf * lpMagic)
 {
+	int iRetValue = 0;
 
-	if(gObjIsConnected(lpObj->m_Index) == false && gObjIsConnected(lpTargetObj->m_Index) == false)
+	if(lpObj->Class == CLASS_ELF && lpObj->Type == OBJ_USER && lpObj->ChangeUP == 1 && lpObj->m_iMuseElfInfinityArrowSkillTime > 0)
 	{
-		return false;
-	}
-
-	if(rand()%10000 > g_SkillAdditionInfo.GetFireScreamExplosionRate())
-	{
-		return false;
-	}
-
-	int iExplosionDamage = iAttackDamage / 10;
-	int iTarObjNum;
-
-	if(iExplosionDamage < 1)
-	{
-		return true;
-	}
-
-	int iCount = 0;
-	BOOL bEnableAttack;
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[iCount].state != 0)
+		if(lpMagic->m_Skill == AT_SKILL_CROSSBOW
+			|| lpMagic->m_Skill == AT_SKILL_BOW
+			|| lpMagic->m_Skill == AT_SKILL_ICEARROW
+			|| lpMagic->m_Skill == AT_SKILL_PENETRATION
+			|| lpMagic->m_Skill == AT_SKILL_5CROSSBOW			//Skill Does not exist
+			|| lpMagic->m_Skill == AT_SKILL_FIVE_SHOT
+			|| lpMagic->m_Skill == 490
+			|| lpMagic->m_Skill == 491
+			|| lpMagic->m_Skill == 492
+			|| lpMagic->m_Skill == 493
+			|| lpMagic->m_Skill == 494)
 		{
-			iTarObjNum = lpObj->VpPlayer2[iCount].number;
+			int iArrowLevel = 0;
 
-			if(iTarObjNum >= 0)
+			CItem * Right = &lpObj->pInventory[0];
+			CItem * Left = &lpObj->pInventory[1];
+
+			if(Right->m_Type >= ITEMGET(4,8) && Right->m_Type <= ITEMGET(4,14)
+				|| Right->m_Type == ITEMGET(4,16)
+				|| Right->m_Type == ITEMGET(4,18)
+				|| Right->m_Type == ITEMGET(4,19))
 			{
-				bEnableAttack = FALSE;
-
-				if(gObj[iTarObjNum].Type == OBJ_MONSTER && gObj[iTarObjNum].m_RecallMon < 0)
+				if(Left->m_Type == ITEMGET(4,7))
 				{
-					bEnableAttack = TRUE;
-				}
-				else if(lpTargetObj->Type == OBJ_USER && lpObj->Type == OBJ_USER && gObj[iTarObjNum].Type != OBJ_NPC)
-				{
-					if(lpTargetObj->m_Index == iTarObjNum)
-					{
-						bEnableAttack = TRUE;
-					}
-
-					if(gObjGetRelationShip(lpObj, &gObj[iTarObjNum]) == 2) //rival??
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-				else if(lpTargetObj->m_cChaosCastleIndex == gObj[iTarObjNum].m_cChaosCastleIndex && lpTargetObj->m_cChaosCastleIndex != -1)
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(gObj[iTarObjNum].Type != OBJ_NPC && gObj[iTarObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					if(lpObj->m_btCsJoinSide != gObj[iTarObjNum].m_btCsJoinSide && gObj[iTarObjNum].m_btCsJoinSide > 0)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-//#endif
-				if(bEnableAttack != FALSE)
-				{
-					if(lpObj->m_Index != gObj[iTarObjNum].m_Index)
-					{
-						int iSkillDistance = gObjCalDistance(lpTargetObj,&gObj[iTarObjNum]);
-
-						if(iSkillDistance <= g_SkillAdditionInfo.GetFireScreamExplosionAttackDistance())
-						{
-							gObjAddMsgSendDelay(lpObj,54,iTarObjNum,100,iExplosionDamage);
-						}
-					}
+					iArrowLevel = Left->m_Level;
 				}
 			}
-		}
-
-		iCount++;
-
-		if(iCount > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-	return true;
-}
-
-void CObjUseSkill::SpecificSkillAdditionTreat(LPOBJ lpObj, LPOBJ lpTargetObj, CMagicInf * lpMagic, int iAttackDamage)
-{
-	int inSkillNum = lpMagic->m_Skill;
-
-	if(inSkillNum == AT_SKILL_FIRESCREAM || 
-		(inSkillNum >= 525 && inSkillNum < 530)) //season4 add-on
-	{
-		gObjUseSkill.FireScreamExplosionAttack(lpObj,lpTargetObj,iAttackDamage);
-	}
-}
-
-//Identical
-int CObjUseSkill::SkillEletrictSurge(int aIndex, int aTargetIndex, CMagicInf* lpMagic) //004C7B90
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2 ebp-8
-	int Result = 0; //loc3 ebp-c
-	int tObjNum; //loc4 ebp-10
-
-	int fangle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y); //loc5 -> ebp-14
-
-	int count = 0; //loc6 ebp-18
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc8 -> ebp-1c
-	int EnableAttack; //loc9 -> ebp-20
-
-	while ( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
+			else if(Left->m_Type >= ITEMGET(4,0) && Left->m_Type <= ITEMGET(4,6)
+				|| Left->m_Type == ITEMGET(4,17)
+				|| Left->m_Type == ITEMGET(4,20)
+				|| Left->m_Type == ITEMGET(4,21)
+				|| Left->m_Type == ITEMGET(4,22)
+				|| Left->m_Type == ITEMGET(4,23))
 			{
-				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
+				if(Right->m_Type == ITEMGET(4,15))
 				{
-					EnableAttack = 1;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-				{
-					EnableAttack = 1;
-				}
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-					{
-						EnableAttack = 1;
-					}
-				}
-
-				if(EnableAttack != 0)
-				{
-					if(tObjNum == aTargetIndex)
-					{
-						if(gCheckSkillDistance(aIndex, aTargetIndex, lpMagic->m_Skill) != FALSE)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,700,lpMagic->m_Skill,0);
-							Result = 1;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-	return Result;
-}
-
-//Identical
-int CObjUseSkill::SkillEletrictSurgeProc(LPOBJ lpObj, LPOBJ lpTargetObj, int iSkillID, int iAttackDamage, int flag, int Message) //004C7E40
-{
-	if(gObjIsConnected(lpObj->m_Index) == FALSE && gObjIsConnected(lpTargetObj->m_Index) == FALSE)
-	{
-		return false;
-	}
-
-	if(iAttackDamage <= 0)
-	{
-		return 0;
-	}
-
-	int iDamage = iAttackDamage * Message/ 100; //loc2
-
-	int tObjNum; //loc3
-	int count = 0; //loc4
-
-	BOOL bEnableAttack;
-	
-	while ( true )
-	{
-		if ( lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if ( tObjNum >= 0 )
-			{
-				bEnableAttack = FALSE;
-
-				if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(lpTargetObj->m_cChaosCastleIndex != -1 && lpTargetObj->m_cChaosCastleIndex == gObj[tObjNum].m_cChaosCastleIndex)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(lpTargetObj->Type == OBJ_USER && lpObj->Type == OBJ_USER && gObj[tObjNum].Type != OBJ_NPC)
-				{
-					bEnableAttack = TRUE;
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(lpObj->m_Index != gObj[tObjNum].m_Index)
-					{
-						int dis = gObjCalDistance(lpTargetObj, &gObj[tObjNum]);
-
-						if(dis <= flag)
-						{
-							gObjAddMsgSendDelay(lpObj, 58, tObjNum, 300, iDamage);
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	return true;
-}
-
-int CObjUseSkill::SkillDrainLife(int aIndex, int aTargetIndex, CMagicInf* lpMagic)
-{
-	if(OBJMAX_RANGE(aTargetIndex) == false) //season4 add-on
-	{
-		return 0;
-	}
-
-	LPOBJ lpObj = &gObj[aIndex]; //loc2 ebp-8
-	int Result = 0; //loc3 ebp-c
-	int tObjNum; //loc4 ebp-10
-
-	int fangle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y); //loc5 -> ebp-14
-
-	int count = 0; //loc6 ebp-18
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc8 -> ebp-1c
-	int EnableAttack; //loc9 -> ebp-20
-
-	while ( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					EnableAttack = 1;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-				{
-					EnableAttack = 1;
-				}
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-					{
-						EnableAttack = 1;
-					}
-				}
-
-				if(EnableAttack != 0)
-				{
-					if(tObjNum == aTargetIndex)
-					{
-						if(gCheckSkillDistance(aIndex, aTargetIndex, lpMagic->m_Skill) != FALSE)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,700,lpMagic->m_Skill,0);
-							Result = 1;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-	return Result;
-}
-
-struct PMSG_SKILL_TARGET_COUNT
-{
-	PBMSG_HEAD2 h;
-	BYTE MagicNumberH;
-	BYTE MagicNumberL;
-	WORD Index;
-	BYTE Count;
-};
-
-struct PMSG_SKILL_TARGET
-{
-	WORD Target;
-};
-
-int CObjUseSkill::SkillChainLightning(int aIndex, int aTargetIndex, CMagicInf* lpMagic)
-{
-	LPOBJ lpObj = &gObj[aIndex];
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-
-	int bSuccess = TRUE;
-	int tObjNum;
-	int count = 0;
-
-	int Target[3];
-
-	Target[0] = -1;
-	Target[1] = -1;
-	Target[2] = -1;
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	int DuelIndex = lpObj->m_iDuelUser;
-	int EnableAttack;
-
-	if( gCheckSkillDistance(aIndex,aTargetIndex,lpMagic->m_Skill) == FALSE )
-	{
-		return FALSE;
-	}
-
-	Target[0] = aTargetIndex;
-
-	while( TRUE )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if( tObjNum >= 0 )
-			{
-				EnableAttack = 0;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					EnableAttack = 1;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-				{
-					EnableAttack = 1;
-				}
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-					{
-						EnableAttack = 1;
-					}
-				}
-
-				if( EnableAttack != 0 )
-				{
-					if( gObj[tObjNum].X >= (lpTargetObj->X -1) &&
-						gObj[tObjNum].X <= (lpTargetObj->X +1) &&
-						gObj[tObjNum].Y >= (lpTargetObj->Y -1) &&
-						gObj[tObjNum].Y <= (lpTargetObj->Y +1) &&
-						gObj[tObjNum].Type == OBJ_MONSTER )
-					{
-						Target[1] = tObjNum;
-
-						if(Target[2] != -1)
-							break;
-					}
-					else if( gObj[tObjNum].X >= (lpTargetObj->X -2) &&
-						gObj[tObjNum].X <= (lpTargetObj->X +2) &&
-						gObj[tObjNum].Y >= (lpTargetObj->Y -2) &&
-						gObj[tObjNum].Y <= (lpTargetObj->Y +2) &&
-						gObj[tObjNum].Type == OBJ_MONSTER )
-					{
-						Target[2] = tObjNum;
-	
-						if(Target[1] != -1)
-							break;
-					}
-				}
-			}
-		}
-
-		count++;
-
-		if( count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	if( Target[2] == -1 )
-	{
-		Target[2] = Target[1];
-	}
-
-	if( Target[1] == -1 )
-	{
-		Target[1] = Target[0];
-		Target[2] = Target[1];
-	}
-
-	int lOfs = 0;
-	BYTE cBUFF[256];
-	PMSG_SKILL_TARGET_COUNT pMsg;
-
-	pMsg.MagicNumberH = SET_NUMBERH(lpMagic->m_Skill);
-	pMsg.MagicNumberL = SET_NUMBERL(lpMagic->m_Skill);
-	pMsg.Index = aIndex;
-	pMsg.Count = 3;
-
-	lOfs += sizeof(pMsg);
-
-	int i;
-	for(i = 0; i < 3; i++)
-	{
-		WORD wIndex = Target[i];
-		memcpy(&cBUFF[lOfs],&wIndex,2);
-		lOfs+= 2;
-	}
-
-	PHeadSubSetB((LPBYTE)&pMsg,0xBF,10,lOfs);
-	memcpy(&cBUFF[0],&pMsg,sizeof(pMsg));
-
-	if( lpObj->Type == OBJ_USER )
-	{
-		DataSend(lpObj->m_Index,(LPBYTE)&cBUFF[0],pMsg.h.size);
-	}
-
-	MsgSendV2(lpObj,(LPBYTE)&cBUFF[0],pMsg.h.size);
-
-	for(i = 0; i < 3; i++)
-	{
-		gObjAddAttackProcMsgSendDelay(lpObj,50,Target[i],200 + 200*i,lpMagic->m_Skill,i+1);
-	}
-	return bSuccess;
-}
-
-//Identical
-int CObjUseSkill::SkillSummonerBook(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex) //004C8960
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int result = 0; //loc3
-	int count = 0; //loc4
-
-	int tObjNum; //loc5 -> ebp-14
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc6
-
-	int angle = this->GetAngle(lpObj->X,lpObj->Y,x,y); //loc7
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);	
-
-	int iSkillDistance = MagicDamageC.GetSkillDistance(lpMagic->m_Skill); //loc8
-
-	BOOL bEnableAttack;
-
-	if(this->CalDistance(lpObj->X,lpObj->Y,x,y) <= iSkillDistance)
-	{
-		while( true )
-		{
-			if(lpObj->VpPlayer2[count].state != 0)
-			{
-				tObjNum = lpObj->VpPlayer2[count].number;
-
-				if(tObjNum >= 0)
-				{
-					bEnableAttack = FALSE; //ebp24
-
-					if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-					{
-						bEnableAttack = TRUE;
-					}
-					else if(tObjNum == aTargetIndex || DuelIndex == tObjNum)
-					{
-						bEnableAttack = TRUE;
-					}
-					else
-					{
-						int CallMonIndex = gObj[tObjNum].m_Index;
-
-						if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-						}
-
-						if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-						{
-							bEnableAttack = TRUE;
-						}
-					}
-
-					if(bEnableAttack != FALSE)
-					{
-						if(gObj[tObjNum].X >= x-2 && gObj[tObjNum].X <= x+2 && gObj[tObjNum].Y >= y-2 && gObj[tObjNum].Y <= y+2)
-						{
-							gObj[tObjNum].lpAttackObj = lpObj;
-							gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, 1000, lpMagic->m_Skill, 0);
-							result = 1;
-						}
-					}
+					iArrowLevel = Right->m_Level;
 				}
 			}
 
-			count++;
-			if(count > MAX_VIEWPORT -1)
+			if(iArrowLevel == 0)
 			{
-				break;
+				iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus0();
+			}
+			else if(iArrowLevel == 1)
+			{
+				iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus1();
+			}
+			else if(iArrowLevel == 2)
+			{
+				iRetValue = g_SkillAdditionInfo.GetInfinityArrowMPConsumptionPlus2();
 			}
 		}
 	}
-
-	return result;
+	return iRetValue;
 }
-
-//Identical
-int CObjUseSkill::SkillDamageReflection(int aIndex,int aTargetIndex,CMagicInf * lpMagic) //004C8CF0
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-	LPOBJ lpTargetObj = &gObj[aTargetIndex]; //loc3
-
-	if(lpTargetObj->Type != OBJ_USER || lpObj->Class != CLASS_SUMMONER)
-	{
-		return FALSE;
-	}
-
-	int result = 0; //loc4 ebp10
-
-	int tObjNum; //loc5 -> ebp-14
-
-	int angle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y); //loc6 ebp18
-
-	int count = 0; //loc7 ebp1c
-
-	int DuelIndex; //loc8 ebp20
-
-	BOOL bEnableAttack; //loc9 ebp24
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	DuelIndex = lpObj->m_iDuelUser;
-
-	if(aIndex == aTargetIndex)
-	{
-		int iValue = g_SkillAdditionInfo.m_ReflectEffectStart + (lpObj->Energy / g_SkillAdditionInfo.m_ReflectEffectDiv);
-		
-		if( g_SkillAdditionInfo.m_ReflectEffectMax > 0 && iValue > g_SkillAdditionInfo.m_ReflectEffectMax )
-		{
-			iValue = g_SkillAdditionInfo.m_ReflectEffectMax;
-		}
-
-		int iTimer = g_SkillAdditionInfo.m_ReflectTimeStart + (lpObj->Energy / g_SkillAdditionInfo.m_ReflectTimeDiv);
-		
-		if( g_SkillAdditionInfo.m_ReflectTimeMax > 0 && iTimer > g_SkillAdditionInfo.m_ReflectTimeMax )
-		{
-			iTimer = g_SkillAdditionInfo.m_ReflectTimeMax;
-		}
-
-		if(gObjCheckPowerfulEffect(lpTargetObj, AT_DAMAGE_REFLECTION, iValue, 0) == 1)
-		{
-			GCMagicAttackNumberSend(lpObj,217,lpTargetObj->m_Index,0);
-			return FALSE;
-		}
-
-		gObjAddBuffEffect(lpTargetObj, AT_DAMAGE_REFLECTION, 24, iValue, 0, 0, iTimer);
-		result = 1;
-	}
-	else
-	{
-		while( true )
-		{
-			if(CC_MAP_RANGE(lpObj->MapNumber) != FALSE)
-			{
-				break;
-			}
-
-			if(lpObj->VpPlayer2[count].state != 0)
-			{
-				tObjNum = lpObj->VpPlayer2[count].number;
-
-				if(tObjNum >= 0)
-				{
-					bEnableAttack = FALSE; //ebp24
-
-					if(lpObj->VpPlayer2[count].type == OBJ_USER)
-					{
-						bEnableAttack = TRUE;
-					}
-					else if(tObjNum == aTargetIndex || DuelIndex != tObjNum)
-					{
-						bEnableAttack = TRUE;
-					}
-
-					if(bEnableAttack != FALSE)
-					{
-						if(tObjNum == aTargetIndex)
-						{
-							if(gCheckSkillDistance(aIndex, aTargetIndex, lpMagic->m_Skill) != FALSE)
-							{
-								lpTargetObj->lpAttackObj = lpObj;
-
-								int iValue = g_SkillAdditionInfo.m_ReflectEffectStart + (lpObj->Energy / g_SkillAdditionInfo.m_ReflectEffectDiv);
-
-								if( g_SkillAdditionInfo.m_ReflectEffectMax > 0 && iValue > g_SkillAdditionInfo.m_ReflectEffectMax )
-								{
-									iValue = g_SkillAdditionInfo.m_ReflectEffectMax;
-								}
-
-								int iTimer = g_SkillAdditionInfo.m_ReflectTimeStart + (lpObj->Energy / g_SkillAdditionInfo.m_ReflectTimeDiv);
-
-								if( g_SkillAdditionInfo.m_ReflectTimeMax > 0 && iTimer > g_SkillAdditionInfo.m_ReflectTimeMax )
-								{
-									iTimer = g_SkillAdditionInfo.m_ReflectTimeMax;
-								}
-								
-								if(gObjCheckPowerfulEffect(lpTargetObj, AT_DAMAGE_REFLECTION, iValue, 0) == 1)
-								{
-									GCMagicAttackNumberSend(lpObj,217,lpTargetObj->m_Index,0);
-									return FALSE;
-								}
-
-								gObjAddBuffEffect(lpTargetObj, AT_DAMAGE_REFLECTION, 24, iValue, 0, 0, iTimer);
-								result = 1;
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			count++;
-			
-			if(count > MAX_VIEWPORT -1)
-			{
-				break;
-			}
-		}
-	}
-	
-	return result;
-}
-
-int CObjUseSkill::SkillSleep(int aIndex,int aTargetIndex,CMagicInf * lpMagic) //004C9100
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int result = 0; //loc3 ebpC
-
-	int tObjNum; //loc4 -> ebp-10
-
-	int angle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y); //loc5 ebp14
-
-	int count = 0; //loc6 ebp18
-
-	int DuelIndex; //loc7 ebp1c
-
-	BOOL bEnableAttack; //loc8 ebp20
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	DuelIndex = lpObj->m_iDuelUser;
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE; //ebp20
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(tObjNum == aTargetIndex && DuelIndex == tObjNum)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if (CC_MAP_RANGE(lpObj->MapNumber) != FALSE || IT_MAP_RANGE(lpObj->MapNumber) != FALSE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(tObjNum == aTargetIndex)
-					{
-						if(gCheckSkillDistance(aIndex, aTargetIndex, lpMagic->m_Skill) != FALSE)
-						{
-							gObjAttack(lpObj,&gObj[aTargetIndex],lpMagic,1,0,0,0,0,0);
-							result = 1;
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	return result;
-}
-
-int CObjUseSkill::SkillBlind(int aIndex,int aTargetIndex,CMagicInf * lpMagic)
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int result = 0; //loc3 ebpC
-
-	int tObjNum; //loc4 -> ebp-10
-
-	int angle = this->GetAngle(lpObj->X,lpObj->Y,gObj[aTargetIndex].X,gObj[aTargetIndex].Y); //loc5 ebp14
-
-	int count = 0; //loc6 ebp18
-
-	int DuelIndex; //loc7 ebp1c
-
-	int loc8; //ebp20
-	int loc9; //ebp24
-
-	BOOL bEnableAttack; //loc10 ebp28
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	DuelIndex = lpObj->m_iDuelUser;
-
-	loc8 = 0;
-
-	if(gObj[aTargetIndex].Type == OBJ_MONSTER)
-	{
-		loc8 = lpObj->m_AttackRating * (lpObj->Energy / 50 + 20) / 100;
-	}
-	else
-	{
-		loc9 = lpObj->Level*3 + (lpObj->Dexterity * 35)/10;
-		loc8 = loc9 * (lpObj->Energy / 50 + 20) / 100;
-	}
-
-	if(loc8 < rand()%100)
-	{
-		GCDamageSend(lpObj->m_Index, gObj[aTargetIndex].m_Index, 0, 0, 0, 0);
-		return FALSE;
-	}
-	else
-	{
-		while( true )
-		{
-			if(lpObj->VpPlayer2[count].state != 0)
-			{
-				tObjNum = lpObj->VpPlayer2[count].number;
-
-				if(tObjNum >= 0)
-				{
-					bEnableAttack = FALSE;
-
-					if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-					{
-						bEnableAttack = TRUE;
-					}
-					else if(tObjNum == aTargetIndex && DuelIndex == tObjNum)
-					{
-						bEnableAttack = TRUE;
-					}
-					else if (CC_MAP_RANGE(lpObj->MapNumber) != FALSE || IT_MAP_RANGE(lpObj->MapNumber) != FALSE)
-					{
-						bEnableAttack = TRUE;
-					}
-//#if(_GSCS==1)
-					else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-					{
-						bEnableAttack = TRUE;
-					}
-//#endif
-					else
-					{
-						int CallMonIndex = gObj[tObjNum].m_Index;
-
-						if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-						}
-
-						if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-						{
-							bEnableAttack = TRUE;
-						}
-					}
-
-					if(bEnableAttack != FALSE)
-					{
-						if(tObjNum == aTargetIndex)
-						{
-							if(gCheckSkillDistance(aIndex, aTargetIndex, lpMagic->m_Skill) != FALSE)
-							{
-								int iValue1 = 20 + lpObj->Energy / 50;
-								int iValue2 = 0;
-
-								if(gObj[aTargetIndex].Type == OBJ_MONSTER)
-								{
-									iValue2 = 9 + lpObj->Energy / 70 - gObj[aTargetIndex].Level / 15;
-								}
-								else if(gObj[aTargetIndex].Type == OBJ_USER)
-								{
-									iValue2 = ( ( lpObj->Energy / 210 ) + ( ( gObj[aTargetIndex].Level - gObj[aTargetIndex].Level ) / 100 ) + 3 );
-								}
-
-								if(gObjCheckPowerfulEffect(&gObj[aTargetIndex], AT_BLIND, iValue1, 0) == 1)
-								{
-									GCMagicAttackNumberSend(lpObj,220,aTargetIndex,0);
-									return FALSE;
-								}
-
-								gObjAddBuffEffect(&gObj[aTargetIndex], AT_BLIND, 26, iValue1, 0, 0, iValue2);
-								result = 1;
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			count++;
-				
-			if(count > MAX_VIEWPORT -1)
-			{
-				break;
-			}
-		}
-	}
-	return result;
-}
-
-int CObjUseSkill::SkillWeakness(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex)
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int result = 0; //loc3 ebpC
-
-	int tObjNum; //loc4 -> ebp-10
-
-	int count = 0; //loc5 ebp14
-
-	int maxhit = 0; //loc6 ebp18
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc7 ebp1c
-
-	BOOL bEnableAttack; //loc8 ebp20
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(DuelIndex == tObjNum)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if (CC_MAP_RANGE(lpObj->MapNumber) != FALSE || IT_MAP_RANGE(lpObj->MapNumber) != FALSE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
-					{
-						gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,700,lpMagic->m_Skill,0);
-						maxhit++;
-
-						if(maxhit >= 5)
-						{
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	return result;
-}
-
-int CObjUseSkill::SkillInnovation(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex)
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int result = 0; //loc3 ebpC
-
-	int tObjNum; //loc4 -> ebp-10
-
-	int count = 0; //loc5 ebp14
-
-	int maxhit = 0; //loc6 ebp18
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc7 ebp1c
-
-	BOOL bEnableAttack; //loc8 ebp20
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(DuelIndex == tObjNum)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if (CC_MAP_RANGE(lpObj->MapNumber) != FALSE || IT_MAP_RANGE(lpObj->MapNumber) != FALSE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 5)
-					{
-						gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,700,lpMagic->m_Skill,0);
-						maxhit++;
-
-						if(maxhit >= 5)
-						{
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	return result;
-}
-
-//Season4 Skills #START!
-BOOL CObjUseSkill::SkillLightningShock(int aIndex, int aTargetIndex, CMagicInf* lpMagic) //004F7090
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int loc3 = 0; //loc3
-	BOOL bAttack = FALSE; //loc4
-	int tObjNum; //loc5
-	int count = 0; //loc6
-	int loc7 = 0; //loc7
-	int loc8 = 7; //loc8
-	int maxhit = 0; //loc9
-
-	BOOL bEnableAttack; //loc10
-
-	GCMagicAttackNumberSend(lpObj,lpMagic->m_Skill,aTargetIndex,1);
-
-	int loc11 = 1;
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc12
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if (CC_MAP_RANGE(lpObj->MapNumber) != FALSE || IT_MAP_RANGE(lpObj->MapNumber) != FALSE)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(tObjNum == aTargetIndex && loc11 == 1 || DuelIndex == tObjNum )
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = 1;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(gObjCalDistance(lpObj,&gObj[tObjNum]) < 7)
-					{
-						maxhit++;
-
-						if(maxhit > 5)
-						{
-							if(rand()%2 != 0)
-							{
-								bAttack = TRUE;
-							}
-						}
-						else
-						{
-							bAttack = TRUE;
-						}
-
-						if(maxhit > 12)
-						{
-							bAttack = FALSE;
-						}
-
-						if(bAttack == TRUE)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj,50,tObjNum,250,lpMagic->m_Skill,0);
-						}						
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-
-	return TRUE;
-}
-
-BOOL CObjUseSkill::SkillBerserker(int aIndex, CMagicInf* lpMagic) //004F74C0
-{
-	if(OBJMAX_RANGE(aIndex) == false)
-	{
-		return FALSE;
-	}
-
-	LPOBJ lpObj = &gObj[aIndex];
-
-	int iDuration	= lpObj->Energy / g_SkillAdditionInfo.m_BerserkerTimeDiv + g_SkillAdditionInfo.m_BerserkerTimeStart;
-	
-	if( g_SkillAdditionInfo.m_BerserkerTimeMax > 0 && iDuration > g_SkillAdditionInfo.m_BerserkerTimeMax )
-	{
-		iDuration = g_SkillAdditionInfo.m_BerserkerTimeMax;
-	}
-
-	int iIncMana	= lpObj->Energy / g_SkillAdditionInfo.m_BerserkerManaIncDiv;
-	int iDecLife	= lpObj->Energy / g_SkillAdditionInfo.m_BerserkerLifeDecDiv;
-
-	gObjAddBuffEffect(lpObj, AT_BERSERKER, 31, iIncMana, 32, iDecLife, iDuration); // ->
-	GCMagicAttackNumberSend(lpObj,218,lpObj->m_Index,1);
-
-	return TRUE;
-
-}
-
-int CObjUseSkill::SkillPollutionStart(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex, int Flag) //004F75D0
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int SkillResult = 0; //loc3
-
-	if(Flag == 59)
-	{
-		GCMagicAttackNumberSend(lpObj,(WORD)lpMagic->m_Skill,aTargetIndex,1);
-	}
-
-	SkillResult = this->SkillAreaMonsterAttack(aIndex, lpMagic, x, y, aTargetIndex, 3, 1, 0);
-
-	if(Flag >= 59 && Flag < 64)
-	{
-		gObjAddMsgSendDelay(lpObj, 59, aTargetIndex, 1000, (MAKE_NUMBERDW(Flag, MAKE_NUMBERW(y,x))));
-	}
-
-	return SkillResult;
-}
-
-//Summoner Pollution + Gigantic Storm + Strike of Destruction :)
-//-> Need rewriteeeeeeee
-int CObjUseSkill::SkillAreaMonsterAttack(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex, int Dis, int Flag, int Delay) //004F7700
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	int SkillResult = 0; //loc3
-
-	int count = 0; //loc4
-	int tObjNum; //loc5
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc6
-
-	int hitcount = 0; //loc7
-
-	BOOL bAttack = FALSE; //loc8
-
-	int maxhit = 4; //loc9
-
-	int loc10 = 8; //loc10
-
-	if(lpMagic->m_Skill == 237)
-	{
-		maxhit = 8;
-		loc10 = 12;
-	}
-
-	int iSkillDistance = MagicDamageC.GetSkillDistance(lpMagic->m_Skill); //loc11
-
-	BOOL bEnableAttack; //loc12
-
-	if(this->CalDistance(lpObj->X,lpObj->Y,x,y) <= iSkillDistance)
-	{
-		while( true )
-		{
-			if(lpObj->VpPlayer2[count].state != 0)
-			{
-				tObjNum = lpObj->VpPlayer2[count].number;
-
-				if(tObjNum >= 0)
-				{
-					bEnableAttack = FALSE;
-
-					if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-					{
-						bEnableAttack = TRUE;
-					}
-					else if(tObjNum == aTargetIndex && Flag == 1 || DuelIndex == tObjNum)
-					{
-						bEnableAttack = TRUE;
-					}
-//#if(_GSCS==1)
-					else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-					{
-						bEnableAttack = TRUE;
-					}
-//#endif
-					else
-					{
-						int CallMonIndex = gObj[tObjNum].m_Index;
-
-						if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-						{
-							CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-						}
-
-						if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-						{
-							bEnableAttack = TRUE;
-						}
-					}
-
-					if(bEnableAttack != FALSE)
-					{
-						if(gObj[tObjNum].X >= x-Dis && gObj[tObjNum].X <= x+Dis && gObj[tObjNum].Y >= y-Dis && gObj[tObjNum].Y <= y+Dis)
-						{
-							gObj[tObjNum].lpAttackObj = lpObj;
-							hitcount++;
-
-							if(hitcount > maxhit)
-							{
-								if(rand()%2 != 0)
-								{
-									bAttack = TRUE;
-								}
-							}
-							else
-							{
-								bAttack = TRUE;
-							}
-
-							if(hitcount > loc10)
-							{
-								bAttack = FALSE;
-							}
-
-							if(bAttack == TRUE)
-							{
-								if(Delay == FALSE)
-								{
-									gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,0,0,0,0,0);
-								}
-								else
-								{
-									gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, Delay, lpMagic->m_Skill, 0);
-								}
-							}
-							
-							SkillResult = 1;
-						}
-					}
-				}
-			}
-
-			count++;
-			if(count > MAX_VIEWPORT -1)
-			{
-				break;
-			}
-		}
-	}
-
-	return SkillResult;
-}
-
-int CObjUseSkill::SkillStrikeOfDestructionStart(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex) //004F7BE0
-{
-	int SkillResult = 0; //loc2
-
-	SkillResult = this->SkillAreaMonsterAttack(aIndex, lpMagic, x, y, aTargetIndex, 3, 1, 500);
-
-	return SkillResult;
-}
-
-void CObjUseSkill::SkillFrustrum3(int aIndex, BYTE fangle, float tx, float ty, float arg5, float arg6) //004F7C40
-{
-	LPOBJ lpObj = &gObj[aIndex];
-
-	vec3_t p[4];
-	Vector(-tx , ty, 0.f,p[0]);
-	Vector( tx , ty, 0.f,p[1]);
-	Vector( arg5, arg6, 0.f,p[2]);
-	Vector(-arg5, arg6, 0.f,p[3]);
-
-	vec3_t Angle;
-	Vector(0.f,0.f,fangle*360/(BYTE)255,Angle);
-
-	float Matrix[3][4];
-	vec3_t vFrustrum[4];
-	
-	AngleMatrix(Angle,Matrix);
-
-	for(int i = 0; i < 4; i++)
-	{
-		VectorRotate(p[i],Matrix,vFrustrum[i]);
-
-		lpObj->fSkillFrustrumX[i] = (int)vFrustrum[i][0] + lpObj->X;
-		lpObj->fSkillFrustrumY[i] = (int)vFrustrum[i][1] + lpObj->Y;
-	}
-}
-
-void CObjUseSkill::SkillFlameStrike(int aIndex, CMagicInf* lpMagic, BYTE TargetPos, int aTargetIndex) //004F7E20
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-	int skillsuccess = 1;
-
-	this->SkillFrustrum3(aIndex, TargetPos, 2.0f, 4.0f, 5.0f, 0);
-	
-	int tObjNum; //loc4
-	int count = 0; //loc5
-	int HitCount = 0; //loc6
-
-	BOOL bAttack; //loc7
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc8
-
-	BOOL bEnableAttack; //loc9
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum )
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
-					{
-						bAttack = FALSE;
-
-						if(HitCount >= 8)
-						{
-							if(rand()%2)
-							{
-								bAttack = TRUE;
-							}
-						}
-						else
-						{
-							bAttack = TRUE;
-						}
-
-						if(bAttack != FALSE)
-						{
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,0,0,0,0,0);
-							gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,0,0,0,0,0);
-						}
-
-						HitCount++;
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-}
-
-int CObjUseSkill::SkillGiganticStormStart(int aIndex, CMagicInf* lpMagic, BYTE x, BYTE y, int aTargetIndex) //004F81D0
-{
-	int SkillResult = 0; //loc2
-
-	SkillResult = this->SkillAreaMonsterAttack(aIndex, lpMagic, x, y, aTargetIndex, 6, 1, 400);
-
-	return SkillResult;
-}
-
-void CObjUseSkill::SkillMultiShot(int aIndex, CMagicInf* lpMagic, BYTE TargetPos, int aTargetIndex) //004F8230
-{
-	LPOBJ lpObj = &gObj[aIndex]; //loc2
-
-	this->SkillFrustrum3(aIndex, TargetPos, 6.0f, 7.0f, 1.0f, 0); //S4 New Skill Frustrum OK :)
-
-	vec3_t Angle; //Good
-	Vector(0.f, 6.0f, 0.f, Angle); //3,4,5 Good
-
-	vec3_t p[4]; //Good size OK
-
-	Vector(0.f, 0.f, 40.0f, p[0]); //Good
-	Vector(0.f, 0.f, 20.0f, p[1]); //Good
-	Vector(0.f, 0.f, 340.0f, p[2]); //Good
-	Vector(0.f, 0.f, 320.0f, p[3]); //Good
-
-	float Matrix[3][4]; //Good
-
-	vec3_t vFrustrum[5]; //Good
-
-	AngleMatrix(p[0],Matrix); //Good
-	VectorRotate(Angle,Matrix,vFrustrum[0]); //loc44 Good
-	
-	AngleMatrix(p[1],Matrix); //Good
-	VectorRotate(Angle,Matrix,vFrustrum[1]); //loc41 Good
-
-	Vector(0.f, 6.0f, 0.f, vFrustrum[2]);//36,37,38
-
-	AngleMatrix(p[2],Matrix); //Good
-	VectorRotate(Angle,Matrix,vFrustrum[3]); //loc35 Good
-
-	AngleMatrix(p[3],Matrix); //Good
-	VectorRotate(Angle,Matrix,vFrustrum[4]); //loc32 Good
-
-	Vector(0.f, 0.f, (TargetPos*360/(BYTE)255), p[0]); //15, 16, 17 Good
-
-	AngleMatrix((float*)p,Matrix); //Good
-
-	int Value1[5];
-	int Value2[5];
-
-	vec3_t vFrustrum2[5];
-
-	for(int i = 0; i < 5; i++) //loc70 Good
-	{
-		VectorRotate(vFrustrum[i],Matrix,vFrustrum2[i]);
-
-		Value1[i] = (int)vFrustrum2[i][0] + lpObj->X;
-		Value2[i] = (int)vFrustrum2[i][1] + lpObj->Y;
-	}
-
-	int tObjNum; //loc71
-	int count = 0; //loc72
-	int loc73 = 0; //loc73
-	int DuelIndex = lpObj->m_iDuelUser; //loc74
-	BOOL bEnableAttack; //loc75
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum )
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					int Value3[5];
-
-					for(int j = 0; j < 5; j++)
-					{
-						Value3[j] = (((int)Value1[j] - lpObj->X) * (gObj[tObjNum].Y - lpObj->Y)) - (((int)Value2[j] - lpObj->Y) * (gObj[tObjNum].X - lpObj->X));
-						
-						if(SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
-						{
-							if(Value3[j] > -5 && Value3[j] < 5)
-							{
-								gObjAttack(lpObj,&gObj[tObjNum],lpMagic,1,0,0,0,0,0);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-}
-
-void CObjUseSkill::SkillSDRecovery(int aIndex, int aTargetIndex, CMagicInf* lpMagic) //004F8980
-{
-	int skillSuccess = true;
-	LPOBJ lpObj = &gObj[aIndex];
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-
-	if(lpTargetObj->Type != OBJ_USER && lpTargetObj->m_RecallMon == -1)
-	{
-		return;
-	}
-
-	if(lpObj->Class != CLASS_ELF)
-	{
-		return;
-	}
-
-	if(CC_MAP_RANGE(lpObj->MapNumber) != FALSE && lpObj->m_Index != lpTargetObj->m_Index)
-	{
-		return;
-	}
-
-	if(gObjDuelCheck(lpTargetObj) != 0) //nice trick
-	{
-		lpTargetObj = lpObj;
-	}
-
-	if(lpTargetObj->iShield >= (lpTargetObj->iMaxShield + lpTargetObj->iAddShield + lpTargetObj->m_MPSkillOpt.MpsMaxSD))
-	{
-		GCMagicAttackNumberSend(lpObj,234,lpTargetObj->m_Index,0);
-		return;
-	}
-
-	lpTargetObj->iShield += (lpObj->Energy/4) + lpObj->Level;
-
-	if(lpTargetObj->iShield > (lpTargetObj->iMaxShield + lpTargetObj->iAddShield + lpTargetObj->m_MPSkillOpt.MpsMaxSD))
-	{
-		lpTargetObj->iShield = (lpTargetObj->iMaxShield + lpTargetObj->iAddShield + lpTargetObj->m_MPSkillOpt.MpsMaxSD);
-	}
-
-	if(lpTargetObj->Type == OBJ_USER)
-	{
-		GCReFillSend(lpTargetObj->m_Index, lpTargetObj->Life, 0xFF, 0, lpTargetObj->iShield);
-		GCMagicAttackNumberSend(lpObj,234,lpTargetObj->m_Index,(BYTE)skillSuccess);
-
-		for(int n = 0; n < MAX_VIEWPORT; n++)
-		{
-			if(lpObj->VpPlayer2[n].type == OBJ_MONSTER && lpObj->VpPlayer2[n].state != 0)
-			{
-				LPOBJ lpMonster = &gObj[lpObj->VpPlayer2[n].number];
-				if(lpMonster->m_iCurrentAI != 0)
-				{
-					lpMonster->m_Agro.IncAgro(lpObj->m_Index,int(lpObj->Energy/5)/40);
-				}
-			}
-		}
-	}
-}
-
-BOOL CObjUseSkill::SkillExpansionWizardry(int aIndex, int aTargetIndex, CMagicInf *lpMagic) //004F8CF0
-{
-	LPOBJ lpObj = &gObj[aIndex];
-
-	if(lpObj->Type != OBJ_USER)
-	{
-		return FALSE;
-	}
-
-	if(lpObj->Class != CLASS_WIZARD)
-	{
-		return FALSE;
-	}
-
-	if(lpObj->m_Index != aTargetIndex)
-	{
-		return FALSE;
-	}
-
-	if(		gObjCheckUsedBuffEffect(lpObj, AT_EXPANSION_WIZARDRY) 
-		||	gObjCheckUsedBuffEffect(lpObj, 138) 
-		||	gObjCheckUsedBuffEffect(lpObj, 139) )
-	{
-		return FALSE;
-	}
-
-	int iWizardryDamage = (float)(lpObj->Energy / g_SkillAdditionInfo.m_WizardryEnchantDamageDiv) * (float)g_SkillAdditionInfo.m_WizardryEnchantDamageFact;
-
-	if( g_SkillAdditionInfo.m_WizardryEnchantDamageMax > 0 && iWizardryDamage > g_SkillAdditionInfo.m_WizardryEnchantDamageMax )
-	{
-		iWizardryDamage = g_SkillAdditionInfo.m_WizardryEnchantDamageMax;
-	}
-
-	gObjAddBuffEffect(lpObj, AT_EXPANSION_WIZARDRY, 33, iWizardryDamage, 0, 0, g_SkillAdditionInfo.m_WizardryEnchantTime);
-	GCMagicAttackNumberSend(lpObj,233,lpObj->m_Index,1);
-	return TRUE;
-}
-
-void CObjUseSkill::SkillChaoticDiseier(int aIndex, CMagicInf *lpMagic, BYTE TargetPos, int aTargetIndex) //004F8E10
-{
-	LPOBJ lpObj = &gObj[aIndex];
-
-	int skillSuccess = true;
-	
-	this->SkillFrustrum3(aIndex, TargetPos, 1.5f, 6.0f, 1.5f, 0); //S4 New Skill Frustrum OK :)
-
-	int tObjNum; //loc4
-	int count = 0; //loc5
-	int HitCount = 0; //loc6
-
-	BOOL bAttack; //loc7
-
-	int DuelIndex = lpObj->m_iDuelUser; //loc8
-
-	BOOL bEnableAttack; //loc9
-
-	while( true )
-	{
-		if(lpObj->VpPlayer2[count].state != 0)
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-
-			if(tObjNum >= 0)
-			{
-				bEnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[count].type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon < 0)
-				{
-					bEnableAttack = TRUE;
-				}
-				else if(tObjNum == aTargetIndex || DuelIndex == tObjNum )
-				{
-					bEnableAttack = TRUE;
-				}
-//#if(_GSCS==1)
-				else if(lpObj->VpPlayer2[count].type != OBJ_NPC && gObj[tObjNum].MapNumber == MAP_INDEX_CASTLESIEGE && g_CastleSiege.GetCastleState() == CASTLESIEGE_STATE_STARTSIEGE)
-				{
-					bEnableAttack = TRUE;
-				}
-//#endif
-				else
-				{
-					int CallMonIndex = gObj[tObjNum].m_Index;
-
-					if(gObj[tObjNum].Type == OBJ_MONSTER && gObj[tObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[tObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==TRUE)
-					{
-						bEnableAttack = TRUE;
-					}
-				}
-
-				if(bEnableAttack != FALSE)
-				{
-					if(SkillTestFrustrum(gObj[tObjNum].X,gObj[tObjNum].Y,aIndex))
-					{
-						bAttack = FALSE;
-
-						if(HitCount >= 8)
-						{
-							if(rand()%2)
-							{
-								bAttack = TRUE;
-							}
-						}
-						else
-						{
-							bAttack = TRUE;
-						}
-
-						if(bAttack != FALSE)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, 200, lpMagic->m_Skill, 0);
-						}
-
-						if(OBJMAX_RANGE(aTargetIndex) != false && tObjNum == aTargetIndex)
-						{
-							gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, 300, lpMagic->m_Skill, 0);
-							//LogAddTD("2HIT!!!!!! SUCCESS aTargetIndex : %d , tObjNum : %d", aTargetIndex, tObjNum);
-						}
-						else
-						{
-							//LogAddTD("2HIT!!!!!! ERROR   aTargetIndex : %d , tObjNum : %d", aTargetIndex, tObjNum);
-						}
-
-						HitCount++;						
-					}					
-				}
-			}
-		}
-
-		count++;
-			
-		if(count > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-}
-// -------------------------------------------------------------------------------
-
-//005308f0	-> 100% (Identical)
-int CObjUseSkill::SkillEvilMonster(int aIndex, int aTargetIndex, CMagicInf * lpMagic)
-{
-	LPOBJ lpObj		= &gObj[aIndex];
-	int tObjNum;
-	int count		= 0;
-	int HitCount	= 0;
-	int bAttack;
-	int DuelIndex	= lpObj->m_iDuelUser;
-	// ----
-	while(true)
-	{
-		if( lpObj->VpPlayer2[count].state )
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-			// ----
-			if( tObjNum >= 0 )
-			{
-				int EnableAttack = false;
-				// ----
-				if( lpObj->VpPlayer2[count].type == 1 )
-				{
-					EnableAttack = true;
-					// ----
-					if( gObj[tObjNum].m_RecallMon >= 0 )
-					{
-						if( tObjNum != aTargetIndex )
-						{
-							EnableAttack = false;
-						}
-					}
-				}
-				// ----
-				if( EnableAttack )
-				{
-					if( gObjCalDistance(lpObj, &gObj[tObjNum]) < 6 )
-					{
-						bAttack = false;
-						// ----
-						if( HitCount >= 5 )
-						{
-							bAttack = false;
-						}
-						else
-						{
-							bAttack = true;
-						}
-						// ----
-						if( tObjNum == aTargetIndex )
-						{
-							bAttack = true;
-						}
-						// ----
-						if( bAttack )
-						{
-							int delay = rand() % 2000;
-							// ----
-							gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, 300, lpMagic->m_Skill, 0);
-							HitCount++;
-							// ----
-							LPOBJ lpTargetObj = &gObj[tObjNum];
-							// ----
-							if( !gObjCheckUsedBuffEffect(lpTargetObj, 55) )
-							{
-								if( !retResistance(lpTargetObj, 1) )
-								{
-									lpTargetObj->lpAttackObj = lpObj;
-									gObjAddBuffEffect(lpTargetObj, 55, 19, 3, 0, 0, 20);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		// ----
-		count++;
-		// ----
-		if( count > MAX_VIEWPORT-1 )
-		{
-			break;
-		}
-	}
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//00530b60	-> 100% (Identical)
-int CObjUseSkill::SkillDeathPoisonForMeDusa(int aIndex, CMagicInf * lpMagic, BYTE x, BYTE y, int aTargetIndex)
-{
-	LPOBJ lpObj		= &gObj[aIndex];
-	int tObjNum;
-	int count		= 0;
-	int FirstHit	= 0;
-	int HitCount	= 0;
-	int DuelIndex	= lpObj->m_iDuelUser;
-	int EnableAttack;
-	// ----
-	if( !OBJMAX_RANGE(aTargetIndex) )
-	{
-		LogAddTD("[InvalidTargetIndex][SkillDeathPoisonForMeDusa] Index :%d , AccountID : %s ",
-			aIndex, gObj[aIndex].AccountID);
-		return 0;
-	}
-	// ----
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-	// ----
-	while(true)
-	{
-		if( lpObj->VpPlayer2[count].state != 0 )
-		{
-			tObjNum = lpObj->VpPlayer2[count].number;
-			// ----
-			if( tObjNum >= 0 )
-			{
-				EnableAttack = 0;
-				// ----
-				if( lpObj->VpPlayer2[count].type == OBJ_USER && gObj[tObjNum].m_RecallMon < 0 )
-				{
-					EnableAttack = 1;
-				}
-				// ----
-				if( EnableAttack )
-				{
-					if( this->CalDistance(x, y, gObj[tObjNum].X, gObj[tObjNum].Y) < 8 )
-					{
-						if( lpObj->m_Index != gObj[tObjNum].m_Index )
-						{
-							int iSkillDistance = gObjCalDistance(lpTargetObj, &gObj[tObjNum]);
-							// ----
-							if( iSkillDistance <= 3 )
-							{
-								int delay = rand() % 500;
-								gObjAddAttackProcMsgSendDelay(lpObj, 50, tObjNum, delay, lpMagic->m_Skill, 0);
-								// ----
-								if( gObjCheckUsedBuffEffect(&gObj[tObjNum], 55) )
-								{
-									if( !retResistance(&gObj[tObjNum], 1) )
-									{
-										gObj[tObjNum].lpAttackObj = lpObj;
-										gObjAddBuffEffect(&gObj[tObjNum], 55, 19, 3, 0, 0, 20);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		// ----
-		count++;
-		// ----
-		if( count > MAX_VIEWPORT -1 )
-		{
-			break;
-		}
-	}
-	// ----
-	return 1;
-}
-// -------------------------------------------------------------------------------
-
-//00530eb0	-> 100%
-int CObjUseSkill::SkillMonkBuff(int aIndex, CMagicInf * lpMagic)
-{
-	LPOBJ lpObj = &gObj[aIndex];;
-	// ----
-	if( lpObj->Type != 1 )
-	{
-		return false;
-	}
-	// ----
-	if( lpObj->Class != CLASS_MONK )
-	{
-		return false;
-	}
-	// ----
-	if( !lpMagic || lpMagic->m_Skill != 266 )
-	{
-		return false;
-	}
-	// ----
-	int nEffectValue = g_SkillAdditionInfo.m_IgnoreDefenseEffectStart + (lpObj->Energy + lpObj->AddEnergy - g_SkillAdditionInfo.m_IgnoreDefenseEffectSub) / (float)g_SkillAdditionInfo.m_IgnoreDefenseEffectDiv;
-	
-	if( g_SkillAdditionInfo.m_IgnoreDefenseEffectMax > 0 && nEffectValue > g_SkillAdditionInfo.m_IgnoreDefenseEffectMax )
-	{
-		nEffectValue = g_SkillAdditionInfo.m_IgnoreDefenseEffectMax;
-	}
-
-	int Time = lpObj->Energy / g_SkillAdditionInfo.m_IgnoreDefenseTimeDiv + g_SkillAdditionInfo.m_IgnoreDefenseTimeStart;
-	
-	if( g_SkillAdditionInfo.m_IgnoreDefenseTimeMax > 0 && Time > g_SkillAdditionInfo.m_IgnoreDefenseTimeMax )
-	{
-		Time = g_SkillAdditionInfo.m_IgnoreDefenseTimeMax;
-	}
-
-	gObjAddBuffEffect(lpObj, 129, ADD_OPTION_IGNOREDEFENSE, nEffectValue, 0, 0, lpObj->Energy / 5 + 60);
-	GCMagicAttackNumberSend(lpObj, 266, lpObj->m_Index, 1);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//00531010	-> 100%
-int CObjUseSkill::SkillMonkBuffApplyParty(int aIndex, CMagicInf * lpMagic)
-{
-	int skillSuccess = TRUE;
-	LPOBJ lpObj = &gObj[aIndex];
-	int number;
-
-	if( lpObj->Type != OBJ_USER && lpObj->m_RecallMon == -1 )
-		return FALSE;
-
-	if( lpObj->Class != CLASS_MONK )
-		return FALSE;
-
-	int partynum = 0;
-	int partycount;
-	int dis;
-	int ApplyPartyIndex[MAX_USER_IN_PARTY];
-	int nEffectValue;
-	memset(ApplyPartyIndex,-1,sizeof(ApplyPartyIndex));
-	LPOBJ lpPartyObj;
-
-	partynum = lpObj->PartyNumber;
-
-	if( partynum != -1 )
-	{
-		partycount = gParty.m_PartyS[partynum].Count;
-
-		for(int n = 0; n < MAX_USER_IN_PARTY; n++)
-		{
-			number = gParty.m_PartyS[partynum].Number[n];
-
-			if( number >= 0 )
-			{
-				lpPartyObj = &gObj[number];
-
-
-				if( lpPartyObj->MapNumber == lpObj->MapNumber )
-				{
-					dis = gObjCalDistance(lpObj,&gObj[number]);
-					if( dis < 4 )
-					{
-						ApplyPartyIndex[n] = lpPartyObj->m_Index;
-					}
-				}
-			}
-		}
-	}
-
-	int Time = 0;
-
-	if( lpMagic->m_Skill == 267 )
-	{
-		nEffectValue = g_SkillAdditionInfo.m_IncreaseHealthEffectStart + (lpObj->Energy+lpObj->AddEnergy-g_SkillAdditionInfo.m_IncreaseHealthEffectSub)/g_SkillAdditionInfo.m_IncreaseHealthEffectDiv;
-
-		if( g_SkillAdditionInfo.m_IncreaseHealthEffectMax > 0 && nEffectValue > g_SkillAdditionInfo.m_IncreaseHealthEffectMax )
-		{
-			nEffectValue = g_SkillAdditionInfo.m_IncreaseHealthEffectMax;
-		}
-
-		Time = g_SkillAdditionInfo.m_IncreaseHealthTimeStart+lpObj->Energy/g_SkillAdditionInfo.m_IncreaseHealthTimeDiv;
-		
-		if( g_SkillAdditionInfo.m_IncreaseHealthTimeMax > 0 && Time > g_SkillAdditionInfo.m_IncreaseHealthTimeMax )
-		{
-			Time = g_SkillAdditionInfo.m_IncreaseHealthTimeMax;
-		}
-	}
-	else if( lpMagic->m_Skill == 268 )
-	{
-		nEffectValue = g_SkillAdditionInfo.m_IncreaseBlockEffectStart + (lpObj->Energy+lpObj->AddEnergy-g_SkillAdditionInfo.m_IncreaseBlockEffectSub)/g_SkillAdditionInfo.m_IncreaseBlockEffectDiv;
-
-		if( g_SkillAdditionInfo.m_IncreaseBlockEffectMax > 0 && nEffectValue > g_SkillAdditionInfo.m_IncreaseBlockEffectMax )
-		{
-			nEffectValue = g_SkillAdditionInfo.m_IncreaseBlockEffectMax;
-		}
-
-		Time = g_SkillAdditionInfo.m_IncreaseBlockTimeStart+lpObj->Energy/g_SkillAdditionInfo.m_IncreaseBlockTimeDiv;
-		
-		if( g_SkillAdditionInfo.m_IncreaseBlockTimeMax > 0 && Time > g_SkillAdditionInfo.m_IncreaseBlockTimeMax )
-		{
-			Time = g_SkillAdditionInfo.m_IncreaseBlockTimeMax;
-		}
-	}
-	else
-	{
-		return FALSE;
-	}
-
-	if( partynum == -1 )
-	{
-		if( lpMagic->m_Skill == 267 )
-		{
-			gObjAddBuffEffect(lpObj,130,ADD_OPTION_VITALITY_MONK,nEffectValue,0,0,Time);
-			GCMagicAttackNumberSend(lpObj,267,lpObj->m_Index,TRUE);
-			gObjCalCharacter(lpObj->m_Index);
-		}
-		else if( lpMagic->m_Skill == 268 )
-		{
-			gObjAddBuffEffect(lpObj,131,ADD_OPTION_SUCCESSFULBLOCKING,nEffectValue,0,0,Time);
-			GCMagicAttackNumberSend(lpObj,268,lpObj->m_Index,TRUE);
-		}
-	}
-	else
-	{
-		for(int n = 0; n < MAX_USER_IN_PARTY; n++)
-		{
-			if( ApplyPartyIndex[n] != -1 )
-			{
-				lpPartyObj = &gObj[ApplyPartyIndex[n]];
-				if( lpMagic->m_Skill == 267 )
-				{
-					gObjAddBuffEffect(lpPartyObj,130,ADD_OPTION_VITALITY_MONK,nEffectValue,0,0,Time);
-					GCMagicAttackNumberSend(lpPartyObj,267,lpPartyObj->m_Index,TRUE);
-					gObjCalCharacter(lpPartyObj->m_Index);
-				}
-				else if( lpMagic->m_Skill == 268 )
-				{
-					//71, but why?
-					gObjAddBuffEffect(lpPartyObj,131,ADD_OPTION_SUCCESSFULBLOCKING,nEffectValue,0,0,Time);
-					GCMagicAttackNumberSend(lpPartyObj,268,lpPartyObj->m_Index,TRUE);
-				}
-			}
-		}
-	}
-	return TRUE;
-}
-// -------------------------------------------------------------------------------
-
-//005314c0	-> 100%
-void CObjUseSkill::SkillMonkBarrageJustOneTarget(int aIndex,CMagicInf * lpMagic,int aTargetIndex)
-{
-	LPOBJ lpObj = &gObj[aIndex];
-	int nTargetObjNum = 0;
-	int nViewPortObjectCount = 0;
-	int DuelIndex = lpObj->m_iDuelUser;
-
-	if( !OBJMAX_RANGE(aTargetIndex) )
-	{
-		LogAddTD("[InvalidTargetIndex][SkillMonkBarrageJustOneTarget] Index :%d , AccountID : %s ",
-			aIndex,gObj[aIndex].AccountID);
-		return;
-	}
-
-	int EnableAttack;
-	LPOBJ lpTargetObj = &gObj[aTargetIndex];
-
-	while( TRUE )
-	{
-		if( lpObj->VpPlayer2[nViewPortObjectCount].state != 0 )
-		{
-			nTargetObjNum = lpObj->VpPlayer2[nViewPortObjectCount].number;
-
-			if( nTargetObjNum >= 0 && nTargetObjNum == aTargetIndex )
-			{
-				EnableAttack = FALSE;
-
-				if(lpObj->VpPlayer2[nViewPortObjectCount].type == OBJ_USER )
-				{
-					EnableAttack = TRUE;
-				}
-				else if( lpTargetObj->Type == OBJ_MONSTER && gObj[nTargetObjNum].m_RecallMon < 0 )
-				{
-					EnableAttack = TRUE;
-				}
-				else if( nTargetObjNum == DuelIndex )
-				{
-					EnableAttack = TRUE;
-				}
-				else
-				{
-					int CallMonIndex = gObj[nTargetObjNum].m_Index;
-
-					if(gObj[nTargetObjNum].Type == OBJ_MONSTER && gObj[nTargetObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[nTargetObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-					{
-						EnableAttack = TRUE;
-					}
-				}
-
-				if( EnableAttack != FALSE && CalDistance(gObj[aTargetIndex].X,gObj[aTargetIndex].Y,gObj[nTargetObjNum].X,gObj[nTargetObjNum].Y) < 4 )
-				{
-					int nMaxBarrageCount = 0;
-
-					if( lpMagic->m_Skill == 260 )
-					{
-						nMaxBarrageCount = 5;
-					}
-					else if( lpMagic->m_Skill == 261 )
-					{
-						nMaxBarrageCount = 3;
-					}
-					else if( lpMagic->m_Skill == 262 )
-					{
-						nMaxBarrageCount = 5;
-					}
-					else if( lpMagic->m_Skill == 263 )
-					{
-						nMaxBarrageCount = 3;
-					}
-					else
-					{
-						nMaxBarrageCount = 0;
-					}
-
-					if( lpMagic->m_Skill == 260 && rand()%100 < 10 )
-					{
-						gObjAddBuffEffect(lpTargetObj, 76, 29, 5, 0, 0, 10);
-					}
-					else if( lpMagic->m_Skill == 261 && rand()%100 < 10 )
-					{
-						gObjAddBuffEffect(lpTargetObj, 58, 23,10,0,0,10);
-					}
-					else if( lpMagic->m_Skill == 262 && rand()%100 < 40 )
-					{
-#ifdef GENS
-						if(lpObj->m_GensInfluence != lpTargetObj->m_GensInfluence && gGensSystem.IsMapBattleZone(lpObj->MapNumber))
-						{
-							lpTargetObj->lpAttackObj = lpObj;
-							lpTargetObj->DelayActionTime = 1000;
-							lpTargetObj->DelayLevel = 1;
-							gObjAddBuffEffect(lpTargetObj,86,20,0,0,0,10);
-						}
-#else
-						lpTargetObj->lpAttackObj = lpObj;
-						lpTargetObj->DelayActionTime = 1000;
-						lpTargetObj->DelayLevel = 1;
-						gObjAddBuffEffect(lpTargetObj,86,20,0,0,0,10);
-#endif
-					}
-
-					for(int i = 1; i < nMaxBarrageCount; i++)
-					{
-						if( i%(nMaxBarrageCount-1) == TRUE  )
-						{
-							gObjAttack(lpObj,lpTargetObj,lpMagic,TRUE,TRUE,0,0,i,0);
-						}
-						else
-						{
-							gObjAttack(lpObj,lpTargetObj,lpMagic,FALSE,TRUE,0,0,i,0);
-						}
-					}
-				}
-				break;
-			}
-		}
-
-		nViewPortObjectCount++;
-
-		if(nViewPortObjectCount > MAX_VIEWPORT -1)
-		{
-			break;
-		}
-	}
-}
-// -------------------------------------------------------------------------------
-//00531a30	-> 100%
-int CObjUseSkill::SkillMonkDarkSideGetTargetIndex(int aIndex, int aTargetIndex, CMagicInf * lpMagic, WORD * wTargetList)
-{
-	LPOBJ lpObj = &gObj[aIndex];
-	int nTargetObjNum = 0;
-	int nViewPortObjectCount = 0;
-	int nHitTargetCount = 0;
-	int DuelIndex = lpObj->m_iDuelUser;
-	int EnableAttack = 0;
-
-	if( wTargetList == NULL)
-	{
-		return false;
-	}
-	if( lpMagic->m_Skill != 263 && g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill) != 559 )
-	{
-		return false;
-	}
-
-	if( aTargetIndex != 0 )
-	{
-		while(true)
-		{
-			if( lpObj->VpPlayer2[nViewPortObjectCount].state != 0 )
-			{
-				nTargetObjNum = lpObj->VpPlayer2[nViewPortObjectCount].number;
-
-				if( nTargetObjNum >= 0 && nTargetObjNum < OBJMAX )
-				{
-					LPOBJ lpTargetObj = &gObj[nTargetObjNum];
-
-					if( lpObj->VpPlayer2[nViewPortObjectCount].type == OBJ_USER && nTargetObjNum == aTargetIndex )
-					{
-						int nAttackRange = 0;
-
-						if( lpMagic->m_Skill == 263 || g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill) == 559 )
-							nAttackRange = 5;
-						else
-							nAttackRange = 0;
-
-						if( CalDistance(lpObj->X,lpObj->Y,gObj[nTargetObjNum].X,gObj[nTargetObjNum].Y) < nAttackRange )
-						{
-							wTargetList[nHitTargetCount] = nTargetObjNum;
-							nHitTargetCount++;
-							break;
-						}
-					}
-				}
-			}
-
-			nViewPortObjectCount++;
-
-			if( nViewPortObjectCount > MAX_VIEWPORT-1 )
-				break;
-		}
-
-		nViewPortObjectCount = 0;
-	}
-
-	while(true)
-	{
-		if( lpObj->VpPlayer2[nViewPortObjectCount].state != 0 )
-		{
-			nTargetObjNum = lpObj->VpPlayer2[nViewPortObjectCount].number;
-
-			if( nTargetObjNum >= 0 && nTargetObjNum < OBJMAX )
-			{
-				EnableAttack = FALSE;
-
-				LPOBJ lpTargetObj = &gObj[nTargetObjNum];
-#ifdef GENS
-				if( lpObj->VpPlayer2[nViewPortObjectCount].type == OBJ_USER && gGensSystem.IsMapBattleZone(lpObj->MapNumber) )
-				{
-					EnableAttack = TRUE;
-				}
-				else if( lpTargetObj->Type == OBJ_MONSTER && lpTargetObj->m_RecallMon < 0 )
-#else
-				if( lpTargetObj->Type == OBJ_MONSTER && lpTargetObj->m_RecallMon < 0 )
-#endif
-				{
-					EnableAttack = TRUE;
-				}
-				else if( DuelIndex == nTargetObjNum )
-				{
-					EnableAttack = TRUE;
-				}
-				else
-				{
-					int CallMonIndex = gObj[nTargetObjNum].m_Index;
-
-					if(gObj[nTargetObjNum].Type == OBJ_MONSTER && gObj[nTargetObjNum].m_RecallMon >= 0)
-					{
-						CallMonIndex = gObj[gObj[nTargetObjNum].m_RecallMon].m_Index;
-					}
-
-					if(gObjTargetGuildWarCheck(lpObj,&gObj[CallMonIndex])==1)
-					{
-						EnableAttack = TRUE;
-					}
-				}
-
-				if( EnableAttack != FALSE && !gObjAttackQ(lpTargetObj) )
-				{
-					EnableAttack = FALSE;
-				}
-
-				if( EnableAttack != FALSE )
-				{
-					int nAttackRange = 0;
-
-					if( lpMagic->m_Skill == 263 
-						|| g_MasterSkillSystem.GetBaseMasterLevelSkill(lpMagic->m_Skill) == 559 )
-						nAttackRange = 5;
-					else
-						nAttackRange = 0;
-
-					if( CalDistance(lpObj->X,lpObj->Y,gObj[nTargetObjNum].X,gObj[nTargetObjNum].Y) < nAttackRange )
-					{
-						wTargetList[nHitTargetCount] = nTargetObjNum;
-						nHitTargetCount++;
-
-						if( nHitTargetCount >= 5 )
-							break;
-					}
-				}
-
-			}
-		}
-		nViewPortObjectCount++;
-
-		if( nViewPortObjectCount > MAX_VIEWPORT-1 )
-			break;
-	}
-	return true;
-}
-// -------------------------------------------------------------------------------
-
-//00531f10	-> 100%
-int CObjUseSkill::SkillCharge(int aIndex, CMagicInf * lpMagic, int aTargetIndex)
-{
-	if( !OBJMAX_RANGE(aIndex) )
-	{
-		return false;
-	}
-	// ----
-	LPOBJ lpObj = &gObj[aIndex];
-	// ----
-	if( lpObj->MapNumber != 30 && lpObj->MapNumber != 31 )	//Castle Siege?
-	{
-		return false;
-	}
-	// ----
-	GCMagicAttackNumberSend(lpObj, lpMagic->m_Skill, aTargetIndex, 1);
-	gObjAttack(lpObj, &gObj[aTargetIndex], lpMagic, 0, 1, 0, 0, 0, 0);
-	// ----
-	return true;
-}
-// -------------------------------------------------------------------------------

@@ -1,6 +1,13 @@
-// GS-CS	1.00.90	JPN	-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #include "stdafx.h"
 #include "NSerialCheck.h"
+
+// GS-N 0.99.60T // 452a00 Status : Completed
+// GS-M	1.00.18	JPN	0x00461D30	-	Completed
+
 
 
 NSerialCheck::NSerialCheck()

@@ -37,7 +37,6 @@ enum MONSTER_SKILL_ELEMENT_TYPE
 	MSE_TYPE_DOUBLE_HP = 0x12,
 	MSE_TYPE_POISON = 0x13,
 	MSE_TYPE_NORMALATTACK = 0x14,
-	MSE_TYPE_BERSERK = 0x15,
 };
 
 
@@ -89,9 +88,8 @@ public:
 	int ApplyElementDoubleHP(int iIndex, int iTargetIndex);
 	int ApplyElementPoison(int iIndex, int iTargetIndex);
 	int ApplyElementNormalAttack(int iIndex, int iTargetIndex);
-	int ApplyElementBerserk(int iIndex,int iTargetIndex);
 	void Reset();
-	char* GetElementName();
+	char* GetElementName(){return this->m_szElementName;}
 
 	static int LoadData(char* lpszFileName);
 	static int DelAllSkillElement();
@@ -100,15 +98,15 @@ public:
 private:
 
 	char m_szElementName[20];	// 4
-	int m_iElementNumber;	// 18
-	int m_iElementType;	// 1C
-	int m_iSuccessRate;	// 20
+	short m_iElementNumber;	// 18
+	short m_iElementType;	// 1C
+	short m_iSuccessRate;	// 20
 	int m_iContinuanceTime;	// 24
-	int m_iIncAndDecType;	// 28
-	int m_iIncAndDecValue;	// 2C
-	int m_iNullifiedSkill;	// 30
-	int m_iCharacterClass;	// 34
-	int m_iCharacterLevel;	// 38
+	short m_iIncAndDecType;	// 28
+	short m_iIncAndDecValue;	// 2C
+	short m_iNullifiedSkill;	// 30
+	short m_iCharacterClass;	// 34
+	short m_iCharacterLevel;	// 38
 
 public:
 

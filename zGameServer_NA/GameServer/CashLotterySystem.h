@@ -9,8 +9,9 @@
 #include "TRandomPoolMgr.h"
 #include "..\common\zzzitem.h"
 
-#define MAX_LOTTERY_ITEM_CATEGORY	23
-#define MAX_LOTTERY_ITEM_COUNT	130
+#define MAX_LOTTERY_TYPES			5
+#define MAX_LOTTERY_ITEM_CATEGORY	20
+#define MAX_LOTTERY_ITEM_COUNT		130
 
 
 struct LOTTERY_ITEM_OPTION_RATE
@@ -46,19 +47,19 @@ public:
 
 	void Initialize();
 	void Load(LPSTR pchFilename);
-	void SetitemDropRate(int iCategory, int iDropRate, int iSkillOptionRate, int iLuckOptionRate, int iAddOptionRate, int iExOptionRate);
+	void SetitemDropRate(int iCategory, int iLotteryTYPE, int iDropRate, int iSkillOptionRate, int iLuckOptionRate, int iAddOptionRate, int iExOptionRate);
 	BOOL InsertItem(int iItemCategory, int iItemType, int iItemIndex,int iItemLevelMin, int iItemLevelMax, int iSkillOption, int iLuckOption, int iAddOption, int iExOption);
-	int GetItem(CItem* lpItem);
+	int GetItem(CItem* lpItem, BYTE LotteryTYPE);
 	void GetRequireInvenSize(int* piHeight, int* piWidth);
 
 private:
 
-	TRandomPoolMgr CategoryRandomPool;	// 4
-	TRandomPoolMgr AddOptionRandomPool;	// 1C
-	TRandomPoolMgr ExOptionRandomPool;	// 34
-	int iItemMaxHeight;	// 4C
-	int iItemMaxWidth;	// 50
-	int LotteryItemListCount[MAX_LOTTERY_ITEM_CATEGORY];	// 54
+	TRandomPoolMgr CategoryRandomPool[MAX_LOTTERY_TYPES];	// 4
+	TRandomPoolMgr AddOptionRandomPool[MAX_LOTTERY_TYPES];	// 1C
+	TRandomPoolMgr ExOptionRandomPool[MAX_LOTTERY_TYPES];	// 34
+	BYTE iItemMaxHeight;	// 4C
+	BYTE iItemMaxWidth;	// 50
+	short LotteryItemListCount[MAX_LOTTERY_ITEM_CATEGORY];	// 54
 	LOTTERY_ITEM_OPTION_RATE LotteryItemOptionRate[MAX_LOTTERY_ITEM_CATEGORY];	// A4
 	LOTTERY_ITEMLIST LotteryItemList[MAX_LOTTERY_ITEM_CATEGORY][MAX_LOTTERY_ITEM_COUNT];	// 1E4
 };

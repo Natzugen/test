@@ -1,10 +1,17 @@
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
 #ifndef LOGTOFILE_H
 #define LOGTOFILE_H
+
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
+
+void WriteTxt(LPSTR FileName,LPSTR String);
 class CLogToFile
 {
 
@@ -23,5 +30,6 @@ private:
 	BOOL m_bWithDate; // 1020C
 	CRITICAL_SECTION m_critLogToFile; 
 };
+
 
 #endif

@@ -26,9 +26,9 @@ public:
 	virtual ~CMultiAttackHackCheck();
 
 	void Init();
-	int Insert(int aTargetIndex, BYTE skillnum, BYTE serial);
-	int CheckPenetrationSkill(int aTargetIndex, BYTE skillnum, BYTE serial);
-	int CheckFireScreamSkill(int iTargetIndex, BYTE btSkillnum, BYTE btSerial);
+	int Insert(int aTargetIndex, WORD skillnum, BYTE serial);
+	int CheckPenetrationSkill(int aTargetIndex, WORD skillnum, BYTE serial);
+	int CheckFireScreamSkill(int iTargetIndex, WORD btSkillnum, BYTE btSerial);
 
 
 private:

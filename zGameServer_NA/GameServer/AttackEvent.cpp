@@ -1,13 +1,21 @@
-//GameServer 1.00.90 - finished
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
+// GS-N 0.99.60T 0x0045B180 - Completed
+// GS-N 1.00.18	0x0046AA80 - Completed
 #include "stdafx.h"
 #include "AttackEvent.h"
 #include "Gamemain.h"
 #include "logproc.h"
 
+
+
 CAttackEvent::CAttackEvent()
 {
 	this->Init();
 }
+
 
 CAttackEvent::~CAttackEvent()
 {
@@ -18,7 +26,7 @@ void CAttackEvent::Init()
 {
 	this->EventState = false;
 	this->EventStartTime = GetTickCount();
-	this->m_MapNumber = MAP_INDEX_RORENCIA;
+	this->m_MapNumber = MAP_INDEX_LORENCIA;
 }
 
 
@@ -81,8 +89,10 @@ void CAttackEvent::Active()
 			gObj[n].MTY = gObj[n].Y;
 			gObj[n].StartX = gObj[n].X;
 			gObj[n].StartY = gObj[n].Y;
+				//gObj[n].m_OldX = gObj[n].X;
+				//gObj[n].m_OldY = gObj[n].Y;
+
 			gObj[n].m_State = 1;
-			
 		}
 		else if ( gObj[n].Class == 55 || gObj[n].Class == 56 )	// Death Bone + Death King
 		{
@@ -92,7 +102,7 @@ void CAttackEvent::Active()
 			{
 				if ( (rand() % 2 ) == 0 )
 				{
-					this->m_MapNumber = MAP_INDEX_RORENCIA;
+					this->m_MapNumber = MAP_INDEX_LORENCIA;
 				}
 				else
 				{
@@ -130,21 +140,33 @@ void CAttackEvent::Active()
 			gObj[n].MTY = gObj[n].Y;
 			gObj[n].StartX = gObj[n].X;
 			gObj[n].StartY = gObj[n].Y;
+				//gObj[n].m_OldX = gObj[n].X;
+				//gObj[n].m_OldY = gObj[n].Y;
+
 			gObj[n].m_State = 1;
-			
 		}
 	}
 }
+
+
+
+
+
+
 
 void CAttackEvent::Start_Menual() 
 {
 	this->SetMenualStart(TRUE);
 
-	LogAddTD("¡Û¡Ü[Event Management] [Start] Attack Event!");
+	LogAddTD("[Event Management] [Start] Attack Event!");	// Deathway translation here M-[Event Management] [Start] Attack Event! 
 	this->EventState= false;
 	this->Start();
 	this->Active();
 }
+
+
+
+
 
 void CAttackEvent::End_Menual()
 {

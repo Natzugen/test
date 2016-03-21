@@ -157,7 +157,6 @@ namespace protocol
 		{
 			return;
 		};
-
 		void resize();
 
 		DWORD dwItemCount;	// 8

@@ -9,6 +9,8 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+#if (GS_CASTLE==0)
+
 #include "TNotice.h"
 
 class CKanturuUtil  
@@ -36,10 +38,8 @@ public:
 	void SendDataAllUser(unsigned char* lpMsg, int iSize);
 	void __cdecl SendMsgToUser(int iIndex, char* lpszMsg, ...);
 	void SendDataToUser(int iIndex, unsigned char* lpMsg, int iSize);
-	void __cdecl SendKanturuChattingMsg(int iIndex, char* lpszMsg, ...);
 	void SendDataKanturuTimeAttackEvent(int iIndex, BYTE btFlag, int iClearTime);
-
-
 };
 
+#endif
 #endif // !defined(AFX_KANTURUUTIL_H__F4F5A116_190C_42DA_9D05_982E6BCD73D5__INCLUDED_)

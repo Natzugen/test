@@ -1,4 +1,3 @@
-//GS-CS	1.00.90	JPN	0xXXXXXXXX	-	Completed
 #include "stdafx.h"
 #include "MonsterSetBase.h"
 #include "GameMain.h"
@@ -7,20 +6,68 @@
 #include "LargeRand.h"
 #include "..\include\readscript.h"
 #include "..\common\WzMemScript.h"
+// GS-N 0.99.60T 0x0041AB30 - Completed
+//	GS-N	1.00.18	JPN	0x00421BB0	-	Completed
 
-//00428BF0 - identical
 CMonsterSetBase::CMonsterSetBase()
 {
 	return;
 }
 
-//00428C70 - identical
 CMonsterSetBase::~CMonsterSetBase()
 {
 	return;
 }
 
-//00428CA0 - identical
+void gObjMonsterAddSet(int Number, int Map, int X, int Y, int Count)
+{	
+	for(int i=0;i<Count;i++)
+	{
+		int MobPos = gObjMonsterAdd(Number,Map,X,Y);
+		if(MobPos >= 0)
+		{
+			int MobID = gObjAddMonster(Map);
+			if(MobID >= 0)
+			{
+				gObjSetPosMonster(MobID, MobPos);
+				gObjSetMonster(MobID, Number,"gObjMonsterAddSet");
+			}
+		}
+	}
+}
+
+void ReadMonstersAndAdd(char * FilePath)
+{
+	char sLineTxt[255] = {0};
+	int Number;
+	int Map;
+	int X;
+	int Y;
+	int Count;
+
+	SMDFile = fopen(FilePath, "r");
+
+	if ( SMDFile == NULL )
+	{
+		MsgBox("Spawn data load error %s", FilePath);
+		return;
+	}
+
+	while (!feof(SMDFile))
+	{
+		if(fgets(sLineTxt, 255, SMDFile) != NULL)
+		{
+			if(sLineTxt[0] == '/')continue;  
+			if(sLineTxt[0] == ';')continue;  
+			sscanf(sLineTxt, "%d %d %d %d %d", &Number,&Map,&X,&Y,&Count);
+
+			gObjMonsterAddSet(Number,Map,X,Y,Count);
+		}
+	}
+		
+	fclose(SMDFile);
+}
+
 void CMonsterSetBase::SetBoxPosition(int TableNum, int mapnumber, int ax, int ay, int aw, int ah)
 {
 	this->m_Mp[TableNum].m_MapNumber = mapnumber;
@@ -30,15 +77,14 @@ void CMonsterSetBase::SetBoxPosition(int TableNum, int mapnumber, int ax, int ay
 	this->m_Mp[TableNum].m_Y  = ay;
 }
 
-//00428D20 - identical
 BOOL CMonsterSetBase::GetBoxPosition(int mapnumber, int ax, int ay, int aw, int ah, short &mx, short &my)
 {
 	int count = 100 ; 
-	int w;
-	int h;
-	int tx; 
-	int ty;
-	BYTE attr;
+	int w=0;
+	int h=0;
+	int tx=0; 
+	int ty=0;
+	BYTE attr=0;
 
 	while ( count-- != 0)
 	{
@@ -68,17 +114,22 @@ BOOL CMonsterSetBase::GetBoxPosition(int mapnumber, int ax, int ay, int aw, int 
 	return false;
 }
 
-//00431a00
 BOOL CMonsterSetBase::GetPosition(int TableNum, short MapNumber, short & x, short & y)
 {
 	int count = 100;
 	BYTE attr;
 	int tx;
 	int ty;
-	int w;	int h;
-	if ( TableNum < 0 || TableNum > OBJ_MAXMONSTER-1 )
+	int w;
+	int h;
+
+	int Max = OBJ_MAXMONSTER - 1;
+	if ( TableNum < 0 || TableNum > Max-1 )
 	{
-		LogAdd("ERROR : %s %d TableNum: %d", __FILE__, __LINE__, TableNum );
+		if (MapNumber != MAP_INDEX_CASTLESIEGE)
+		{
+			LogAdd("ERROR : %d %d / %s %d",MapNumber, TableNum, __FILE__, __LINE__ );
+		}
 		return false;
 	}
 
@@ -151,19 +202,10 @@ BOOL CMonsterSetBase::GetPosition(int TableNum, short MapNumber, short & x, shor
 		y = this->m_Mp[TableNum].m_Y;
 		return TRUE;
 	}
-#ifdef IMPERIAL
-	else if ( this->m_Mp[TableNum].m_ArrangeType == 5 )
-	{
-		x = this->m_Mp[TableNum].m_X;
-		y = this->m_Mp[TableNum].m_Y;
-		return TRUE;
-	}
-#endif
 
 	return false;
 }
 
-//004292C0 - identical
 void CMonsterSetBase::LoadSetBase(char * filename)
 {
 	int Token;
@@ -171,7 +213,7 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 	int copycount;
 	BYTE Sdir;
 
-	SMDFile = fopen(filename, "r");	//ok
+	SMDFile = fopen(filename, "r");
 
 	if ( SMDFile == NULL )
 	{
@@ -216,8 +258,8 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 					this->m_Mp[this->m_Count].m_W = 0;
 					this->m_Mp[this->m_Count].m_H = 0;
 
-					auto w = this->m_Mp[this->m_Count].m_X - 3;
-					auto h = this->m_Mp[this->m_Count].m_Y - 3;
+					auto int w = this->m_Mp[this->m_Count].m_X - 3;
+					auto int h = this->m_Mp[this->m_Count].m_Y - 3;
 
 					w += rand() % 7;
 					h += rand() % 7;
@@ -246,6 +288,7 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 				{
 					BYTE w = this->m_Mp[this->m_Count].m_X;
 					BYTE h = this->m_Mp[this->m_Count].m_Y;
+
 					Token = GetToken();	rcount = TokenNumber;
 					copycount = this->m_Count;
 
@@ -255,7 +298,9 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 						{
 							if ( g_MapServerManager.CheckMapCanMove(this->m_Mp[copycount].m_MapNumber) == FALSE )
 								break;
+						
 							this->m_Count++;
+
 							if ( this->m_Count > OBJ_MAXMONSTER-1 )
 							{
 								MsgBox("Monster attribute max over %s %d", __FILE__, __LINE__);
@@ -279,20 +324,12 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 						}
 					}
 				}
-#ifdef IMPERIAL
-				else if(Type == 5)
-				{
-					GetToken();
-					this->m_Mp[this->m_Count].m_IG_ZoneIndex = TokenNumber;
 
-					GetToken();
-					this->m_Mp[this->m_Count].m_IG_RegenTable = TokenNumber;
-				}
-#endif
 				if ( g_MapServerManager.CheckMapCanMove(this->m_Mp[this->m_Count].m_MapNumber) == FALSE )
 					continue;
 
 				this->m_Count++;
+
 				if ( this->m_Count > OBJ_MAXMONSTER-1 )
 				{
 					MsgBox("Monster attribute max over %d (%s %d)", this->m_Count, __FILE__, __LINE__);
@@ -303,10 +340,23 @@ void CMonsterSetBase::LoadSetBase(char * filename)
 		}
 	}
 
+#if (WL_PROTECT==1)
+	VM_START_WITHLEVEL(13)
+	int MyCheckVar4;  
+	CHECK_PROTECTION(MyCheckVar4, 0x15382414)  	 
+	if (MyCheckVar4 != 0x15382414)
+	{
+		bCanTrade = 0;
+		gAddExperience = 1.0f;	
+		gServerMaxUser=30;
+		gItemDropPer = 20;
+	}
+	VM_END
+#endif
 	fclose(SMDFile);
 }
 
-//00429F40 - identical
+
 void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 {
 	CWzMemScript WzMemScript;
@@ -329,9 +379,11 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 		if ( Token == 1 )
 		{
 			int Type = WzMemScript.GetNumber();
+
 			while ( true )
 			{
 				Token = WzMemScript.GetToken();
+
 				if ( strcmp("end", WzMemScript.GetString()) == 0 )
 					break;
 				
@@ -355,8 +407,8 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 					this->m_Mp[this->m_Count].m_W = 0;
 					this->m_Mp[this->m_Count].m_H = 0;
 
-					auto w = this->m_Mp[this->m_Count].m_X - 3;
-					auto h = this->m_Mp[this->m_Count].m_Y - 3;
+					auto int w = this->m_Mp[this->m_Count].m_X - 3;
+					auto int h = this->m_Mp[this->m_Count].m_Y - 3;
 
 					w += rand() % 7;
 					h += rand() % 7;
@@ -376,6 +428,7 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 				}
 
 				Token = WzMemScript.GetToken();	this->m_Mp[this->m_Count].m_Dir = WzMemScript.GetNumber();
+
 				Sdir = this->m_Mp[this->m_Count].m_Dir;
 
 				if ( this->m_Mp[this->m_Count].m_Dir == (BYTE)-1 )
@@ -387,6 +440,7 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 				{
 					BYTE w = this->m_Mp[this->m_Count].m_X;
 					BYTE h = this->m_Mp[this->m_Count].m_Y;
+
 					Token = WzMemScript.GetToken();
 					rcount = WzMemScript.GetNumber();
 					copycount = this->m_Count;
@@ -399,6 +453,7 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 								break;
 						
 							this->m_Count++;
+
 							if ( this->m_Count > OBJ_MAXMONSTER-1 )
 							{
 								MsgBox("Monster attribute max over %s %d", __FILE__, __LINE__);
@@ -421,26 +476,21 @@ void CMonsterSetBase::LoadSetBase(char* Buffer, int iSize)
 						}
 					}
 				}
-#ifdef IMPERIAL
-				else if(Type == 5)
-				{
-					WzMemScript.GetToken();
-					this->m_Mp[this->m_Count].m_IG_ZoneIndex = WzMemScript.GetNumber();
 
-					WzMemScript.GetToken();
-					this->m_Mp[this->m_Count].m_IG_RegenTable = WzMemScript.GetNumber();
-				}
-#endif
 				if ( g_MapServerManager.CheckMapCanMove(this->m_Mp[this->m_Count].m_MapNumber) == FALSE )
 					continue;
 
 				this->m_Count++;
+
 				if ( this->m_Count > OBJ_MAXMONSTER-1 )
 				{
 					MsgBox("Monster attribute max over %d (%s %d)", this->m_Count, __FILE__, __LINE__);
+					//fclose(SMDFile);
 					return;
 				}
 			}
 		}
 	}
+
+	//fclose(SMDFile);
 }

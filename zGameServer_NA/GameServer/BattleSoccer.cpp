@@ -1,6 +1,7 @@
-// GS-CS 1.00.90 JPN	- Completed
 #include "stdafx.h"
 #include "BattleSoccer.h"
+// GS-N 0.99.60T 0x00459AC0 - Completed
+// GS-N 1.00.18 JPN 0x004691D0 - Completed
 
 CBattleSoccer * gBSGround[MAX_BATTLESOCCER_GROUND];
 

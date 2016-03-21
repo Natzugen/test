@@ -5,12 +5,25 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+void CEventManagement__SCFEventManager(void * lpParam);
+extern BOOL g_bSCFEventManagerOn;
+
 struct EVENT_ID_TIME
 {
-	int m_eEventKind;	// 0
-	int m_iHour;	// 4
-	int m_iMinute;	// 8
+	BYTE m_eEventKind;	// 0
+	char m_iHour;	// 4
+	char m_iMinute;	// 8
 	bool m_bEventStarted;	// C
+};
+
+struct SCFEVENT_ID_TIME
+{
+	BYTE m_eEventKind;	// 0
+	char m_iHour;	// 4
+	char m_iMinute;	// 8
+	char m_iMonth;
+	char m_iDay;
+	char m_iDayOfWeek;
 };
 
 class CEventManagement
@@ -26,6 +39,12 @@ public:
 	void Run();
 	void StartEvent(int eEventKind);
 	void RegEvent(int eEventKind, void* lpEventObj);
+	//
+	void SCFInit(BOOL Start);
+	BOOL SCFEventManagerRunning;
+	SCFEVENT_ID_TIME SCFEvent[255];
+	BYTE SCFEventCount;
+
 
 private:
 
@@ -34,38 +53,21 @@ private:
 	std::vector<EVENT_ID_TIME> m_vtEventTime;	// C
 	std::map<int,void *> m_mapEventObj;	// 1C
 	WORD m_wToday_Year;	// 2C
-	WORD m_wToday_Month;	// 2E
-	WORD m_wToday_Day;	// 30
+	BYTE m_wToday_Month;	// 2E
+	BYTE m_wToday_Day;	// 30
 
 	enum {
 	  EVENT_ID_DRAGONHERD = 0x0,
 	  EVENT_ID_UNDERTROOP = 0x1,
 	  EVENT_ID_ELDORADO = 0x2,
 	  EVENT_ID_WHITEMAGE = 0x3,
-	  EVENT_ID_XMASATTACK = 0x4,
 	};
 };
 
 extern CEventManagement g_EventManager;
 
-struct EVENT_ID_ITEM_LIST
-{
-	BYTE m_btSection;	// 0
-	BYTE m_btType;	// 1
-	BYTE m_btIndex;	// 2
-	BYTE m_btLevel;	// 3
-	BYTE m_btDur;	// 4
-};
+//----------------------------------------------------------
 
-class CEventItemList  
-{
-public:
-	CEventItemList();
-	~CEventItemList();
-	BOOL Load(LPSTR lpszFileName);
-	int	SortItem(BYTE giftsection, BYTE * level, BYTE * dur);
-	std::vector<EVENT_ID_ITEM_LIST> m_vtEventItemList;
-};
 
-extern	CEventItemList	g_EventItemList;
+
 #endif

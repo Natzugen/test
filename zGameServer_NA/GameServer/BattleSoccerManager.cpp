@@ -1,8 +1,13 @@
-// GS-CS 1.00.90   - Completed
 #include "stdafx.h"
 #include "BattleSoccer.h"
 #include "BattleSoccerManager.h"
 #include "GMMng.h"
+
+// GS-N 0.99.60T 0x00459CD0 - Completed
+// GS-N 1.00.18  0x004693E0 - Completed
+// void ClearBattleSoccer() PUSH 3 instead of 1
+
+
 
 CBattleSoccerManager::CBattleSoccerManager()
 {
@@ -35,6 +40,7 @@ void ClearBattleSoccer()
 {
 	for ( int n=0;n<MAX_BATTLESOCCER_GROUND;n++)
 	{
+		//delete [0] gBSGround[n];
 		delete gBSGround[n];
 	}
 }
@@ -53,53 +59,42 @@ BOOL gCheckBlankBattleGround()
 	return 0xFF;
 }
 
+
 int gCheckBattleGroundTimer()
 {
-	int time=0;
-	int  i;
- 
-	return 0;
+	time_t time = 0;
 
+	return 0;	// Deatway addon could be?
+
+	int i;
 	int n;
 
-	if( gBSGround[n]->m_BlueTeam ) //HermeX Add-on for fixing registers
+	for (i;i<MAX_USER_GUILD;i++)
 	{
-	/*//for( i=0; i<MAX_USER_GUILD; i++)
-		{
-			int index = gBSGround[n]->m_RedTeam->Index[i];     
-			if( index != -1 )
-			{
-				//GCServerMsgStringSend(szTemp, index, 1);
-				GCTimeViewSend(index, time);
-			}
-		}*/
-	}
+		int UserIndex = gBSGround[n]->m_BlueTeam->Index[i];
 
-	for( i=0; i<MAX_USER_GUILD; i++)
-	{
-		int index = gBSGround[n]->m_BlueTeam->Index[i];     
-		if( index != -1 )
+		if ( UserIndex != -1 )
 		{
-			//GCServerMsgStringSend(szTemp, index, 1);
-			GCTimeViewSend(index, time);
+			GCTimeViewSend(UserIndex, time);
 		}
 	}
 
-	if( gBSGround[n]->m_RedTeam )
+	if ( gBSGround[n]->m_RedTeam != NULL )
 	{
-		for( i=0; i<MAX_USER_GUILD; i++)
+		for (i=0;i<MAX_USER_GUILD;i++)
 		{
-			int index = gBSGround[n]->m_RedTeam->Index[i];     
-			if( index != -1 )
+			int UserIndex = gBSGround[n]->m_RedTeam->Index[i];
+
+			if ( UserIndex != -1 )
 			{
-				//GCServerMsgStringSend(szTemp, index, 1);
-				GCTimeViewSend(index, time);
+				GCTimeViewSend(UserIndex, time);
 			}
 		}
 	}
 
 	return time;
 }
+
 
 
 void gBattleGroundEnable(int n, BOOL enable)
@@ -229,7 +224,7 @@ BOOL gBattleSoccerScoreUpdate(int ground, int team)
 		return FALSE;
 
 	int score = 20;
-	int totalscore = 1;
+
 	_GUILD_INFO_STRUCT * lpGuild;
 	_GUILD_INFO_STRUCT * lpTargetGuild;
 	bool bGoalTeam;

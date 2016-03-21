@@ -1,6 +1,5 @@
 // CrywolfStatue.cpp: implementation of the CCrywolfStatue class.
-//	GS-N	1.00.77	JPN	0xXXXXXXXX - Completed
-//	GS-CS	1.00.90	JPN	0xXXXXXXXX - Completed
+//	GS-N	1.00.18	JPN	0x00567640	-	Completed
 //////////////////////////////////////////////////////////////////////
 
 #include "stdafx.h"
@@ -9,7 +8,8 @@
 #include "CrywolfUtil.h"
 #include "Gamemain.h"
 #include "user.h"
-#include "BuffEffectSlot.h"
+
+#if (GS_CASTLE==1)
 
 static CCrywolfUtil UTIL;
 CCrywolfStatue g_CrywolfNPC_Statue;
@@ -26,6 +26,8 @@ CCrywolfStatue::~CCrywolfStatue()
 {
 
 }
+
+
 
 int CCrywolfStatue::GetStatueViewState(int iPriestNumber)
 {
@@ -56,27 +58,7 @@ int CCrywolfStatue::GetStatueViewState(int iPriestNumber)
 	return iViewState;
 }
 
-void CCrywolfStatue::SetStatueViewState(LPOBJ lpObj, int iAltarNumber)
-{
-	switch ( iAltarNumber )
-	{
-		case 1:
-			gObjAddBuffEffect(lpObj, AT_CRYWOLF_PROTECTION1, 0, 0, 0, 0, -10);
-			break;
-		case 2:
-			gObjAddBuffEffect(lpObj, AT_CRYWOLF_PROTECTION2, 0, 0, 0, 0, -10);
-			break;
-		case 3:
-			gObjAddBuffEffect(lpObj, AT_CRYWOLF_PROTECTION3, 0, 0, 0, 0, -10);
-			break;
-		case 4:
-			gObjAddBuffEffect(lpObj, AT_CRYWOLF_PROTECTION4, 0, 0, 0, 0, -10);
-			break;
-		case 5:
-			gObjAddBuffEffect(lpObj, AT_CRYWOLF_PROTECTION5, 0, 0, 0, 0, -10);
-			break;
-	}
-}
+
 
 void CCrywolfStatue::CrywolfStatueAct(int iIndex)
 {
@@ -93,6 +75,16 @@ void CCrywolfStatue::CrywolfStatueAct(int iIndex)
 
 	if ( iContractedAlterCount == 0 || this->m_Shield.m_iShieldHP == 0 )
 	{
+		//=========================================================================================
+		//CRYWOLF STATUE EFFECTS
+		//=========================================================================================
+		//[SKILL STATE] 			= Wolf personal status shields		0x42
+		//[SKILL STATE] 			= Wolf personal status shields		0x43
+		//[SKILL STATE] 			= Wolf personal status shields		0x44
+		//[SKILL STATE] 			= Wolf personal status shields		0x45
+		//[SKILL STATE] 			= Wolf personal status shields		0x46
+		//=========================================================================================
+
 		if ( this->m_Shield.m_iShieldState == 1 )
 		{
 			UTIL.SendCrywolfUserAnyMsg(2, lMsg.Get(MSGGET(13, 5)));
@@ -100,7 +92,8 @@ void CCrywolfStatue::CrywolfStatueAct(int iIndex)
 			this->m_Shield.m_iShieldHP = 0;
 			this->m_Shield.m_iShieldMaxHP = 0;
 			this->m_Shield.m_iPriestNumber = iContractedAlterCount;
-			this->SetStatueViewState(lpObj, iContractedAlterCount); //season 3.0 add-on
+			lpObj->m_ViewSkillState |= this->GetStatueViewState(iContractedAlterCount);
+			GCSkillInfoSend(lpObj, 1, 0x44);
 		}
 		else if ( this->m_Shield.m_iPriestNumber != iContractedAlterCount )
 		{
@@ -109,19 +102,23 @@ void CCrywolfStatue::CrywolfStatueAct(int iIndex)
 			this->m_Shield.m_iShieldMaxHP = iPriestMaxHPSum;
 			this->m_Shield.m_iPriestNumber = iContractedAlterCount;
 			UTIL.SendCrywolfUserAnyMsg(2, lMsg.Get(MSGGET(13, 6)), iContractedAlterCount, iPriestHPSum);
-			this->SetStatueViewState(lpObj, iContractedAlterCount); //season 3.0 add-on
+			lpObj->m_ViewSkillState |= this->GetStatueViewState(iContractedAlterCount);
+			GCSkillInfoSend(lpObj, 1, 0x45);
 		}
+
 		return;
 	}
 	else if ( this->m_Shield.m_iShieldState == 0 )
 	{
 		UTIL.SendCrywolfUserAnyMsg(2, lMsg.Get(MSGGET(13, 7)));
-		this->SetStatueViewState(lpObj, iContractedAlterCount); //season 3.0 add-on
+		lpObj->m_ViewSkillState |= this->GetStatueViewState(iContractedAlterCount);
+		GCSkillInfoSend(lpObj, 1, 0x42);
 	}
 	else if ( this->m_Shield.m_iPriestNumber != iContractedAlterCount )
 	{
 		UTIL.SendCrywolfUserAnyMsg(2, lMsg.Get(MSGGET(13, 6)), iContractedAlterCount, iPriestHPSum);
-		this->SetStatueViewState(lpObj, iContractedAlterCount); //season 3.0 add-on
+		lpObj->m_ViewSkillState |= this->GetStatueViewState(iContractedAlterCount);
+		GCSkillInfoSend(lpObj, 1, 0x43);
 	}
 
 	this->m_Shield.m_iShieldState = 1;
@@ -129,3 +126,5 @@ void CCrywolfStatue::CrywolfStatueAct(int iIndex)
 	this->m_Shield.m_iShieldMaxHP = iPriestMaxHPSum;
 	this->m_Shield.m_iPriestNumber = iContractedAlterCount;
 }
+
+#endif

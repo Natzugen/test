@@ -9,9 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-//#if (_GSCS==1)
-
-#define CASTLE_CROWNSWITCH_CLASS_RANGE(x)  ( ((x)< 217 )?FALSE:((x) > 218 )?FALSE:TRUE   ) 
+#if (GS_CASTLE==1)
 
 class CCastleCrownSwitch  
 {
@@ -19,12 +17,11 @@ public:
 	CCastleCrownSwitch();
 	virtual ~CCastleCrownSwitch();
 
-	void CastleCrownSwitchAct(int iIndex);
-
+public:
+	void CrownSwitchPushTime(int iSwitchIndex);
 };
 
-
-extern CCastleCrownSwitch g_CsNPC_CastleCrownSwitch;
-//#endif
+extern CCastleCrownSwitch g_CastleCrownSwitch;
+#endif
 
 #endif // !defined(AFX_CASTLECROWNSWITCH_H__E1DF5DA3_E594_4900_AF02_A71558C39951__INCLUDED_)

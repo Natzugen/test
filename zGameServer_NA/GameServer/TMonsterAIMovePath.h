@@ -19,10 +19,10 @@ class TMonsterAIMovePathInfo
 
 public:
 
-	int m_iType;	// 0
-	int m_iMapNumber;	// 4
-	int m_iPathX;	// 8
-	int m_iPathY;	// C
+	short m_iType;	// 0
+	short m_iMapNumber;	// 4
+	short m_iPathX;	// 8
+	short m_iPathY;	// C
 
 public:
 
@@ -55,7 +55,7 @@ public:
 
 	BOOL m_bDataLoad;	// 4
 	TMonsterAIMovePathInfo m_MovePathInfo[MAX_MONSTER_AI_MOVE_PATH];	// 8
-	int m_iMovePathSpotCount;	// 12C8
+	short m_iMovePathSpotCount;	// 12C8
 
 
 };

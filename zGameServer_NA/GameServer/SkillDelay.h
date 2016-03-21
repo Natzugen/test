@@ -18,11 +18,11 @@ public:
 	virtual ~CSkillDelay();
 
 	void Init();
-	BOOL Check(BYTE skill);
+	BOOL Check(WORD skill);
 
 private:
 
-	DWORD LastSkillUseTime[600];	// 4
+	DWORD LastSkillUseTime[256];	// 4
 };
 
 #endif

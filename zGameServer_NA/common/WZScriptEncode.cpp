@@ -1,8 +1,15 @@
-//	GS-CS	1.00.90	JPN		-	Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-05-09
+// ------------------------------
 #include "stdafx.h"
 #include "WZScriptEncode.h"
 
+// GS-N 0.99.60T // 48c100 Status : Completed 2007-4-30
+//	GS-N	1.00.18	JPN	0x004A7270	-	Completed
+
 unsigned char XorTable[10]={0xA1, 0xB2, 0xAA, 0x12, 0x23, 0xF1, 0xF3, 0xD3, 0x78, 0x02}; // For some reason this is 16
+
 
 CWZScriptEncode::CWZScriptEncode()
 {
@@ -16,6 +23,7 @@ CWZScriptEncode::~CWZScriptEncode()
 {
 	this->Close();
 }
+
 
 int CWZScriptEncode::Open(char* filename)
 {

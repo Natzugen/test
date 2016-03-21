@@ -1,5 +1,11 @@
-//GameServer 1.00.77 JPN - Completed
-//GameServer 1.00.90 JPN - Completed
+// ------------------------------
+// Decompiled by Deathway
+// Date : 2007-03-09
+// ------------------------------
+// Gate.cpp
+// GS-N 0.99.60T 0x004FF2E0
+//	GS-N	1.00.18	JPN	0x0052F200	-	Completed
+
 #include "stdafx.h"
 #include "gate.h"
 #include "logproc.h"
@@ -11,15 +17,18 @@
 
 CGate gGateC;
 
+
 CGate::CGate ()
 {
 	return;
 }
 
+
 CGate::~CGate()
 {
 	return;
 }
+
 
 void CGate::Init()
 {
@@ -27,10 +36,11 @@ void CGate::Init()
 
 	for (n=0;n<MAX_GATES;n++)
 	{
-		this->m_This[n] = 0xFF;
+		this->m_This[n] = 0xFF;	// -1 NULL
 		this->m_Level[n]=0;
 	}
 }
+
 
 void CGate::Load(char* filename)
 {
@@ -39,7 +49,7 @@ void CGate::Load(char* filename)
 	
 	this->Init();
 
-	SMDFile=fopen(filename, "r");	//ok
+	SMDFile=fopen(filename, "r");
 	
 	if (SMDFile==0)
 	{
@@ -91,13 +101,14 @@ void CGate::Load(char* filename)
 				this->m_Level[number]=TokenNumber;
 			}
 		}
-	}
+	}	// Iterator
 
 	fclose(SMDFile);
 	LogAdd("[%s] Gate information data load complete.", filename);
 }
 
-void CGate::Load(char* Buffer, int iSize)
+
+void CGate::Load(char* Buffer, int iSize)	// Load with Parameters
 {
 	CWzMemScript WzMemScript;
 	int Token;
@@ -161,7 +172,7 @@ BOOL CGate::IsGate(int GateNumber)
 		return 0;
 	}
 
-	if ( this->m_This[GateNumber] == (BYTE)-1 )
+	if ( this->m_This[GateNumber] == (MAX_GATES)-1 )
 	{
 		LogAdd( lMsg.Get(MSGGET(1, 196)), __FILE__, __LINE__);
 		return 0;
@@ -174,11 +185,11 @@ BOOL CGate::IsGate(int GateNumber)
 
 int CGate::GetGate(int mgt, short& x, short& y, BYTE& MapNumber, BYTE& dir, short& Level)
 {
-	int gt;
-	int tx;
-	int ty;
-	int loopcount;
-	BYTE attr;
+	int gt=0;
+	int tx=0;
+	int ty=0;
+	int loopcount=0;
+	BYTE attr=0;
 	
 	if (this->IsGate(mgt) == 0)
 	{
@@ -188,27 +199,29 @@ int CGate::GetGate(int mgt, short& x, short& y, BYTE& MapNumber, BYTE& dir, shor
 	gt=this->m_TargetGate[mgt];
 	if ( gt == 0 )
 	{
-		gt=mgt;
+		gt=mgt;	// This is for M Key
 	}
 	
 	loopcount=10;
 	while ( loopcount-- != 0 )
 	{
+		// For X coords
 		if ( (this->m_Ex[gt] - this->m_Sx[gt]) > 0 )
 		{
-			tx = this->m_Sx[gt] + ( rand() % ( this->m_Ex[gt] - this->m_Sx[gt] ) );
+			tx = this->m_Sx[gt] + ( rand() % ( this->m_Ex[gt] - this->m_Sx[gt] ) );	// Choose any X position between XBegin and XEnd
 		}
 		else
 		{
-			tx = this->m_Sx[gt];
+			tx = this->m_Sx[gt];	// If there is a mistake while putting values in gate.txt
 		}
+		// For Y coords
 		if ( (this->m_Ey[gt] - this->m_Sy[gt]) > 0 )
 		{
-			ty = this->m_Sy[gt] + ( rand() % ( this->m_Ey[gt] - this->m_Sy[gt] ) );
+			ty = this->m_Sy[gt] + ( rand() % ( this->m_Ey[gt] - this->m_Sy[gt] ) );	// Choose any Y position between YBegin and YEnd
 		}
 		else
 		{
-			ty = this->m_Sy[gt];
+			ty = this->m_Sy[gt];	// If there is amistake while putting values in gate.txt
 		}
 
 		attr = MapC[MapNumber].GetAttr( tx, ty);
@@ -228,6 +241,7 @@ int CGate::GetGate(int mgt, short& x, short& y, BYTE& MapNumber, BYTE& dir, shor
 
 }
 			
+
 int CGate::GetLevel(int GateNumber)
 {
 	if (GateNumber < 0 || GateNumber > MAX_GATES-1 )
@@ -238,6 +252,8 @@ int CGate::GetLevel(int GateNumber)
 
 	return this->m_Level[GateNumber];
 }
+
+
 
 BOOL CGate::IsInGate(int aIndex, int GateNumber)
 {
@@ -250,24 +266,14 @@ BOOL CGate::IsInGate(int aIndex, int GateNumber)
 
 	int level = this->m_Level[GateNumber];
 
-	if(GateNumber != 273) //Season 3.0 add-on
+	if (lpObj->Class == CLASS_MAGICGLADIATOR || 
+		lpObj->Class == CLASS_DARKLORD ||
+		lpObj->Class == CLASS_RAGEFIGHTER )
 	{
-		if ( lpObj->Class == CLASS_DARKLORD 
-#ifdef MONK
-			|| lpObj->Class == CLASS_MONK
-#endif
-			|| lpObj->Class == CLASS_MAGUMSA )
+		if ( level > 0 )
 		{
-			if ( level > 0 )
-			{
-				level = level / 3 * 2;
-			}
+			level = level / 3 * 2;
 		}
-	}
-
-	if (szAuthKey[15] != AUTHKEY15 )
-	{
-		DestroyGIocp();
 	}
 
 	if ( lpObj->Level < level )
@@ -299,18 +305,13 @@ BOOL CGate::CheckGateLevel(int aIndex, int GateNumber)
 
 	int level = this->m_Level[GateNumber];
 
-	if(GateNumber != 273) //Season 3.0 add-on
+	if (lpObj->Class == CLASS_MAGICGLADIATOR || 
+		lpObj->Class == CLASS_DARKLORD ||
+		lpObj->Class == CLASS_RAGEFIGHTER)
 	{
-		if ( lpObj->Class == CLASS_DARKLORD 
-#ifdef MONK
-			|| lpObj->Class == CLASS_MONK
-#endif
-			|| lpObj->Class == CLASS_MAGUMSA )
+		if ( level > 0 )
 		{
-			if ( level > 0 )
-			{
-				level = (level/3)*2;
-			}
+			level = (level/3)*2;
 		}
 	}
 

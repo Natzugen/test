@@ -19,60 +19,48 @@ public:
 
 	void Init();
 	void SetEventState(int State);
+	int  GetEventState();
 	void Run();
 	void RegenGoldGoblen();
 	void RegenTitan();
 	void RegenGoldDercon();
 	void RegenDevilLizardKing();
 	void RegenKantur();
-
-	void RegenGoldenRabbit();
-	void RegenGoldenDarkKnight();
-	void RegenGoldenDevil();
-	void RegenGoldenMonster();
-	void RegenGoldenCrust();
-	void RegenGoldenSatiros();
-	void RegenGoldenTwintail();
-	void RegenGoldenIronKnight();
-	void RegenGoldenNeipin();
-	void RegenGoldenGreatDragon();
-
 	void CheckGoldDercon(int MapNumber);
 	void SetMenualStart(BOOL bMenualStart){this->m_bMenualStart = bMenualStart;}	// line : 57
 	void Start_Menual();
 	void End_Menual();
-
+	void RegenElDorado2(int MobClass);
 public:
 
 	int EventState;	// 4
+	
 	DWORD GoldGoblenEventStartTime;	// 8
 	DWORD TitanEventStartTime;	// C
 	DWORD GoldDerconEventStartTime;	// 10
 	DWORD DevilLizardKingEventStartTime;	// 14
 	DWORD KanturEventStartTime;	// 18
-	DWORD GoldenRabbitRegenTime;
-	DWORD GoldenDarkKnightRegenTime;
-	DWORD GoldenDevilRegenTime;
-	DWORD GoldenMonsterRegenTime;
-	DWORD GoldenCrustRegenTime;
-	DWORD GoldenSatirosRegenTime;
-	DWORD GoldenTwintailRegenTime;
-	DWORD GoldenIronKnightRegenTime;
-	DWORD GoldenNeipinRegenTime;
-	DWORD GoldenGreatDragonRegenTime;
 
-	int m_BossTitanMapNumber;	// 1C
-	int m_BossTitanMapX;	// 20
-	int m_BossTitanMapY;	// 24
-	int m_BossDevilLizardKingMapNumber;	// 28
-	int m_BossDevilLizardKingMapX;	// 2C
-	int m_BossDevilLizardKingMapY;	// 30
-	int m_BossKanturMapNumber;	// 34
-	int m_BossKanturMapX;	// 38
-	int m_BossKanturMapY;	// 3C
-	int m_bMenualStart;	// 40
-	int m_BossGoldDerconMapNumber[3];	// 44
+	BYTE m_BossTitanMapNumber;	// 1C
+	BYTE m_BossTitanMapX;	// 20
+	BYTE m_BossTitanMapY;	// 24
+	
+	BYTE m_BossDevilLizardKingMapNumber;	// 28
+	BYTE m_BossDevilLizardKingMapX;	// 2C
+	BYTE m_BossDevilLizardKingMapY;	// 30
+	
+	BYTE m_BossKanturMapNumber;	// 34
+	BYTE m_BossKanturMapX;	// 38
+	BYTE m_BossKanturMapY;	// 3C
 
+	BOOL m_bMenualStart;	// 40
+	BYTE m_BossGoldDerconMapNumber[3];	// 44
+
+	DWORD BossElDorado2StartTime[10];	// 18
+
+	BYTE m_BossElDorado2MapNumber[10];	// 28
+	BYTE m_BossElDorado2MapX[10];	// 2C
+	BYTE m_BossElDorado2MapY[10];	// 30
 };
 
 extern CEledoradoEvent gEledoradoEvent;

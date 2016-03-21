@@ -30,7 +30,7 @@ public:
 	short m_sSVR_CODE;	// A
 	char m_cIPADDR[16];	// C
 	WORD m_wPORT;	// 1C
-	short m_sMAP_MOVE[MAX_NUMBER_MAP];	// 1E
+	short m_sMAP_MOVE[MAX_MAP_NUMBER];	// 1E
 
 };
 
